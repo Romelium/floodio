@@ -23,11 +23,8 @@ Future<bool> requestAppPermissions() async {
     permissions.add(Permission.bluetooth);
   }
 
-  if (sdkInt >= 32) {
-    permissions.add(Permission.nearbyWifiDevices);
-  }
-
   if (sdkInt >= 33) {
+    permissions.add(Permission.nearbyWifiDevices);
     permissions.add(Permission.notification);
   } else {
     permissions.add(Permission.storage);

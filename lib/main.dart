@@ -10,6 +10,7 @@ import 'crypto/crypto_service.dart';
 import 'database/tables.dart';
 import 'providers/database_provider.dart';
 import 'providers/hazard_marker_provider.dart';
+import 'providers/p2p_provider.dart';
 import 'providers/trusted_sender_provider.dart';
 import 'utils/permission_utils.dart';
 
@@ -155,6 +156,94 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Floodio PoC'),
+        ),
+        drawer: Drawer(
+          child: Consumer(
+            builder: (context, ref, child) {
+              final p2pState = ref.watch(p2pServiceProvider);
+              final p2pNotifier = ref.read(p2pServiceProvider.notifier);
+
+              return ListView(
+                padding: EdgeInsets.zero,
+                children: [
+                  const DrawerHeader(
+                    decoration: BoxDecoration(color: Colors.blue),
+                    child: Text('P2P Sync', style: TextStyle(color: Colors.white, fontSize: 24)),
+                  ),
+                  ListTile(
+                    title: const Text('Host Network'),
+                    trailing: Switch(
+                      value: p2pState.isHosting,
+                      onChanged: (val) {
+                        if (val) {
+                          p2pNotifier.startHosting();
+                        } else {
+                          p2pNotifier.stopHosting();
+                        }
+                      },
+                    ),
+                  ),
+                  if (p2pState.hostState != null)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                      child: Text('SSID: ${p2pState.hostState!.ssid}\nActive: ${p2pState.hostState!.isActive}'),
+                    ),
+                  const Divider(),
+                  ListTile(
+                    title: const Text('Scan for Networks'),
+                    trailing: Switch(
+                      value: p2pState.isScanning,
+                      onChanged: (val) {
+                        if (val) {
+                          p2pNotifier.startScanning();
+                        } else {
+                          p2pNotifier.stopScanning();
+                        }
+                      },
+                    ),
+                  ),
+                  if (p2pState.clientState != null && p2pState.clientState!.isActive)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Connected to: ${p2pState.clientState!.hostSsid}'),
+                          ElevatedButton(
+                            onPressed: () => p2pNotifier.disconnect(),
+                            child: const Text('Disconnect'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  if (p2pState.discoveredDevices.isNotEmpty)
+                    ...p2pState.discoveredDevices.map((device) => ListTile(
+                          title: Text(device.deviceName),
+                          subtitle: Text(device.deviceAddress),
+                          trailing: ElevatedButton(
+                            onPressed: () => p2pNotifier.connectToDevice(device),
+                            child: const Text('Connect'),
+                          ),
+                        )),
+                  const Divider(),
+                  ListTile(
+                    title: const Text('Send Ping'),
+                    onTap: () {
+                      p2pNotifier.broadcastText('Ping from ${DateTime.now().toIso8601String()}');
+                    },
+                  ),
+                  if (p2pState.receivedTexts.isNotEmpty) ...[
+                    const Divider(),
+                    const Padding(
+                      padding: EdgeInsets.all(16.0),
+                      child: Text('Received Messages:', style: TextStyle(fontWeight: FontWeight.bold)),
+                    ),
+                    ...p2pState.receivedTexts.map((text) => ListTile(title: Text(text))),
+                  ],
+                ],
+              );
+            },
+          ),
         ),
         body: switch (markersAsync) {
           AsyncData(:final value) => value.isEmpty
