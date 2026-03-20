@@ -21,7 +21,7 @@ The PoC will **not** be a fully polished app. It will focus on proving the riski
 
 *   **Tech Stack Selection:**
     *   **State Management:** `flutter_riverpod` (ideal for handling asynchronous network states).
-    *   **Local Database:** `isar` or `drift` (SQLite). *Recommendation: `isar` is incredibly fast for offline-first Flutter apps and supports full-text search.*
+    *   **Local Database:** `isar` or `drift` (SQLite).
     *   **Serialization:** `protobuf` (Protocol Buffers to keep BLE payloads tiny).
 *   **Tasks:**
     1.  Initialize the Flutter project (target: Android).
