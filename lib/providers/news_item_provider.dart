@@ -27,6 +27,7 @@ class NewsItemsController extends _$NewsItemsController {
         signature: Value(item.signature),
         trustTier: item.trustTier,
       ),
+      mode: InsertMode.insertOrReplace,
     );
   }
 }

@@ -13,8 +13,15 @@ Future<(SimpleKeyPairData, SimplePublicKey, String?)> _isolateInitKeys(String? p
   String? newPrivKeyStr;
 
   if (privateKeyStr != null) {
-    final privateKeyBytes = base64Decode(privateKeyStr);
-    userKeyPair = await algorithm.newKeyPairFromSeed(privateKeyBytes);
+    try {
+      final privateKeyBytes = base64Decode(privateKeyStr);
+      userKeyPair = await algorithm.newKeyPairFromSeed(privateKeyBytes);
+    } catch (e) {
+      // Fallback to generating new key if corrupted
+      userKeyPair = await algorithm.newKeyPair();
+      final privateKeyBytes = await userKeyPair.extractPrivateKeyBytes();
+      newPrivKeyStr = base64Encode(privateKeyBytes);
+    }
   } else {
     userKeyPair = await algorithm.newKeyPair();
     final privateKeyBytes = await userKeyPair.extractPrivateKeyBytes();

@@ -1,3 +1,4 @@
+import 'package:drift/drift.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../database/database.dart';
@@ -21,6 +22,7 @@ class SeenMessageIdsController extends _$SeenMessageIdsController {
         messageId: seenMessageId.messageId,
         timestamp: seenMessageId.timestamp,
       ),
+      mode: InsertMode.insertOrReplace,
     );
   }
 }

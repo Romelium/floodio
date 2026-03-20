@@ -1,3 +1,4 @@
+import 'package:drift/drift.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../database/database.dart';
@@ -22,6 +23,7 @@ class SyncPayloadsController extends _$SyncPayloadsController {
         payload: payload.payload,
         timestamp: payload.timestamp,
       ),
+      mode: InsertMode.insertOrReplace,
     );
   }
 }
