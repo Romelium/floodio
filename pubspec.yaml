@@ -21,6 +21,9 @@ dependencies:
   riverpod: ^3.2.1
   riverpod_annotation: ^4.0.2
   shared_preferences: ^2.3.2
+  flutter_ble_peripheral: ^2.1.0
+  flutter_p2p_connection: ^3.0.3
+  flutter_blue_plus: ^2.2.1
 
 dev_dependencies:
   flutter_test:

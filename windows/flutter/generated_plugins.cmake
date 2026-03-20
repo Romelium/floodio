@@ -3,6 +3,8 @@
 #
 
 list(APPEND FLUTTER_PLUGIN_LIST
+  flutter_ble_peripheral
+  flutter_blue_plus_winrt
   permission_handler_windows
   sqlite3_flutter_libs
 )
