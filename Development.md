@@ -61,7 +61,6 @@ The PoC will **not** be a fully polished app. It will focus on proving the riski
     1.  **The Sync Handshake:** When Device A and B connect, they shouldn't send *everything*. They should first exchange a lightweight "Manifest" (e.g., "I have messages up to timestamp X").
     2.  **Delta Sync:** Device A sends only the Protobuf payloads that Device B is missing.
     3.  **Loop Prevention:** Maintain a `seen_message_ids` table in the database. If Device B receives a message ID it already has, it drops it.
-    4.  **Time-To-Live (TTL):** Write a background worker that deletes "Crowdsourced" data older than 24 hours to save storage.
 
 ### **Phase 5: UI & Field Testing (Week 6)**
 **Goal:** Build a functional interface to visualize the data and test with physical devices.
