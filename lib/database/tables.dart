@@ -114,3 +114,22 @@ class SeenMessageIds extends Table {
   @override
   Set<Column> get primaryKey => {messageId};
 }
+
+class TrustedSenderEntity {
+  final String publicKey;
+  final String name;
+
+  TrustedSenderEntity({
+    required this.publicKey,
+    required this.name,
+  });
+}
+
+@UseRowClass(TrustedSenderEntity)
+class TrustedSenders extends Table {
+  TextColumn get publicKey => text()();
+  TextColumn get name => text()();
+
+  @override
+  Set<Column> get primaryKey => {publicKey};
+}
