@@ -10,6 +10,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../crypto/crypto_service.dart';
 import '../database/database.dart';
 import '../protos/models.pb.dart' as pb;
+import '../utils/bloom_filter.dart';
 import 'database_provider.dart';
 
 part 'p2p_provider.g.dart';
@@ -383,20 +384,16 @@ class P2pService extends _$P2pService {
     try {
     final db = ref.read(databaseProvider);
 
-    final hazardMax = await (db.select(db.hazardMarkers)
-          ..orderBy([(t) => OrderingTerm(expression: t.timestamp, mode: OrderingMode.desc)])
-          ..limit(1))
-        .getSingleOrNull();
-
-    final newsMax = await (db.select(db.newsItems)
-          ..orderBy([(t) => OrderingTerm(expression: t.timestamp, mode: OrderingMode.desc)])
-          ..limit(1))
-        .getSingleOrNull();
+    final seenIds = await db.select(db.seenMessageIds).get();
+    
+    final bloomFilter = BloomFilter(32768, 5);
+    for (final seen in seenIds) {
+      bloomFilter.add(seen.messageId);
+    }
 
     final manifest = {
       'type': 'manifest',
-      'maxHazardTs': hazardMax?.timestamp ?? 0,
-      'maxNewsTs': newsMax?.timestamp ?? 0,
+      'bloomFilter': bloomFilter.bits,
     };
 
     await broadcastText(jsonEncode(manifest));
@@ -409,22 +406,16 @@ class P2pService extends _$P2pService {
     _idleTicks = 0;
     state = state.copyWith(isSyncing: true, syncMessage: 'Comparing data...');
     try {
-      final peerMaxHazardTs = json['maxHazardTs'] as int? ?? 0;
-      final peerMaxNewsTs = json['maxNewsTs'] as int? ?? 0;
+      final bloomBits = (json['bloomFilter'] as List<dynamic>?)?.map((e) => (e as num).toInt()).toList() ?? [];
+      final peerBloomFilter = BloomFilter.fromList(bloomBits, 32768, 5);
 
       final db = ref.read(databaseProvider);
 
-      final newHazards = await (db.select(db.hazardMarkers)
-            ..where((t) => t.timestamp.isBiggerThanValue(peerMaxHazardTs))
-            ..orderBy([(t) => OrderingTerm(expression: t.timestamp, mode: OrderingMode.asc)])
-            ..limit(200))
-          .get();
+      final allHazards = await db.select(db.hazardMarkers).get();
+      final allNews = await db.select(db.newsItems).get();
 
-      final newNews = await (db.select(db.newsItems)
-            ..where((t) => t.timestamp.isBiggerThanValue(peerMaxNewsTs))
-            ..orderBy([(t) => OrderingTerm(expression: t.timestamp, mode: OrderingMode.asc)])
-            ..limit(200))
-          .get();
+      final newHazards = allHazards.where((h) => !peerBloomFilter.mightContain(h.id)).take(200).toList();
+      final newNews = allNews.where((n) => !peerBloomFilter.mightContain(n.id)).take(200).toList();
 
       if (newHazards.isEmpty && newNews.isEmpty) {
         state = state.copyWith(syncMessage: 'Up to date.');
@@ -498,6 +489,7 @@ class P2pService extends _$P2pService {
       final trustedKeys = trustedSenders.map((e) => e.publicKey).toList();
 
       final validMarkers = <HazardMarkersCompanion>[];
+      final seenIds = <SeenMessageIdsCompanion>[];
       for (final m in payload.markers) {
         final payloadToSign = utf8.encode('${m.id}${m.type}${m.timestamp}');
         final trustTier = await crypto.verifyAndGetTrustTier(
@@ -518,6 +510,10 @@ class P2pService extends _$P2pService {
             senderId: m.senderId,
             signature: Value(m.signature),
             trustTier: trustTier,
+          ));
+          seenIds.add(SeenMessageIdsCompanion.insert(
+            messageId: m.id,
+            timestamp: DateTime.now().millisecondsSinceEpoch,
           ));
         } else {
           print("Invalid signature for marker ${m.id}, dropping.");
@@ -544,6 +540,10 @@ class P2pService extends _$P2pService {
             signature: Value(n.signature),
             trustTier: trustTier,
           ));
+          seenIds.add(SeenMessageIdsCompanion.insert(
+            messageId: n.id,
+            timestamp: DateTime.now().millisecondsSinceEpoch,
+          ));
         } else {
           print("Invalid signature for news ${n.id}, dropping.");
         }
@@ -557,6 +557,9 @@ class P2pService extends _$P2pService {
         }
         for (final n in validNews) {
           await db.into(db.newsItems).insert(n, mode: InsertMode.insertOrReplace);
+        }
+        for (final s in seenIds) {
+          await db.into(db.seenMessageIds).insert(s, mode: InsertMode.insertOrReplace);
         }
       });
 

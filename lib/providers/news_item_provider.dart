@@ -17,17 +17,26 @@ class NewsItemsController extends _$NewsItemsController {
 
   Future<void> addNewsItem(NewsItemEntity item) async {
     final db = ref.read(databaseProvider);
-    await db.into(db.newsItems).insert(
-      NewsItemsCompanion.insert(
-        id: item.id,
-        title: item.title,
-        content: item.content,
-        timestamp: item.timestamp,
-        senderId: item.senderId,
-        signature: Value(item.signature),
-        trustTier: item.trustTier,
-      ),
-      mode: InsertMode.insertOrReplace,
-    );
+    await db.transaction(() async {
+      await db.into(db.newsItems).insert(
+        NewsItemsCompanion.insert(
+          id: item.id,
+          title: item.title,
+          content: item.content,
+          timestamp: item.timestamp,
+          senderId: item.senderId,
+          signature: Value(item.signature),
+          trustTier: item.trustTier,
+        ),
+        mode: InsertMode.insertOrReplace,
+      );
+      await db.into(db.seenMessageIds).insert(
+        SeenMessageIdsCompanion.insert(
+          messageId: item.id,
+          timestamp: DateTime.now().millisecondsSinceEpoch,
+        ),
+        mode: InsertMode.insertOrReplace,
+      );
+    });
   }
 }
