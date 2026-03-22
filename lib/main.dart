@@ -3,13 +3,16 @@ import 'dart:isolate';
 
 import 'package:cryptography/cryptography.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import 'crypto/crypto_service.dart';
 import 'database/tables.dart';
 import 'providers/database_provider.dart';
 import 'providers/hazard_marker_provider.dart';
+import 'providers/news_item_provider.dart';
 import 'providers/p2p_provider.dart';
 import 'providers/trusted_sender_provider.dart';
 import 'utils/permission_utils.dart';
@@ -60,6 +63,8 @@ class HomeScreen extends ConsumerStatefulWidget {
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   int _tapCount = 0;
   DateTime? _lastTapTime;
+  int _currentIndex = 0;
+  final MapController _mapController = MapController();
 
   @override
   void initState() {
@@ -154,9 +159,379 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
   }
 
+  IconData _getHazardIcon(String type) {
+    switch (type.toLowerCase()) {
+      case 'flood': return Icons.water;
+      case 'fire': return Icons.local_fire_department;
+      case 'roadblock': return Icons.remove_road;
+      case 'medical': return Icons.medical_services;
+      default: return Icons.warning;
+    }
+  }
+
+  String _formatTimestamp(int timestamp) {
+    final dt = DateTime.fromMillisecondsSinceEpoch(timestamp).toLocal();
+    return '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+  }
+
+  void _showAddHazardDialog(LatLng point) {
+    String selectedType = 'Flood';
+    final descController = TextEditingController(text: 'Water level rising');
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+        title: const Text('Report Hazard'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+              DropdownButtonFormField<String>(
+                initialValue: selectedType,
+                decoration: const InputDecoration(labelText: 'Hazard Type'),
+                items: ['Flood', 'Fire', 'Roadblock', 'Medical', 'Other']
+                    .map((type) => DropdownMenuItem(value: type, child: Text(type)))
+                    .toList(),
+                onChanged: (val) {
+                  if (val != null) {
+                    setState(() => selectedType = val);
+                  }
+                },
+            ),
+            TextField(
+              controller: descController,
+              decoration: const InputDecoration(labelText: 'Description'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              final cryptoService = ref.read(cryptoServiceProvider.notifier);
+              final trustedSendersAsync = ref.read(trustedSendersControllerProvider);
+
+              final id = DateTime.now().millisecondsSinceEpoch.toString();
+                final type = selectedType;
+              final description = descController.text;
+              final timestamp = DateTime.now().millisecondsSinceEpoch;
+              final senderId = await cryptoService.getPublicKeyString();
+
+              final payloadToSign = utf8.encode('$id$type$timestamp');
+              final signature = await cryptoService.signData(payloadToSign);
+
+              final trustedKeys = trustedSendersAsync.value?.map((e) => e.publicKey).toList() ?? [];
+
+              final trustTier = await cryptoService.verifyAndGetTrustTier(
+                data: payloadToSign,
+                signatureStr: signature,
+                senderPublicKeyStr: senderId,
+                trustedPublicKeys: trustedKeys,
+              );
+
+              final newMarker = HazardMarkerEntity(
+                id: id,
+                latitude: point.latitude,
+                longitude: point.longitude,
+                type: type,
+                description: description,
+                timestamp: timestamp,
+                senderId: senderId,
+                signature: signature,
+                trustTier: trustTier,
+              );
+              await ref.read(hazardMarkersControllerProvider.notifier).addMarker(newMarker);
+            },
+            child: const Text('Report'),
+          ),
+        ],
+        ),
+      ),
+    );
+  }
+
+  void _showAddNewsDialog() {
+    final titleController = TextEditingController(text: 'Official Evacuation Notice');
+    final contentController = TextEditingController(text: 'Move to higher ground immediately. Flood waters rising.');
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Create Official Alert'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: titleController,
+              decoration: const InputDecoration(labelText: 'Title'),
+            ),
+            TextField(
+              controller: contentController,
+              decoration: const InputDecoration(labelText: 'Content'),
+              maxLines: 3,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              final id = DateTime.now().millisecondsSinceEpoch.toString();
+              final title = titleController.text;
+              final content = contentController.text;
+              final timestamp = DateTime.now().millisecondsSinceEpoch;
+
+              final payloadToSign = utf8.encode('$id$title$timestamp');
+
+              final (senderId, signature) = await _runGenerateOfficialMarkerSignature(payloadToSign);
+
+              final trustedSendersAsync = ref.read(trustedSendersControllerProvider);
+              final trustedKeys = trustedSendersAsync.value?.map((e) => e.publicKey).toList() ?? [];
+
+              final cryptoService = ref.read(cryptoServiceProvider.notifier);
+              final trustTier = await cryptoService.verifyAndGetTrustTier(
+                data: payloadToSign,
+                signatureStr: signature,
+                senderPublicKeyStr: senderId,
+                trustedPublicKeys: trustedKeys,
+              );
+
+              final newNews = NewsItemEntity(
+                id: id,
+                title: title,
+                content: content,
+                timestamp: timestamp,
+                senderId: senderId,
+                signature: signature,
+                trustTier: trustTier,
+              );
+              await ref.read(newsItemsControllerProvider.notifier).addNewsItem(newNews);
+            },
+            child: const Text('Broadcast'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMap(AsyncValue<List<HazardMarkerEntity>> markersAsync) {
+    final markers = markersAsync.value ?? [];
+
+    return FlutterMap(
+      mapController: _mapController,
+      options: MapOptions(
+        initialCenter: const LatLng(37.7749, -122.4194),
+        initialZoom: 13.0,
+        onTap: (tapPosition, point) {
+          _showAddHazardDialog(point);
+        },
+      ),
+      children: [
+        TileLayer(
+          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+          userAgentPackageName: 'com.example.floodio',
+        ),
+        CircleLayer(
+          circles: markers.where((m) => m.trustTier == 1).map((m) => CircleMarker(
+            point: LatLng(m.latitude, m.longitude),
+            radius: 500,
+            useRadiusInMeter: true,
+            color: Colors.blue.withOpacity(0.2),
+            borderColor: Colors.blue,
+            borderStrokeWidth: 2,
+          )).toList(),
+        ),
+        MarkerLayer(
+          markers: markers.map((m) => Marker(
+            point: LatLng(m.latitude, m.longitude),
+            width: 40,
+            height: 40,
+            alignment: Alignment.topCenter,
+            rotate: true,
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () {
+                showDialog(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: Text(m.type),
+                    content: Text('${m.description}\n\nTier: ${_getTrustTierName(m.trustTier)}'),
+                    actions: [
+                      if (m.trustTier == 4)
+                        TextButton(
+                          onPressed: () {
+                            Navigator.pop(context);
+                            _markAsTrusted(m.senderId);
+                          },
+                          child: const Text('Trust Sender'),
+                        ),
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('Close'),
+                      ),
+                    ],
+                  ),
+                );
+              },
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: m.trustTier == 1 ? Colors.blue : m.trustTier == 3 ? Colors.green : Colors.grey,
+                    width: 3,
+                  ),
+                  boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 4, offset: Offset(0, 2))],
+                ),
+                child: Icon(
+                  _getHazardIcon(m.type),
+                  color: m.trustTier == 1 ? Colors.blue : m.trustTier == 3 ? Colors.green : Colors.grey,
+                  size: 20,
+                ),
+              ),
+            ),
+          )).toList(),
+        ),
+        const RichAttributionWidget(
+          attributions: [TextSourceAttribution('OpenStreetMap contributors')],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFeed(AsyncValue<List<HazardMarkerEntity>> markersAsync, AsyncValue<List<NewsItemEntity>> newsAsync) {
+    final markers = markersAsync.value ?? [];
+    final news = newsAsync.value ?? [];
+
+    final combined = <dynamic>[...markers, ...news];
+    combined.sort((a, b) => (b.timestamp as int).compareTo(a.timestamp as int));
+
+    if (combined.isEmpty) {
+      if (markersAsync.isLoading || newsAsync.isLoading) {
+        return const Center(child: CircularProgressIndicator());
+      }
+      if (markersAsync.hasError) return Center(child: Text('Error: ${markersAsync.error}'));
+      if (newsAsync.hasError) return Center(child: Text('Error: ${newsAsync.error}'));
+      return const Center(child: Text('No data available.'));
+    }
+
+    return ListView.separated(
+      itemCount: combined.length,
+      separatorBuilder: (context, index) => const Divider(height: 1),
+      itemBuilder: (context, index) {
+        final item = combined[index];
+        if (item is HazardMarkerEntity) {
+          return ListTile(
+            leading: CircleAvatar(
+              backgroundColor: item.trustTier == 1 ? Colors.blue.shade100 : item.trustTier == 3 ? Colors.green.shade100 : Colors.grey.shade200,
+              child: Icon(
+                _getHazardIcon(item.type),
+                color: item.trustTier == 1 ? Colors.blue : item.trustTier == 3 ? Colors.green : Colors.grey,
+              ),
+            ),
+            title: Text('Hazard: ${item.type}', style: const TextStyle(fontWeight: FontWeight.bold)),
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 4),
+                Text(item.description),
+                const SizedBox(height: 4),
+                Text(
+                  _formatTimestamp(item.timestamp),
+                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+                if (item.trustTier == 4)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 4.0),
+                    child: Text('Long-press to trust sender', style: TextStyle(fontSize: 11, color: Colors.blue)),
+                  ),
+              ],
+            ),
+            isThreeLine: true,
+            trailing: _buildTrustBadge(item.trustTier),
+            onLongPress: item.trustTier == 4 ? () => _markAsTrusted(item.senderId) : null,
+          );
+        } else if (item is NewsItemEntity) {
+          return ListTile(
+            leading: CircleAvatar(
+              backgroundColor: item.trustTier == 1 ? Colors.blue.shade100 : item.trustTier == 3 ? Colors.green.shade100 : Colors.grey.shade200,
+              child: Icon(
+                Icons.article,
+                color: item.trustTier == 1 ? Colors.blue : item.trustTier == 3 ? Colors.green : Colors.grey,
+              ),
+            ),
+            title: Text('News: ${item.title}', style: const TextStyle(fontWeight: FontWeight.bold)),
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 4),
+                Text(item.content),
+                const SizedBox(height: 4),
+                Text(
+                  _formatTimestamp(item.timestamp),
+                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+                if (item.trustTier == 4)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 4.0),
+                    child: Text('Long-press to trust sender', style: TextStyle(fontSize: 11, color: Colors.blue)),
+                  ),
+              ],
+            ),
+            isThreeLine: true,
+            trailing: _buildTrustBadge(item.trustTier),
+            onLongPress: item.trustTier == 4 ? () => _markAsTrusted(item.senderId) : null,
+          );
+        }
+        return const SizedBox.shrink();
+      },
+    );
+  }
+
+  Widget _buildTrustBadge(int tier) {
+    final color = tier == 1 ? Colors.blue : tier == 3 ? Colors.green : Colors.grey;
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: color.shade50,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: color.shade300),
+          ),
+          child: Text(
+            _getTrustTierName(tier),
+            style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: color.shade700),
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _markAsTrusted(String senderId) {
+    ref.read(trustedSendersControllerProvider.notifier).addTrustedSender(
+          senderId,
+          'Trusted User',
+        );
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Sender marked as trusted!')),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final markersAsync = ref.watch(hazardMarkersControllerProvider);
+    final newsAsync = ref.watch(newsItemsControllerProvider);
     final cryptoState = ref.watch(cryptoServiceProvider);
     final trustedSendersAsync = ref.watch(trustedSendersControllerProvider);
 
@@ -204,131 +579,59 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
           ],
         ),
-        body: switch (markersAsync) {
-          AsyncData(:final value) => value.isEmpty
-              ? const Center(child: Text('No hazard markers found.'))
-              : ListView.builder(
-                  itemCount: value.length,
-                  itemBuilder: (context, index) {
-                    final marker = value[index];
-                    return ListTile(
-                      leading: Icon(
-                        Icons.warning,
-                        color: marker.trustTier == 1
-                            ? Colors.blue
-                            : marker.trustTier == 3
-                                ? Colors.green
-                                : Colors.grey,
-                      ),
-                      title: Text(marker.type),
-                      subtitle: Text('${marker.description}\n${DateTime.fromMillisecondsSinceEpoch(marker.timestamp).toLocal().toString().split('.')[0]}'),
-                      isThreeLine: true,
-                      trailing: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Text('Tier: ${marker.trustTier}', style: const TextStyle(fontWeight: FontWeight.bold)),
-                          Text(_getTrustTierName(marker.trustTier), style: const TextStyle(fontSize: 10, color: Colors.grey)),
-                        ],
-                      ),
-                      onLongPress: () {
-                        ref.read(trustedSendersControllerProvider.notifier).addTrustedSender(
-                              marker.senderId,
-                              'Trusted User',
-                            );
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Sender marked as trusted!')),
-                        );
-                      },
-                    );
-                  },
-                ),
-          AsyncError(:final error) => Center(child: Text('Error: $error')),
-          _ => const Center(child: CircularProgressIndicator()),
-        },
+        body: IndexedStack(
+          index: _currentIndex,
+          children: [
+            _buildMap(markersAsync),
+            _buildFeed(markersAsync, newsAsync),
+          ],
+        ),
+        bottomNavigationBar: BottomNavigationBar(
+          currentIndex: _currentIndex,
+          onTap: (index) => setState(() => _currentIndex = index),
+          items: const [
+            BottomNavigationBarItem(icon: Icon(Icons.map), label: 'Map'),
+            BottomNavigationBarItem(icon: Icon(Icons.list), label: 'Feed'),
+          ],
+        ),
         floatingActionButton: cryptoState.when(
           data: (_) => Column(
                 mainAxisAlignment: MainAxisAlignment.end,
                 mainAxisSize: MainAxisSize.min, // Prevents the column from blocking the ListView touches
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  FloatingActionButton(
+                  if (_currentIndex == 0) ...[
+                    FloatingActionButton.small(
+                      heroTag: 'center_map',
+                      onPressed: () {
+                        _mapController.move(const LatLng(37.7749, -122.4194), 13.0);
+                      },
+                      child: const Icon(Icons.my_location),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+                  FloatingActionButton.extended(
                     heroTag: 'official',
-                    onPressed: () async {
-                      final cryptoService = ref.read(cryptoServiceProvider.notifier);
-
-                      final id = DateTime.now().millisecondsSinceEpoch.toString();
-                      final type = 'Official Evacuation';
-                      final description = 'Move to higher ground immediately.';
-                      final timestamp = DateTime.now().millisecondsSinceEpoch;
-
-                      final payloadToSign = utf8.encode('$id$type$timestamp');
-
-                      final (senderId, signature) = await _runGenerateOfficialMarkerSignature(payloadToSign);
-
-                      final trustedKeys = trustedSendersAsync.value?.map((e) => e.publicKey).toList() ?? [];
-
-                      final trustTier = await cryptoService.verifyAndGetTrustTier(
-                        data: payloadToSign,
-                        signatureStr: signature,
-                        senderPublicKeyStr: senderId,
-                        trustedPublicKeys: trustedKeys,
-                      );
-
-                      final newMarker = HazardMarkerEntity(
-                        id: id,
-                        latitude: 37.7749,
-                        longitude: -122.4194,
-                        type: type,
-                        description: description,
-                        timestamp: timestamp,
-                        senderId: senderId,
-                        signature: signature,
-                        trustTier: trustTier,
-                      );
-                      await ref.read(hazardMarkersControllerProvider.notifier).addMarker(newMarker);
-                    },
+                    onPressed: _showAddNewsDialog,
                     backgroundColor: Colors.blue,
-                    child: const Icon(Icons.security, color: Colors.white),
+                    icon: const Icon(Icons.campaign, color: Colors.white),
+                    label: const Text('Official Alert', style: TextStyle(color: Colors.white)),
                   ),
                   const SizedBox(height: 16),
-                  FloatingActionButton(
+                  FloatingActionButton.extended(
                     heroTag: 'user',
-                    onPressed: () async {
-                      final cryptoService = ref.read(cryptoServiceProvider.notifier);
-
-                      final id = DateTime.now().millisecondsSinceEpoch.toString();
-                      final type = 'Flood';
-                      final description = 'Water level rising rapidly';
-                      final timestamp = DateTime.now().millisecondsSinceEpoch;
-                      final senderId = await cryptoService.getPublicKeyString();
-
-                      final payloadToSign = utf8.encode('$id$type$timestamp');
-                      final signature = await cryptoService.signData(payloadToSign);
-
-                      final trustedKeys = trustedSendersAsync.value?.map((e) => e.publicKey).toList() ?? [];
-
-                      final trustTier = await cryptoService.verifyAndGetTrustTier(
-                        data: payloadToSign,
-                        signatureStr: signature,
-                        senderPublicKeyStr: senderId,
-                        trustedPublicKeys: trustedKeys,
-                      );
-
-                      final newMarker = HazardMarkerEntity(
-                        id: id,
-                        latitude: 37.7749,
-                        longitude: -122.4194,
-                        type: type,
-                        description: description,
-                        timestamp: timestamp,
-                        senderId: senderId,
-                        signature: signature,
-                        trustTier: trustTier,
-                      );
-                      await ref.read(hazardMarkersControllerProvider.notifier).addMarker(newMarker);
+                    onPressed: () {
+                      LatLng point = const LatLng(37.7749, -122.4194);
+                      if (_currentIndex == 0) {
+                        point = _mapController.camera.center;
+                      }
+                        try {
+                          point = _mapController.camera.center;
+                        } catch (_) {}
+                      _showAddHazardDialog(point);
                     },
-                    child: const Icon(Icons.add),
+                    icon: const Icon(Icons.add_location_alt),
+                    label: const Text('Report Hazard'),
                   ),
                 ],
               ),
