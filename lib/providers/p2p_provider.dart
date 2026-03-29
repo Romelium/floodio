@@ -1,15 +1,18 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'dart:math';
 
 import 'package:drift/drift.dart';
 import 'package:fixnum/fixnum.dart';
 import 'package:flutter_p2p_connection/flutter_p2p_connection.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../crypto/crypto_service.dart';
 import '../database/database.dart';
 import '../protos/models.pb.dart' as pb;
+import '../services/map_cache_service.dart';
 import '../utils/bloom_filter.dart';
 import 'database_provider.dart';
 
@@ -84,6 +87,8 @@ class P2pService extends _$P2pService {
   StreamSubscription? _hostTextSub;
   StreamSubscription? _clientTextSub;
   StreamSubscription? _scanSub;
+  StreamSubscription? _hostReceivedFilesSub;
+  StreamSubscription? _clientReceivedFilesSub;
   Timer? _autoSyncTimer;
   bool _disposed = false;
 
@@ -101,6 +106,8 @@ class P2pService extends _$P2pService {
       _hostTextSub?.cancel();
       _clientTextSub?.cancel();
       _scanSub?.cancel();
+      _hostReceivedFilesSub?.cancel();
+      _clientReceivedFilesSub?.cancel();
       _host?.dispose();
       _client?.dispose();
     });
@@ -213,6 +220,10 @@ class P2pService extends _$P2pService {
       _handleReceivedText(text);
     });
 
+    _hostReceivedFilesSub = _host!.streamReceivedFilesInfo().listen((files) {
+      _handleReceivedFiles(files, _host!);
+    });
+
     final host = _host;
     if (host == null || _disposed) return;
 
@@ -236,6 +247,7 @@ class P2pService extends _$P2pService {
     _hostStateSub?.cancel();
     _hostClientListSub?.cancel();
     _hostTextSub?.cancel();
+    _hostReceivedFilesSub?.cancel();
     _host = null;
     state = state.copyWith(
       isHosting: false,
@@ -279,6 +291,10 @@ class P2pService extends _$P2pService {
 
     _clientTextSub = _client!.streamReceivedTexts().listen((text) {
       _handleReceivedText(text);
+    });
+
+    _clientReceivedFilesSub = _client!.streamReceivedFilesInfo().listen((files) {
+      _handleReceivedFiles(files, _client!);
     });
 
     final client = _client;
@@ -346,6 +362,7 @@ class P2pService extends _$P2pService {
     _clientStateSub?.cancel();
     _clientTextSub?.cancel();
     _scanSub?.cancel();
+    _clientReceivedFilesSub?.cancel();
     _client = null;
     state = state.copyWith(
       clearClientState: true,
@@ -367,6 +384,9 @@ class P2pService extends _$P2pService {
         } else if (json['type'] == 'payload') {
           await _handlePayload(json);
           return;
+        } else if (json['type'] == 'request_map') {
+          await _handleRequestMap();
+          return;
         }
       }
     } catch (e) {
@@ -377,6 +397,41 @@ class P2pService extends _$P2pService {
     state = state.copyWith(
       receivedTexts: [...state.receivedTexts, text],
     );
+  }
+
+  void _handleReceivedFiles(List<ReceivableFileInfo> files, dynamic p2pInstance) async {
+    for (final file in files) {
+      if (file.state == ReceivableFileState.idle) {
+        final dir = await getApplicationDocumentsDirectory();
+        
+        state = state.copyWith(syncMessage: 'Downloading ${file.info.name}...');
+        
+        p2pInstance.downloadFile(
+          file.info.id,
+          dir.path,
+          onProgress: (progress) {
+            if (progress.progressPercent % 10 < 1) {
+              state = state.copyWith(syncMessage: 'Downloading map: ${progress.progressPercent.toStringAsFixed(0)}%');
+            }
+          }
+        );
+      } else if (file.state == ReceivableFileState.completed) {
+        if (file.info.name.endsWith('.fmap')) {
+          state = state.copyWith(syncMessage: 'Unpacking map...');
+          final dir = await getApplicationDocumentsDirectory();
+          final downloadedFile = File('${dir.path}/${file.info.name}');
+          try {
+            final mapCache = ref.read(mapCacheServiceProvider);
+            await mapCache.unpackMap(downloadedFile);
+            state = state.copyWith(syncMessage: 'Map updated successfully.');
+            await downloadedFile.delete();
+          } catch (e) {
+            print("Error unpacking map: $e");
+            state = state.copyWith(syncMessage: 'Failed to unpack map.');
+          }
+        }
+      }
+    }
   }
 
   Future<void> _sendManifest() async {
@@ -391,9 +446,13 @@ class P2pService extends _$P2pService {
         bloomFilter.add(seen.messageId);
       }
   
+        final mapCache = ref.read(mapCacheServiceProvider);
+        final mapVersion = await mapCache.getLocalMapVersion();
+  
       final manifest = {
         'type': 'manifest',
         'bloomFilter': bloomFilter.bits,
+        'mapVersion': mapVersion,
       };
   
       await broadcastText(jsonEncode(manifest));
@@ -406,6 +465,14 @@ class P2pService extends _$P2pService {
     _idleTicks = 0;
     state = state.copyWith(isSyncing: true, syncMessage: 'Comparing data...');
     try {
+      final peerMapVersion = json['mapVersion'] as int? ?? 0;
+      final mapCache = ref.read(mapCacheServiceProvider);
+      final localMapVersion = await mapCache.getLocalMapVersion();
+      
+      if (peerMapVersion > localMapVersion) {
+        await broadcastText(jsonEncode({'type': 'request_map'}));
+      }
+
       final bloomBits = (json['bloomFilter'] as List<dynamic>?)?.map((e) => (e as num).toInt()).toList() ?? [];
       final peerBloomFilter = BloomFilter.fromList(bloomBits, 32768, 5);
 
@@ -472,6 +539,24 @@ class P2pService extends _$P2pService {
       state = state.copyWith(syncMessage: 'Error sending data.');
     } finally {
       state = state.copyWith(isSyncing: false);
+    }
+  }
+
+  Future<void> _handleRequestMap() async {
+    state = state.copyWith(syncMessage: 'Packing offline map for transfer...');
+    try {
+      final mapCache = ref.read(mapCacheServiceProvider);
+      final packFile = await mapCache.packMap();
+      
+      if (_host != null && state.hostState?.isActive == true) {
+        await _host!.broadcastFile(packFile);
+      } else if (_client != null && state.clientState?.isActive == true) {
+        await _client!.broadcastFile(packFile);
+      }
+      state = state.copyWith(syncMessage: 'Map file sent.');
+    } catch (e) {
+      print("Error sending map: $e");
+      state = state.copyWith(syncMessage: 'Error sending map.');
     }
   }
 

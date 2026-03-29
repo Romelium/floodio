@@ -1,9 +1,8 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:isolate';
 import 'dart:math';
-import 'dart:io';
 
-import 'package:cross_file/cross_file.dart';
 import 'package:cryptography/cryptography.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -17,16 +16,16 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'crypto/crypto_service.dart';
 import 'database/tables.dart';
+import 'providers/cached_tile_provider.dart';
 import 'providers/database_provider.dart';
 import 'providers/hazard_marker_provider.dart';
+import 'providers/map_downloader_provider.dart';
 import 'providers/news_item_provider.dart';
 import 'providers/p2p_provider.dart';
 import 'providers/trusted_sender_provider.dart';
 import 'providers/user_profile_provider.dart';
-import 'utils/permission_utils.dart';
 import 'services/map_cache_service.dart';
-import 'providers/map_downloader_provider.dart';
-import 'providers/cached_tile_provider.dart';
+import 'utils/permission_utils.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
