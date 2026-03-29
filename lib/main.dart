@@ -801,10 +801,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       if (markersAsync.isLoading || newsAsync.isLoading) {
         return const Center(child: CircularProgressIndicator());
       }
-      if (markersAsync.hasError)
+      if (markersAsync.hasError) {
         return Center(child: Text('Error: ${markersAsync.error}'));
-      if (newsAsync.hasError)
+      }
+      if (newsAsync.hasError) {
         return Center(child: Text('Error: ${newsAsync.error}'));
+      }
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -1201,9 +1203,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 heroTag: 'user',
                 onPressed: () {
                   LatLng point = const LatLng(37.7749, -122.4194);
-                  if (_currentIndex == 0) {
-                    point = _mapController.camera.center;
-                  }
                   try {
                     point = _mapController.camera.center;
                   } catch (_) {}
@@ -1409,10 +1408,11 @@ class SyncBottomSheet extends ConsumerWidget {
                             (p2pState.isScanning || p2pState.isAutoSyncing)
                             ? null
                             : (val) {
-                                if (val)
+                                if (val) {
                                   p2pNotifier.startHosting();
-                                else
+                                } else {
                                   p2pNotifier.stopHosting();
+                                }
                               },
                       ),
                       if (p2pState.hostState?.isActive == true)
@@ -1504,10 +1504,11 @@ class SyncBottomSheet extends ConsumerWidget {
                             (p2pState.isHosting || p2pState.isAutoSyncing)
                             ? null
                             : (val) {
-                                if (val)
+                                if (val) {
                                   p2pNotifier.startScanning();
-                                else
+                                } else {
                                   p2pNotifier.disconnect();
+                                }
                               },
                       ),
                       if (p2pState.clientState?.isActive == true)

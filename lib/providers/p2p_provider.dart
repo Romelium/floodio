@@ -382,24 +382,24 @@ class P2pService extends _$P2pService {
   Future<void> _sendManifest() async {
     _idleTicks = 0;
     try {
-    final db = ref.read(databaseProvider);
-
-    final seenIds = await db.select(db.seenMessageIds).get();
-    
-    final bloomFilter = BloomFilter(32768, 5);
-    for (final seen in seenIds) {
-      bloomFilter.add(seen.messageId);
+      final db = ref.read(databaseProvider);
+  
+      final seenIds = await db.select(db.seenMessageIds).get();
+  
+      final bloomFilter = BloomFilter(32768, 5);
+      for (final seen in seenIds) {
+        bloomFilter.add(seen.messageId);
+      }
+  
+      final manifest = {
+        'type': 'manifest',
+        'bloomFilter': bloomFilter.bits,
+      };
+  
+      await broadcastText(jsonEncode(manifest));
+    } catch (e) {
+      print("Error sending manifest: $e");
     }
-
-    final manifest = {
-      'type': 'manifest',
-      'bloomFilter': bloomFilter.bits,
-    };
-
-    await broadcastText(jsonEncode(manifest));
-  } catch (e) {
-    print("Error sending manifest: $e");
-  }
   }
 
   Future<void> _handleManifest(Map<String, dynamic> json) async {
@@ -623,13 +623,13 @@ class P2pService extends _$P2pService {
 
   Future<void> broadcastText(String text) async {
     try {
-    if (_host != null && state.hostState?.isActive == true) {
-      await _host!.broadcastText(text);
-    } else if (_client != null && state.clientState?.isActive == true) {
-      await _client!.broadcastText(text);
+      if (_host != null && state.hostState?.isActive == true) {
+        await _host!.broadcastText(text);
+      } else if (_client != null && state.clientState?.isActive == true) {
+        await _client!.broadcastText(text);
+      }
+    } catch (e) {
+      print("Error broadcasting text: $e");
     }
-  } catch (e) {
-    print("Error broadcasting text: $e");
-  }
   }
 }
