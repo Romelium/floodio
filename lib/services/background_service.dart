@@ -7,6 +7,9 @@ import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../database/connection.dart';
+import '../database/database.dart';
+import '../providers/database_provider.dart';
 import '../providers/p2p_provider.dart';
 
 Future<void> initializeBackgroundService() async {
@@ -68,7 +71,17 @@ Future<bool> onIosBackground(ServiceInstance service) async {
 void onStart(ServiceInstance service) async {
   DartPluginRegistrant.ensureInitialized();
 
-  final container = ProviderContainer();
+  final connection = await getSharedConnection();
+  final db = AppDatabase(connection);
+
+  final container = ProviderContainer(
+    overrides: [
+      databaseProvider.overrideWith((ref) {
+        ref.onDispose(db.close);
+        return db;
+      }),
+    ],
+  );
   final p2pNotifier = container.read(p2pServiceProvider.notifier);
 
   if (service is AndroidServiceInstance) {

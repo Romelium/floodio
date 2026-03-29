@@ -31,6 +31,7 @@ dependencies:
   cross_file: ^0.3.4
   flutter_background_service: ^5.1.0
   flutter_local_notifications: ^21.0.0
+  path: ^1.9.1
 
 dev_dependencies:
   flutter_test:

@@ -4,11 +4,12 @@ import 'dart:isolate';
 import 'dart:math';
 
 import 'package:cryptography/cryptography.dart';
+import 'package:floodio/database/database.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -16,23 +17,34 @@ import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'crypto/crypto_service.dart';
+import 'database/connection.dart';
 import 'database/tables.dart';
 import 'providers/cached_tile_provider.dart';
 import 'providers/database_provider.dart';
 import 'providers/hazard_marker_provider.dart';
 import 'providers/map_downloader_provider.dart';
 import 'providers/news_item_provider.dart';
-import 'providers/ui_p2p_provider.dart';
 import 'providers/trusted_sender_provider.dart';
+import 'providers/ui_p2p_provider.dart';
 import 'providers/user_profile_provider.dart';
-import 'services/map_cache_service.dart';
 import 'services/background_service.dart';
+import 'services/map_cache_service.dart';
 import 'utils/permission_utils.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  final connection = await getSharedConnection();
+  final db = AppDatabase(connection);
   await initializeBackgroundService();
-  runApp(const ProviderScope(child: FloodioApp()));
+  runApp(ProviderScope(
+    overrides: [
+      databaseProvider.overrideWith((ref) {
+        ref.onDispose(db.close);
+        return db;
+      }),
+    ],
+    child: const FloodioApp(),
+  ));
 }
 
 Future<(String, String)> _generateOfficialMarkerSignature(
