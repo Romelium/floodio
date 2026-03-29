@@ -1,13 +1,18 @@
 import 'dart:convert';
 import 'dart:isolate';
 import 'dart:math';
+import 'dart:io';
 
+import 'package:cross_file/cross_file.dart';
 import 'package:cryptography/cryptography.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'crypto/crypto_service.dart';
@@ -515,6 +520,42 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _shareApk() async {
+    if (!Platform.isAndroid) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('APK sharing is only available on Android.')),
+      );
+      return;
+    }
+
+    try {
+      const platform = MethodChannel('com.example.floodio/apk');
+      final String? apkPath = await platform.invokeMethod('getApkPath');
+      
+      if (apkPath != null) {
+        final tempDir = await getTemporaryDirectory();
+        final tempFile = File('${tempDir.path}/floodio.apk');
+        
+        if (!await tempFile.exists()) {
+          await File(apkPath).copy(tempFile.path);
+        }
+
+        await SharePlus.instance.share(
+          ShareParams(
+            files: [XFile(tempFile.path)],
+            text: 'Install Floodio to stay connected during emergencies!',
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to share APK: $e')),
+        );
+      }
+    }
   }
 
   void _showAddNewsDialog() {
@@ -1105,6 +1146,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 )
               : null,
           actions: [
+            IconButton(
+              icon: const Icon(Icons.share),
+              tooltip: 'Share App (APK)',
+              onPressed: _shareApk,
+            ),
             IconButton(
               icon: const Icon(Icons.download),
               tooltip: 'Download Offline Map',
