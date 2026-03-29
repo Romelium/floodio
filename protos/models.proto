@@ -24,7 +24,16 @@ message NewsItem {
   int32 trust_tier = 7;
 }
 
+message UserProfile {
+  string public_key = 1;
+  string name = 2;
+  string contact_info = 3;
+  int64 timestamp = 4;
+  string signature = 5;
+}
+
 message SyncPayload {
   repeated HazardMarker markers = 1;
   repeated NewsItem news = 2;
+  repeated UserProfile profiles = 3;
 }

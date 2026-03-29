@@ -133,3 +133,31 @@ class TrustedSenders extends Table {
   @override
   Set<Column> get primaryKey => {publicKey};
 }
+
+class UserProfileEntity {
+  final String publicKey;
+  final String name;
+  final String contactInfo;
+  final int timestamp;
+  final String signature;
+
+  UserProfileEntity({
+    required this.publicKey,
+    required this.name,
+    required this.contactInfo,
+    required this.timestamp,
+    required this.signature,
+  });
+}
+
+@UseRowClass(UserProfileEntity)
+class UserProfiles extends Table {
+  TextColumn get publicKey => text()();
+  TextColumn get name => text()();
+  TextColumn get contactInfo => text()();
+  IntColumn get timestamp => integer()();
+  TextColumn get signature => text()();
+
+  @override
+  Set<Column> get primaryKey => {publicKey};
+}

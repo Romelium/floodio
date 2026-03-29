@@ -413,16 +413,18 @@ class P2pService extends _$P2pService {
 
       final allHazards = await db.select(db.hazardMarkers).get();
       final allNews = await db.select(db.newsItems).get();
+      final allProfiles = await db.select(db.userProfiles).get();
 
       final newHazards = allHazards.where((h) => !peerBloomFilter.mightContain(h.id)).take(200).toList();
       final newNews = allNews.where((n) => !peerBloomFilter.mightContain(n.id)).take(200).toList();
+      final newProfiles = allProfiles.where((p) => !peerBloomFilter.mightContain('${p.publicKey}_${p.timestamp}')).take(200).toList();
 
-      if (newHazards.isEmpty && newNews.isEmpty) {
+      if (newHazards.isEmpty && newNews.isEmpty && newProfiles.isEmpty) {
         state = state.copyWith(syncMessage: 'Up to date.');
         return;
       }
 
-      state = state.copyWith(syncMessage: 'Sending ${newHazards.length} markers and ${newNews.length} news...');
+      state = state.copyWith(syncMessage: 'Sending ${newHazards.length} markers, ${newNews.length} news, ${newProfiles.length} profiles...');
 
       final payload = pb.SyncPayload();
 
@@ -452,6 +454,16 @@ class P2pService extends _$P2pService {
         ));
       }
 
+      for (final p in newProfiles) {
+        payload.profiles.add(pb.UserProfile(
+          publicKey: p.publicKey,
+          name: p.name,
+          contactInfo: p.contactInfo,
+          timestamp: Int64(p.timestamp),
+          signature: p.signature,
+        ));
+      }
+
       final encoded = base64Encode(payload.writeToBuffer());
       await broadcastText(jsonEncode({'type': 'payload', 'data': encoded}));
       state = state.copyWith(syncMessage: 'Data sent successfully.');
@@ -474,7 +486,7 @@ class P2pService extends _$P2pService {
       final data = base64Decode(json['data']);
       final payload = pb.SyncPayload.fromBuffer(data);
 
-      if (payload.markers.isEmpty && payload.news.isEmpty) {
+      if (payload.markers.isEmpty && payload.news.isEmpty && payload.profiles.isEmpty) {
         state = state.copyWith(syncMessage: 'Empty payload received.');
         return;
       }
@@ -549,6 +561,33 @@ class P2pService extends _$P2pService {
         }
       }
 
+      final validProfiles = <UserProfilesCompanion>[];
+      for (final p in payload.profiles) {
+        final payloadToSign = utf8.encode('${p.publicKey}${p.name}${p.contactInfo}${p.timestamp}');
+        final trustTier = await crypto.verifyAndGetTrustTier(
+          data: payloadToSign,
+          signatureStr: p.signature,
+          senderPublicKeyStr: p.publicKey,
+          trustedPublicKeys: trustedKeys,
+        );
+
+        if (trustTier != 5) {
+          validProfiles.add(UserProfilesCompanion.insert(
+            publicKey: p.publicKey,
+            name: p.name,
+            contactInfo: p.contactInfo,
+            timestamp: p.timestamp.toInt(),
+            signature: p.signature,
+          ));
+          seenIds.add(SeenMessageIdsCompanion.insert(
+            messageId: '${p.publicKey}_${p.timestamp}',
+            timestamp: DateTime.now().millisecondsSinceEpoch,
+          ));
+        } else {
+          print("Invalid signature for profile ${p.publicKey}, dropping.");
+        }
+      }
+
       state = state.copyWith(syncMessage: 'Saving to database...');
 
       await db.transaction(() async {
@@ -558,15 +597,18 @@ class P2pService extends _$P2pService {
         for (final n in validNews) {
           await db.into(db.newsItems).insert(n, mode: InsertMode.insertOrReplace);
         }
+        for (final p in validProfiles) {
+          await db.into(db.userProfiles).insert(p, mode: InsertMode.insertOrReplace);
+        }
         for (final s in seenIds) {
           await db.into(db.seenMessageIds).insert(s, mode: InsertMode.insertOrReplace);
         }
       });
 
       state = state.copyWith(
-        syncMessage: 'Successfully synced ${validMarkers.length} markers and ${validNews.length} news items.'
+        syncMessage: 'Successfully synced ${validMarkers.length} markers, ${validNews.length} news, ${validProfiles.length} profiles.'
       );
-      print("Successfully synced ${payload.markers.length} markers and ${payload.news.length} news items.");
+      print("Successfully synced ${payload.markers.length} markers, ${payload.news.length} news, ${payload.profiles.length} profiles.");
     } catch (e) {
       print("Error handling payload: $e");
       state = state.copyWith(syncMessage: 'Error syncing data.');
