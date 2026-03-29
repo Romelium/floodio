@@ -16,8 +16,8 @@ Open your terminal and navigate to the project directory and run:
 flutter pub get
 ```
 
-## 3. Generate Code (Protobuf, Riverpod, & Drift)
-You must generate code for the local database (`drift`), state management (`riverpod`), and data models (`protobuf`).
+## 3. Generate / Regenerate Code (Protobuf, Riverpod, & Drift)
+You must generate code for the local database (`drift`), state management (`riverpod`), and data models (`protobuf`) before running the app for the first time, **and whenever you modify `.proto` files or files annotated with `@riverpod` / `@DriftDatabase`**.
 
 Since you have a `Makefile`, simply run:
 ```bash
@@ -28,11 +28,16 @@ make generate
 ```bash
 mkdir -p lib/protos
 protoc --dart_out=lib/protos -Iprotos protos/models.proto
+
+# To build once:
 dart run build_runner build --delete-conflicting-outputs
+
+# Or to watch for changes continuously:
+# dart run build_runner watch --delete-conflicting-outputs
 ```
 
 ## 4. Run the Application
-Once your device is listed in the connected devices, build and run the application:
+Once the generated files are built and your device is listed in the connected devices, build and run the application in a seperate terminal:
 ```bash
 flutter run
 ```
