@@ -35,4 +35,20 @@ class TrustedSendersController extends _$TrustedSendersController {
           .write(const NewsItemsCompanion(trustTier: Value(3)));
     });
   }
+
+  Future<void> removeTrustedSender(String publicKey) async {
+    final db = ref.read(databaseProvider);
+    await db.transaction(() async {
+      await (db.delete(db.trustedSenders)..where((t) => t.publicKey.equals(publicKey))).go();
+
+      // Downgrade existing hazard markers
+      await (db.update(db.hazardMarkers)..where((t) => t.senderId.equals(publicKey)))
+          .write(const HazardMarkersCompanion(trustTier: Value(4)));
+
+      // Downgrade existing news items
+      await (db.update(db.newsItems)..where((t) => t.senderId.equals(publicKey)))
+          .write(const NewsItemsCompanion(trustTier: Value(4)));
+    });
+  }
 }
+

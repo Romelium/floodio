@@ -118,7 +118,11 @@ class CryptoService extends _$CryptoService {
     required List<String> trustedPublicKeys,
   }) async {
     final serverPubKeyBytes = _serverPublicKey.bytes;
+    final myPubKey = await _userKeyPair.extractPublicKey();
+    final myPubKeyStr = base64Encode(myPubKey.bytes);
 
-    return _runVerifyData(data, signatureStr, senderPublicKeyStr, serverPubKeyBytes, trustedPublicKeys);
+    final effectiveTrustedKeys = [...trustedPublicKeys, myPubKeyStr];
+
+    return _runVerifyData(data, signatureStr, senderPublicKeyStr, serverPubKeyBytes, effectiveTrustedKeys);
   }
 }

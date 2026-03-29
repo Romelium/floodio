@@ -18,7 +18,7 @@ Future<String> _isolatePackMap(MapPackData data) async {
   final packFile = File('${data.dirPath}/offline_map.fmap');
   
   if (!await mapDir.exists()) {
-    throw Exception('No offline map data found.');
+    await mapDir.create(recursive: true);
   }
 
   final sink = packFile.openWrite();
@@ -133,7 +133,7 @@ class MapCacheService {
     try {
       final client = HttpClient();
       final request = await client.getUrl(Uri.parse(url));
-      request.headers.set('User-Agent', 'com.example.floodio');
+      request.headers.set('User-Agent', 'FloodioApp/0.1.0');
       final response = await request.close();
       
       if (response.statusCode == 200) {
@@ -150,6 +150,17 @@ class MapCacheService {
 
   Future<File> packMap() async {
     final dir = await getApplicationDocumentsDirectory();
+    
+    // Clean up old pack files
+    final dirList = dir.listSync();
+    for (var entity in dirList) {
+      if (entity is File && entity.path.endsWith('.fmap')) {
+        try {
+          await entity.delete();
+        } catch (_) {}
+      }
+    }
+
     final result = await Isolate.run(() => _isolatePackMap(MapPackData(dir.path)));
     final parts = result.split('_');
     final timestamp = int.parse(parts[0]);

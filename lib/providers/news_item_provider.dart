@@ -39,4 +39,10 @@ class NewsItemsController extends _$NewsItemsController {
       );
     });
   }
+
+  Future<void> deleteNewsItem(String id) async {
+    final db = ref.read(databaseProvider);
+    await (db.delete(db.newsItems)..where((t) => t.id.equals(id))).go();
+  }
 }
+

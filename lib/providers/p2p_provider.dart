@@ -137,6 +137,8 @@ class P2pService extends _$P2pService {
   StreamSubscription? _scanSub;
   StreamSubscription? _hostReceivedFilesSub;
   StreamSubscription? _clientReceivedFilesSub;
+  StreamSubscription? _hostSentFilesSub;
+  StreamSubscription? _clientSentFilesSub;
   Timer? _autoSyncTimer;
   bool _disposed = false;
 
@@ -157,6 +159,8 @@ class P2pService extends _$P2pService {
       _scanSub?.cancel();
       _hostReceivedFilesSub?.cancel();
       _clientReceivedFilesSub?.cancel();
+      _hostSentFilesSub?.cancel();
+      _clientSentFilesSub?.cancel();
       _host?.dispose();
       _client?.dispose();
     });
@@ -279,6 +283,10 @@ class P2pService extends _$P2pService {
       _handleReceivedFiles(files, _host!);
     });
 
+    _hostSentFilesSub = _host!.streamSentFilesInfo().listen((files) {
+      _idleTicks = 0;
+    });
+
     final host = _host;
     if (host == null || _disposed) return;
 
@@ -303,6 +311,7 @@ class P2pService extends _$P2pService {
     _hostClientListSub?.cancel();
     _hostTextSub?.cancel();
     _hostReceivedFilesSub?.cancel();
+    _hostSentFilesSub?.cancel();
     _host = null;
     state = state.copyWith(
       isHosting: false,
@@ -355,6 +364,10 @@ class P2pService extends _$P2pService {
 
     _clientReceivedFilesSub = _client!.streamReceivedFilesInfo().listen((files) {
       _handleReceivedFiles(files, _client!);
+    });
+
+    _clientSentFilesSub = _client!.streamSentFilesInfo().listen((files) {
+      _idleTicks = 0;
     });
 
     final client = _client;
@@ -425,6 +438,7 @@ class P2pService extends _$P2pService {
     _clientTextSub?.cancel();
     _scanSub?.cancel();
     _clientReceivedFilesSub?.cancel();
+    _clientSentFilesSub?.cancel();
     _client = null;
     state = state.copyWith(
       clearClientState: true,
@@ -472,6 +486,7 @@ class P2pService extends _$P2pService {
           file.info.id,
           dir.path,
           onProgress: (progress) {
+            _idleTicks = 0; // Reset idle timer during download
             if (progress.progressPercent % 10 < 1) {
               state = state.copyWith(syncMessage: 'Downloading map: ${progress.progressPercent.toStringAsFixed(0)}%');
             }
@@ -490,6 +505,10 @@ class P2pService extends _$P2pService {
           } catch (e) {
             print("Error unpacking map: $e");
             state = state.copyWith(syncMessage: 'Failed to unpack map.');
+          } finally {
+            if (await downloadedFile.exists()) {
+              await downloadedFile.delete();
+            }
           }
         }
       }

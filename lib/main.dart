@@ -545,9 +545,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         final tempDir = await getTemporaryDirectory();
         final tempFile = File('${tempDir.path}/floodio.apk');
         
-        if (!await tempFile.exists()) {
-          await File(apkPath).copy(tempFile.path);
+        if (await tempFile.exists()) {
+          await tempFile.delete();
         }
+        await File(apkPath).copy(tempFile.path);
 
         await SharePlus.instance.share(
           ShareParams(
@@ -1214,6 +1215,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           children: [
             _buildMap(markersAsync, profiles),
             _buildFeed(markersAsync, newsAsync, profiles),
+            const ProfileTab(),
           ],
         ),
         bottomNavigationBar: BottomNavigationBar(
@@ -1222,9 +1224,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           items: const [
             BottomNavigationBarItem(icon: Icon(Icons.map), label: 'Map'),
             BottomNavigationBarItem(icon: Icon(Icons.list), label: 'Feed'),
+            BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
           ],
         ),
-        floatingActionButton: cryptoState.when(
+        floatingActionButton: _currentIndex == 2 ? null : cryptoState.when(
           data: (_) => Column(
             mainAxisAlignment: MainAxisAlignment.end,
             mainAxisSize: MainAxisSize
@@ -1276,6 +1279,370 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
         ),
       ),
+    );
+  }
+}
+
+class ProfileTab extends ConsumerStatefulWidget {
+  const ProfileTab({super.key});
+
+  @override
+  ConsumerState<ProfileTab> createState() => _ProfileTabState();
+}
+
+class _ProfileTabState extends ConsumerState<ProfileTab> {
+  String? _myPublicKey;
+  String _myName = '';
+  String _myContact = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfile();
+  }
+
+  Future<void> _loadProfile() async {
+    final prefs = await SharedPreferences.getInstance();
+    final name = prefs.getString('user_name') ?? 'Unknown';
+    final contact = prefs.getString('user_contact') ?? '';
+    
+    await ref.read(cryptoServiceProvider.future);
+    final cryptoService = ref.read(cryptoServiceProvider.notifier);
+    final pubKey = await cryptoService.getPublicKeyString();
+    
+    if (mounted) {
+      setState(() {
+        _myName = name;
+        _myContact = contact;
+        _myPublicKey = pubKey;
+      });
+    }
+  }
+
+  void _removeTrustedSender(String publicKey) {
+    ref.read(trustedSendersControllerProvider.notifier).removeTrustedSender(publicKey);
+  }
+
+  void _deleteMarker(String id) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Report?'),
+        content: const Text('Are you sure you want to delete this hazard report?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () {
+              Navigator.pop(context);
+              ref.read(hazardMarkersControllerProvider.notifier).deleteMarker(id);
+            },
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _deleteNews(String id) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete News?'),
+        content: const Text('Are you sure you want to delete this news item?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () {
+              Navigator.pop(context);
+              ref.read(newsItemsControllerProvider.notifier).deleteNewsItem(id);
+            },
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final trustedSendersAsync = ref.watch(trustedSendersControllerProvider);
+    final markersAsync = ref.watch(hazardMarkersControllerProvider);
+    final newsAsync = ref.watch(newsItemsControllerProvider);
+
+    final trustedSenders = trustedSendersAsync.value ?? [];
+    final myMarkers = (markersAsync.value ?? []).where((m) => m.senderId == _myPublicKey).toList();
+    final myNews = (newsAsync.value ?? []).where((n) => n.senderId == _myPublicKey).toList();
+
+    final myReports = <dynamic>[...myMarkers, ...myNews];
+    myReports.sort((a, b) => (b.timestamp as int).compareTo(a.timestamp as int));
+
+    return CustomScrollView(
+      slivers: [
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Profile Card
+                Card(
+                  elevation: 0,
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 36,
+                          backgroundColor: Theme.of(context).colorScheme.primary,
+                          foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                          child: Text(
+                            _myName.isNotEmpty ? _myName[0].toUpperCase() : '?',
+                            style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(_myName, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                              if (_myContact.isNotEmpty) ...[
+                                const SizedBox(height: 4),
+                                Row(
+                                  children: [
+                                    Icon(Icons.phone, size: 14, color: Colors.grey.shade700),
+                                    const SizedBox(width: 4),
+                                    Text(_myContact, style: TextStyle(fontSize: 14, color: Colors.grey.shade700)),
+                                  ],
+                                ),
+                              ],
+                              const SizedBox(height: 8),
+                              InkWell(
+                                onTap: () {
+                                  if (_myPublicKey != null) {
+                                    Clipboard.setData(ClipboardData(text: _myPublicKey!));
+                                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Public Key copied to clipboard')));
+                                  }
+                                },
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.key, size: 14, color: Theme.of(context).colorScheme.primary),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      _myPublicKey != null ? '${_myPublicKey!.substring(0, 12)}...' : 'Loading key...',
+                                      style: TextStyle(fontSize: 13, color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.w500),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Icon(Icons.copy, size: 12, color: Theme.of(context).colorScheme.primary),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                
+                // Trusted Senders
+                Row(
+                  children: [
+                    const Icon(Icons.verified_user, color: Colors.green),
+                    const SizedBox(width: 8),
+                    const Text('Trusted Senders', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    const Spacer(),
+                    Chip(
+                      label: Text('${trustedSenders.length}'),
+                      visualDensity: VisualDensity.compact,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                if (trustedSenders.isEmpty)
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade100,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.grey.shade300),
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.info_outline, color: Colors.grey),
+                        SizedBox(width: 12),
+                        Expanded(child: Text('You have not trusted any senders yet. Trust senders from the feed to prioritize their reports.', style: TextStyle(color: Colors.grey))),
+                      ],
+                    ),
+                  )
+                else
+                  Card(
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      side: BorderSide(color: Colors.grey.shade300),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: ListView.separated(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: trustedSenders.length,
+                      separatorBuilder: (context, index) => const Divider(height: 1),
+                      itemBuilder: (context, index) {
+                        final sender = trustedSenders[index];
+                        return ListTile(
+                          leading: CircleAvatar(
+                            backgroundColor: Colors.green.shade100,
+                            child: const Icon(Icons.person, color: Colors.green),
+                          ),
+                          title: Text(sender.name, style: const TextStyle(fontWeight: FontWeight.w600)),
+                          subtitle: Text('Key: ${sender.publicKey.substring(0, 12)}...', style: const TextStyle(fontSize: 12)),
+                          trailing: IconButton(
+                            icon: const Icon(Icons.remove_circle_outline, color: Colors.red),
+                            tooltip: 'Remove Trust',
+                            onPressed: () {
+                              showDialog(
+                                context: context,
+                                builder: (context) => AlertDialog(
+                                  title: const Text('Remove Trusted Sender?'),
+                                  content: Text('Are you sure you want to remove ${sender.name} from your trusted senders? Their future reports will be marked as Crowdsourced.'),
+                                  actions: [
+                                    TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+                                    FilledButton(
+                                      style: FilledButton.styleFrom(backgroundColor: Colors.red),
+                                      onPressed: () {
+                                        Navigator.pop(context);
+                                        _removeTrustedSender(sender.publicKey);
+                                      },
+                                      child: const Text('Remove'),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                const SizedBox(height: 32),
+
+                // My Reports
+                Row(
+                  children: [
+                    const Icon(Icons.my_library_books, color: Colors.blue),
+                    const SizedBox(width: 8),
+                    const Text('My Reports', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    const Spacer(),
+                    Chip(
+                      label: Text('${myReports.length}'),
+                      visualDensity: VisualDensity.compact,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                if (myReports.isEmpty)
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade100,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.grey.shade300),
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.info_outline, color: Colors.grey),
+                        SizedBox(width: 12),
+                        Expanded(child: Text('You have not made any reports yet.', style: TextStyle(color: Colors.grey))),
+                      ],
+                    ),
+                  )
+                else
+                  ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: myReports.length,
+                    itemBuilder: (context, index) {
+                      final item = myReports[index];
+                      if (item is HazardMarkerEntity) {
+                        return Card(
+                          elevation: 0,
+                          margin: const EdgeInsets.only(bottom: 8),
+                          shape: RoundedRectangleBorder(
+                            side: BorderSide(color: Colors.grey.shade300),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: ListTile(
+                            leading: CircleAvatar(
+                              backgroundColor: Colors.orange.shade100,
+                              child: const Icon(Icons.warning, color: Colors.orange),
+                            ),
+                            title: Text('Hazard: ${item.type}', style: const TextStyle(fontWeight: FontWeight.w600)),
+                            subtitle: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const SizedBox(height: 4),
+                                Text(item.description, maxLines: 2, overflow: TextOverflow.ellipsis),
+                                const SizedBox(height: 4),
+                                Text(
+                                  DateTime.fromMillisecondsSinceEpoch(item.timestamp).toString().substring(0, 16),
+                                  style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                                ),
+                              ],
+                            ),
+                            isThreeLine: true,
+                            trailing: IconButton(
+                              icon: const Icon(Icons.delete_outline, color: Colors.red),
+                              onPressed: () => _deleteMarker(item.id),
+                            ),
+                          ),
+                        );
+                      } else if (item is NewsItemEntity) {
+                        return Card(
+                          elevation: 0,
+                          margin: const EdgeInsets.only(bottom: 8),
+                          shape: RoundedRectangleBorder(
+                            side: BorderSide(color: Colors.grey.shade300),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: ListTile(
+                            leading: CircleAvatar(
+                              backgroundColor: Colors.blue.shade100,
+                              child: const Icon(Icons.campaign, color: Colors.blue),
+                            ),
+                            title: Text('News: ${item.title}', style: const TextStyle(fontWeight: FontWeight.w600)),
+                            subtitle: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const SizedBox(height: 4),
+                                Text(item.content, maxLines: 2, overflow: TextOverflow.ellipsis),
+                                const SizedBox(height: 4),
+                                Text(
+                                  DateTime.fromMillisecondsSinceEpoch(item.timestamp).toString().substring(0, 16),
+                                  style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                                ),
+                              ],
+                            ),
+                            isThreeLine: true,
+                            trailing: IconButton(
+                              icon: const Icon(Icons.delete_outline, color: Colors.red),
+                              onPressed: () => _deleteNews(item.id),
+                            ),
+                          ),
+                        );
+                      }
+                      return const SizedBox.shrink();
+                    },
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -1382,6 +1749,17 @@ class SyncBottomSheet extends ConsumerWidget {
                                       : Colors.black87,
                                 ),
                               ),
+                              if (p2pState.isSyncing || p2pState.isConnecting) ...[
+                                const SizedBox(height: 12),
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(4),
+                                  child: LinearProgressIndicator(
+                                    backgroundColor: Colors.blue.shade100,
+                                    color: Colors.blue.shade600,
+                                    minHeight: 6,
+                                  ),
+                                ),
+                              ]
                             ],
                           ),
                         ),

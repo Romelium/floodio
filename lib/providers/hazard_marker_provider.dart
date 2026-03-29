@@ -41,4 +41,10 @@ class HazardMarkersController extends _$HazardMarkersController {
       );
     });
   }
+
+  Future<void> deleteMarker(String id) async {
+    final db = ref.read(databaseProvider);
+    await (db.delete(db.hazardMarkers)..where((t) => t.id.equals(id))).go();
+  }
 }
+
