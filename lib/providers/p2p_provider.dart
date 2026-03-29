@@ -15,6 +15,7 @@ import '../protos/models.pb.dart' as pb;
 import '../services/map_cache_service.dart';
 import '../utils/bloom_filter.dart';
 import 'database_provider.dart';
+import '../models/p2p_models.dart';
 
 part 'p2p_provider.g.dart';
 
@@ -25,10 +26,10 @@ class P2pState {
   final bool isConnecting;
   final bool isAutoSyncing;
   final String? syncMessage;
-  final HotspotHostState? hostState;
-  final HotspotClientState? clientState;
-  final List<BleDiscoveredDevice> discoveredDevices;
-  final List<P2pClientInfo> connectedClients;
+  final AppHostState? hostState;
+  final AppClientState? clientState;
+  final List<AppDiscoveredDevice> discoveredDevices;
+  final List<AppClientInfo> connectedClients;
   final List<String> receivedTexts;
 
   const P2pState({
@@ -52,12 +53,12 @@ class P2pState {
     bool? isConnecting,
     bool? isAutoSyncing,
     String? syncMessage,
-    HotspotHostState? hostState,
+    AppHostState? hostState,
     bool clearHostState = false,
-    HotspotClientState? clientState,
+    AppClientState? clientState,
     bool clearClientState = false,
-    List<BleDiscoveredDevice>? discoveredDevices,
-    List<P2pClientInfo>? connectedClients,
+    List<AppDiscoveredDevice>? discoveredDevices,
+    List<AppClientInfo>? connectedClients,
     List<String>? receivedTexts,
   }) {
     return P2pState(
@@ -72,6 +73,53 @@ class P2pState {
       discoveredDevices: discoveredDevices ?? this.discoveredDevices,
       connectedClients: connectedClients ?? this.connectedClients,
       receivedTexts: receivedTexts ?? this.receivedTexts,
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'isHosting': isHosting,
+      'isScanning': isScanning,
+      'isSyncing': isSyncing,
+      'isConnecting': isConnecting,
+      'isAutoSyncing': isAutoSyncing,
+      'syncMessage': syncMessage,
+      'hostState': hostState != null ? {
+        'isActive': hostState!.isActive,
+        'ssid': hostState!.ssid,
+        'preSharedKey': hostState!.preSharedKey,
+        'hostIpAddress': hostState!.hostIpAddress,
+      } : null,
+      'clientState': clientState != null ? {
+        'isActive': clientState!.isActive,
+        'hostSsid': clientState!.hostSsid,
+        'hostGatewayIpAddress': clientState!.hostGatewayIpAddress,
+        'hostIpAddress': clientState!.hostIpAddress,
+      } : null,
+      'discoveredDevices': discoveredDevices.map((d) => {
+        'deviceAddress': d.deviceAddress,
+        'deviceName': d.deviceName,
+      }).toList(),
+      'connectedClients': connectedClients.map((c) => {
+        'id': c.id,
+        'username': c.username,
+        'isHost': c.isHost,
+      }).toList(),
+    };
+  }
+
+  factory P2pState.fromMap(Map<String, dynamic> map) {
+    return P2pState(
+      isHosting: map['isHosting'] ?? false,
+      isScanning: map['isScanning'] ?? false,
+      isSyncing: map['isSyncing'] ?? false,
+      isConnecting: map['isConnecting'] ?? false,
+      isAutoSyncing: map['isAutoSyncing'] ?? false,
+      syncMessage: map['syncMessage'],
+      hostState: map['hostState'] != null ? AppHostState.fromMap(Map<String, dynamic>.from(map['hostState'])) : null,
+      clientState: map['clientState'] != null ? AppClientState.fromMap(Map<String, dynamic>.from(map['clientState'])) : null,
+      discoveredDevices: (map['discoveredDevices'] as List?)?.map((d) => AppDiscoveredDevice.fromMap(Map<String, dynamic>.from(d))).toList() ?? [],
+      connectedClients: (map['connectedClients'] as List?)?.map((c) => AppClientInfo.fromMap(Map<String, dynamic>.from(c))).toList() ?? [],
     );
   }
 }
@@ -94,6 +142,7 @@ class P2pService extends _$P2pService {
 
   bool _lastRoleWasHost = false;
   int _idleTicks = 0;
+  List<BleDiscoveredDevice> _rawDiscoveredDevices = [];
 
   @override
   P2pState build() {
@@ -197,12 +246,18 @@ class P2pService extends _$P2pService {
     if (!await _host!.checkBluetoothEnabled()) await _host!.enableBluetoothServices();
 
     _hostStateSub = _host!.streamHotspotState().listen((hotspotState) {
-      state = state.copyWith(hostState: hotspotState);
+      state = state.copyWith(hostState: AppHostState(
+        isActive: hotspotState.isActive,
+        ssid: hotspotState.ssid,
+        preSharedKey: hotspotState.preSharedKey,
+        hostIpAddress: hotspotState.hostIpAddress,
+      ));
     });
 
     _hostClientListSub = _host!.streamClientList().listen((clients) {
       final previousCount = state.connectedClients.length;
-      state = state.copyWith(connectedClients: clients);
+      final appClients = clients.map((c) => AppClientInfo(id: c.id, username: c.username, isHost: c.isHost)).toList();
+      state = state.copyWith(connectedClients: appClients);
       if (clients.length > previousCount) {
         state = state.copyWith(syncMessage: 'Client connected. Initiating sync...');
         _sendManifest();
@@ -275,7 +330,12 @@ class P2pService extends _$P2pService {
 
     _clientStateSub = _client!.streamHotspotState().listen((hotspotState) {
       final wasActive = state.clientState?.isActive ?? false;
-      state = state.copyWith(clientState: hotspotState);
+      state = state.copyWith(clientState: AppClientState(
+        isActive: hotspotState.isActive,
+        hostSsid: hotspotState.hostSsid,
+        hostGatewayIpAddress: hotspotState.hostGatewayIpAddress,
+        hostIpAddress: hotspotState.hostIpAddress,
+      ));
       if (!wasActive && hotspotState.isActive) {
         state = state.copyWith(syncMessage: 'Connected to host. Initiating sync...');
         _sendManifest();
@@ -303,9 +363,11 @@ class P2pService extends _$P2pService {
     try {
       state = state.copyWith(syncMessage: 'Scanning for nearby devices...');
       final sub = await client.startScan((devices) {
-        state = state.copyWith(discoveredDevices: devices);
+        _rawDiscoveredDevices = devices;
+        final appDevices = devices.map((d) => AppDiscoveredDevice(deviceAddress: d.deviceAddress, deviceName: d.deviceName)).toList();
+        state = state.copyWith(discoveredDevices: appDevices);
         if (state.isAutoSyncing && devices.isNotEmpty && state.clientState?.isActive != true && !state.isConnecting) {
-          connectToDevice(devices.first);
+          connectToDeviceByAddress(devices.first.deviceAddress);
         }
       });
       _scanSub = sub;
@@ -318,21 +380,21 @@ class P2pService extends _$P2pService {
     }
   }
 
-  Future<void> connectToDevice(BleDiscoveredDevice device) async {
+  Future<void> connectToDeviceByAddress(String address) async {
     if (_client == null || state.isConnecting) return;
-    state = state.copyWith(isConnecting: true, syncMessage: 'Connecting to ${device.deviceName}...');
-    await stopScanning();
-
-    final client = _client;
-    if (client == null || _disposed) {
-      state = state.copyWith(isConnecting: false);
-      return;
-    }
-
     try {
+      final device = _rawDiscoveredDevices.firstWhere((d) => d.deviceAddress == address);
+      state = state.copyWith(isConnecting: true, syncMessage: 'Connecting to ${device.deviceName}...');
+      await stopScanning();
+
+      final client = _client;
+      if (client == null || _disposed) {
+        state = state.copyWith(isConnecting: false);
+        return;
+      }
+
       await client.connectWithDevice(device, timeout: const Duration(seconds: 15));
       if (!state.isConnecting || _disposed) {
-        // Disconnect was called while we were waiting for connection
         await client.disconnect();
         return;
       }

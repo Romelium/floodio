@@ -55,6 +55,13 @@
         android:icon="@mipmap/ic_launcher"
         android:enableOnBackInvokedCallback="true"
         android:requestLegacyExternalStorage="true">
+        
+        <!-- Background Service -->
+        <service
+            android:name="id.flutter.flutter_background_service.BackgroundService"
+            android:foregroundServiceType="connectedDevice|dataSync"
+        />
+
         <activity
             android:name=".MainActivity"
             android:exported="true"

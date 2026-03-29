@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -21,14 +22,16 @@ import 'providers/database_provider.dart';
 import 'providers/hazard_marker_provider.dart';
 import 'providers/map_downloader_provider.dart';
 import 'providers/news_item_provider.dart';
-import 'providers/p2p_provider.dart';
+import 'providers/ui_p2p_provider.dart';
 import 'providers/trusted_sender_provider.dart';
 import 'providers/user_profile_provider.dart';
 import 'services/map_cache_service.dart';
+import 'services/background_service.dart';
 import 'utils/permission_utils.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await initializeBackgroundService();
   runApp(const ProviderScope(child: FloodioApp()));
 }
 
@@ -257,6 +260,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           duration: const Duration(seconds: 5),
         ),
       );
+    } else if (granted) {
+      final service = FlutterBackgroundService();
+      if (!(await service.isRunning())) {
+        await service.startService();
+      }
     }
 
     final locationEnabled = await checkLocationServices();
@@ -1157,7 +1165,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
             Consumer(
               builder: (context, ref, child) {
-                final p2pState = ref.watch(p2pServiceProvider);
+                final p2pState = ref.watch(uiP2pServiceProvider);
                 final isConnected =
                     p2pState.hostState?.isActive == true ||
                     p2pState.clientState?.isActive == true;
@@ -1277,8 +1285,8 @@ class SyncBottomSheet extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final p2pState = ref.watch(p2pServiceProvider);
-    final p2pNotifier = ref.read(p2pServiceProvider.notifier);
+    final p2pState = ref.watch(uiP2pServiceProvider);
+    final p2pNotifier = ref.read(uiP2pServiceProvider.notifier);
 
     return Container(
       margin: const EdgeInsets.all(16),
