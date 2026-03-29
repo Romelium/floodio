@@ -10,14 +10,14 @@ An Android application that is essentially an offline resilient disaster informa
     *   *Windows:* Download from the [Protobuf GitHub releases](https://github.com/protocolbuffers/protobuf/releases) and add it to your PATH.
 *   **A Physical Android Device**: Connected to your computer with **USB Debugging enabled**.
 
-### 2. Install Dependencies
-Open your terminal and navigat## 2. Install Dependenciesio-main` directory and run:
+## 2. Install Dependencies
+Open your terminal and navigate to the project directory and run:
 ```bash
 flutter pub get
 ```
 
-### 3. Generate Code (Protobuf, Riverpod, & Drift)
-You hav## 3. Generate Code (Protobuf, Riverpod, & Drift)drift`), state management (`riverpod`), and data models (`protobuf`). 
+## 3. Generate Code (Protobuf, Riverpod, & Drift)
+You must generate code for the local database (`drift`), state management (`riverpod`), and data models (`protobuf`).
 
 Since you have a `Makefile`, simply run:
 ```bash
@@ -31,8 +31,8 @@ protoc --dart_out=lib/protos -Iprotos protos/models.proto
 dart run build_runner build --delete-conflicting-outputs
 ```
 
-### 4. Run the Application
-Once your device is listed in t## 4. Run the Application and run the application:
+## 4. Run the Application
+Once your device is listed in the connected devices, build and run the application:
 ```bash
 flutter run
 ```
