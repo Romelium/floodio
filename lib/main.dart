@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:isolate';
+import 'dart:math';
 
 import 'package:cryptography/cryptography.dart';
 import 'package:flutter/material.dart';
@@ -18,6 +19,9 @@ import 'providers/p2p_provider.dart';
 import 'providers/trusted_sender_provider.dart';
 import 'providers/user_profile_provider.dart';
 import 'utils/permission_utils.dart';
+import 'services/map_cache_service.dart';
+import 'providers/map_downloader_provider.dart';
+import 'providers/cached_tile_provider.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -482,6 +486,37 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
+  void _showDownloadMapDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Download Offline Map'),
+        content: const Text('Download the currently visible area for offline use? This may take a moment.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.pop(context);
+              final bounds = _mapController.camera.visibleBounds;
+              final currentZoom = _mapController.camera.zoom.floor();
+              final maxZoom = min(currentZoom + 2, 16);
+              ref.read(mapDownloaderProvider.notifier).downloadRegion(
+                bounds,
+                currentZoom,
+                maxZoom,
+                'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+              );
+            },
+            child: const Text('Download'),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showAddNewsDialog() {
     final titleController = TextEditingController(
       text: 'Official Evacuation Notice',
@@ -604,6 +639,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         TileLayer(
           urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
           userAgentPackageName: 'com.example.floodio',
+          tileProvider: CachedTileProvider(ref.read(mapCacheServiceProvider)),
         ),
         CircleLayer(
           circles: markers
@@ -1051,6 +1087,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final newsAsync = ref.watch(newsItemsControllerProvider);
     final profilesAsync = ref.watch(userProfilesControllerProvider);
     final cryptoState = ref.watch(cryptoServiceProvider);
+    final downloadProgress = ref.watch(mapDownloaderProvider);
     final profiles = profilesAsync.value ?? [];
 
     return Listener(
@@ -1059,7 +1096,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Floodio PoC'),
+          bottom: downloadProgress.isDownloading
+              ? PreferredSize(
+                  preferredSize: const Size.fromHeight(4.0),
+                  child: LinearProgressIndicator(value: downloadProgress.percentage),
+                )
+              : null,
           actions: [
+            IconButton(
+              icon: const Icon(Icons.download),
+              tooltip: 'Download Offline Map',
+              onPressed: _showDownloadMapDialog,
+            ),
             Consumer(
               builder: (context, ref, child) {
                 final p2pState = ref.watch(p2pServiceProvider);
