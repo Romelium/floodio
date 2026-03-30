@@ -89,15 +89,17 @@ void main() async {
   final db = AppDatabase(connection);
   await db.cleanupOldData();
   await initializeBackgroundService();
-  runApp(ProviderScope(
-    overrides: [
-      databaseProvider.overrideWith((ref) {
-        ref.onDispose(db.close);
-        return db;
-      }),
-    ],
-    child: const FloodioApp(),
-  ));
+  runApp(
+    ProviderScope(
+      overrides: [
+        databaseProvider.overrideWith((ref) {
+          ref.onDispose(db.close);
+          return db;
+        }),
+      ],
+      child: const FloodioApp(),
+    ),
+  );
 }
 
 Future<(String, String)> _generateOfficialMarkerSignature(
@@ -211,9 +213,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     final contact = _contactController.text.trim();
 
     if (name.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Name is required')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Name is required')));
       return;
     }
 
@@ -237,12 +239,14 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       signature: signature,
     );
 
-    await ref.read(userProfilesControllerProvider.notifier).saveProfile(profile);
+    await ref
+        .read(userProfilesControllerProvider.notifier)
+        .saveProfile(profile);
 
     if (mounted) {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const HomeScreen()),
-      );
+      Navigator.of(
+        context,
+      ).pushReplacement(MaterialPageRoute(builder: (_) => const HomeScreen()));
     }
   }
 
@@ -332,7 +336,8 @@ class _DownloadMapDialogState extends ConsumerState<DownloadMapDialog> {
       widget.currentZoom,
       _maxZoom,
     );
-    final estimatedSizeMB = (tileCount * 0.015); // rough estimate: 15KB per tile
+    final estimatedSizeMB =
+        (tileCount * 0.015); // rough estimate: 15KB per tile
 
     return AlertDialog(
       title: const Text('Download Offline Map'),
@@ -503,7 +508,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     const SnackBar(content: Text('All data cleared')),
                   );
                   Navigator.of(context).pushAndRemoveUntil(
-                    MaterialPageRoute(builder: (_) => const InitializerScreen()),
+                    MaterialPageRoute(
+                      builder: (_) => const InitializerScreen(),
+                    ),
                     (route) => false,
                   );
                 },
@@ -550,8 +557,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   void _blockSender(String senderId) {
-    ref.read(untrustedSendersControllerProvider.notifier).addUntrustedSender(senderId);
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Sender blocked. Their reports have been removed.')));
+    ref
+        .read(untrustedSendersControllerProvider.notifier)
+        .addUntrustedSender(senderId);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Sender blocked. Their reports have been removed.'),
+      ),
+    );
   }
 
   void _resolveMarker(String id) {
@@ -559,15 +572,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Resolve Hazard?'),
-        content: const Text('Marking this hazard as resolved will remove it from the map for you and nearby users upon sync.'),
+        content: const Text(
+          'Marking this hazard as resolved will remove it from the map for you and nearby users upon sync.',
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: Colors.green),
             onPressed: () {
               Navigator.pop(context);
-              ref.read(hazardMarkersControllerProvider.notifier).deleteMarker(id);
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Hazard marked as resolved.')));
+              ref
+                  .read(hazardMarkersControllerProvider.notifier)
+                  .deleteMarker(id);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Hazard marked as resolved.')),
+              );
             },
             child: const Text('Resolve'),
           ),
@@ -581,15 +603,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Resolve Area?'),
-        content: const Text('Marking this area as resolved will remove it from the map for you and nearby users upon sync.'),
+        content: const Text(
+          'Marking this area as resolved will remove it from the map for you and nearby users upon sync.',
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: Colors.green),
             onPressed: () {
               Navigator.pop(context);
               ref.read(areasControllerProvider.notifier).deleteArea(id);
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Area marked as resolved.')));
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Area marked as resolved.')),
+              );
             },
             child: const Text('Resolve'),
           ),
@@ -603,15 +632,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Dismiss News?'),
-        content: const Text('This will remove the news item from your feed and for nearby users upon sync.'),
+        content: const Text(
+          'This will remove the news item from your feed and for nearby users upon sync.',
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: Colors.green),
             onPressed: () {
               Navigator.pop(context);
               ref.read(newsItemsControllerProvider.notifier).deleteNewsItem(id);
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('News dismissed.')));
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(const SnackBar(content: Text('News dismissed.')));
             },
             child: const Text('Dismiss'),
           ),
@@ -701,7 +737,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   TextButton.icon(
                     onPressed: () => setState(() => selectedImage = null),
                     icon: const Icon(Icons.delete, color: Colors.red),
-                    label: const Text('Remove Image', style: TextStyle(color: Colors.red)),
+                    label: const Text(
+                      'Remove Image',
+                      style: TextStyle(color: Colors.red),
+                    ),
                   ),
                 ] else
                   OutlinedButton.icon(
@@ -746,11 +785,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   final dir = await getApplicationDocumentsDirectory();
                   final savedImage = File('${dir.path}/$imageId');
                   await File(selectedImage!.path).copy(savedImage.path);
-                  
-                  ref.read(p2pServiceProvider.notifier).broadcastFile(savedImage);
+
+                  ref
+                      .read(p2pServiceProvider.notifier)
+                      .broadcastFile(savedImage);
                 }
 
-                final payloadToSign = utf8.encode('$id$type$timestamp${imageId ?? ""}');
+                final payloadToSign = utf8.encode(
+                  '$id$type$timestamp${imageId ?? ""}',
+                );
                 final signature = await cryptoService.signData(payloadToSign);
                 final untrustedSendersAsync = ref.read(
                   untrustedSendersControllerProvider,
@@ -833,12 +876,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     vertical: 12,
                   ),
                 ),
-                items: ['Flooded Area', 'Evacuation Zone', 'Safe Zone', 'Fire Zone', 'Other']
-                    .map(
-                      (type) =>
-                          DropdownMenuItem(value: type, child: Text(type)),
-                    )
-                    .toList(),
+                items:
+                    [
+                          'Flooded Area',
+                          'Evacuation Zone',
+                          'Safe Zone',
+                          'Fire Zone',
+                          'Other',
+                        ]
+                        .map(
+                          (type) =>
+                              DropdownMenuItem(value: type, child: Text(type)),
+                        )
+                        .toList(),
                 onChanged: (val) {
                   if (val != null) {
                     setState(() => selectedType = val);
@@ -906,7 +956,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   untrustedPublicKeys: untrustedKeys,
                 );
 
-                final coords = _currentAreaPoints.map((p) => {'lat': p.latitude, 'lng': p.longitude}).toList();
+                final coords = _currentAreaPoints
+                    .map((p) => {'lat': p.latitude, 'lng': p.longitude})
+                    .toList();
 
                 final newArea = AreaEntity(
                   id: id,
@@ -940,13 +992,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     try {
       final bounds = _mapController.camera.visibleBounds;
       final currentZoom = _mapController.camera.zoom.floor();
-      
+
       showDialog(
         context: context,
-        builder: (context) => DownloadMapDialog(
-          bounds: bounds,
-          currentZoom: currentZoom,
-        ),
+        builder: (context) =>
+            DownloadMapDialog(bounds: bounds, currentZoom: currentZoom),
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -958,7 +1008,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Future<void> _shareApk() async {
     if (!Platform.isAndroid) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('APK sharing is only available on Android.')),
+        const SnackBar(
+          content: Text('APK sharing is only available on Android.'),
+        ),
       );
       return;
     }
@@ -966,11 +1018,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     try {
       const platform = MethodChannel('com.example.floodio/apk');
       final String? apkPath = await platform.invokeMethod('getApkPath');
-      
+
       if (apkPath != null) {
         final tempDir = await getTemporaryDirectory();
         final tempFile = File('${tempDir.path}/floodio.apk');
-        
+
         if (await tempFile.exists()) {
           await tempFile.delete();
         }
@@ -985,9 +1037,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to share APK: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to share APK: $e')));
       }
     }
   }
@@ -1064,7 +1116,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   trustedSendersAsync.value?.map((e) => e.publicKey).toList() ??
                   [];
               final untrustedKeys =
-                  untrustedSendersAsync.value?.map((e) => e.publicKey).toList() ??
+                  untrustedSendersAsync.value
+                      ?.map((e) => e.publicKey)
+                      .toList() ??
                   [];
 
               final cryptoService = ref.read(cryptoServiceProvider.notifier);
@@ -1097,7 +1151,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  UserProfileEntity? _getProfile(String publicKey, List<UserProfileEntity> profiles) {
+  UserProfileEntity? _getProfile(
+    String publicKey,
+    List<UserProfileEntity> profiles,
+  ) {
     try {
       return profiles.firstWhere((p) => p.publicKey == publicKey);
     } catch (_) {
@@ -1137,20 +1194,26 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ),
         PolygonLayer(
           polygons: [
-            ...offlineRegions.map((r) => Polygon(
-                  points: [
-                    LatLng(r.bounds.north, r.bounds.west),
-                    LatLng(r.bounds.north, r.bounds.east),
-                    LatLng(r.bounds.south, r.bounds.east),
-                    LatLng(r.bounds.south, r.bounds.west),
-                  ],
-                  color: Colors.teal.withValues(alpha: 0.15),
-                  borderColor: Colors.teal,
-                  borderStrokeWidth: 2,
-                )),
+            ...offlineRegions.map(
+              (r) => Polygon(
+                points: [
+                  LatLng(r.bounds.north, r.bounds.west),
+                  LatLng(r.bounds.north, r.bounds.east),
+                  LatLng(r.bounds.south, r.bounds.east),
+                  LatLng(r.bounds.south, r.bounds.west),
+                ],
+                color: Colors.teal.withValues(alpha: 0.15),
+                borderColor: Colors.teal,
+                borderStrokeWidth: 2,
+              ),
+            ),
             ...areas.map((a) {
-              final points = a.coordinates.map((c) => LatLng(c['lat']!, c['lng']!)).toList();
-              final color = a.type.toLowerCase().contains('safe') || a.type.toLowerCase().contains('evacuation')
+              final points = a.coordinates
+                  .map((c) => LatLng(c['lat']!, c['lng']!))
+                  .toList();
+              final color =
+                  a.type.toLowerCase().contains('safe') ||
+                      a.type.toLowerCase().contains('evacuation')
                   ? Colors.green
                   : Colors.red;
               return Polygon(
@@ -1237,20 +1300,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               ),
                               Builder(
                                 builder: (context) {
-                                  final profile = _getProfile(m.senderId, profiles);
+                                  final profile = _getProfile(
+                                    m.senderId,
+                                    profiles,
+                                  );
                                   if (profile != null) {
                                     return Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         const Divider(),
                                         Text('Reported by: ${profile.name}'),
                                         if (profile.contactInfo.isNotEmpty)
-                                          Text('Contact: ${profile.contactInfo}'),
+                                          Text(
+                                            'Contact: ${profile.contactInfo}',
+                                          ),
                                       ],
                                     );
                                   } else {
                                     return const Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Divider(),
                                         Text('Reported by: Unknown User'),
@@ -1267,7 +1337,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                 Navigator.pop(context);
                                 _resolveMarker(m.id);
                               },
-                              icon: const Icon(Icons.check_circle_outline, size: 18),
+                              icon: const Icon(
+                                Icons.check_circle_outline,
+                                size: 18,
+                              ),
                               label: const Text('Resolve'),
                               style: TextButton.styleFrom(
                                 foregroundColor: Colors.green,
@@ -1396,7 +1469,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 setState(() => _currentIndex = 0);
                 WidgetsBinding.instance.addPostFrameCallback((_) {
                   try {
-                    _mapController.move(LatLng(item.latitude, item.longitude), 15.0);
+                    _mapController.move(
+                      LatLng(item.latitude, item.longitude),
+                      15.0,
+                    );
                   } catch (e) {
                     debugPrint('Map not ready yet: $e');
                   }
@@ -1464,7 +1540,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             padding: const EdgeInsets.only(top: 8.0),
                             child: Text(
                               'By: ${profile.name}${profile.contactInfo.isNotEmpty ? ' (${profile.contactInfo})' : ''}',
-                              style: TextStyle(fontSize: 12, color: Colors.grey.shade700, fontStyle: FontStyle.italic),
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey.shade700,
+                                fontStyle: FontStyle.italic,
+                              ),
                             ),
                           );
                         } else {
@@ -1472,7 +1552,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             padding: const EdgeInsets.only(top: 8.0),
                             child: Text(
                               'By: Unknown User',
-                              style: TextStyle(fontSize: 12, color: Colors.grey.shade700, fontStyle: FontStyle.italic),
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey.shade700,
+                                fontStyle: FontStyle.italic,
+                              ),
                             ),
                           );
                         }
@@ -1486,16 +1570,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       children: [
                         TextButton.icon(
                           onPressed: () => _resolveMarker(item.id),
-                          icon: const Icon(Icons.check_circle_outline, size: 16),
+                          icon: const Icon(
+                            Icons.check_circle_outline,
+                            size: 16,
+                          ),
                           label: const Text('Resolve'),
-                          style: TextButton.styleFrom(foregroundColor: Colors.green),
+                          style: TextButton.styleFrom(
+                            foregroundColor: Colors.green,
+                          ),
                         ),
                         if (item.trustTier == 4 || item.trustTier == 3)
                           TextButton.icon(
                             onPressed: () => _blockSender(item.senderId),
                             icon: const Icon(Icons.block, size: 16),
                             label: const Text('Block'),
-                            style: TextButton.styleFrom(foregroundColor: Colors.red),
+                            style: TextButton.styleFrom(
+                              foregroundColor: Colors.red,
+                            ),
                           ),
                         if (item.trustTier == 4)
                           FilledButton.tonalIcon(
@@ -1581,7 +1672,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           padding: const EdgeInsets.only(top: 8.0),
                           child: Text(
                             'By: ${profile.name}${profile.contactInfo.isNotEmpty ? ' (${profile.contactInfo})' : ''}',
-                            style: TextStyle(fontSize: 12, color: Colors.grey.shade700, fontStyle: FontStyle.italic),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey.shade700,
+                              fontStyle: FontStyle.italic,
+                            ),
                           ),
                         );
                       } else {
@@ -1589,7 +1684,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           padding: const EdgeInsets.only(top: 8.0),
                           child: Text(
                             'By: Unknown User',
-                            style: TextStyle(fontSize: 12, color: Colors.grey.shade700, fontStyle: FontStyle.italic),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey.shade700,
+                              fontStyle: FontStyle.italic,
+                            ),
                           ),
                         );
                       }
@@ -1605,14 +1704,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         onPressed: () => _dismissNews(item.id),
                         icon: const Icon(Icons.clear, size: 16),
                         label: const Text('Dismiss'),
-                        style: TextButton.styleFrom(foregroundColor: Colors.grey),
+                        style: TextButton.styleFrom(
+                          foregroundColor: Colors.grey,
+                        ),
                       ),
                       if (item.trustTier == 4 || item.trustTier == 3)
                         TextButton.icon(
                           onPressed: () => _blockSender(item.senderId),
                           icon: const Icon(Icons.block, size: 16),
                           label: const Text('Block'),
-                          style: TextButton.styleFrom(foregroundColor: Colors.red),
+                          style: TextButton.styleFrom(
+                            foregroundColor: Colors.red,
+                          ),
                         ),
                       if (item.trustTier == 4)
                         FilledButton.tonalIcon(
@@ -1644,7 +1747,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 WidgetsBinding.instance.addPostFrameCallback((_) {
                   try {
                     if (item.coordinates.isNotEmpty) {
-                      _mapController.move(LatLng(item.coordinates.first['lat']!, item.coordinates.first['lng']!), 14.0);
+                      _mapController.move(
+                        LatLng(
+                          item.coordinates.first['lat']!,
+                          item.coordinates.first['lng']!,
+                        ),
+                        14.0,
+                      );
                     }
                   } catch (e) {
                     debugPrint('Map not ready yet: $e');
@@ -1711,7 +1820,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             padding: const EdgeInsets.only(top: 8.0),
                             child: Text(
                               'By: ${profile.name}${profile.contactInfo.isNotEmpty ? ' (${profile.contactInfo})' : ''}',
-                              style: TextStyle(fontSize: 12, color: Colors.grey.shade700, fontStyle: FontStyle.italic),
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey.shade700,
+                                fontStyle: FontStyle.italic,
+                              ),
                             ),
                           );
                         } else {
@@ -1719,7 +1832,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             padding: const EdgeInsets.only(top: 8.0),
                             child: Text(
                               'By: Unknown User',
-                              style: TextStyle(fontSize: 12, color: Colors.grey.shade700, fontStyle: FontStyle.italic),
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey.shade700,
+                                fontStyle: FontStyle.italic,
+                              ),
                             ),
                           );
                         }
@@ -1733,16 +1850,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       children: [
                         TextButton.icon(
                           onPressed: () => _resolveArea(item.id),
-                          icon: const Icon(Icons.check_circle_outline, size: 16),
+                          icon: const Icon(
+                            Icons.check_circle_outline,
+                            size: 16,
+                          ),
                           label: const Text('Resolve'),
-                          style: TextButton.styleFrom(foregroundColor: Colors.green),
+                          style: TextButton.styleFrom(
+                            foregroundColor: Colors.green,
+                          ),
                         ),
                         if (item.trustTier == 4 || item.trustTier == 3)
                           TextButton.icon(
                             onPressed: () => _blockSender(item.senderId),
                             icon: const Icon(Icons.block, size: 16),
                             label: const Text('Block'),
-                            style: TextButton.styleFrom(foregroundColor: Colors.red),
+                            style: TextButton.styleFrom(
+                              foregroundColor: Colors.red,
+                            ),
                           ),
                         if (item.trustTier == 4)
                           FilledButton.tonalIcon(
@@ -1840,14 +1964,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               if (downloadProgress.isDownloading)
                 Text(
                   'Downloading map: ${(downloadProgress.percentage * 100).toStringAsFixed(1)}%',
-                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.normal),
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.normal,
+                  ),
                 ),
             ],
           ),
           bottom: downloadProgress.isDownloading
               ? PreferredSize(
                   preferredSize: const Size.fromHeight(4.0),
-                  child: LinearProgressIndicator(value: downloadProgress.percentage),
+                  child: LinearProgressIndicator(
+                    value: downloadProgress.percentage,
+                  ),
                 )
               : null,
           actions: [
@@ -1933,123 +2062,147 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
           ],
         ),
-        floatingActionButton: _currentIndex == 2 ? null : cryptoState.when(
-          data: (_) {
-            if (_isDrawingArea) {
-              return Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  FloatingActionButton.extended(
-                    heroTag: 'cancel_area',
-                    onPressed: () {
-                      setState(() {
-                        _isDrawingArea = false;
-                        _currentAreaPoints.clear();
-                      });
-                    },
-                    backgroundColor: Colors.red,
-                    icon: const Icon(Icons.close, color: Colors.white),
-                    label: const Text('Cancel', style: TextStyle(color: Colors.white)),
-                  ),
-                  const SizedBox(width: 16),
-                  if (_currentAreaPoints.isNotEmpty)
-                    FloatingActionButton.extended(
-                      heroTag: 'undo_area',
-                      onPressed: () {
-                        setState(() {
-                          _currentAreaPoints.removeLast();
-                        });
-                      },
-                      backgroundColor: Colors.orange,
-                      icon: const Icon(Icons.undo, color: Colors.white),
-                      label: const Text('Undo', style: TextStyle(color: Colors.white)),
-                    ),
-                  const SizedBox(width: 16),
-                  if (_currentAreaPoints.length >= 3)
-                    FloatingActionButton.extended(
-                      heroTag: 'done_area',
-                      onPressed: () {
-                        _showAddAreaDialog();
-                      },
-                      backgroundColor: Colors.green,
-                      icon: const Icon(Icons.check, color: Colors.white),
-                      label: const Text('Done', style: TextStyle(color: Colors.white)),
-                    ),
-                ],
-              );
-            }
-
-            return Column(
-              mainAxisAlignment: MainAxisAlignment.end,
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                if (_currentIndex == 0) ...[
-                  FloatingActionButton.small(
-                    heroTag: 'center_map',
-                    onPressed: () {
-                      try {
-                        _mapController.move(const LatLng(37.7749, -122.4194), 13.0);
-                      } catch (e) {
-                        debugPrint('Map not ready yet: $e');
-                      }
-                    },
-                    child: const Icon(Icons.my_location),
-                  ),
-                  const SizedBox(height: 16),
-                ],
-                FloatingActionButton.extended(
-                  heroTag: 'official',
-                  onPressed: _showAddNewsDialog,
-                  backgroundColor: Colors.blue,
-                  icon: const Icon(Icons.campaign, color: Colors.white),
-                  label: const Text(
-                    'Official Alert',
-                    style: TextStyle(color: Colors.white),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                FloatingActionButton.extended(
-                  heroTag: 'area',
-                  onPressed: () {
-                    setState(() {
-                      _isDrawingArea = true;
-                      _currentAreaPoints.clear();
-                      _currentIndex = 0; // Switch to map tab
-                    });
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Tap on the map to draw an area polygon.')),
+        floatingActionButton: _currentIndex == 2
+            ? null
+            : cryptoState.when(
+                data: (_) {
+                  if (_isDrawingArea) {
+                    return Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        FloatingActionButton.extended(
+                          heroTag: 'cancel_area',
+                          onPressed: () {
+                            setState(() {
+                              _isDrawingArea = false;
+                              _currentAreaPoints.clear();
+                            });
+                          },
+                          backgroundColor: Colors.red,
+                          icon: const Icon(Icons.close, color: Colors.white),
+                          label: const Text(
+                            'Cancel',
+                            style: TextStyle(color: Colors.white),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        if (_currentAreaPoints.isNotEmpty)
+                          FloatingActionButton.extended(
+                            heroTag: 'undo_area',
+                            onPressed: () {
+                              setState(() {
+                                _currentAreaPoints.removeLast();
+                              });
+                            },
+                            backgroundColor: Colors.orange,
+                            icon: const Icon(Icons.undo, color: Colors.white),
+                            label: const Text(
+                              'Undo',
+                              style: TextStyle(color: Colors.white),
+                            ),
+                          ),
+                        const SizedBox(width: 16),
+                        if (_currentAreaPoints.length >= 3)
+                          FloatingActionButton.extended(
+                            heroTag: 'done_area',
+                            onPressed: () {
+                              _showAddAreaDialog();
+                            },
+                            backgroundColor: Colors.green,
+                            icon: const Icon(Icons.check, color: Colors.white),
+                            label: const Text(
+                              'Done',
+                              style: TextStyle(color: Colors.white),
+                            ),
+                          ),
+                      ],
                     );
-                  },
-                  backgroundColor: Colors.purple,
-                  icon: const Icon(Icons.format_shapes, color: Colors.white),
-                  label: const Text('Report Area', style: TextStyle(color: Colors.white)),
+                  }
+
+                  return Column(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      if (_currentIndex == 0) ...[
+                        FloatingActionButton.small(
+                          heroTag: 'center_map',
+                          onPressed: () {
+                            try {
+                              _mapController.move(
+                                const LatLng(37.7749, -122.4194),
+                                13.0,
+                              );
+                            } catch (e) {
+                              debugPrint('Map not ready yet: $e');
+                            }
+                          },
+                          child: const Icon(Icons.my_location),
+                        ),
+                        const SizedBox(height: 16),
+                      ],
+                      FloatingActionButton.extended(
+                        heroTag: 'official',
+                        onPressed: _showAddNewsDialog,
+                        backgroundColor: Colors.blue,
+                        icon: const Icon(Icons.campaign, color: Colors.white),
+                        label: const Text(
+                          'Official Alert',
+                          style: TextStyle(color: Colors.white),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      FloatingActionButton.extended(
+                        heroTag: 'area',
+                        onPressed: () {
+                          setState(() {
+                            _isDrawingArea = true;
+                            _currentAreaPoints.clear();
+                            _currentIndex = 0; // Switch to map tab
+                          });
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Tap on the map to draw an area polygon.',
+                              ),
+                            ),
+                          );
+                        },
+                        backgroundColor: Colors.purple,
+                        icon: const Icon(
+                          Icons.format_shapes,
+                          color: Colors.white,
+                        ),
+                        label: const Text(
+                          'Report Area',
+                          style: TextStyle(color: Colors.white),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      FloatingActionButton.extended(
+                        heroTag: 'user',
+                        onPressed: () {
+                          LatLng point = const LatLng(37.7749, -122.4194);
+                          try {
+                            point = _mapController.camera.center;
+                          } catch (_) {}
+                          _showAddHazardDialog(point);
+                        },
+                        icon: const Icon(Icons.add_location_alt),
+                        label: const Text('Report Hazard'),
+                      ),
+                    ],
+                  );
+                },
+                loading: () => const FloatingActionButton(
+                  onPressed: null,
+                  child: CircularProgressIndicator(),
                 ),
-                const SizedBox(height: 16),
-                FloatingActionButton.extended(
-                  heroTag: 'user',
-                  onPressed: () {
-                    LatLng point = const LatLng(37.7749, -122.4194);
-                    try {
-                      point = _mapController.camera.center;
-                    } catch (_) {}
-                    _showAddHazardDialog(point);
-                  },
-                  icon: const Icon(Icons.add_location_alt),
-                  label: const Text('Report Hazard'),
+                error: (e, st) => const FloatingActionButton(
+                  onPressed: null,
+                  child: Icon(Icons.error),
                 ),
-              ],
-            );
-          },
-          loading: () => const FloatingActionButton(
-            onPressed: null,
-            child: CircularProgressIndicator(),
-          ),
-          error: (e, st) => const FloatingActionButton(
-            onPressed: null,
-            child: Icon(Icons.error),
-          ),
-        ),
+              ),
       ),
     );
   }
@@ -2080,11 +2233,11 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
     await prefs.reload();
     final name = prefs.getString('user_name') ?? 'Unknown';
     final contact = prefs.getString('user_contact') ?? '';
-    
+
     await ref.read(cryptoServiceProvider.future);
     final cryptoService = ref.read(cryptoServiceProvider.notifier);
     final pubKey = await cryptoService.getPublicKeyString();
-    
+
     if (mounted) {
       setState(() {
         _myName = name;
@@ -2112,7 +2265,9 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
   }
 
   void _removeTrustedSender(String publicKey) {
-    ref.read(trustedSendersControllerProvider.notifier).removeTrustedSender(publicKey);
+    ref
+        .read(trustedSendersControllerProvider.notifier)
+        .removeTrustedSender(publicKey);
   }
 
   void _deleteMarker(String id) {
@@ -2120,14 +2275,21 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete Report?'),
-        content: const Text('Are you sure you want to delete this hazard report?'),
+        content: const Text(
+          'Are you sure you want to delete this hazard report?',
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () {
               Navigator.pop(context);
-              ref.read(hazardMarkersControllerProvider.notifier).deleteMarker(id);
+              ref
+                  .read(hazardMarkersControllerProvider.notifier)
+                  .deleteMarker(id);
             },
             child: const Text('Delete'),
           ),
@@ -2143,7 +2305,10 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
         title: const Text('Delete News?'),
         content: const Text('Are you sure you want to delete this news item?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () {
@@ -2162,9 +2327,14 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete Area?'),
-        content: const Text('Are you sure you want to delete this area report?'),
+        content: const Text(
+          'Are you sure you want to delete this area report?',
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () {
@@ -2174,6 +2344,349 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
             child: const Text('Delete'),
           ),
         ],
+      ),
+    );
+  }
+
+  void _editProfile() {
+    final nameController = TextEditingController(text: _myName);
+    final contactController = TextEditingController(text: _myContact);
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Edit Profile'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameController,
+                decoration: const InputDecoration(labelText: 'Name'),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: contactController,
+                decoration: const InputDecoration(labelText: 'Contact Info'),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              final newName = nameController.text.trim();
+              final newContact = contactController.text.trim();
+              if (newName.isEmpty) return;
+
+              Navigator.pop(dialogContext);
+
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.setString('user_name', newName);
+              await prefs.setString('user_contact', newContact);
+
+              final cryptoService = ref.read(cryptoServiceProvider.notifier);
+              final publicKey = await cryptoService.getPublicKeyString();
+              final timestamp = DateTime.now().millisecondsSinceEpoch;
+
+              final payloadToSign = utf8.encode(
+                '$publicKey$newName$newContact$timestamp',
+              );
+              final signature = await cryptoService.signData(payloadToSign);
+
+              final profile = UserProfileEntity(
+                publicKey: publicKey,
+                name: newName,
+                contactInfo: newContact,
+                timestamp: timestamp,
+                signature: signature,
+              );
+
+              await ref
+                  .read(userProfilesControllerProvider.notifier)
+                  .saveProfile(profile);
+
+              if (mounted) {
+                setState(() {
+                  _myName = newName;
+                  _myContact = newContact;
+                });
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Profile updated')),
+                );
+              }
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _editMarker(HazardMarkerEntity marker) {
+    String selectedType = marker.type;
+    final descController = TextEditingController(text: marker.description);
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (innerContext, setState) => AlertDialog(
+          title: const Text('Edit Hazard'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                DropdownButtonFormField<String>(
+                  initialValue:
+                      [
+                        'Flood',
+                        'Fire',
+                        'Roadblock',
+                        'Medical',
+                        'Other',
+                      ].contains(selectedType)
+                      ? selectedType
+                      : 'Other',
+                  decoration: const InputDecoration(labelText: 'Hazard Type'),
+                  items: ['Flood', 'Fire', 'Roadblock', 'Medical', 'Other']
+                      .map(
+                        (type) =>
+                            DropdownMenuItem(value: type, child: Text(type)),
+                      )
+                      .toList(),
+                  onChanged: (val) {
+                    if (val != null) setState(() => selectedType = val);
+                  },
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: descController,
+                  decoration: const InputDecoration(labelText: 'Description'),
+                  maxLines: 2,
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(innerContext),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () async {
+                Navigator.pop(innerContext);
+                final cryptoService = ref.read(cryptoServiceProvider.notifier);
+                final timestamp = DateTime.now().millisecondsSinceEpoch;
+                final newId = timestamp.toString();
+
+                final payloadToSign = utf8.encode(
+                  '$newId$selectedType$timestamp${marker.imageId ?? ""}',
+                );
+                final signature = await cryptoService.signData(payloadToSign);
+
+                final updatedMarker = HazardMarkerEntity(
+                  id: newId,
+                  latitude: marker.latitude,
+                  longitude: marker.longitude,
+                  type: selectedType,
+                  description: descController.text,
+                  timestamp: timestamp,
+                  senderId: marker.senderId,
+                  signature: signature,
+                  trustTier: marker.trustTier,
+                  imageId: marker.imageId,
+                );
+
+                ref
+                    .read(hazardMarkersControllerProvider.notifier)
+                    .deleteMarker(marker.id);
+                await ref
+                    .read(hazardMarkersControllerProvider.notifier)
+                    .addMarker(updatedMarker);
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Hazard updated')),
+                  );
+                }
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _editNews(NewsItemEntity news) {
+    final titleController = TextEditingController(text: news.title);
+    final contentController = TextEditingController(text: news.content);
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Edit News'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: titleController,
+                decoration: const InputDecoration(labelText: 'Title'),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: contentController,
+                decoration: const InputDecoration(labelText: 'Content'),
+                maxLines: 3,
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              Navigator.pop(dialogContext);
+              final cryptoService = ref.read(cryptoServiceProvider.notifier);
+              final timestamp = DateTime.now().millisecondsSinceEpoch;
+              final newId = timestamp.toString();
+
+              final payloadToSign = utf8.encode(
+                '$newId${titleController.text}$timestamp',
+              );
+              final signature = await cryptoService.signData(payloadToSign);
+
+              final updatedNews = NewsItemEntity(
+                id: newId,
+                title: titleController.text,
+                content: contentController.text,
+                timestamp: timestamp,
+                senderId: news.senderId,
+                signature: signature,
+                trustTier: news.trustTier,
+              );
+
+              ref
+                  .read(newsItemsControllerProvider.notifier)
+                  .deleteNewsItem(news.id);
+              await ref
+                  .read(newsItemsControllerProvider.notifier)
+                  .addNewsItem(updatedNews);
+              if (mounted) {
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(const SnackBar(content: Text('News updated')));
+              }
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _editArea(AreaEntity area) {
+    String selectedType = area.type;
+    final descController = TextEditingController(text: area.description);
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (innerContext, setState) => AlertDialog(
+          title: const Text('Edit Area'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                DropdownButtonFormField<String>(
+                  initialValue:
+                      [
+                        'Flooded Area',
+                        'Evacuation Zone',
+                        'Safe Zone',
+                        'Fire Zone',
+                        'Other',
+                      ].contains(selectedType)
+                      ? selectedType
+                      : 'Other',
+                  decoration: const InputDecoration(labelText: 'Area Type'),
+                  items:
+                      [
+                            'Flooded Area',
+                            'Evacuation Zone',
+                            'Safe Zone',
+                            'Fire Zone',
+                            'Other',
+                          ]
+                          .map(
+                            (type) => DropdownMenuItem(
+                              value: type,
+                              child: Text(type),
+                            ),
+                          )
+                          .toList(),
+                  onChanged: (val) {
+                    if (val != null) setState(() => selectedType = val);
+                  },
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: descController,
+                  decoration: const InputDecoration(labelText: 'Description'),
+                  maxLines: 2,
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(innerContext),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () async {
+                Navigator.pop(innerContext);
+                final cryptoService = ref.read(cryptoServiceProvider.notifier);
+                final timestamp = DateTime.now().millisecondsSinceEpoch;
+                final newId = timestamp.toString();
+
+                final payloadToSign = utf8.encode(
+                  '$newId$selectedType$timestamp',
+                );
+                final signature = await cryptoService.signData(payloadToSign);
+
+                final updatedArea = AreaEntity(
+                  id: newId,
+                  coordinates: area.coordinates,
+                  type: selectedType,
+                  description: descController.text,
+                  timestamp: timestamp,
+                  senderId: area.senderId,
+                  signature: signature,
+                  trustTier: area.trustTier,
+                );
+
+                ref.read(areasControllerProvider.notifier).deleteArea(area.id);
+                await ref
+                    .read(areasControllerProvider.notifier)
+                    .addArea(updatedArea);
+                if (mounted) {
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(const SnackBar(content: Text('Area updated')));
+                }
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -2188,12 +2701,20 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
 
     final trustedSenders = trustedSendersAsync.value ?? [];
     final untrustedSenders = untrustedSendersAsync.value ?? [];
-    final myMarkers = (markersAsync.value ?? []).where((m) => m.senderId == _myPublicKey).toList();
-    final myNews = (newsAsync.value ?? []).where((n) => n.senderId == _myPublicKey).toList();
-    final myAreas = (areasAsync.value ?? []).where((a) => a.senderId == _myPublicKey).toList();
+    final myMarkers = (markersAsync.value ?? [])
+        .where((m) => m.senderId == _myPublicKey)
+        .toList();
+    final myNews = (newsAsync.value ?? [])
+        .where((n) => n.senderId == _myPublicKey)
+        .toList();
+    final myAreas = (areasAsync.value ?? [])
+        .where((a) => a.senderId == _myPublicKey)
+        .toList();
 
     final myReports = <dynamic>[...myMarkers, ...myNews, ...myAreas];
-    myReports.sort((a, b) => (b.timestamp as int).compareTo(a.timestamp as int));
+    myReports.sort(
+      (a, b) => (b.timestamp as int).compareTo(a.timestamp as int),
+    );
 
     return CustomScrollView(
       slivers: [
@@ -2207,18 +2728,27 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                 Card(
                   elevation: 0,
                   color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
                   child: Padding(
                     padding: const EdgeInsets.all(20),
                     child: Row(
                       children: [
                         CircleAvatar(
                           radius: 36,
-                          backgroundColor: Theme.of(context).colorScheme.primary,
-                          foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                          backgroundColor: Theme.of(
+                            context,
+                          ).colorScheme.primary,
+                          foregroundColor: Theme.of(
+                            context,
+                          ).colorScheme.onPrimary,
                           child: Text(
                             _myName.isNotEmpty ? _myName[0].toUpperCase() : '?',
-                            style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+                            style: const TextStyle(
+                              fontSize: 28,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
                         const SizedBox(width: 16),
@@ -2226,14 +2756,41 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(_myName, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      _myName,
+                                      style: const TextStyle(
+                                        fontSize: 22,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.edit, size: 20),
+                                    onPressed: _editProfile,
+                                    tooltip: 'Edit Profile',
+                                  ),
+                                ],
+                              ),
                               if (_myContact.isNotEmpty) ...[
                                 const SizedBox(height: 4),
                                 Row(
                                   children: [
-                                    Icon(Icons.phone, size: 14, color: Colors.grey.shade700),
+                                    Icon(
+                                      Icons.phone,
+                                      size: 14,
+                                      color: Colors.grey.shade700,
+                                    ),
                                     const SizedBox(width: 4),
-                                    Text(_myContact, style: TextStyle(fontSize: 14, color: Colors.grey.shade700)),
+                                    Text(
+                                      _myContact,
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        color: Colors.grey.shade700,
+                                      ),
+                                    ),
                                   ],
                                 ),
                               ],
@@ -2241,20 +2798,48 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                               InkWell(
                                 onTap: () {
                                   if (_myPublicKey != null) {
-                                    Clipboard.setData(ClipboardData(text: _myPublicKey!));
-                                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Public Key copied to clipboard')));
+                                    Clipboard.setData(
+                                      ClipboardData(text: _myPublicKey!),
+                                    );
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text(
+                                          'Public Key copied to clipboard',
+                                        ),
+                                      ),
+                                    );
                                   }
                                 },
                                 child: Row(
                                   children: [
-                                    Icon(Icons.key, size: 14, color: Theme.of(context).colorScheme.primary),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      _myPublicKey != null ? '${_myPublicKey!.substring(0, 12)}...' : 'Loading key...',
-                                      style: TextStyle(fontSize: 13, color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.w500),
+                                    Icon(
+                                      Icons.key,
+                                      size: 14,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.primary,
                                     ),
                                     const SizedBox(width: 4),
-                                    Icon(Icons.copy, size: 12, color: Theme.of(context).colorScheme.primary),
+                                    Text(
+                                      _myPublicKey != null
+                                          ? '${_myPublicKey!.substring(0, 12)}...'
+                                          : 'Loading key...',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.primary,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Icon(
+                                      Icons.copy,
+                                      size: 12,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.primary,
+                                    ),
                                   ],
                                 ),
                               ),
@@ -2266,13 +2851,19 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                   ),
                 ),
                 const SizedBox(height: 24),
-                
+
                 // Trusted Senders
                 Row(
                   children: [
                     const Icon(Icons.verified_user, color: Colors.green),
                     const SizedBox(width: 8),
-                    const Text('Trusted Senders', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    const Text(
+                      'Trusted Senders',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                     const Spacer(),
                     Chip(
                       label: Text('${trustedSenders.length}'),
@@ -2293,7 +2884,12 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                       children: [
                         Icon(Icons.info_outline, color: Colors.grey),
                         SizedBox(width: 12),
-                        Expanded(child: Text('You have not trusted any senders yet. Trust senders from the feed to prioritize their reports.', style: TextStyle(color: Colors.grey))),
+                        Expanded(
+                          child: Text(
+                            'You have not trusted any senders yet. Trust senders from the feed to prioritize their reports.',
+                            style: TextStyle(color: Colors.grey),
+                          ),
+                        ),
                       ],
                     ),
                   )
@@ -2308,29 +2904,49 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
                       itemCount: trustedSenders.length,
-                      separatorBuilder: (context, index) => const Divider(height: 1),
+                      separatorBuilder: (context, index) =>
+                          const Divider(height: 1),
                       itemBuilder: (context, index) {
                         final sender = trustedSenders[index];
                         return ListTile(
                           leading: CircleAvatar(
                             backgroundColor: Colors.green.shade100,
-                            child: const Icon(Icons.person, color: Colors.green),
+                            child: const Icon(
+                              Icons.person,
+                              color: Colors.green,
+                            ),
                           ),
-                          title: Text(sender.name, style: const TextStyle(fontWeight: FontWeight.w600)),
-                          subtitle: Text('Key: ${sender.publicKey.substring(0, 12)}...', style: const TextStyle(fontSize: 12)),
+                          title: Text(
+                            sender.name,
+                            style: const TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                          subtitle: Text(
+                            'Key: ${sender.publicKey.substring(0, 12)}...',
+                            style: const TextStyle(fontSize: 12),
+                          ),
                           trailing: IconButton(
-                            icon: const Icon(Icons.remove_circle_outline, color: Colors.red),
+                            icon: const Icon(
+                              Icons.remove_circle_outline,
+                              color: Colors.red,
+                            ),
                             tooltip: 'Remove Trust',
                             onPressed: () {
                               showDialog(
                                 context: context,
                                 builder: (context) => AlertDialog(
                                   title: const Text('Remove Trusted Sender?'),
-                                  content: Text('Are you sure you want to remove ${sender.name} from your trusted senders? Their future reports will be marked as Crowdsourced.'),
+                                  content: Text(
+                                    'Are you sure you want to remove ${sender.name} from your trusted senders? Their future reports will be marked as Crowdsourced.',
+                                  ),
                                   actions: [
-                                    TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(context),
+                                      child: const Text('Cancel'),
+                                    ),
                                     FilledButton(
-                                      style: FilledButton.styleFrom(backgroundColor: Colors.red),
+                                      style: FilledButton.styleFrom(
+                                        backgroundColor: Colors.red,
+                                      ),
                                       onPressed: () {
                                         Navigator.pop(context);
                                         _removeTrustedSender(sender.publicKey);
@@ -2353,7 +2969,13 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                   children: [
                     const Icon(Icons.block, color: Colors.red),
                     const SizedBox(width: 8),
-                    const Text('Blocked Senders', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    const Text(
+                      'Blocked Senders',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                     const Spacer(),
                     Chip(
                       label: Text('${untrustedSenders.length}'),
@@ -2374,7 +2996,12 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                       children: [
                         Icon(Icons.info_outline, color: Colors.grey),
                         SizedBox(width: 12),
-                        Expanded(child: Text('You have not blocked any senders.', style: TextStyle(color: Colors.grey))),
+                        Expanded(
+                          child: Text(
+                            'You have not blocked any senders.',
+                            style: TextStyle(color: Colors.grey),
+                          ),
+                        ),
                       ],
                     ),
                   )
@@ -2389,20 +3016,31 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
                       itemCount: untrustedSenders.length,
-                      separatorBuilder: (context, index) => const Divider(height: 1),
+                      separatorBuilder: (context, index) =>
+                          const Divider(height: 1),
                       itemBuilder: (context, index) {
                         final sender = untrustedSenders[index];
                         return ListTile(
                           leading: CircleAvatar(
                             backgroundColor: Colors.red.shade100,
-                            child: const Icon(Icons.person_off, color: Colors.red),
+                            child: const Icon(
+                              Icons.person_off,
+                              color: Colors.red,
+                            ),
                           ),
-                          title: Text('Key: ${sender.publicKey.substring(0, 12)}...', style: const TextStyle(fontWeight: FontWeight.w600)),
+                          title: Text(
+                            'Key: ${sender.publicKey.substring(0, 12)}...',
+                            style: const TextStyle(fontWeight: FontWeight.w600),
+                          ),
                           trailing: IconButton(
                             icon: const Icon(Icons.restore, color: Colors.blue),
                             tooltip: 'Unblock',
                             onPressed: () {
-                              ref.read(untrustedSendersControllerProvider.notifier).removeUntrustedSender(sender.publicKey);
+                              ref
+                                  .read(
+                                    untrustedSendersControllerProvider.notifier,
+                                  )
+                                  .removeUntrustedSender(sender.publicKey);
                             },
                           ),
                         );
@@ -2416,7 +3054,13 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                   children: [
                     const Icon(Icons.map, color: Colors.orange),
                     const SizedBox(width: 8),
-                    const Text('Offline Maps', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    const Text(
+                      'Offline Maps',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 12),
@@ -2441,18 +3085,33 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                           context: context,
                           builder: (dialogContext) => AlertDialog(
                             title: const Text('Clear Offline Maps?'),
-                            content: const Text('This will delete all downloaded map tiles.'),
+                            content: const Text(
+                              'This will delete all downloaded map tiles.',
+                            ),
                             actions: [
-                              TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
+                              TextButton(
+                                onPressed: () => Navigator.pop(dialogContext),
+                                child: const Text('Cancel'),
+                              ),
                               FilledButton(
-                                style: FilledButton.styleFrom(backgroundColor: Colors.red),
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: Colors.red,
+                                ),
                                 onPressed: () async {
                                   Navigator.pop(dialogContext);
-                                  await ref.read(mapCacheServiceProvider).clearCache();
-                                  await ref.read(offlineRegionsProvider.notifier).clearRegions();
+                                  await ref
+                                      .read(mapCacheServiceProvider)
+                                      .clearCache();
+                                  await ref
+                                      .read(offlineRegionsProvider.notifier)
+                                      .clearRegions();
                                   _loadMapCacheSize();
                                   if (!context.mounted) return;
-                                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Offline maps cleared')));
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Offline maps cleared'),
+                                    ),
+                                  );
                                 },
                                 child: const Text('Clear'),
                               ),
@@ -2470,7 +3129,13 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                   children: [
                     const Icon(Icons.my_library_books, color: Colors.blue),
                     const SizedBox(width: 8),
-                    const Text('My Reports', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    const Text(
+                      'My Reports',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                     const Spacer(),
                     Chip(
                       label: Text('${myReports.length}'),
@@ -2491,7 +3156,12 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                       children: [
                         Icon(Icons.info_outline, color: Colors.grey),
                         SizedBox(width: 12),
-                        Expanded(child: Text('You have not made any reports yet.', style: TextStyle(color: Colors.grey))),
+                        Expanded(
+                          child: Text(
+                            'You have not made any reports yet.',
+                            style: TextStyle(color: Colors.grey),
+                          ),
+                        ),
                       ],
                     ),
                   )
@@ -2513,36 +3183,79 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                           child: ListTile(
                             leading: CircleAvatar(
                               backgroundColor: Colors.orange.shade100,
-                              child: const Icon(Icons.warning, color: Colors.orange),
+                              child: const Icon(
+                                Icons.warning,
+                                color: Colors.orange,
+                              ),
                             ),
-                            title: Text('Hazard: ${item.type}', style: const TextStyle(fontWeight: FontWeight.w600)),
+                            title: Text(
+                              'Hazard: ${item.type}',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                             subtitle: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 const SizedBox(height: 4),
-                                Text(item.description, maxLines: 2, overflow: TextOverflow.ellipsis),
-                                if (item.imageId != null && item.imageId!.isNotEmpty)
+                                Text(
+                                  item.description,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                if (item.imageId != null &&
+                                    item.imageId!.isNotEmpty)
                                   const Padding(
                                     padding: EdgeInsets.only(top: 4.0),
                                     child: Row(
                                       children: [
-                                        Icon(Icons.image, size: 12, color: Colors.grey),
+                                        Icon(
+                                          Icons.image,
+                                          size: 12,
+                                          color: Colors.grey,
+                                        ),
                                         SizedBox(width: 4),
-                                        Text('Image attached', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                                        Text(
+                                          'Image attached',
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            color: Colors.grey,
+                                          ),
+                                        ),
                                       ],
                                     ),
                                   ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  DateTime.fromMillisecondsSinceEpoch(item.timestamp).toString().substring(0, 16),
-                                  style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                                  DateTime.fromMillisecondsSinceEpoch(
+                                    item.timestamp,
+                                  ).toString().substring(0, 16),
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: Colors.grey.shade600,
+                                  ),
                                 ),
                               ],
                             ),
                             isThreeLine: true,
-                            trailing: IconButton(
-                              icon: const Icon(Icons.delete_outline, color: Colors.red),
-                              onPressed: () => _deleteMarker(item.id),
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.edit,
+                                    color: Colors.blue,
+                                  ),
+                                  onPressed: () => _editMarker(item),
+                                ),
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.delete_outline,
+                                    color: Colors.red,
+                                  ),
+                                  onPressed: () => _deleteMarker(item.id),
+                                ),
+                              ],
                             ),
                           ),
                         );
@@ -2557,25 +3270,57 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                           child: ListTile(
                             leading: CircleAvatar(
                               backgroundColor: Colors.blue.shade100,
-                              child: const Icon(Icons.campaign, color: Colors.blue),
+                              child: const Icon(
+                                Icons.campaign,
+                                color: Colors.blue,
+                              ),
                             ),
-                            title: Text('News: ${item.title}', style: const TextStyle(fontWeight: FontWeight.w600)),
+                            title: Text(
+                              'News: ${item.title}',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                             subtitle: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 const SizedBox(height: 4),
-                                Text(item.content, maxLines: 2, overflow: TextOverflow.ellipsis),
+                                Text(
+                                  item.content,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  DateTime.fromMillisecondsSinceEpoch(item.timestamp).toString().substring(0, 16),
-                                  style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                                  DateTime.fromMillisecondsSinceEpoch(
+                                    item.timestamp,
+                                  ).toString().substring(0, 16),
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: Colors.grey.shade600,
+                                  ),
                                 ),
                               ],
                             ),
                             isThreeLine: true,
-                            trailing: IconButton(
-                              icon: const Icon(Icons.delete_outline, color: Colors.red),
-                              onPressed: () => _deleteNews(item.id),
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.edit,
+                                    color: Colors.blue,
+                                  ),
+                                  onPressed: () => _editNews(item),
+                                ),
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.delete_outline,
+                                    color: Colors.red,
+                                  ),
+                                  onPressed: () => _deleteNews(item.id),
+                                ),
+                              ],
                             ),
                           ),
                         );
@@ -2590,25 +3335,57 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                           child: ListTile(
                             leading: CircleAvatar(
                               backgroundColor: Colors.purple.shade100,
-                              child: const Icon(Icons.format_shapes, color: Colors.purple),
+                              child: const Icon(
+                                Icons.format_shapes,
+                                color: Colors.purple,
+                              ),
                             ),
-                            title: Text('Area: ${item.type}', style: const TextStyle(fontWeight: FontWeight.w600)),
+                            title: Text(
+                              'Area: ${item.type}',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                             subtitle: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 const SizedBox(height: 4),
-                                Text(item.description, maxLines: 2, overflow: TextOverflow.ellipsis),
+                                Text(
+                                  item.description,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  DateTime.fromMillisecondsSinceEpoch(item.timestamp).toString().substring(0, 16),
-                                  style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                                  DateTime.fromMillisecondsSinceEpoch(
+                                    item.timestamp,
+                                  ).toString().substring(0, 16),
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: Colors.grey.shade600,
+                                  ),
                                 ),
                               ],
                             ),
                             isThreeLine: true,
-                            trailing: IconButton(
-                              icon: const Icon(Icons.delete_outline, color: Colors.red),
-                              onPressed: () => _deleteArea(item.id),
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.edit,
+                                    color: Colors.blue,
+                                  ),
+                                  onPressed: () => _editArea(item),
+                                ),
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.delete_outline,
+                                    color: Colors.red,
+                                  ),
+                                  onPressed: () => _deleteArea(item.id),
+                                ),
+                              ],
                             ),
                           ),
                         );
@@ -2727,7 +3504,8 @@ class SyncBottomSheet extends ConsumerWidget {
                                       : Colors.black87,
                                 ),
                               ),
-                              if (p2pState.isSyncing || p2pState.isConnecting) ...[
+                              if (p2pState.isSyncing ||
+                                  p2pState.isConnecting) ...[
                                 const SizedBox(height: 12),
                                 ClipRRect(
                                   borderRadius: BorderRadius.circular(4),
@@ -2737,7 +3515,7 @@ class SyncBottomSheet extends ConsumerWidget {
                                     minHeight: 6,
                                   ),
                                 ),
-                              ]
+                              ],
                             ],
                           ),
                         ),
