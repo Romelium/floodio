@@ -9,7 +9,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   Future<void> cleanupOldData() async {
     final cutoff = DateTime.now().subtract(const Duration(days: 7)).millisecondsSinceEpoch;
@@ -42,6 +42,9 @@ class AppDatabase extends _$AppDatabase {
         }
         if (from < 5) {
           await m.createTable(areas);
+        }
+        if (from < 6) {
+          await m.addColumn(hazardMarkers, hazardMarkers.imageId);
         }
       },
     );

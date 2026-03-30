@@ -11,6 +11,7 @@ class HazardMarkerEntity {
   final String senderId;
   final String? signature;
   final int trustTier;
+  final String? imageId;
 
   HazardMarkerEntity({
     required this.id,
@@ -22,6 +23,7 @@ class HazardMarkerEntity {
     required this.senderId,
     this.signature,
     required this.trustTier,
+    this.imageId,
   });
 }
 
@@ -36,6 +38,7 @@ class HazardMarkers extends Table {
   TextColumn get senderId => text()();
   TextColumn get signature => text().nullable()();
   IntColumn get trustTier => integer()();
+  TextColumn get imageId => text().nullable()();
 
   @override
   Set<Column> get primaryKey => {id};

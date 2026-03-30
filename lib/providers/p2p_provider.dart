@@ -490,7 +490,7 @@ class P2pService extends _$P2pService {
           onProgress: (progress) {
             _idleTicks = 0; // Reset idle timer during download
             if (progress.progressPercent % 10 < 1) {
-              state = state.copyWith(isSyncing: true, syncMessage: 'Downloading map: ${progress.progressPercent.toStringAsFixed(0)}%');
+              state = state.copyWith(isSyncing: true, syncMessage: 'Downloading file: ${progress.progressPercent.toStringAsFixed(0)}%');
             }
           }
         );
@@ -513,6 +513,8 @@ class P2pService extends _$P2pService {
               }
             }
           }
+        } else if (file.info.name.startsWith('img_')) {
+          state = state.copyWith(isSyncing: false, syncMessage: 'Image downloaded.');
         }
       } else if (file.state == ReceivableFileState.downloading) {
         isDownloadingAny = true;
@@ -607,6 +609,7 @@ class P2pService extends _$P2pService {
           senderId: h.senderId,
           signature: h.signature ?? '',
           trustTier: h.trustTier,
+          imageId: h.imageId ?? '',
         ));
       }
 
@@ -726,7 +729,7 @@ class P2pService extends _$P2pService {
       final seenIds = <SeenMessageIdsCompanion>[];
       for (final m in payload.markers) {
         if (deletedIds.contains(m.id)) continue;
-        final payloadToSign = utf8.encode('${m.id}${m.type}${m.timestamp}');
+        final payloadToSign = utf8.encode('${m.id}${m.type}${m.timestamp}${m.imageId}');
         final trustTier = await crypto.verifyAndGetTrustTier(
           data: payloadToSign,
           signatureStr: m.signature,
@@ -746,6 +749,7 @@ class P2pService extends _$P2pService {
             senderId: m.senderId,
             signature: Value(m.signature),
             trustTier: trustTier,
+            imageId: Value(m.imageId.isEmpty ? null : m.imageId),
           ));
           seenIds.add(SeenMessageIdsCompanion.insert(
             messageId: m.id,
@@ -901,6 +905,18 @@ class P2pService extends _$P2pService {
       }
     } catch (e) {
       print("Error broadcasting text: $e");
+    }
+  }
+
+  Future<void> broadcastFile(File file) async {
+    try {
+      if (_host != null && state.hostState?.isActive == true) {
+        await _host!.broadcastFile(file);
+      } else if (_client != null && state.clientState?.isActive == true) {
+        await _client!.broadcastFile(file);
+      }
+    } catch (e) {
+      print("Error broadcasting file: $e");
     }
   }
 }

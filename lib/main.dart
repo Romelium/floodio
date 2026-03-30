@@ -10,6 +10,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -24,8 +25,9 @@ import 'providers/cached_tile_provider.dart';
 import 'providers/database_provider.dart';
 import 'providers/hazard_marker_provider.dart';
 import 'providers/map_downloader_provider.dart';
-import 'providers/offline_regions_provider.dart';
 import 'providers/news_item_provider.dart';
+import 'providers/offline_regions_provider.dart';
+import 'providers/p2p_provider.dart';
 import 'providers/trusted_sender_provider.dart';
 import 'providers/ui_p2p_provider.dart';
 import 'providers/untrusted_sender_provider.dart';
@@ -33,6 +35,53 @@ import 'providers/user_profile_provider.dart';
 import 'services/background_service.dart';
 import 'services/map_cache_service.dart';
 import 'utils/permission_utils.dart';
+
+class LocalImageDisplay extends StatefulWidget {
+  final String imageId;
+  const LocalImageDisplay({super.key, required this.imageId});
+
+  @override
+  State<LocalImageDisplay> createState() => _LocalImageDisplayState();
+}
+
+class _LocalImageDisplayState extends State<LocalImageDisplay> {
+  File? _imageFile;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadImage();
+  }
+
+  Future<void> _loadImage() async {
+    final dir = await getApplicationDocumentsDirectory();
+    final file = File('${dir.path}/${widget.imageId}');
+    if (await file.exists()) {
+      if (mounted) {
+        setState(() {
+          _imageFile = file;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_imageFile == null) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(top: 8.0),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: Image.file(
+          _imageFile!,
+          height: 150,
+          width: double.infinity,
+          fit: BoxFit.cover,
+        ),
+      ),
+    );
+  }
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -579,6 +628,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   void _showAddHazardDialog(LatLng point) {
     String selectedType = 'Flood';
     final descController = TextEditingController(text: 'Water level rising');
+    XFile? selectedImage;
 
     showDialog(
       context: context,
@@ -594,49 +644,82 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               Text('Report Hazard'),
             ],
           ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              DropdownButtonFormField<String>(
-                initialValue: selectedType,
-                decoration: InputDecoration(
-                  labelText: 'Hazard Type',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                DropdownButtonFormField<String>(
+                  initialValue: selectedType,
+                  decoration: InputDecoration(
+                    labelText: 'Hazard Type',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 12,
+                    ),
                   ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 12,
-                  ),
+                  items: ['Flood', 'Fire', 'Roadblock', 'Medical', 'Other']
+                      .map(
+                        (type) =>
+                            DropdownMenuItem(value: type, child: Text(type)),
+                      )
+                      .toList(),
+                  onChanged: (val) {
+                    if (val != null) {
+                      setState(() => selectedType = val);
+                    }
+                  },
                 ),
-                items: ['Flood', 'Fire', 'Roadblock', 'Medical', 'Other']
-                    .map(
-                      (type) =>
-                          DropdownMenuItem(value: type, child: Text(type)),
-                    )
-                    .toList(),
-                onChanged: (val) {
-                  if (val != null) {
-                    setState(() => selectedType = val);
-                  }
-                },
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: descController,
-                decoration: InputDecoration(
-                  labelText: 'Description',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: descController,
+                  decoration: InputDecoration(
+                    labelText: 'Description',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 12,
+                    ),
                   ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 12,
-                  ),
+                  maxLines: 2,
                 ),
-                maxLines: 2,
-              ),
-            ],
+                const SizedBox(height: 16),
+                if (selectedImage != null) ...[
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Image.file(
+                      File(selectedImage!.path),
+                      height: 120,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                  TextButton.icon(
+                    onPressed: () => setState(() => selectedImage = null),
+                    icon: const Icon(Icons.delete, color: Colors.red),
+                    label: const Text('Remove Image', style: TextStyle(color: Colors.red)),
+                  ),
+                ] else
+                  OutlinedButton.icon(
+                    onPressed: () async {
+                      final picker = ImagePicker();
+                      final image = await picker.pickImage(
+                        source: ImageSource.camera,
+                        imageQuality: 70,
+                      );
+                      if (image != null) {
+                        setState(() => selectedImage = image);
+                      }
+                    },
+                    icon: const Icon(Icons.camera_alt),
+                    label: const Text('Attach Photo'),
+                  ),
+              ],
+            ),
           ),
           actions: [
             TextButton(
@@ -657,7 +740,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 final timestamp = DateTime.now().millisecondsSinceEpoch;
                 final senderId = await cryptoService.getPublicKeyString();
 
-                final payloadToSign = utf8.encode('$id$type$timestamp');
+                String? imageId;
+                if (selectedImage != null) {
+                  imageId = 'img_$id.jpg';
+                  final dir = await getApplicationDocumentsDirectory();
+                  final savedImage = File('${dir.path}/$imageId');
+                  await File(selectedImage!.path).copy(savedImage.path);
+                  
+                  ref.read(p2pServiceProvider.notifier).broadcastFile(savedImage);
+                }
+
+                final payloadToSign = utf8.encode('$id$type$timestamp${imageId ?? ""}');
                 final signature = await cryptoService.signData(payloadToSign);
                 final untrustedSendersAsync = ref.read(
                   untrustedSendersControllerProvider,
@@ -692,6 +785,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   senderId: senderId,
                   signature: signature,
                   trustTier: trustTier,
+                  imageId: imageId,
                 );
                 await ref
                     .read(hazardMarkersControllerProvider.notifier)
@@ -1131,6 +1225,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                 m.description,
                                 style: const TextStyle(fontSize: 16),
                               ),
+                              if (m.imageId != null && m.imageId!.isNotEmpty)
+                                LocalImageDisplay(imageId: m.imageId!),
                               const SizedBox(height: 8),
                               Text(
                                 'Reported: ${_formatTimestamp(m.timestamp)}',
@@ -1358,6 +1454,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       item.description,
                       style: const TextStyle(fontSize: 14, height: 1.4),
                     ),
+                    if (item.imageId != null && item.imageId!.isNotEmpty)
+                      LocalImageDisplay(imageId: item.imageId!),
                     Builder(
                       builder: (context) {
                         final profile = _getProfile(item.senderId, profiles);
@@ -2423,6 +2521,17 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                               children: [
                                 const SizedBox(height: 4),
                                 Text(item.description, maxLines: 2, overflow: TextOverflow.ellipsis),
+                                if (item.imageId != null && item.imageId!.isNotEmpty)
+                                  const Padding(
+                                    padding: EdgeInsets.only(top: 4.0),
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.image, size: 12, color: Colors.grey),
+                                        SizedBox(width: 4),
+                                        Text('Image attached', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                                      ],
+                                    ),
+                                  ),
                                 const SizedBox(height: 4),
                                 Text(
                                   DateTime.fromMillisecondsSinceEpoch(item.timestamp).toString().substring(0, 16),

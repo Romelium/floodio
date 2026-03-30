@@ -28,6 +28,7 @@ message HazardMarker {
   string sender_id = 7;
   string signature = 8;
   int32 trust_tier = 9;
+  string image_id = 10;
 }
 
 message NewsItem {
