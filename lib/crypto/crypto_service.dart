@@ -93,6 +93,7 @@ class CryptoService extends _$CryptoService {
 
   Future<void> _initKeys() async {
     final prefs = await SharedPreferences.getInstance();
+    await prefs.reload();
     final privateKeyStr = prefs.getString('user_private_key');
     
     final (userKeyPairData, serverPublicKey, newPrivateKeyStr) = await _runInitKeys(privateKeyStr);

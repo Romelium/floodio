@@ -496,20 +496,21 @@ class P2pService extends _$P2pService {
         );
       } else if (file.state == ReceivableFileState.completed) {
         if (file.info.name.endsWith('.fmap')) {
-          state = state.copyWith(isSyncing: true, syncMessage: 'Unpacking map...');
           final dir = await getApplicationDocumentsDirectory();
           final downloadedFile = File('${dir.path}/${file.info.name}');
-          try {
-            final mapCache = ref.read(mapCacheServiceProvider);
-            await mapCache.unpackMap(downloadedFile);
-            state = state.copyWith(isSyncing: false, syncMessage: 'Map updated successfully.');
-            await downloadedFile.delete();
-          } catch (e) {
-            print("Error unpacking map: $e");
-            state = state.copyWith(isSyncing: false, syncMessage: 'Failed to unpack map.');
-          } finally {
-            if (await downloadedFile.exists()) {
-              await downloadedFile.delete();
+          if (await downloadedFile.exists()) {
+            state = state.copyWith(isSyncing: true, syncMessage: 'Unpacking map...');
+            try {
+              final mapCache = ref.read(mapCacheServiceProvider);
+              await mapCache.unpackMap(downloadedFile);
+              state = state.copyWith(isSyncing: false, syncMessage: 'Map updated successfully.');
+            } catch (e) {
+              print("Error unpacking map: $e");
+              state = state.copyWith(isSyncing: false, syncMessage: 'Failed to unpack map.');
+            } finally {
+              if (await downloadedFile.exists()) {
+                await downloadedFile.delete();
+              }
             }
           }
         }
@@ -518,7 +519,9 @@ class P2pService extends _$P2pService {
       }
     }
     
-    if (!isDownloadingAny && state.isSyncing && state.syncMessage?.startsWith('Downloading') == true) {
+    if (isDownloadingAny) {
+      state = state.copyWith(isSyncing: true);
+    } else if (!isDownloadingAny && state.isSyncing && state.syncMessage?.startsWith('Downloading') == true) {
        state = state.copyWith(isSyncing: false, syncMessage: 'Downloads complete.');
     }
   }

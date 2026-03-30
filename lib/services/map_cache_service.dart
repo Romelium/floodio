@@ -184,6 +184,7 @@ class MapCacheService {
   
   Future<int> getLocalMapVersion() async {
     final prefs = await SharedPreferences.getInstance();
+    await prefs.reload();
     return prefs.getInt('local_map_version') ?? 0;
   }
 

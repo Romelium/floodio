@@ -121,6 +121,7 @@ class _InitializerScreenState extends State<InitializerScreen> {
 
   Future<void> _checkOnboarding() async {
     final prefs = await SharedPreferences.getInstance();
+    await prefs.reload();
     final name = prefs.getString('user_name');
     if (name != null && name.isNotEmpty) {
       _needsOnboarding = false;
@@ -1391,6 +1392,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
 
   Future<void> _loadProfile() async {
     final prefs = await SharedPreferences.getInstance();
+    await prefs.reload();
     final name = prefs.getString('user_name') ?? 'Unknown';
     final contact = prefs.getString('user_contact') ?? '';
     
