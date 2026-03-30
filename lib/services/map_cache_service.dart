@@ -210,5 +210,6 @@ class MapCacheService {
     }
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('local_map_version');
+    await prefs.remove('offline_regions');
   }
 }

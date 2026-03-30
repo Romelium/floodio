@@ -24,6 +24,7 @@ import 'providers/cached_tile_provider.dart';
 import 'providers/database_provider.dart';
 import 'providers/hazard_marker_provider.dart';
 import 'providers/map_downloader_provider.dart';
+import 'providers/offline_regions_provider.dart';
 import 'providers/news_item_provider.dart';
 import 'providers/trusted_sender_provider.dart';
 import 'providers/ui_p2p_provider.dart';
@@ -248,6 +249,107 @@ class HomeScreen extends ConsumerStatefulWidget {
 
   @override
   ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class DownloadMapDialog extends ConsumerStatefulWidget {
+  final LatLngBounds bounds;
+  final int currentZoom;
+
+  const DownloadMapDialog({
+    super.key,
+    required this.bounds,
+    required this.currentZoom,
+  });
+
+  @override
+  ConsumerState<DownloadMapDialog> createState() => _DownloadMapDialogState();
+}
+
+class _DownloadMapDialogState extends ConsumerState<DownloadMapDialog> {
+  late int _maxZoom;
+
+  @override
+  void initState() {
+    super.initState();
+    _maxZoom = max(widget.currentZoom, min(widget.currentZoom + 2, 18));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final downloader = ref.read(mapDownloaderProvider.notifier);
+    final tileCount = downloader.estimateTileCount(
+      widget.bounds,
+      widget.currentZoom,
+      _maxZoom,
+    );
+    final estimatedSizeMB = (tileCount * 0.015); // rough estimate: 15KB per tile
+
+    return AlertDialog(
+      title: const Text('Download Offline Map'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Download the currently visible area for offline use.'),
+          const SizedBox(height: 16),
+          Text('Current Zoom: ${widget.currentZoom}'),
+          Row(
+            children: [
+              const Text('Max Zoom: '),
+              Expanded(
+                child: widget.currentZoom >= 18
+                    ? const SizedBox.shrink()
+                    : Slider(
+                        value: _maxZoom.toDouble(),
+                        min: widget.currentZoom.toDouble(),
+                        max: max(18.0, widget.currentZoom.toDouble()),
+                        divisions: max(1, 18 - widget.currentZoom),
+                        label: _maxZoom.toString(),
+                        onChanged: (val) {
+                          setState(() {
+                            _maxZoom = val.toInt();
+                          });
+                        },
+                      ),
+              ),
+              Text(_maxZoom.toString()),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text('Estimated Tiles: $tileCount'),
+          Text('Estimated Size: ~${estimatedSizeMB.toStringAsFixed(1)} MB'),
+          if (tileCount > 10000)
+            const Padding(
+              padding: EdgeInsets.only(top: 8.0),
+              child: Text(
+                'Warning: Large download. This may take a long time and consume significant storage.',
+                style: TextStyle(color: Colors.red, fontSize: 12),
+              ),
+            ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: tileCount > 50000
+              ? null
+              : () {
+                  Navigator.pop(context);
+                  downloader.downloadRegion(
+                    widget.bounds,
+                    widget.currentZoom,
+                    _maxZoom,
+                    'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                  );
+                },
+          child: const Text('Download'),
+        ),
+      ],
+    );
+  }
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
@@ -674,34 +776,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   void _showDownloadMapDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Download Offline Map'),
-        content: const Text('Download the currently visible area for offline use? This may take a moment.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () {
-              Navigator.pop(context);
-              final bounds = _mapController.camera.visibleBounds;
-              final currentZoom = _mapController.camera.zoom.floor();
-              final maxZoom = min(currentZoom + 2, 16);
-              ref.read(mapDownloaderProvider.notifier).downloadRegion(
-                bounds,
-                currentZoom,
-                maxZoom,
-                'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-              );
-            },
-            child: const Text('Download'),
-          ),
-        ],
-      ),
-    );
+    try {
+      final bounds = _mapController.camera.visibleBounds;
+      final currentZoom = _mapController.camera.zoom.floor();
+      
+      showDialog(
+        context: context,
+        builder: (context) => DownloadMapDialog(
+          bounds: bounds,
+          currentZoom: currentZoom,
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please wait for the map to load first.')),
+      );
+    }
   }
 
   Future<void> _shareApk() async {
@@ -854,7 +944,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
   }
 
-  Widget _buildMap(AsyncValue<List<HazardMarkerEntity>> markersAsync, AsyncValue<List<AreaEntity>> areasAsync, List<UserProfileEntity> profiles) {
+  Widget _buildMap(
+    AsyncValue<List<HazardMarkerEntity>> markersAsync,
+    AsyncValue<List<AreaEntity>> areasAsync,
+    List<UserProfileEntity> profiles,
+    List<OfflineRegion> offlineRegions,
+  ) {
     final markers = markersAsync.value ?? [];
     final areas = areasAsync.value ?? [];
 
@@ -881,6 +976,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ),
         PolygonLayer(
           polygons: [
+            ...offlineRegions.map((r) => Polygon(
+                  points: [
+                    LatLng(r.bounds.north, r.bounds.west),
+                    LatLng(r.bounds.north, r.bounds.east),
+                    LatLng(r.bounds.south, r.bounds.east),
+                    LatLng(r.bounds.south, r.bounds.west),
+                  ],
+                  color: Colors.teal.withValues(alpha: 0.15),
+                  borderColor: Colors.teal,
+                  borderStrokeWidth: 2,
+                )),
             ...areas.map((a) {
               final points = a.coordinates.map((c) => LatLng(c['lat']!, c['lng']!)).toList();
               final color = a.type.toLowerCase().contains('safe') || a.type.toLowerCase().contains('evacuation')
@@ -1526,15 +1632,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final areasAsync = ref.watch(areasControllerProvider);
     final profilesAsync = ref.watch(userProfilesControllerProvider);
     final cryptoState = ref.watch(cryptoServiceProvider);
+    final offlineRegionsAsync = ref.watch(offlineRegionsProvider);
     final downloadProgress = ref.watch(mapDownloaderProvider);
     final profiles = profilesAsync.value ?? [];
+    final offlineRegions = offlineRegionsAsync.value ?? [];
 
     return Listener(
       behavior: HitTestBehavior.translucent,
       onPointerDown: _handlePointerDown,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Floodio PoC'),
+          title: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              const Text('Floodio PoC'),
+              if (downloadProgress.isDownloading)
+                Text(
+                  'Downloading map: ${(downloadProgress.percentage * 100).toStringAsFixed(1)}%',
+                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.normal),
+                ),
+            ],
+          ),
           bottom: downloadProgress.isDownloading
               ? PreferredSize(
                   preferredSize: const Size.fromHeight(4.0),
@@ -1547,11 +1665,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               tooltip: 'Share App (APK)',
               onPressed: _shareApk,
             ),
-            IconButton(
-              icon: const Icon(Icons.download),
-              tooltip: 'Download Offline Map',
-              onPressed: _showDownloadMapDialog,
-            ),
+            if (downloadProgress.isDownloading)
+              IconButton(
+                icon: const Icon(Icons.cancel),
+                tooltip: 'Cancel Download',
+                onPressed: () {
+                  ref.read(mapDownloaderProvider.notifier).cancelDownload();
+                },
+              )
+            else
+              IconButton(
+                icon: const Icon(Icons.download),
+                tooltip: 'Download Offline Map',
+                onPressed: _showDownloadMapDialog,
+              ),
             Consumer(
               builder: (context, ref, child) {
                 final p2pState = ref.watch(uiP2pServiceProvider);
@@ -1601,7 +1728,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         body: IndexedStack(
           index: _currentIndex,
           children: [
-            _buildMap(markersAsync, areasAsync, profiles),
+            _buildMap(markersAsync, areasAsync, profiles, offlineRegions),
             _buildFeed(markersAsync, newsAsync, areasAsync, profiles),
             const ProfileTab(),
           ],
@@ -2131,6 +2258,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                                 onPressed: () async {
                                   Navigator.pop(dialogContext);
                                   await ref.read(mapCacheServiceProvider).clearCache();
+                                  await ref.read(offlineRegionsProvider.notifier).clearRegions();
                                   _loadMapCacheSize();
                                   if (!context.mounted) return;
                                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Offline maps cleared')));
