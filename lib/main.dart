@@ -38,6 +38,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final connection = await getSharedConnection();
   final db = AppDatabase(connection);
+  await db.cleanupOldData();
   await initializeBackgroundService();
   runApp(ProviderScope(
     overrides: [
@@ -502,6 +503,72 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   void _blockSender(String senderId) {
     ref.read(untrustedSendersControllerProvider.notifier).addUntrustedSender(senderId);
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Sender blocked. Their reports have been removed.')));
+  }
+
+  void _resolveMarker(String id) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Resolve Hazard?'),
+        content: const Text('Marking this hazard as resolved will remove it from the map for you and nearby users upon sync.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.green),
+            onPressed: () {
+              Navigator.pop(context);
+              ref.read(hazardMarkersControllerProvider.notifier).deleteMarker(id);
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Hazard marked as resolved.')));
+            },
+            child: const Text('Resolve'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _resolveArea(String id) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Resolve Area?'),
+        content: const Text('Marking this area as resolved will remove it from the map for you and nearby users upon sync.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.green),
+            onPressed: () {
+              Navigator.pop(context);
+              ref.read(areasControllerProvider.notifier).deleteArea(id);
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Area marked as resolved.')));
+            },
+            child: const Text('Resolve'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _dismissNews(String id) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Dismiss News?'),
+        content: const Text('This will remove the news item from your feed and for nearby users upon sync.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.green),
+            onPressed: () {
+              Navigator.pop(context);
+              ref.read(newsItemsControllerProvider.notifier).deleteNewsItem(id);
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('News dismissed.')));
+            },
+            child: const Text('Dismiss'),
+          ),
+        ],
+      ),
+    );
   }
 
   String _formatTimestamp(int timestamp) {
@@ -1099,6 +1166,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             ],
                           ),
                           actions: [
+                            TextButton.icon(
+                              onPressed: () {
+                                Navigator.pop(context);
+                                _resolveMarker(m.id);
+                              },
+                              icon: const Icon(Icons.check_circle_outline, size: 18),
+                              label: const Text('Resolve'),
+                              style: TextButton.styleFrom(
+                                foregroundColor: Colors.green,
+                              ),
+                            ),
                             if (m.trustTier == 4 || m.trustTier == 3)
                               TextButton.icon(
                                 onPressed: () {
@@ -1118,7 +1196,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                   _markAsTrusted(m.senderId);
                                 },
                                 icon: const Icon(Icons.verified_user, size: 18),
-                                label: const Text('Trust Sender'),
+                                label: const Text('Trust'),
                                 style: TextButton.styleFrom(
                                   foregroundColor: Colors.green,
                                 ),
@@ -1302,36 +1380,41 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         }
                       },
                     ),
-                    if (item.trustTier == 4 || item.trustTier == 3) ...[
-                      const SizedBox(height: 12),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
+                    const SizedBox(height: 12),
+                    Wrap(
+                      alignment: WrapAlignment.end,
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        TextButton.icon(
+                          onPressed: () => _resolveMarker(item.id),
+                          icon: const Icon(Icons.check_circle_outline, size: 16),
+                          label: const Text('Resolve'),
+                          style: TextButton.styleFrom(foregroundColor: Colors.green),
+                        ),
+                        if (item.trustTier == 4 || item.trustTier == 3)
                           TextButton.icon(
                             onPressed: () => _blockSender(item.senderId),
                             icon: const Icon(Icons.block, size: 16),
                             label: const Text('Block'),
                             style: TextButton.styleFrom(foregroundColor: Colors.red),
                           ),
-                          if (item.trustTier == 4) ...[
-                            const SizedBox(width: 8),
-                            FilledButton.tonalIcon(
-                              onPressed: () => _markAsTrusted(item.senderId),
-                              icon: const Icon(Icons.verified_user, size: 16),
-                              label: const Text('Trust Sender'),
-                              style: FilledButton.styleFrom(
-                                foregroundColor: Colors.green.shade700,
-                                backgroundColor: Colors.green.shade50,
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 8,
-                                ),
+                        if (item.trustTier == 4)
+                          FilledButton.tonalIcon(
+                            onPressed: () => _markAsTrusted(item.senderId),
+                            icon: const Icon(Icons.verified_user, size: 16),
+                            label: const Text('Trust'),
+                            style: FilledButton.styleFrom(
+                              foregroundColor: Colors.green.shade700,
+                              backgroundColor: Colors.green.shade50,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
                               ),
                             ),
-                          ],
-                        ],
-                      ),
-                    ],
+                          ),
+                      ],
+                    ),
                   ],
                 ),
               ),
@@ -1414,36 +1497,41 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       }
                     },
                   ),
-                  if (item.trustTier == 4 || item.trustTier == 3) ...[
-                    const SizedBox(height: 12),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
+                  const SizedBox(height: 12),
+                  Wrap(
+                    alignment: WrapAlignment.end,
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      TextButton.icon(
+                        onPressed: () => _dismissNews(item.id),
+                        icon: const Icon(Icons.clear, size: 16),
+                        label: const Text('Dismiss'),
+                        style: TextButton.styleFrom(foregroundColor: Colors.grey),
+                      ),
+                      if (item.trustTier == 4 || item.trustTier == 3)
                         TextButton.icon(
                           onPressed: () => _blockSender(item.senderId),
                           icon: const Icon(Icons.block, size: 16),
                           label: const Text('Block'),
                           style: TextButton.styleFrom(foregroundColor: Colors.red),
                         ),
-                        if (item.trustTier == 4) ...[
-                          const SizedBox(width: 8),
-                          FilledButton.tonalIcon(
-                            onPressed: () => _markAsTrusted(item.senderId),
-                            icon: const Icon(Icons.verified_user, size: 16),
-                            label: const Text('Trust Sender'),
-                            style: FilledButton.styleFrom(
-                              foregroundColor: Colors.green.shade700,
-                              backgroundColor: Colors.green.shade50,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 8,
-                              ),
+                      if (item.trustTier == 4)
+                        FilledButton.tonalIcon(
+                          onPressed: () => _markAsTrusted(item.senderId),
+                          icon: const Icon(Icons.verified_user, size: 16),
+                          label: const Text('Trust'),
+                          style: FilledButton.styleFrom(
+                            foregroundColor: Colors.green.shade700,
+                            backgroundColor: Colors.green.shade50,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
                             ),
                           ),
-                        ],
-                      ],
-                    ),
-                  ],
+                        ),
+                    ],
+                  ),
                 ],
               ),
             ),
@@ -1539,36 +1627,41 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         }
                       },
                     ),
-                    if (item.trustTier == 4 || item.trustTier == 3) ...[
-                      const SizedBox(height: 12),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
+                    const SizedBox(height: 12),
+                    Wrap(
+                      alignment: WrapAlignment.end,
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        TextButton.icon(
+                          onPressed: () => _resolveArea(item.id),
+                          icon: const Icon(Icons.check_circle_outline, size: 16),
+                          label: const Text('Resolve'),
+                          style: TextButton.styleFrom(foregroundColor: Colors.green),
+                        ),
+                        if (item.trustTier == 4 || item.trustTier == 3)
                           TextButton.icon(
                             onPressed: () => _blockSender(item.senderId),
                             icon: const Icon(Icons.block, size: 16),
                             label: const Text('Block'),
                             style: TextButton.styleFrom(foregroundColor: Colors.red),
                           ),
-                          if (item.trustTier == 4) ...[
-                            const SizedBox(width: 8),
-                            FilledButton.tonalIcon(
-                              onPressed: () => _markAsTrusted(item.senderId),
-                              icon: const Icon(Icons.verified_user, size: 16),
-                              label: const Text('Trust Sender'),
-                              style: FilledButton.styleFrom(
-                                foregroundColor: Colors.green.shade700,
-                                backgroundColor: Colors.green.shade50,
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 8,
-                                ),
+                        if (item.trustTier == 4)
+                          FilledButton.tonalIcon(
+                            onPressed: () => _markAsTrusted(item.senderId),
+                            icon: const Icon(Icons.verified_user, size: 16),
+                            label: const Text('Trust'),
+                            style: FilledButton.styleFrom(
+                              foregroundColor: Colors.green.shade700,
+                              backgroundColor: Colors.green.shade50,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
                               ),
                             ),
-                          ],
-                        ],
-                      ),
-                    ],
+                          ),
+                      ],
+                    ),
                   ],
                 ),
               ),

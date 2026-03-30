@@ -11,6 +11,17 @@ class AppDatabase extends _$AppDatabase {
   @override
   int get schemaVersion => 5;
 
+  Future<void> cleanupOldData() async {
+    final cutoff = DateTime.now().subtract(const Duration(days: 7)).millisecondsSinceEpoch;
+    await transaction(() async {
+      await (delete(hazardMarkers)..where((t) => t.timestamp.isSmallerThanValue(cutoff))).go();
+      await (delete(newsItems)..where((t) => t.timestamp.isSmallerThanValue(cutoff))).go();
+      await (delete(areas)..where((t) => t.timestamp.isSmallerThanValue(cutoff))).go();
+      await (delete(deletedItems)..where((t) => t.timestamp.isSmallerThanValue(cutoff))).go();
+      await (delete(seenMessageIds)..where((t) => t.timestamp.isSmallerThanValue(cutoff))).go();
+    });
+  }
+
   @override
   MigrationStrategy get migration {
     return MigrationStrategy(
