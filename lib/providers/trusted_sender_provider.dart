@@ -33,6 +33,10 @@ class TrustedSendersController extends _$TrustedSendersController {
       // Update existing news items
       await (db.update(db.newsItems)..where((t) => t.senderId.equals(publicKey)))
           .write(const NewsItemsCompanion(trustTier: Value(3)));
+
+      // Update existing areas
+      await (db.update(db.areas)..where((t) => t.senderId.equals(publicKey)))
+          .write(const AreasCompanion(trustTier: Value(3)));
     });
   }
 
@@ -48,6 +52,10 @@ class TrustedSendersController extends _$TrustedSendersController {
       // Downgrade existing news items
       await (db.update(db.newsItems)..where((t) => t.senderId.equals(publicKey)))
           .write(const NewsItemsCompanion(trustTier: Value(4)));
+
+      // Downgrade existing areas
+      await (db.update(db.areas)..where((t) => t.senderId.equals(publicKey)))
+          .write(const AreasCompanion(trustTier: Value(4)));
     });
   }
 }

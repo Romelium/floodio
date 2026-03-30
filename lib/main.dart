@@ -19,14 +19,15 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'crypto/crypto_service.dart';
 import 'database/connection.dart';
 import 'database/tables.dart';
+import 'providers/area_provider.dart';
 import 'providers/cached_tile_provider.dart';
 import 'providers/database_provider.dart';
 import 'providers/hazard_marker_provider.dart';
 import 'providers/map_downloader_provider.dart';
 import 'providers/news_item_provider.dart';
 import 'providers/trusted_sender_provider.dart';
-import 'providers/untrusted_sender_provider.dart';
 import 'providers/ui_p2p_provider.dart';
+import 'providers/untrusted_sender_provider.dart';
 import 'providers/user_profile_provider.dart';
 import 'services/background_service.dart';
 import 'services/map_cache_service.dart';
@@ -254,6 +255,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   DateTime? _lastTapTime;
   int _currentIndex = 0;
   final MapController _mapController = MapController();
+  bool _isDrawingArea = false;
+  final List<LatLng> _currentAreaPoints = [];
 
   @override
   void initState() {
@@ -338,6 +341,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     await db.delete(db.trustedSenders).go();
                     await db.delete(db.untrustedSenders).go();
                     await db.delete(db.userProfiles).go();
+                    await db.delete(db.areas).go();
                   });
                   final prefs = await SharedPreferences.getInstance();
                   await prefs.remove('user_name');
@@ -375,13 +379,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   IconData _getHazardIcon(String type) {
     switch (type.toLowerCase()) {
       case 'flood':
+      case 'flooded area':
         return Icons.water;
       case 'fire':
+      case 'fire zone':
         return Icons.local_fire_department;
       case 'roadblock':
         return Icons.remove_road;
       case 'medical':
         return Icons.medical_services;
+      case 'evacuation zone':
+        return Icons.directions_run;
+      case 'safe zone':
+        return Icons.health_and_safety;
       default:
         return Icons.warning;
     }
@@ -517,6 +527,142 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 await ref
                     .read(hazardMarkersControllerProvider.notifier)
                     .addMarker(newMarker);
+              },
+              icon: const Icon(Icons.send, size: 18),
+              label: const Text('Report'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showAddAreaDialog() {
+    String selectedType = 'Flooded Area';
+    final descController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: const Row(
+            children: [
+              Icon(Icons.format_shapes, color: Colors.purple),
+              SizedBox(width: 8),
+              Text('Report Area'),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              DropdownButtonFormField<String>(
+                initialValue: selectedType,
+                decoration: InputDecoration(
+                  labelText: 'Area Type',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 12,
+                  ),
+                ),
+                items: ['Flooded Area', 'Evacuation Zone', 'Safe Zone', 'Fire Zone', 'Other']
+                    .map(
+                      (type) =>
+                          DropdownMenuItem(value: type, child: Text(type)),
+                    )
+                    .toList(),
+                onChanged: (val) {
+                  if (val != null) {
+                    setState(() => selectedType = val);
+                  }
+                },
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: descController,
+                decoration: InputDecoration(
+                  labelText: 'Description',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 12,
+                  ),
+                ),
+                maxLines: 2,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            FilledButton.icon(
+              onPressed: () async {
+                Navigator.pop(context);
+                final cryptoService = ref.read(cryptoServiceProvider.notifier);
+                final trustedSendersAsync = ref.read(
+                  trustedSendersControllerProvider,
+                );
+
+                final id = DateTime.now().millisecondsSinceEpoch.toString();
+                final type = selectedType;
+                final description = descController.text;
+                final timestamp = DateTime.now().millisecondsSinceEpoch;
+                final senderId = await cryptoService.getPublicKeyString();
+
+                final payloadToSign = utf8.encode('$id$type$timestamp');
+                final signature = await cryptoService.signData(payloadToSign);
+                final untrustedSendersAsync = ref.read(
+                  untrustedSendersControllerProvider,
+                );
+
+                final trustedKeys =
+                    trustedSendersAsync.value
+                        ?.map((e) => e.publicKey)
+                        .toList() ??
+                    [];
+                final untrustedKeys =
+                    untrustedSendersAsync.value
+                        ?.map((e) => e.publicKey)
+                        .toList() ??
+                    [];
+
+                final trustTier = await cryptoService.verifyAndGetTrustTier(
+                  data: payloadToSign,
+                  signatureStr: signature,
+                  senderPublicKeyStr: senderId,
+                  trustedPublicKeys: trustedKeys,
+                  untrustedPublicKeys: untrustedKeys,
+                );
+
+                final coords = _currentAreaPoints.map((p) => {'lat': p.latitude, 'lng': p.longitude}).toList();
+
+                final newArea = AreaEntity(
+                  id: id,
+                  coordinates: coords,
+                  type: type,
+                  description: description,
+                  timestamp: timestamp,
+                  senderId: senderId,
+                  signature: signature,
+                  trustTier: trustTier,
+                );
+                await ref
+                    .read(areasControllerProvider.notifier)
+                    .addArea(newArea);
+
+                this.setState(() {
+                  _isDrawingArea = false;
+                  _currentAreaPoints.clear();
+                });
               },
               icon: const Icon(Icons.send, size: 18),
               label: const Text('Report'),
@@ -708,8 +854,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
   }
 
-  Widget _buildMap(AsyncValue<List<HazardMarkerEntity>> markersAsync, List<UserProfileEntity> profiles) {
+  Widget _buildMap(AsyncValue<List<HazardMarkerEntity>> markersAsync, AsyncValue<List<AreaEntity>> areasAsync, List<UserProfileEntity> profiles) {
     final markers = markersAsync.value ?? [];
+    final areas = areasAsync.value ?? [];
 
     return FlutterMap(
       mapController: _mapController,
@@ -717,7 +864,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         initialCenter: const LatLng(37.7749, -122.4194),
         initialZoom: 13.0,
         onTap: (tapPosition, point) {
-          _showAddHazardDialog(point);
+          if (_isDrawingArea) {
+            setState(() {
+              _currentAreaPoints.add(point);
+            });
+          } else {
+            _showAddHazardDialog(point);
+          }
         },
       ),
       children: [
@@ -725,6 +878,29 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
           userAgentPackageName: 'com.example.floodio',
           tileProvider: CachedTileProvider(ref.read(mapCacheServiceProvider)),
+        ),
+        PolygonLayer(
+          polygons: [
+            ...areas.map((a) {
+              final points = a.coordinates.map((c) => LatLng(c['lat']!, c['lng']!)).toList();
+              final color = a.type.toLowerCase().contains('safe') || a.type.toLowerCase().contains('evacuation')
+                  ? Colors.green
+                  : Colors.red;
+              return Polygon(
+                points: points,
+                color: color.withValues(alpha: 0.3),
+                borderColor: color,
+                borderStrokeWidth: 2,
+              );
+            }),
+            if (_isDrawingArea && _currentAreaPoints.isNotEmpty)
+              Polygon(
+                points: _currentAreaPoints,
+                color: Colors.blue.withValues(alpha: 0.3),
+                borderColor: Colors.blue,
+                borderStrokeWidth: 2,
+              ),
+          ],
         ),
         CircleLayer(
           circles: markers
@@ -886,12 +1062,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget _buildFeed(
     AsyncValue<List<HazardMarkerEntity>> markersAsync,
     AsyncValue<List<NewsItemEntity>> newsAsync,
+    AsyncValue<List<AreaEntity>> areasAsync,
     List<UserProfileEntity> profiles,
   ) {
     final markers = markersAsync.value ?? [];
     final news = newsAsync.value ?? [];
+    final areas = areasAsync.value ?? [];
 
-    final combined = <dynamic>[...markers, ...news];
+    final combined = <dynamic>[...markers, ...news, ...areas];
     combined.sort((a, b) => (b.timestamp as int).compareTo(a.timestamp as int));
 
     if (combined.isEmpty) {
@@ -1164,6 +1342,132 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
             ),
           );
+        } else if (item is AreaEntity) {
+          return Card(
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              onTap: () {
+                setState(() => _currentIndex = 0);
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  try {
+                    if (item.coordinates.isNotEmpty) {
+                      _mapController.move(LatLng(item.coordinates.first['lat']!, item.coordinates.first['lng']!), 14.0);
+                    }
+                  } catch (e) {
+                    debugPrint('Map not ready yet: $e');
+                  }
+                });
+              },
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        CircleAvatar(
+                          backgroundColor: item.trustTier == 1
+                              ? Colors.blue.shade100
+                              : item.trustTier == 3
+                              ? Colors.green.shade100
+                              : Colors.grey.shade200,
+                          child: Icon(
+                            Icons.format_shapes,
+                            color: item.trustTier == 1
+                                ? Colors.blue
+                                : item.trustTier == 3
+                                ? Colors.green
+                                : Colors.grey.shade700,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Area: ${item.type}',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
+                              Text(
+                                _formatTimestamp(item.timestamp),
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey.shade600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        _buildTrustBadge(item.trustTier),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      item.description,
+                      style: const TextStyle(fontSize: 14, height: 1.4),
+                    ),
+                    Builder(
+                      builder: (context) {
+                        final profile = _getProfile(item.senderId, profiles);
+                        if (profile != null) {
+                          return Padding(
+                            padding: const EdgeInsets.only(top: 8.0),
+                            child: Text(
+                              'By: ${profile.name}${profile.contactInfo.isNotEmpty ? ' (${profile.contactInfo})' : ''}',
+                              style: TextStyle(fontSize: 12, color: Colors.grey.shade700, fontStyle: FontStyle.italic),
+                            ),
+                          );
+                        } else {
+                          return Padding(
+                            padding: const EdgeInsets.only(top: 8.0),
+                            child: Text(
+                              'By: Unknown User',
+                              style: TextStyle(fontSize: 12, color: Colors.grey.shade700, fontStyle: FontStyle.italic),
+                            ),
+                          );
+                        }
+                      },
+                    ),
+                    if (item.trustTier == 4 || item.trustTier == 3) ...[
+                      const SizedBox(height: 12),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          TextButton.icon(
+                            onPressed: () => _blockSender(item.senderId),
+                            icon: const Icon(Icons.block, size: 16),
+                            label: const Text('Block'),
+                            style: TextButton.styleFrom(foregroundColor: Colors.red),
+                          ),
+                          if (item.trustTier == 4) ...[
+                            const SizedBox(width: 8),
+                            FilledButton.tonalIcon(
+                              onPressed: () => _markAsTrusted(item.senderId),
+                              icon: const Icon(Icons.verified_user, size: 16),
+                              label: const Text('Trust Sender'),
+                              style: FilledButton.styleFrom(
+                                foregroundColor: Colors.green.shade700,
+                                backgroundColor: Colors.green.shade50,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 8,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          );
         }
         return const SizedBox.shrink();
       },
@@ -1219,6 +1523,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget build(BuildContext context) {
     final markersAsync = ref.watch(hazardMarkersControllerProvider);
     final newsAsync = ref.watch(newsItemsControllerProvider);
+    final areasAsync = ref.watch(areasControllerProvider);
     final profilesAsync = ref.watch(userProfilesControllerProvider);
     final cryptoState = ref.watch(cryptoServiceProvider);
     final downloadProgress = ref.watch(mapDownloaderProvider);
@@ -1296,8 +1601,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         body: IndexedStack(
           index: _currentIndex,
           children: [
-            _buildMap(markersAsync, profiles),
-            _buildFeed(markersAsync, newsAsync, profiles),
+            _buildMap(markersAsync, areasAsync, profiles),
+            _buildFeed(markersAsync, newsAsync, areasAsync, profiles),
             const ProfileTab(),
           ],
         ),
@@ -1311,51 +1616,113 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ],
         ),
         floatingActionButton: _currentIndex == 2 ? null : cryptoState.when(
-          data: (_) => Column(
-            mainAxisAlignment: MainAxisAlignment.end,
-            mainAxisSize: MainAxisSize
-                .min, // Prevents the column from blocking the ListView touches
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              if (_currentIndex == 0) ...[
-                FloatingActionButton.small(
-                  heroTag: 'center_map',
-                  onPressed: () {
-                    try {
-                      _mapController.move(const LatLng(37.7749, -122.4194), 13.0);
-                    } catch (e) {
-                      debugPrint('Map not ready yet: $e');
-                    }
-                  },
-                  child: const Icon(Icons.my_location),
+          data: (_) {
+            if (_isDrawingArea) {
+              return Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  FloatingActionButton.extended(
+                    heroTag: 'cancel_area',
+                    onPressed: () {
+                      setState(() {
+                        _isDrawingArea = false;
+                        _currentAreaPoints.clear();
+                      });
+                    },
+                    backgroundColor: Colors.red,
+                    icon: const Icon(Icons.close, color: Colors.white),
+                    label: const Text('Cancel', style: TextStyle(color: Colors.white)),
+                  ),
+                  const SizedBox(width: 16),
+                  if (_currentAreaPoints.isNotEmpty)
+                    FloatingActionButton.extended(
+                      heroTag: 'undo_area',
+                      onPressed: () {
+                        setState(() {
+                          _currentAreaPoints.removeLast();
+                        });
+                      },
+                      backgroundColor: Colors.orange,
+                      icon: const Icon(Icons.undo, color: Colors.white),
+                      label: const Text('Undo', style: TextStyle(color: Colors.white)),
+                    ),
+                  const SizedBox(width: 16),
+                  if (_currentAreaPoints.length >= 3)
+                    FloatingActionButton.extended(
+                      heroTag: 'done_area',
+                      onPressed: () {
+                        _showAddAreaDialog();
+                      },
+                      backgroundColor: Colors.green,
+                      icon: const Icon(Icons.check, color: Colors.white),
+                      label: const Text('Done', style: TextStyle(color: Colors.white)),
+                    ),
+                ],
+              );
+            }
+
+            return Column(
+              mainAxisAlignment: MainAxisAlignment.end,
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                if (_currentIndex == 0) ...[
+                  FloatingActionButton.small(
+                    heroTag: 'center_map',
+                    onPressed: () {
+                      try {
+                        _mapController.move(const LatLng(37.7749, -122.4194), 13.0);
+                      } catch (e) {
+                        debugPrint('Map not ready yet: $e');
+                      }
+                    },
+                    child: const Icon(Icons.my_location),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+                FloatingActionButton.extended(
+                  heroTag: 'official',
+                  onPressed: _showAddNewsDialog,
+                  backgroundColor: Colors.blue,
+                  icon: const Icon(Icons.campaign, color: Colors.white),
+                  label: const Text(
+                    'Official Alert',
+                    style: TextStyle(color: Colors.white),
+                  ),
                 ),
                 const SizedBox(height: 16),
-              ],
-              FloatingActionButton.extended(
-                heroTag: 'official',
-                onPressed: _showAddNewsDialog,
-                backgroundColor: Colors.blue,
-                icon: const Icon(Icons.campaign, color: Colors.white),
-                label: const Text(
-                  'Official Alert',
-                  style: TextStyle(color: Colors.white),
+                FloatingActionButton.extended(
+                  heroTag: 'area',
+                  onPressed: () {
+                    setState(() {
+                      _isDrawingArea = true;
+                      _currentAreaPoints.clear();
+                      _currentIndex = 0; // Switch to map tab
+                    });
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Tap on the map to draw an area polygon.')),
+                    );
+                  },
+                  backgroundColor: Colors.purple,
+                  icon: const Icon(Icons.format_shapes, color: Colors.white),
+                  label: const Text('Report Area', style: TextStyle(color: Colors.white)),
                 ),
-              ),
-              const SizedBox(height: 16),
-              FloatingActionButton.extended(
-                heroTag: 'user',
-                onPressed: () {
-                  LatLng point = const LatLng(37.7749, -122.4194);
-                  try {
-                    point = _mapController.camera.center;
-                  } catch (_) {}
-                  _showAddHazardDialog(point);
-                },
-                icon: const Icon(Icons.add_location_alt),
-                label: const Text('Report Hazard'),
-              ),
-            ],
-          ),
+                const SizedBox(height: 16),
+                FloatingActionButton.extended(
+                  heroTag: 'user',
+                  onPressed: () {
+                    LatLng point = const LatLng(37.7749, -122.4194);
+                    try {
+                      point = _mapController.camera.center;
+                    } catch (_) {}
+                    _showAddHazardDialog(point);
+                  },
+                  icon: const Icon(Icons.add_location_alt),
+                  label: const Text('Report Hazard'),
+                ),
+              ],
+            );
+          },
           loading: () => const FloatingActionButton(
             onPressed: null,
             child: CircularProgressIndicator(),
@@ -1472,19 +1839,42 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
     );
   }
 
+  void _deleteArea(String id) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Area?'),
+        content: const Text('Are you sure you want to delete this area report?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () {
+              Navigator.pop(context);
+              ref.read(areasControllerProvider.notifier).deleteArea(id);
+            },
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final trustedSendersAsync = ref.watch(trustedSendersControllerProvider);
     final untrustedSendersAsync = ref.watch(untrustedSendersControllerProvider);
     final markersAsync = ref.watch(hazardMarkersControllerProvider);
     final newsAsync = ref.watch(newsItemsControllerProvider);
+    final areasAsync = ref.watch(areasControllerProvider);
 
     final trustedSenders = trustedSendersAsync.value ?? [];
     final untrustedSenders = untrustedSendersAsync.value ?? [];
     final myMarkers = (markersAsync.value ?? []).where((m) => m.senderId == _myPublicKey).toList();
     final myNews = (newsAsync.value ?? []).where((n) => n.senderId == _myPublicKey).toList();
+    final myAreas = (areasAsync.value ?? []).where((a) => a.senderId == _myPublicKey).toList();
 
-    final myReports = <dynamic>[...myMarkers, ...myNews];
+    final myReports = <dynamic>[...myMarkers, ...myNews, ...myAreas];
     myReports.sort((a, b) => (b.timestamp as int).compareTo(a.timestamp as int));
 
     return CustomScrollView(
@@ -1856,6 +2246,39 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                             trailing: IconButton(
                               icon: const Icon(Icons.delete_outline, color: Colors.red),
                               onPressed: () => _deleteNews(item.id),
+                            ),
+                          ),
+                        );
+                      } else if (item is AreaEntity) {
+                        return Card(
+                          elevation: 0,
+                          margin: const EdgeInsets.only(bottom: 8),
+                          shape: RoundedRectangleBorder(
+                            side: BorderSide(color: Colors.grey.shade300),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: ListTile(
+                            leading: CircleAvatar(
+                              backgroundColor: Colors.purple.shade100,
+                              child: const Icon(Icons.format_shapes, color: Colors.purple),
+                            ),
+                            title: Text('Area: ${item.type}', style: const TextStyle(fontWeight: FontWeight.w600)),
+                            subtitle: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const SizedBox(height: 4),
+                                Text(item.description, maxLines: 2, overflow: TextOverflow.ellipsis),
+                                const SizedBox(height: 4),
+                                Text(
+                                  DateTime.fromMillisecondsSinceEpoch(item.timestamp).toString().substring(0, 16),
+                                  style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                                ),
+                              ],
+                            ),
+                            isThreeLine: true,
+                            trailing: IconButton(
+                              icon: const Icon(Icons.delete_outline, color: Colors.red),
+                              onPressed: () => _deleteArea(item.id),
                             ),
                           ),
                         );

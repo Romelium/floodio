@@ -579,18 +579,20 @@ class P2pService extends _$P2pService {
       final allNews = await db.select(db.newsItems).get();
       final allProfiles = await db.select(db.userProfiles).get();
       final allDeleted = await db.select(db.deletedItems).get();
+      final allAreas = await db.select(db.areas).get();
 
       final newHazards = allHazards.where((h) => !peerBloomFilter.mightContain(h.id)).take(200).toList();
       final newNews = allNews.where((n) => !peerBloomFilter.mightContain(n.id)).take(200).toList();
       final newProfiles = allProfiles.where((p) => !peerBloomFilter.mightContain('${p.publicKey}_${p.timestamp}')).take(200).toList();
       final newDeleted = allDeleted.where((d) => !peerBloomFilter.mightContain('del_${d.id}')).take(200).toList();
+      final newAreas = allAreas.where((a) => !peerBloomFilter.mightContain(a.id)).take(200).toList();
 
-      if (newHazards.isEmpty && newNews.isEmpty && newProfiles.isEmpty && newDeleted.isEmpty) {
+      if (newHazards.isEmpty && newNews.isEmpty && newProfiles.isEmpty && newDeleted.isEmpty && newAreas.isEmpty) {
         state = state.copyWith(isSyncing: false, syncMessage: 'Up to date.');
         return;
       }
 
-      state = state.copyWith(syncMessage: 'Sending ${newHazards.length} markers, ${newNews.length} news, ${newProfiles.length} profiles, ${newDeleted.length} deletions...');
+      state = state.copyWith(syncMessage: 'Sending ${newHazards.length} markers, ${newNews.length} news, ${newProfiles.length} profiles, ${newAreas.length} areas, ${newDeleted.length} deletions...');
 
       final payload = pb.SyncPayload();
 
@@ -637,6 +639,25 @@ class P2pService extends _$P2pService {
         ));
       }
 
+      for (final a in newAreas) {
+        final areaMarker = pb.AreaMarker(
+          id: a.id,
+          type: a.type,
+          description: a.description,
+          timestamp: Int64(a.timestamp),
+          senderId: a.senderId,
+          signature: a.signature ?? '',
+          trustTier: a.trustTier,
+        );
+        for (final coord in a.coordinates) {
+          areaMarker.coordinates.add(pb.Coordinate(
+            latitude: coord['lat']!,
+            longitude: coord['lng']!,
+          ));
+        }
+        payload.areas.add(areaMarker);
+      }
+
       final encoded = base64Encode(payload.writeToBuffer());
       await broadcastText(jsonEncode({'type': 'payload', 'data': encoded}));
       state = state.copyWith(syncMessage: 'Data sent successfully.');
@@ -677,7 +698,7 @@ class P2pService extends _$P2pService {
       final data = base64Decode(json['data']);
       final payload = pb.SyncPayload.fromBuffer(data);
 
-      if (payload.markers.isEmpty && payload.news.isEmpty && payload.profiles.isEmpty && payload.deletedItems.isEmpty) {
+      if (payload.markers.isEmpty && payload.news.isEmpty && payload.profiles.isEmpty && payload.deletedItems.isEmpty && payload.areas.isEmpty) {
         state = state.copyWith(syncMessage: 'Empty payload received.');
         return;
       }
@@ -794,6 +815,39 @@ class P2pService extends _$P2pService {
         }
       }
 
+      final validAreas = <AreasCompanion>[];
+      for (final a in payload.areas) {
+        if (deletedIds.contains(a.id)) continue;
+        final payloadToSign = utf8.encode('${a.id}${a.type}${a.timestamp}');
+        final trustTier = await crypto.verifyAndGetTrustTier(
+          data: payloadToSign,
+          signatureStr: a.signature,
+          senderPublicKeyStr: a.senderId,
+          trustedPublicKeys: trustedKeys,
+          untrustedPublicKeys: untrustedKeys,
+        );
+
+        if (trustTier != 5) {
+          final coords = a.coordinates.map((c) => {'lat': c.latitude, 'lng': c.longitude}).toList();
+          validAreas.add(AreasCompanion.insert(
+            id: a.id,
+            coordinates: coords,
+            type: a.type,
+            description: a.description,
+            timestamp: a.timestamp.toInt(),
+            senderId: a.senderId,
+            signature: Value(a.signature),
+            trustTier: trustTier,
+          ));
+          seenIds.add(SeenMessageIdsCompanion.insert(
+            messageId: a.id,
+            timestamp: DateTime.now().millisecondsSinceEpoch,
+          ));
+        } else {
+          print("Invalid signature for area ${a.id}, dropping.");
+        }
+      }
+
       final validDeleted = <DeletedItemsCompanion>[];
       for (final d in payload.deletedItems) {
         validDeleted.add(DeletedItemsCompanion.insert(
@@ -808,6 +862,7 @@ class P2pService extends _$P2pService {
         batch.insertAll(db.hazardMarkers, validMarkers, mode: InsertMode.insertOrReplace);
         batch.insertAll(db.newsItems, validNews, mode: InsertMode.insertOrReplace);
         batch.insertAll(db.userProfiles, validProfiles, mode: InsertMode.insertOrReplace);
+        batch.insertAll(db.areas, validAreas, mode: InsertMode.insertOrReplace);
         batch.insertAll(db.seenMessageIds, seenIds, mode: InsertMode.insertOrReplace);
         batch.insertAll(db.deletedItems, validDeleted, mode: InsertMode.insertOrReplace);
       });
@@ -816,14 +871,15 @@ class P2pService extends _$P2pService {
         for (final d in validDeleted) {
           await (db.delete(db.hazardMarkers)..where((t) => t.id.equals(d.id.value))).go();
           await (db.delete(db.newsItems)..where((t) => t.id.equals(d.id.value))).go();
+          await (db.delete(db.areas)..where((t) => t.id.equals(d.id.value))).go();
         }
       });
 
       state = state.copyWith(
         isSyncing: false,
-        syncMessage: 'Successfully synced ${validMarkers.length} markers, ${validNews.length} news, ${validProfiles.length} profiles, ${validDeleted.length} deletions.'
+        syncMessage: 'Successfully synced ${validMarkers.length} markers, ${validNews.length} news, ${validProfiles.length} profiles, ${validAreas.length} areas, ${validDeleted.length} deletions.'
       );
-      print("Successfully synced ${payload.markers.length} markers, ${payload.news.length} news, ${payload.profiles.length} profiles, ${payload.deletedItems.length} deletions.");
+      print("Successfully synced ${payload.markers.length} markers, ${payload.news.length} news, ${payload.profiles.length} profiles, ${payload.areas.length} areas, ${payload.deletedItems.length} deletions.");
     } catch (e) {
       print("Error handling payload: $e");
       state = state.copyWith(syncMessage: 'Error syncing data.');

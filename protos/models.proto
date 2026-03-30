@@ -2,6 +2,22 @@ syntax = "proto3";
 
 package floodio;
 
+message Coordinate {
+  double latitude = 1;
+  double longitude = 2;
+}
+
+message AreaMarker {
+  string id = 1;
+  repeated Coordinate coordinates = 2;
+  string type = 3;
+  string description = 4;
+  int64 timestamp = 5;
+  string sender_id = 6;
+  string signature = 7;
+  int32 trust_tier = 8;
+}
+
 message HazardMarker {
   string id = 1;
   double latitude = 2;
@@ -42,4 +58,5 @@ message SyncPayload {
   repeated NewsItem news = 2;
   repeated UserProfile profiles = 3;
   repeated DeletedItem deleted_items = 4;
+  repeated AreaMarker areas = 5;
 }

@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:drift/drift.dart';
 
 class HazardMarkerEntity {
@@ -173,4 +174,56 @@ class UserProfiles extends Table {
 
   @override
   Set<Column> get primaryKey => {publicKey};
+}
+
+class CoordinateListConverter extends TypeConverter<List<Map<String, double>>, String> {
+  const CoordinateListConverter();
+
+  @override
+  List<Map<String, double>> fromSql(String fromDb) {
+    final List<dynamic> decoded = json.decode(fromDb);
+    return decoded.map((e) => Map<String, double>.from(e)).toList();
+  }
+
+  @override
+  String toSql(List<Map<String, double>> value) {
+    return json.encode(value);
+  }
+}
+
+class AreaEntity {
+  final String id;
+  final List<Map<String, double>> coordinates;
+  final String type;
+  final String description;
+  final int timestamp;
+  final String senderId;
+  final String? signature;
+  final int trustTier;
+
+  AreaEntity({
+    required this.id,
+    required this.coordinates,
+    required this.type,
+    required this.description,
+    required this.timestamp,
+    required this.senderId,
+    this.signature,
+    required this.trustTier,
+  });
+}
+
+@UseRowClass(AreaEntity)
+class Areas extends Table {
+  TextColumn get id => text()();
+  TextColumn get coordinates => text().map(const CoordinateListConverter())();
+  TextColumn get type => text()();
+  TextColumn get description => text()();
+  IntColumn get timestamp => integer()();
+  TextColumn get senderId => text()();
+  TextColumn get signature => text().nullable()();
+  IntColumn get trustTier => integer()();
+
+  @override
+  Set<Column> get primaryKey => {id};
 }
