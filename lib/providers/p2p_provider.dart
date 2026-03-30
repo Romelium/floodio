@@ -476,11 +476,13 @@ class P2pService extends _$P2pService {
   }
 
   void _handleReceivedFiles(List<ReceivableFileInfo> files, dynamic p2pInstance) async {
+    bool isDownloadingAny = false;
     for (final file in files) {
       if (file.state == ReceivableFileState.idle) {
+        isDownloadingAny = true;
         final dir = await getApplicationDocumentsDirectory();
         
-        state = state.copyWith(syncMessage: 'Downloading ${file.info.name}...');
+        state = state.copyWith(isSyncing: true, syncMessage: 'Downloading ${file.info.name}...');
         
         p2pInstance.downloadFile(
           file.info.id,
@@ -488,30 +490,36 @@ class P2pService extends _$P2pService {
           onProgress: (progress) {
             _idleTicks = 0; // Reset idle timer during download
             if (progress.progressPercent % 10 < 1) {
-              state = state.copyWith(syncMessage: 'Downloading map: ${progress.progressPercent.toStringAsFixed(0)}%');
+              state = state.copyWith(isSyncing: true, syncMessage: 'Downloading map: ${progress.progressPercent.toStringAsFixed(0)}%');
             }
           }
         );
       } else if (file.state == ReceivableFileState.completed) {
         if (file.info.name.endsWith('.fmap')) {
-          state = state.copyWith(syncMessage: 'Unpacking map...');
+          state = state.copyWith(isSyncing: true, syncMessage: 'Unpacking map...');
           final dir = await getApplicationDocumentsDirectory();
           final downloadedFile = File('${dir.path}/${file.info.name}');
           try {
             final mapCache = ref.read(mapCacheServiceProvider);
             await mapCache.unpackMap(downloadedFile);
-            state = state.copyWith(syncMessage: 'Map updated successfully.');
+            state = state.copyWith(isSyncing: false, syncMessage: 'Map updated successfully.');
             await downloadedFile.delete();
           } catch (e) {
             print("Error unpacking map: $e");
-            state = state.copyWith(syncMessage: 'Failed to unpack map.');
+            state = state.copyWith(isSyncing: false, syncMessage: 'Failed to unpack map.');
           } finally {
             if (await downloadedFile.exists()) {
               await downloadedFile.delete();
             }
           }
         }
+      } else if (file.state == ReceivableFileState.downloading) {
+        isDownloadingAny = true;
       }
+    }
+    
+    if (!isDownloadingAny && state.isSyncing && state.syncMessage?.startsWith('Downloading') == true) {
+       state = state.copyWith(isSyncing: false, syncMessage: 'Downloads complete.');
     }
   }
 
@@ -575,7 +583,7 @@ class P2pService extends _$P2pService {
       final newDeleted = allDeleted.where((d) => !peerBloomFilter.mightContain('del_${d.id}')).take(200).toList();
 
       if (newHazards.isEmpty && newNews.isEmpty && newProfiles.isEmpty && newDeleted.isEmpty) {
-        state = state.copyWith(syncMessage: 'Up to date.');
+        state = state.copyWith(isSyncing: false, syncMessage: 'Up to date.');
         return;
       }
 
@@ -638,7 +646,7 @@ class P2pService extends _$P2pService {
   }
 
   Future<void> _handleRequestMap() async {
-    state = state.copyWith(syncMessage: 'Packing offline map for transfer...');
+    state = state.copyWith(isSyncing: true, syncMessage: 'Packing offline map for transfer...');
     try {
       final mapCache = ref.read(mapCacheServiceProvider);
       final packFile = await mapCache.packMap();
@@ -648,10 +656,10 @@ class P2pService extends _$P2pService {
       } else if (_client != null && state.clientState?.isActive == true) {
         await _client!.broadcastFile(packFile);
       }
-      state = state.copyWith(syncMessage: 'Map file sent.');
+      state = state.copyWith(isSyncing: false, syncMessage: 'Map file sent.');
     } catch (e) {
       print("Error sending map: $e");
-      state = state.copyWith(syncMessage: 'Error sending map.');
+      state = state.copyWith(isSyncing: false, syncMessage: 'Error sending map.');
     }
   }
 
@@ -683,9 +691,17 @@ class P2pService extends _$P2pService {
       final untrustedSenders = await db.select(db.untrustedSenders).get();
       final untrustedKeys = untrustedSenders.map((e) => e.publicKey).toList();
 
+      final deletedItems = await db.select(db.deletedItems).get();
+      final deletedIds = deletedItems.map((e) => e.id).toSet();
+
+      for (final d in payload.deletedItems) {
+        deletedIds.add(d.id);
+      }
+
       final validMarkers = <HazardMarkersCompanion>[];
       final seenIds = <SeenMessageIdsCompanion>[];
       for (final m in payload.markers) {
+        if (deletedIds.contains(m.id)) continue;
         final payloadToSign = utf8.encode('${m.id}${m.type}${m.timestamp}');
         final trustTier = await crypto.verifyAndGetTrustTier(
           data: payloadToSign,
@@ -718,6 +734,7 @@ class P2pService extends _$P2pService {
 
       final validNews = <NewsItemsCompanion>[];
       for (final n in payload.news) {
+        if (deletedIds.contains(n.id)) continue;
         final payloadToSign = utf8.encode('${n.id}${n.title}${n.timestamp}');
         final trustTier = await crypto.verifyAndGetTrustTier(
           data: payloadToSign,
@@ -784,27 +801,23 @@ class P2pService extends _$P2pService {
 
       state = state.copyWith(syncMessage: 'Saving to database...');
 
+      await db.batch((batch) {
+        batch.insertAll(db.hazardMarkers, validMarkers, mode: InsertMode.insertOrReplace);
+        batch.insertAll(db.newsItems, validNews, mode: InsertMode.insertOrReplace);
+        batch.insertAll(db.userProfiles, validProfiles, mode: InsertMode.insertOrReplace);
+        batch.insertAll(db.seenMessageIds, seenIds, mode: InsertMode.insertOrReplace);
+        batch.insertAll(db.deletedItems, validDeleted, mode: InsertMode.insertOrReplace);
+      });
+
       await db.transaction(() async {
-        for (final m in validMarkers) {
-          await db.into(db.hazardMarkers).insert(m, mode: InsertMode.insertOrReplace);
-        }
-        for (final n in validNews) {
-          await db.into(db.newsItems).insert(n, mode: InsertMode.insertOrReplace);
-        }
-        for (final p in validProfiles) {
-          await db.into(db.userProfiles).insert(p, mode: InsertMode.insertOrReplace);
-        }
-        for (final s in seenIds) {
-          await db.into(db.seenMessageIds).insert(s, mode: InsertMode.insertOrReplace);
-        }
         for (final d in validDeleted) {
-          await db.into(db.deletedItems).insert(d, mode: InsertMode.insertOrReplace);
           await (db.delete(db.hazardMarkers)..where((t) => t.id.equals(d.id.value))).go();
           await (db.delete(db.newsItems)..where((t) => t.id.equals(d.id.value))).go();
         }
       });
 
       state = state.copyWith(
+        isSyncing: false,
         syncMessage: 'Successfully synced ${validMarkers.length} markers, ${validNews.length} news, ${validProfiles.length} profiles, ${validDeleted.length} deletions.'
       );
       print("Successfully synced ${payload.markers.length} markers, ${payload.news.length} news, ${payload.profiles.length} profiles, ${payload.deletedItems.length} deletions.");

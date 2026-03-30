@@ -139,7 +139,9 @@ class MapCacheService {
       if (response.statusCode == 200) {
         final bytes = await consolidateHttpClientResponseBytes(response);
         await file.parent.create(recursive: true);
-        await file.writeAsBytes(bytes);
+        try {
+          await file.writeAsBytes(bytes);
+        } catch (_) {} // Ignore concurrent write collisions
         return bytes;
       }
     } catch (e) {
