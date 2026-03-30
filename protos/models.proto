@@ -32,8 +32,14 @@ message UserProfile {
   string signature = 5;
 }
 
+message DeletedItem {
+  string id = 1;
+  int64 timestamp = 2;
+}
+
 message SyncPayload {
   repeated HazardMarker markers = 1;
   repeated NewsItem news = 2;
   repeated UserProfile profiles = 3;
+  repeated DeletedItem deleted_items = 4;
 }

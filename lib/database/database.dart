@@ -4,12 +4,12 @@ import 'tables.dart';
 
 part 'database.g.dart';
 
-@DriftDatabase(tables: [HazardMarkers, NewsItems, SyncPayloads, SeenMessageIds, TrustedSenders, UserProfiles])
+@DriftDatabase(tables: [HazardMarkers, NewsItems, DeletedItems, SeenMessageIds, TrustedSenders, UntrustedSenders, UserProfiles])
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration {
@@ -23,6 +23,11 @@ class AppDatabase extends _$AppDatabase {
         }
         if (from < 3) {
           await m.createTable(userProfiles);
+        }
+        if (from < 4) {
+          await m.createTable(deletedItems);
+          await m.createTable(untrustedSenders);
+          await customStatement('DROP TABLE IF EXISTS sync_payloads;');
         }
       },
     );

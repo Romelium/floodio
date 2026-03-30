@@ -42,8 +42,11 @@ Future<String> _isolateSignData(SimpleKeyPairData keyPairData, List<int> data) a
   return base64Encode(signature.bytes);
 }
 
-Future<int> _isolateVerifyData(List<int> data, String signatureStr, String senderPublicKeyStr, List<int> serverPubKeyBytes, List<String> trustedPublicKeys) async {
+Future<int> _isolateVerifyData(List<int> data, String signatureStr, String senderPublicKeyStr, List<int> serverPubKeyBytes, List<String> trustedPublicKeys, List<String> untrustedPublicKeys) async {
   try {
+    if (untrustedPublicKeys.contains(senderPublicKeyStr)) {
+      return 5; // Drop
+    }
     final signatureBytes = base64Decode(signatureStr);
     final senderPubKeyBytes = base64Decode(senderPublicKeyStr);
 
@@ -74,8 +77,8 @@ Future<String> _runSignData(SimpleKeyPairData keyPair, List<int> data) {
   return Isolate.run(() => _isolateSignData(keyPair, data));
 }
 
-Future<int> _runVerifyData(List<int> data, String signatureStr, String senderPublicKeyStr, List<int> serverPubKeyBytes, List<String> trustedPublicKeys) {
-  return Isolate.run(() => _isolateVerifyData(data, signatureStr, senderPublicKeyStr, serverPubKeyBytes, trustedPublicKeys));
+Future<int> _runVerifyData(List<int> data, String signatureStr, String senderPublicKeyStr, List<int> serverPubKeyBytes, List<String> trustedPublicKeys, List<String> untrustedPublicKeys) {
+  return Isolate.run(() => _isolateVerifyData(data, signatureStr, senderPublicKeyStr, serverPubKeyBytes, trustedPublicKeys, untrustedPublicKeys));
 }
 
 @Riverpod(keepAlive: true)
@@ -116,6 +119,7 @@ class CryptoService extends _$CryptoService {
     required String signatureStr,
     required String senderPublicKeyStr,
     required List<String> trustedPublicKeys,
+    required List<String> untrustedPublicKeys,
   }) async {
     final serverPubKeyBytes = _serverPublicKey.bytes;
     final myPubKey = await _userKeyPair.extractPublicKey();
@@ -123,6 +127,6 @@ class CryptoService extends _$CryptoService {
 
     final effectiveTrustedKeys = [...trustedPublicKeys, myPubKeyStr];
 
-    return _runVerifyData(data, signatureStr, senderPublicKeyStr, serverPubKeyBytes, effectiveTrustedKeys);
+    return _runVerifyData(data, signatureStr, senderPublicKeyStr, serverPubKeyBytes, effectiveTrustedKeys, untrustedPublicKeys);
   }
 }

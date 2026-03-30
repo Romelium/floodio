@@ -184,4 +184,28 @@ class MapCacheService {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getInt('local_map_version') ?? 0;
   }
+
+  Future<int> getCacheSize() async {
+    final dir = await getApplicationDocumentsDirectory();
+    final mapDir = Directory('${dir.path}/map_tiles');
+    if (!await mapDir.exists()) return 0;
+
+    int size = 0;
+    await for (final entity in mapDir.list(recursive: true)) {
+      if (entity is File) {
+        size += await entity.length();
+      }
+    }
+    return size;
+  }
+
+  Future<void> clearCache() async {
+    final dir = await getApplicationDocumentsDirectory();
+    final mapDir = Directory('${dir.path}/map_tiles');
+    if (await mapDir.exists()) {
+      await mapDir.delete(recursive: true);
+    }
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('local_map_version');
+  }
 }

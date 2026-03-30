@@ -74,28 +74,6 @@ class NewsItems extends Table {
   Set<Column> get primaryKey => {id};
 }
 
-class SyncPayloadEntity {
-  final String id;
-  final Uint8List payload;
-  final int timestamp;
-
-  SyncPayloadEntity({
-    required this.id,
-    required this.payload,
-    required this.timestamp,
-  });
-}
-
-@UseRowClass(SyncPayloadEntity)
-class SyncPayloads extends Table {
-  TextColumn get id => text()();
-  BlobColumn get payload => blob()();
-  IntColumn get timestamp => integer()();
-
-  @override
-  Set<Column> get primaryKey => {id};
-}
-
 class SeenMessageIdEntity {
   final String messageId;
   final int timestamp;
@@ -129,6 +107,41 @@ class TrustedSenderEntity {
 class TrustedSenders extends Table {
   TextColumn get publicKey => text()();
   TextColumn get name => text()();
+
+  @override
+  Set<Column> get primaryKey => {publicKey};
+}
+
+class DeletedItemEntity {
+  final String id;
+  final int timestamp;
+
+  DeletedItemEntity({
+    required this.id,
+    required this.timestamp,
+  });
+}
+
+@UseRowClass(DeletedItemEntity)
+class DeletedItems extends Table {
+  TextColumn get id => text()();
+  IntColumn get timestamp => integer()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+class UntrustedSenderEntity {
+  final String publicKey;
+
+  UntrustedSenderEntity({
+    required this.publicKey,
+  });
+}
+
+@UseRowClass(UntrustedSenderEntity)
+class UntrustedSenders extends Table {
+  TextColumn get publicKey => text()();
 
   @override
   Set<Column> get primaryKey => {publicKey};

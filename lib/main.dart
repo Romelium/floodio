@@ -25,6 +25,7 @@ import 'providers/hazard_marker_provider.dart';
 import 'providers/map_downloader_provider.dart';
 import 'providers/news_item_provider.dart';
 import 'providers/trusted_sender_provider.dart';
+import 'providers/untrusted_sender_provider.dart';
 import 'providers/ui_p2p_provider.dart';
 import 'providers/user_profile_provider.dart';
 import 'services/background_service.dart';
@@ -331,9 +332,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   await db.transaction(() async {
                     await db.delete(db.hazardMarkers).go();
                     await db.delete(db.newsItems).go();
-                    await db.delete(db.syncPayloads).go();
+                    await db.delete(db.deletedItems).go();
                     await db.delete(db.seenMessageIds).go();
                     await db.delete(db.trustedSenders).go();
+                    await db.delete(db.untrustedSenders).go();
                     await db.delete(db.userProfiles).go();
                   });
                   final prefs = await SharedPreferences.getInstance();
@@ -382,6 +384,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       default:
         return Icons.warning;
     }
+  }
+
+  void _blockSender(String senderId) {
+    ref.read(untrustedSendersControllerProvider.notifier).addUntrustedSender(senderId);
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Sender blocked. Their reports have been removed.')));
   }
 
   String _formatTimestamp(int timestamp) {
@@ -472,9 +479,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
                 final payloadToSign = utf8.encode('$id$type$timestamp');
                 final signature = await cryptoService.signData(payloadToSign);
+                final untrustedSendersAsync = ref.read(
+                  untrustedSendersControllerProvider,
+                );
 
                 final trustedKeys =
                     trustedSendersAsync.value
+                        ?.map((e) => e.publicKey)
+                        .toList() ??
+                    [];
+                final untrustedKeys =
+                    untrustedSendersAsync.value
                         ?.map((e) => e.publicKey)
                         .toList() ??
                     [];
@@ -484,6 +499,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   signatureStr: signature,
                   senderPublicKeyStr: senderId,
                   trustedPublicKeys: trustedKeys,
+                  untrustedPublicKeys: untrustedKeys,
                 );
 
                 final newMarker = HazardMarkerEntity(
@@ -643,8 +659,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               final trustedSendersAsync = ref.read(
                 trustedSendersControllerProvider,
               );
+              final untrustedSendersAsync = ref.read(
+                untrustedSendersControllerProvider,
+              );
               final trustedKeys =
                   trustedSendersAsync.value?.map((e) => e.publicKey).toList() ??
+                  [];
+              final untrustedKeys =
+                  untrustedSendersAsync.value?.map((e) => e.publicKey).toList() ??
                   [];
 
               final cryptoService = ref.read(cryptoServiceProvider.notifier);
@@ -653,6 +675,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 signatureStr: signature,
                 senderPublicKeyStr: senderId,
                 trustedPublicKeys: trustedKeys,
+                untrustedPublicKeys: untrustedKeys,
               );
 
               final newNews = NewsItemEntity(
@@ -793,6 +816,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             ],
                           ),
                           actions: [
+                            if (m.trustTier == 4 || m.trustTier == 3)
+                              TextButton.icon(
+                                onPressed: () {
+                                  Navigator.pop(context);
+                                  _blockSender(m.senderId);
+                                },
+                                icon: const Icon(Icons.block, size: 18),
+                                label: const Text('Block'),
+                                style: TextButton.styleFrom(
+                                  foregroundColor: Colors.red,
+                                ),
+                              ),
                             if (m.trustTier == 4)
                               TextButton.icon(
                                 onPressed: () {
@@ -896,100 +931,124 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         if (item is HazardMarkerEntity) {
           return Card(
             margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      CircleAvatar(
-                        backgroundColor: item.trustTier == 1
-                            ? Colors.blue.shade100
-                            : item.trustTier == 3
-                            ? Colors.green.shade100
-                            : Colors.grey.shade200,
-                        child: Icon(
-                          _getHazardIcon(item.type),
-                          color: item.trustTier == 1
-                              ? Colors.blue
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              onTap: () {
+                setState(() => _currentIndex = 0);
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  try {
+                    _mapController.move(LatLng(item.latitude, item.longitude), 15.0);
+                  } catch (e) {
+                    debugPrint('Map not ready yet: $e');
+                  }
+                });
+              },
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        CircleAvatar(
+                          backgroundColor: item.trustTier == 1
+                              ? Colors.blue.shade100
                               : item.trustTier == 3
-                              ? Colors.green
-                              : Colors.grey.shade700,
+                              ? Colors.green.shade100
+                              : Colors.grey.shade200,
+                          child: Icon(
+                            _getHazardIcon(item.type),
+                            color: item.trustTier == 1
+                                ? Colors.blue
+                                : item.trustTier == 3
+                                ? Colors.green
+                                : Colors.grey.shade700,
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Hazard: ${item.type}',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Hazard: ${item.type}',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
                               ),
+                              Text(
+                                _formatTimestamp(item.timestamp),
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey.shade600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        _buildTrustBadge(item.trustTier),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      item.description,
+                      style: const TextStyle(fontSize: 14, height: 1.4),
+                    ),
+                    Builder(
+                      builder: (context) {
+                        final profile = _getProfile(item.senderId, profiles);
+                        if (profile != null) {
+                          return Padding(
+                            padding: const EdgeInsets.only(top: 8.0),
+                            child: Text(
+                              'By: ${profile.name}${profile.contactInfo.isNotEmpty ? ' (${profile.contactInfo})' : ''}',
+                              style: TextStyle(fontSize: 12, color: Colors.grey.shade700, fontStyle: FontStyle.italic),
                             ),
-                            Text(
-                              _formatTimestamp(item.timestamp),
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey.shade600,
+                          );
+                        } else {
+                          return Padding(
+                            padding: const EdgeInsets.only(top: 8.0),
+                            child: Text(
+                              'By: Unknown User',
+                              style: TextStyle(fontSize: 12, color: Colors.grey.shade700, fontStyle: FontStyle.italic),
+                            ),
+                          );
+                        }
+                      },
+                    ),
+                    if (item.trustTier == 4 || item.trustTier == 3) ...[
+                      const SizedBox(height: 12),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          TextButton.icon(
+                            onPressed: () => _blockSender(item.senderId),
+                            icon: const Icon(Icons.block, size: 16),
+                            label: const Text('Block'),
+                            style: TextButton.styleFrom(foregroundColor: Colors.red),
+                          ),
+                          if (item.trustTier == 4) ...[
+                            const SizedBox(width: 8),
+                            FilledButton.tonalIcon(
+                              onPressed: () => _markAsTrusted(item.senderId),
+                              icon: const Icon(Icons.verified_user, size: 16),
+                              label: const Text('Trust Sender'),
+                              style: FilledButton.styleFrom(
+                                foregroundColor: Colors.green.shade700,
+                                backgroundColor: Colors.green.shade50,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 8,
+                                ),
                               ),
                             ),
                           ],
-                        ),
+                        ],
                       ),
-                      _buildTrustBadge(item.trustTier),
                     ],
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    item.description,
-                    style: const TextStyle(fontSize: 14, height: 1.4),
-                  ),
-                  Builder(
-                    builder: (context) {
-                      final profile = _getProfile(item.senderId, profiles);
-                      if (profile != null) {
-                        return Padding(
-                          padding: const EdgeInsets.only(top: 8.0),
-                          child: Text(
-                            'By: ${profile.name}${profile.contactInfo.isNotEmpty ? ' (${profile.contactInfo})' : ''}',
-                            style: TextStyle(fontSize: 12, color: Colors.grey.shade700, fontStyle: FontStyle.italic),
-                          ),
-                        );
-                      } else {
-                        return Padding(
-                          padding: const EdgeInsets.only(top: 8.0),
-                          child: Text(
-                            'By: Unknown User',
-                            style: TextStyle(fontSize: 12, color: Colors.grey.shade700, fontStyle: FontStyle.italic),
-                          ),
-                        );
-                      }
-                    },
-                  ),
-                  if (item.trustTier == 4) ...[
-                    const SizedBox(height: 12),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: FilledButton.tonalIcon(
-                        onPressed: () => _markAsTrusted(item.senderId),
-                        icon: const Icon(Icons.verified_user, size: 16),
-                        label: const Text('Trust Sender'),
-                        style: FilledButton.styleFrom(
-                          foregroundColor: Colors.green.shade700,
-                          backgroundColor: Colors.green.shade50,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 8,
-                          ),
-                        ),
-                      ),
-                    ),
                   ],
-                ],
+                ),
               ),
             ),
           );
@@ -1070,23 +1129,34 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       }
                     },
                   ),
-                  if (item.trustTier == 4) ...[
+                  if (item.trustTier == 4 || item.trustTier == 3) ...[
                     const SizedBox(height: 12),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: FilledButton.tonalIcon(
-                        onPressed: () => _markAsTrusted(item.senderId),
-                        icon: const Icon(Icons.verified_user, size: 16),
-                        label: const Text('Trust Sender'),
-                        style: FilledButton.styleFrom(
-                          foregroundColor: Colors.green.shade700,
-                          backgroundColor: Colors.green.shade50,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 8,
-                          ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        TextButton.icon(
+                          onPressed: () => _blockSender(item.senderId),
+                          icon: const Icon(Icons.block, size: 16),
+                          label: const Text('Block'),
+                          style: TextButton.styleFrom(foregroundColor: Colors.red),
                         ),
-                      ),
+                        if (item.trustTier == 4) ...[
+                          const SizedBox(width: 8),
+                          FilledButton.tonalIcon(
+                            onPressed: () => _markAsTrusted(item.senderId),
+                            icon: const Icon(Icons.verified_user, size: 16),
+                            label: const Text('Trust Sender'),
+                            style: FilledButton.styleFrom(
+                              foregroundColor: Colors.green.shade700,
+                              backgroundColor: Colors.green.shade50,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                   ],
                 ],
@@ -1250,7 +1320,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 FloatingActionButton.small(
                   heroTag: 'center_map',
                   onPressed: () {
-                    _mapController.move(const LatLng(37.7749, -122.4194), 13.0);
+                    try {
+                      _mapController.move(const LatLng(37.7749, -122.4194), 13.0);
+                    } catch (e) {
+                      debugPrint('Map not ready yet: $e');
+                    }
                   },
                   child: const Icon(Icons.my_location),
                 ),
@@ -1306,11 +1380,13 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
   String? _myPublicKey;
   String _myName = '';
   String _myContact = '';
+  int _mapCacheSize = 0;
 
   @override
   void initState() {
     super.initState();
     _loadProfile();
+    _loadMapCacheSize();
   }
 
   Future<void> _loadProfile() async {
@@ -1329,6 +1405,23 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
         _myPublicKey = pubKey;
       });
     }
+  }
+
+  Future<void> _loadMapCacheSize() async {
+    final mapCache = ref.read(mapCacheServiceProvider);
+    final size = await mapCache.getCacheSize();
+    if (mounted) {
+      setState(() {
+        _mapCacheSize = size;
+      });
+    }
+  }
+
+  String _formatBytes(int bytes) {
+    if (bytes <= 0) return "0 B";
+    const suffixes = ["B", "KB", "MB", "GB", "TB"];
+    var i = (log(bytes) / log(1024)).floor();
+    return '${(bytes / pow(1024, i)).toStringAsFixed(2)} ${suffixes[i]}';
   }
 
   void _removeTrustedSender(String publicKey) {
@@ -1380,10 +1473,12 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
   @override
   Widget build(BuildContext context) {
     final trustedSendersAsync = ref.watch(trustedSendersControllerProvider);
+    final untrustedSendersAsync = ref.watch(untrustedSendersControllerProvider);
     final markersAsync = ref.watch(hazardMarkersControllerProvider);
     final newsAsync = ref.watch(newsItemsControllerProvider);
 
     final trustedSenders = trustedSendersAsync.value ?? [];
+    final untrustedSenders = untrustedSendersAsync.value ?? [];
     final myMarkers = (markersAsync.value ?? []).where((m) => m.senderId == _myPublicKey).toList();
     final myNews = (newsAsync.value ?? []).where((n) => n.senderId == _myPublicKey).toList();
 
@@ -1541,6 +1636,122 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                       },
                     ),
                   ),
+                const SizedBox(height: 32),
+
+                // Blocked Senders
+                Row(
+                  children: [
+                    const Icon(Icons.block, color: Colors.red),
+                    const SizedBox(width: 8),
+                    const Text('Blocked Senders', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    const Spacer(),
+                    Chip(
+                      label: Text('${untrustedSenders.length}'),
+                      visualDensity: VisualDensity.compact,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                if (untrustedSenders.isEmpty)
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade100,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.grey.shade300),
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.info_outline, color: Colors.grey),
+                        SizedBox(width: 12),
+                        Expanded(child: Text('You have not blocked any senders.', style: TextStyle(color: Colors.grey))),
+                      ],
+                    ),
+                  )
+                else
+                  Card(
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      side: BorderSide(color: Colors.grey.shade300),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: ListView.separated(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: untrustedSenders.length,
+                      separatorBuilder: (context, index) => const Divider(height: 1),
+                      itemBuilder: (context, index) {
+                        final sender = untrustedSenders[index];
+                        return ListTile(
+                          leading: CircleAvatar(
+                            backgroundColor: Colors.red.shade100,
+                            child: const Icon(Icons.person_off, color: Colors.red),
+                          ),
+                          title: Text('Key: ${sender.publicKey.substring(0, 12)}...', style: const TextStyle(fontWeight: FontWeight.w600)),
+                          trailing: IconButton(
+                            icon: const Icon(Icons.restore, color: Colors.blue),
+                            tooltip: 'Unblock',
+                            onPressed: () {
+                              ref.read(untrustedSendersControllerProvider.notifier).removeUntrustedSender(sender.publicKey);
+                            },
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                const SizedBox(height: 32),
+
+                // Map Storage
+                Row(
+                  children: [
+                    const Icon(Icons.map, color: Colors.orange),
+                    const SizedBox(width: 8),
+                    const Text('Offline Maps', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Card(
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    side: BorderSide(color: Colors.grey.shade300),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: ListTile(
+                    leading: const CircleAvatar(
+                      backgroundColor: Colors.orangeAccent,
+                      child: Icon(Icons.storage, color: Colors.white),
+                    ),
+                    title: const Text('Storage Used'),
+                    subtitle: Text(_formatBytes(_mapCacheSize)),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.delete_outline, color: Colors.red),
+                      tooltip: 'Clear Offline Maps',
+                      onPressed: () {
+                        showDialog(
+                          context: context,
+                          builder: (dialogContext) => AlertDialog(
+                            title: const Text('Clear Offline Maps?'),
+                            content: const Text('This will delete all downloaded map tiles.'),
+                            actions: [
+                              TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
+                              FilledButton(
+                                style: FilledButton.styleFrom(backgroundColor: Colors.red),
+                                onPressed: () async {
+                                  Navigator.pop(dialogContext);
+                                  await ref.read(mapCacheServiceProvider).clearCache();
+                                  _loadMapCacheSize();
+                                  if (!context.mounted) return;
+                                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Offline maps cleared')));
+                                },
+                                child: const Text('Clear'),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
                 const SizedBox(height: 32),
 
                 // My Reports

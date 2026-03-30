@@ -42,7 +42,16 @@ class NewsItemsController extends _$NewsItemsController {
 
   Future<void> deleteNewsItem(String id) async {
     final db = ref.read(databaseProvider);
-    await (db.delete(db.newsItems)..where((t) => t.id.equals(id))).go();
+    await db.transaction(() async {
+      await (db.delete(db.newsItems)..where((t) => t.id.equals(id))).go();
+      await db.into(db.deletedItems).insert(
+        DeletedItemsCompanion.insert(
+          id: id,
+          timestamp: DateTime.now().millisecondsSinceEpoch,
+        ),
+        mode: InsertMode.insertOrReplace,
+      );
+    });
   }
 }
 

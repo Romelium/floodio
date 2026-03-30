@@ -527,6 +527,11 @@ class P2pService extends _$P2pService {
         bloomFilter.add(seen.messageId);
       }
   
+        final deletedItems = await db.select(db.deletedItems).get();
+        for (final d in deletedItems) {
+          bloomFilter.add('del_${d.id}');
+        }
+  
         final mapCache = ref.read(mapCacheServiceProvider);
         final mapVersion = await mapCache.getLocalMapVersion();
   
@@ -562,17 +567,19 @@ class P2pService extends _$P2pService {
       final allHazards = await db.select(db.hazardMarkers).get();
       final allNews = await db.select(db.newsItems).get();
       final allProfiles = await db.select(db.userProfiles).get();
+      final allDeleted = await db.select(db.deletedItems).get();
 
       final newHazards = allHazards.where((h) => !peerBloomFilter.mightContain(h.id)).take(200).toList();
       final newNews = allNews.where((n) => !peerBloomFilter.mightContain(n.id)).take(200).toList();
       final newProfiles = allProfiles.where((p) => !peerBloomFilter.mightContain('${p.publicKey}_${p.timestamp}')).take(200).toList();
+      final newDeleted = allDeleted.where((d) => !peerBloomFilter.mightContain('del_${d.id}')).take(200).toList();
 
-      if (newHazards.isEmpty && newNews.isEmpty && newProfiles.isEmpty) {
+      if (newHazards.isEmpty && newNews.isEmpty && newProfiles.isEmpty && newDeleted.isEmpty) {
         state = state.copyWith(syncMessage: 'Up to date.');
         return;
       }
 
-      state = state.copyWith(syncMessage: 'Sending ${newHazards.length} markers, ${newNews.length} news, ${newProfiles.length} profiles...');
+      state = state.copyWith(syncMessage: 'Sending ${newHazards.length} markers, ${newNews.length} news, ${newProfiles.length} profiles, ${newDeleted.length} deletions...');
 
       final payload = pb.SyncPayload();
 
@@ -609,6 +616,13 @@ class P2pService extends _$P2pService {
           contactInfo: p.contactInfo,
           timestamp: Int64(p.timestamp),
           signature: p.signature,
+        ));
+      }
+
+      for (final d in newDeleted) {
+        payload.deletedItems.add(pb.DeletedItem(
+          id: d.id,
+          timestamp: Int64(d.timestamp),
         ));
       }
 
@@ -652,7 +666,7 @@ class P2pService extends _$P2pService {
       final data = base64Decode(json['data']);
       final payload = pb.SyncPayload.fromBuffer(data);
 
-      if (payload.markers.isEmpty && payload.news.isEmpty && payload.profiles.isEmpty) {
+      if (payload.markers.isEmpty && payload.news.isEmpty && payload.profiles.isEmpty && payload.deletedItems.isEmpty) {
         state = state.copyWith(syncMessage: 'Empty payload received.');
         return;
       }
@@ -666,6 +680,9 @@ class P2pService extends _$P2pService {
       final trustedSenders = await db.select(db.trustedSenders).get();
       final trustedKeys = trustedSenders.map((e) => e.publicKey).toList();
 
+      final untrustedSenders = await db.select(db.untrustedSenders).get();
+      final untrustedKeys = untrustedSenders.map((e) => e.publicKey).toList();
+
       final validMarkers = <HazardMarkersCompanion>[];
       final seenIds = <SeenMessageIdsCompanion>[];
       for (final m in payload.markers) {
@@ -675,6 +692,7 @@ class P2pService extends _$P2pService {
           signatureStr: m.signature,
           senderPublicKeyStr: m.senderId,
           trustedPublicKeys: trustedKeys,
+          untrustedPublicKeys: untrustedKeys,
         );
 
         if (trustTier != 5) {
@@ -706,6 +724,7 @@ class P2pService extends _$P2pService {
           signatureStr: n.signature,
           senderPublicKeyStr: n.senderId,
           trustedPublicKeys: trustedKeys,
+          untrustedPublicKeys: untrustedKeys,
         );
 
         if (trustTier != 5) {
@@ -735,6 +754,7 @@ class P2pService extends _$P2pService {
           signatureStr: p.signature,
           senderPublicKeyStr: p.publicKey,
           trustedPublicKeys: trustedKeys,
+          untrustedPublicKeys: untrustedKeys,
         );
 
         if (trustTier != 5) {
@@ -754,6 +774,14 @@ class P2pService extends _$P2pService {
         }
       }
 
+      final validDeleted = <DeletedItemsCompanion>[];
+      for (final d in payload.deletedItems) {
+        validDeleted.add(DeletedItemsCompanion.insert(
+          id: d.id,
+          timestamp: d.timestamp.toInt(),
+        ));
+      }
+
       state = state.copyWith(syncMessage: 'Saving to database...');
 
       await db.transaction(() async {
@@ -769,12 +797,17 @@ class P2pService extends _$P2pService {
         for (final s in seenIds) {
           await db.into(db.seenMessageIds).insert(s, mode: InsertMode.insertOrReplace);
         }
+        for (final d in validDeleted) {
+          await db.into(db.deletedItems).insert(d, mode: InsertMode.insertOrReplace);
+          await (db.delete(db.hazardMarkers)..where((t) => t.id.equals(d.id.value))).go();
+          await (db.delete(db.newsItems)..where((t) => t.id.equals(d.id.value))).go();
+        }
       });
 
       state = state.copyWith(
-        syncMessage: 'Successfully synced ${validMarkers.length} markers, ${validNews.length} news, ${validProfiles.length} profiles.'
+        syncMessage: 'Successfully synced ${validMarkers.length} markers, ${validNews.length} news, ${validProfiles.length} profiles, ${validDeleted.length} deletions.'
       );
-      print("Successfully synced ${payload.markers.length} markers, ${payload.news.length} news, ${payload.profiles.length} profiles.");
+      print("Successfully synced ${payload.markers.length} markers, ${payload.news.length} news, ${payload.profiles.length} profiles, ${payload.deletedItems.length} deletions.");
     } catch (e) {
       print("Error handling payload: $e");
       state = state.copyWith(syncMessage: 'Error syncing data.');
