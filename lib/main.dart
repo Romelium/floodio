@@ -139,17 +139,30 @@ class FloodioApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return MaterialApp(
-      title: 'Floodio',
+      title: 'Floodio Mesh',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF0277BD),
-          secondary: const Color(0xFF00BFA5),
-        ),
         useMaterial3: true,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF1A237E), // Deep Rescue Blue
+          primary: const Color(0xFF1A237E),
+          secondary: const Color(0xFFFF6D00), // Safety Orange
+          surface: Colors.white,
+          error: const Color(0xFFD32F2F),
+        ),
+        textTheme: const TextTheme(
+          headlineMedium: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF1A237E)),
+          titleLarge: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+          bodyMedium: TextStyle(fontSize: 15, height: 1.4),
+        ),
         appBarTheme: const AppBarTheme(
           centerTitle: true,
-          elevation: 2,
-          shadowColor: Colors.black26,
+          elevation: 0,
+          backgroundColor: Color(0xFF1A237E),
+          foregroundColor: Colors.white,
+        ),
+        chipTheme: ChipThemeData(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
         cardTheme: CardThemeData(
           elevation: 2,
@@ -414,6 +427,47 @@ class _DownloadMapDialogState extends ConsumerState<DownloadMapDialog> {
   }
 }
 
+class MeshStatusChip extends ConsumerWidget {
+  const MeshStatusChip({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final p2pState = ref.watch(uiP2pServiceProvider);
+    final isConnected = p2pState.hostState?.isActive == true || p2pState.clientState?.isActive == true;
+    final isSyncing = p2pState.isSyncing || p2pState.isConnecting;
+
+    return GestureDetector(
+      onTap: () {
+        showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: Colors.transparent,
+          builder: (context) => const SyncBottomSheet(),
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: isConnected ? Colors.green.shade700 : (p2pState.isAutoSyncing ? Colors.orange.shade800 : Colors.white24),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (isSyncing)
+              const SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+            else
+              Icon(isConnected ? Icons.hub : Icons.hub_outlined, size: 14, color: Colors.white),
+            const SizedBox(width: 6),
+            Text(isConnected ? 'MESH ACTIVE' : (p2pState.isAutoSyncing ? 'SEARCHING' : 'OFFLINE'), 
+                 style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w900)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   int _tapCount = 0;
   DateTime? _lastTapTime;
@@ -592,13 +646,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   String _getTrustTierName(int tier) {
     switch (tier) {
       case 1:
-        return 'Official';
+        return 'OFFICIAL';
       case 2:
-        return 'Verified Volunteer';
+        return 'VERIFIED';
       case 3:
-        return 'Trusted';
+        return 'TRUSTED';
       case 4:
-        return 'Crowdsourced';
+        return 'UNVERIFIED';
       default:
         return 'Unknown';
     }
@@ -769,7 +823,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   items: ['Flood', 'Fire', 'Roadblock', 'Medical', 'Other']
                       .map(
                         (type) =>
-                            DropdownMenuItem(value: type, child: Text(type)),
+                            DropdownMenuItem(value: type, child: Text(type.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.bold))),
                       )
                       .toList(),
                   onChanged: (val) {
@@ -1733,69 +1787,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     return Column(
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+        Container(
+          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.05),
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
           child: TextField(
             decoration: InputDecoration(
               hintText: 'Search reports...',
               prefixIcon: const Icon(Icons.search),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              contentPadding: const EdgeInsets.symmetric(vertical: 0),
+              filled: true,
+              fillColor: Colors.white,
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(30), borderSide: BorderSide.none),
+              contentPadding: EdgeInsets.zero,
             ),
             onChanged: (val) => filterNotifier.updateSearchQuery(val),
           ),
         ),
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.symmetric(horizontal: 16.0),
-          child: Row(
-            children: [
-              const Text('Type: ', style: TextStyle(fontWeight: FontWeight.bold)),
-              const SizedBox(width: 8),
-              ...['All', 'News', 'Hazards', 'Areas'].map((type) => Padding(
-                padding: const EdgeInsets.only(right: 8.0),
-                child: ChoiceChip(
-                  label: Text(type),
-                  selected: filter.typeFilter == type,
-                  onSelected: (selected) {
-                    if (selected) filterNotifier.updateTypeFilter(type);
-                  },
-                ),
-              )),
-            ],
-          ),
-        ),
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.symmetric(horizontal: 16.0),
-          child: Row(
-            children: [
-              const Text('Trust: ', style: TextStyle(fontWeight: FontWeight.bold)),
-              const SizedBox(width: 8),
-              ChoiceChip(
-                label: const Text('All'),
-                selected: filter.trustFilter == null,
-                onSelected: (selected) {
-                  if (selected) filterNotifier.updateTrustFilter(null);
-                },
-              ),
-              const SizedBox(width: 8),
-              ...[1, 2, 3, 4].map((tier) => Padding(
-                padding: const EdgeInsets.only(right: 8.0),
-                child: ChoiceChip(
-                  label: Text(_getTrustTierName(tier)),
-                  selected: filter.trustFilter == tier,
-                  onSelected: (selected) {
-                    filterNotifier.updateTrustFilter(selected ? tier : null);
-                  },
-                ),
-              )),
-            ],
-          ),
-        ),
-        const Divider(),
+        _buildFilterBar(filter, filterNotifier),
         Expanded(
           child: combined.isEmpty
               ? _buildEmptyFeedState(isLoading)
@@ -1814,7 +1821,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     if (item is HazardMarkerEntity) {
           return Card(
             margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            clipBehavior: Clip.antiAlias,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: BorderSide(
+                color: _getTierColor(item.trustTier).withValues(alpha: 0.5),
+                width: item.trustTier == 1 ? 2 : 1,
+              ),
+            ),
             child: InkWell(
               onTap: () {
                 setState(() => _currentIndex = 0);
@@ -1967,6 +1980,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         } else if (item is NewsItemEntity) {
           return Card(
             margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            color: item.trustTier == 1 ? const Color(0xFFFFF3E0) : null,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: BorderSide(
+                color: _getTierColor(item.trustTier),
+                width: item.trustTier == 1 ? 2 : 1,
+              ),
+            ),
             child: Padding(
               padding: const EdgeInsets.all(16.0),
               child: Column(
@@ -2101,6 +2122,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         } else if (item is AreaEntity) {
           return Card(
             margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: BorderSide(
+                color: _getTierColor(item.trustTier).withValues(alpha: 0.5),
+              ),
+            ),
             clipBehavior: Clip.antiAlias,
             child: InkWell(
               onTap: () {
@@ -2263,39 +2290,85 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
+  Widget _buildFilterBar(FeedFilter filter, dynamic filterNotifier) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4, offset: const Offset(0, 2))],
+      ),
+      child: Column(
+        children: [
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: Row(
+              children: ['All', 'News', 'Hazards', 'Areas'].map((type) => Padding(
+                padding: const EdgeInsets.only(right: 8.0),
+                child: FilterChip(
+                  label: Text(type),
+                  selected: filter.typeFilter == type,
+                  onSelected: (selected) => filterNotifier.updateTypeFilter(type),
+                  selectedColor: Theme.of(context).colorScheme.primaryContainer,
+                ),
+              )).toList(),
+            ),
+          ),
+          const SizedBox(height: 4),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: Row(
+              children: [
+                const Icon(Icons.verified_user_outlined, size: 16, color: Colors.grey),
+                const SizedBox(width: 8),
+                ChoiceChip(
+                  label: const Text('All Trust Levels'),
+                  selected: filter.trustFilter == null,
+                  onSelected: (selected) => filterNotifier.updateTrustFilter(null),
+                ),
+                const SizedBox(width: 8),
+                ...[1, 2, 3, 4].map((tier) => Padding(
+                  padding: const EdgeInsets.only(right: 8.0),
+                  child: ChoiceChip(
+                    label: Text(_getTrustTierName(tier)),
+                    selected: filter.trustFilter == tier,
+                    onSelected: (selected) => filterNotifier.updateTrustFilter(selected ? tier : null),
+                    selectedColor: _getTierColor(tier).withValues(alpha: 0.2),
+                  ),
+                )),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Color _getTierColor(int tier) {
+    switch (tier) {
+      case 1: return Colors.blue.shade800;
+      case 2: return Colors.purple.shade700;
+      case 3: return Colors.green.shade700;
+      default: return Colors.grey.shade600;
+    }
+  }
+
   Widget _buildTrustBadge(int tier) {
-    final color = tier == 1
-        ? Colors.blue
-        : tier == 2
-        ? Colors.purple
-        : tier == 3
-        ? Colors.green
-        : Colors.grey;
-    final icon = tier == 1
-        ? Icons.verified
-        : tier == 2
-        ? Icons.admin_panel_settings
-        : tier == 3
-        ? Icons.thumb_up
-        : Icons.people;
+    final color = _getTierColor(tier);
+    final icon = tier == 1 ? Icons.verified : tier == 2 ? Icons.admin_panel_settings : tier == 3 ? Icons.thumb_up : Icons.people;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.shade50,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.shade300),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: color.shade700),
+      decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12), border: Border.all(color: color.withValues(alpha: 0.3))),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+          Icon(icon, size: 14, color: color),
           const SizedBox(width: 4),
           Text(
             _getTrustTierName(tier),
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.bold,
-              color: color.shade700,
+              color: color,
             ),
           ),
         ],
@@ -2345,10 +2418,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       onPointerDown: _handlePointerDown,
       child: Scaffold(
         appBar: AppBar(
-          title: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
+          title: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Text('Floodio PoC'),
+              const Text('FLOODIO', style: TextStyle(letterSpacing: 2, fontWeight: FontWeight.w900)),
+              const SizedBox(width: 12),
               if (downloadProgress.isDownloading)
                 Text(
                   'Downloading map: ${(downloadProgress.percentage * 100).toStringAsFixed(1)}%',
@@ -2387,50 +2461,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 tooltip: 'Download Offline Map',
                 onPressed: _showDownloadMapDialog,
               ),
-            Consumer(
-              builder: (context, ref, child) {
-                final p2pState = ref.watch(uiP2pServiceProvider);
-                final isConnected =
-                    p2pState.hostState?.isActive == true ||
-                    p2pState.clientState?.isActive == true;
-
-                return Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8.0,
-                    vertical: 8.0,
-                  ),
-                  child: FilledButton.tonalIcon(
-                    style: FilledButton.styleFrom(
-                      backgroundColor: isConnected
-                          ? Colors.green.shade100
-                          : Colors.blue.shade50,
-                      foregroundColor: isConnected
-                          ? Colors.green.shade800
-                          : Colors.blue.shade800,
-                    ),
-                    icon: isConnected
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.green,
-                            ),
-                          )
-                        : const Icon(Icons.sync, size: 18),
-                    label: Text(isConnected ? 'Connected' : 'Sync'),
-                    onPressed: () {
-                      showModalBottomSheet(
-                        context: context,
-                        isScrollControlled: true,
-                        backgroundColor: Colors.transparent,
-                        builder: (context) => const SyncBottomSheet(),
-                      );
-                    },
-                  ),
-                );
-              },
-            ),
+            const Padding(padding: EdgeInsets.only(right: 8), child: MeshStatusChip()),
           ],
         ),
         body: IndexedStack(
@@ -4127,10 +4158,8 @@ class SyncBottomSheet extends ConsumerWidget {
 
                 // Status Card
                 Card(
-                  color: (p2pState.isSyncing || p2pState.isConnecting)
-                      ? Colors.blue.shade50
-                      : Colors.white,
-                  elevation: 2,
+                  color: (p2pState.isSyncing || p2pState.isConnecting) ? const Color(0xFFE8EAF6) : Colors.white,
+                  elevation: 0,
                   shape: RoundedRectangleBorder(
                     side: BorderSide(
                       color: (p2pState.isSyncing || p2pState.isConnecting)
@@ -4151,7 +4180,7 @@ class SyncBottomSheet extends ConsumerWidget {
                           )
                         else
                           Icon(
-                            Icons.sync_alt,
+                            Icons.radar,
                             color: Colors.blue.shade700,
                             size: 28,
                           ),
