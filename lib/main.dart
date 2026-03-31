@@ -1,9 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:isolate';
 import 'dart:math';
 
-import 'package:cryptography/cryptography.dart';
 import 'package:floodio/database/database.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -20,6 +18,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'crypto/crypto_service.dart';
 import 'database/connection.dart';
 import 'database/tables.dart';
+import 'providers/admin_trusted_sender_provider.dart';
 import 'providers/area_provider.dart';
 import 'providers/cached_tile_provider.dart';
 import 'providers/database_provider.dart';
@@ -34,6 +33,7 @@ import 'providers/untrusted_sender_provider.dart';
 import 'providers/user_profile_provider.dart';
 import 'services/background_service.dart';
 import 'services/map_cache_service.dart';
+import 'services/mock_gov_api_service.dart';
 import 'utils/permission_utils.dart';
 
 class LocalImageDisplay extends StatefulWidget {
@@ -100,30 +100,6 @@ void main() async {
       child: const FloodioApp(),
     ),
   );
-}
-
-Future<(String, String)> _generateOfficialMarkerSignature(
-  List<int> payloadToSign,
-) async {
-  final algorithm = Ed25519();
-  final serverKeyPair = await algorithm.newKeyPairFromSeed(
-    List<int>.filled(32, 1),
-  );
-  final serverPubKey = await serverKeyPair.extractPublicKey();
-  final senderId = base64Encode(serverPubKey.bytes);
-
-  final signatureObj = await algorithm.sign(
-    payloadToSign,
-    keyPair: serverKeyPair,
-  );
-  final signature = base64Encode(signatureObj.bytes);
-  return (senderId, signature);
-}
-
-Future<(String, String)> _runGenerateOfficialMarkerSignature(
-  List<int> payloadToSign,
-) {
-  return Isolate.run(() => _generateOfficialMarkerSignature(payloadToSign));
 }
 
 class FloodioApp extends ConsumerWidget {
@@ -499,6 +475,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     await db.delete(db.untrustedSenders).go();
                     await db.delete(db.userProfiles).go();
                     await db.delete(db.areas).go();
+                    await db.delete(db.adminTrustedSenders).go();
                   });
                   final prefs = await SharedPreferences.getInstance();
                   await prefs.remove('user_name');
@@ -515,6 +492,31 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   );
                 },
               ),
+              ListTile(
+                leading: const Icon(Icons.api, color: Colors.blue),
+                title: const Text('Fetch Mock Gov API Data'),
+                onTap: () async {
+                  Navigator.pop(sheetContext);
+                  await ref.read(mockGovApiServiceProvider.notifier).fetchAndInjectMockData();
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Mock Gov API data injected')),
+                  );
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.admin_panel_settings, color: Colors.purple),
+                title: const Text('Make Me Admin-Trusted (Tier 2)'),
+                onTap: () async {
+                  Navigator.pop(sheetContext);
+                  final myPubKey = await ref.read(cryptoServiceProvider.notifier).getPublicKeyString();
+                  await ref.read(mockGovApiServiceProvider.notifier).delegateAdminTrust(myPubKey);
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('You are now an Admin-Trusted Volunteer!')),
+                  );
+                },
+              ),
             ],
           ),
         );
@@ -526,6 +528,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     switch (tier) {
       case 1:
         return 'Official';
+      case 2:
+        return 'Verified Volunteer';
       case 3:
         return 'Trusted';
       case 4:
@@ -798,6 +802,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 final untrustedSendersAsync = ref.read(
                   untrustedSendersControllerProvider,
                 );
+                final adminTrustedSendersAsync = ref.read(
+                  adminTrustedSendersControllerProvider,
+                );
+                final adminTrustedKeys =
+                    adminTrustedSendersAsync.value
+                        ?.map((e) => e.publicKey)
+                        .toList() ??
+                    [];
 
                 final trustedKeys =
                     trustedSendersAsync.value
@@ -815,6 +827,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   signatureStr: signature,
                   senderPublicKeyStr: senderId,
                   trustedPublicKeys: trustedKeys,
+                  adminTrustedPublicKeys: adminTrustedKeys,
                   untrustedPublicKeys: untrustedKeys,
                 );
 
@@ -936,6 +949,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 final untrustedSendersAsync = ref.read(
                   untrustedSendersControllerProvider,
                 );
+                final adminTrustedSendersAsync = ref.read(
+                  adminTrustedSendersControllerProvider,
+                );
+                final adminTrustedKeys =
+                    adminTrustedSendersAsync.value
+                        ?.map((e) => e.publicKey)
+                        .toList() ??
+                    [];
 
                 final trustedKeys =
                     trustedSendersAsync.value
@@ -953,6 +974,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   signatureStr: signature,
                   senderPublicKeyStr: senderId,
                   trustedPublicKeys: trustedKeys,
+                  adminTrustedPublicKeys: adminTrustedKeys,
                   untrustedPublicKeys: untrustedKeys,
                 );
 
@@ -1104,7 +1126,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               final payloadToSign = utf8.encode('$id$title$timestamp');
 
               final (senderId, signature) =
-                  await _runGenerateOfficialMarkerSignature(payloadToSign);
+                  await runGenerateOfficialMarkerSignature(payloadToSign);
 
               final trustedSendersAsync = ref.read(
                 trustedSendersControllerProvider,
@@ -1112,6 +1134,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               final untrustedSendersAsync = ref.read(
                 untrustedSendersControllerProvider,
               );
+              final adminTrustedSendersAsync = ref.read(
+                adminTrustedSendersControllerProvider,
+              );
+              final adminTrustedKeys =
+                  adminTrustedSendersAsync.value
+                      ?.map((e) => e.publicKey)
+                      .toList() ??
+                  [];
               final trustedKeys =
                   trustedSendersAsync.value?.map((e) => e.publicKey).toList() ??
                   [];
@@ -1127,6 +1157,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 signatureStr: signature,
                 senderPublicKeyStr: senderId,
                 trustedPublicKeys: trustedKeys,
+                adminTrustedPublicKeys: adminTrustedKeys,
                 untrustedPublicKeys: untrustedKeys,
               );
 
@@ -1234,14 +1265,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ),
         CircleLayer(
           circles: markers
-              .where((m) => m.trustTier == 1)
+              .where((m) => m.trustTier == 1 || m.trustTier == 2)
               .map(
                 (m) => CircleMarker(
                   point: LatLng(m.latitude, m.longitude),
-                  radius: 500,
+                  radius: m.trustTier == 1 ? 500 : 300,
                   useRadiusInMeter: true,
-                  color: Colors.blue.withValues(alpha: 0.2),
-                  borderColor: Colors.blue,
+                  color: (m.trustTier == 1 ? Colors.blue : Colors.purple).withValues(alpha: 0.2),
+                  borderColor: m.trustTier == 1 ? Colors.blue : Colors.purple,
                   borderStrokeWidth: 2,
                 ),
               )
@@ -1270,6 +1301,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                 _getHazardIcon(m.type),
                                 color: m.trustTier == 1
                                     ? Colors.blue
+                                    : m.trustTier == 2
+                                    ? Colors.purple
                                     : m.trustTier == 3
                                     ? Colors.green
                                     : Colors.grey.shade700,
@@ -1385,6 +1418,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           Icons.location_on,
                           color: m.trustTier == 1
                               ? Colors.blue
+                              : m.trustTier == 2
+                              ? Colors.purple
                               : m.trustTier == 3
                               ? Colors.green
                               : Colors.grey.shade700,
@@ -1488,6 +1523,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         CircleAvatar(
                           backgroundColor: item.trustTier == 1
                               ? Colors.blue.shade100
+                              : item.trustTier == 2
+                              ? Colors.purple.shade100
                               : item.trustTier == 3
                               ? Colors.green.shade100
                               : Colors.grey.shade200,
@@ -1495,6 +1532,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             _getHazardIcon(item.type),
                             color: item.trustTier == 1
                                 ? Colors.blue
+                                : item.trustTier == 2
+                                ? Colors.purple
                                 : item.trustTier == 3
                                 ? Colors.green
                                 : Colors.grey.shade700,
@@ -1622,6 +1661,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       CircleAvatar(
                         backgroundColor: item.trustTier == 1
                             ? Colors.blue.shade100
+                            : item.trustTier == 2
+                            ? Colors.purple.shade100
                             : item.trustTier == 3
                             ? Colors.green.shade100
                             : Colors.grey.shade200,
@@ -1629,6 +1670,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           Icons.campaign,
                           color: item.trustTier == 1
                               ? Colors.blue
+                              : item.trustTier == 2
+                              ? Colors.purple
                               : item.trustTier == 3
                               ? Colors.green
                               : Colors.grey.shade700,
@@ -1770,6 +1813,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         CircleAvatar(
                           backgroundColor: item.trustTier == 1
                               ? Colors.blue.shade100
+                              : item.trustTier == 2
+                              ? Colors.purple.shade100
                               : item.trustTier == 3
                               ? Colors.green.shade100
                               : Colors.grey.shade200,
@@ -1777,6 +1822,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             Icons.format_shapes,
                             color: item.trustTier == 1
                                 ? Colors.blue
+                                : item.trustTier == 2
+                                ? Colors.purple
                                 : item.trustTier == 3
                                 ? Colors.green
                                 : Colors.grey.shade700,
@@ -1898,11 +1945,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget _buildTrustBadge(int tier) {
     final color = tier == 1
         ? Colors.blue
+        : tier == 2
+        ? Colors.purple
         : tier == 3
         ? Colors.green
         : Colors.grey;
     final icon = tier == 1
         ? Icons.verified
+        : tier == 2
+        ? Icons.admin_panel_settings
         : tier == 3
         ? Icons.thumb_up
         : Icons.people;

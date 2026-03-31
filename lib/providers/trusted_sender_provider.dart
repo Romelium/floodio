@@ -27,15 +27,15 @@ class TrustedSendersController extends _$TrustedSendersController {
       );
 
       // Update existing hazard markers
-      await (db.update(db.hazardMarkers)..where((t) => t.senderId.equals(publicKey)))
+      await (db.update(db.hazardMarkers)..where((t) => t.senderId.equals(publicKey) & t.trustTier.isBiggerThanValue(3)))
           .write(const HazardMarkersCompanion(trustTier: Value(3)));
 
       // Update existing news items
-      await (db.update(db.newsItems)..where((t) => t.senderId.equals(publicKey)))
+      await (db.update(db.newsItems)..where((t) => t.senderId.equals(publicKey) & t.trustTier.isBiggerThanValue(3)))
           .write(const NewsItemsCompanion(trustTier: Value(3)));
 
       // Update existing areas
-      await (db.update(db.areas)..where((t) => t.senderId.equals(publicKey)))
+      await (db.update(db.areas)..where((t) => t.senderId.equals(publicKey) & t.trustTier.isBiggerThanValue(3)))
           .write(const AreasCompanion(trustTier: Value(3)));
     });
   }
@@ -46,15 +46,15 @@ class TrustedSendersController extends _$TrustedSendersController {
       await (db.delete(db.trustedSenders)..where((t) => t.publicKey.equals(publicKey))).go();
 
       // Downgrade existing hazard markers
-      await (db.update(db.hazardMarkers)..where((t) => t.senderId.equals(publicKey)))
+      await (db.update(db.hazardMarkers)..where((t) => t.senderId.equals(publicKey) & t.trustTier.equals(3)))
           .write(const HazardMarkersCompanion(trustTier: Value(4)));
 
       // Downgrade existing news items
-      await (db.update(db.newsItems)..where((t) => t.senderId.equals(publicKey)))
+      await (db.update(db.newsItems)..where((t) => t.senderId.equals(publicKey) & t.trustTier.equals(3)))
           .write(const NewsItemsCompanion(trustTier: Value(4)));
 
       // Downgrade existing areas
-      await (db.update(db.areas)..where((t) => t.senderId.equals(publicKey)))
+      await (db.update(db.areas)..where((t) => t.senderId.equals(publicKey) & t.trustTier.equals(3)))
           .write(const AreasCompanion(trustTier: Value(4)));
     });
   }

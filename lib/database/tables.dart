@@ -151,6 +151,31 @@ class UntrustedSenders extends Table {
   Set<Column> get primaryKey => {publicKey};
 }
 
+class AdminTrustedSenderEntity {
+  final String publicKey;
+  final String delegatorPublicKey;
+  final int timestamp;
+  final String signature;
+
+  AdminTrustedSenderEntity({
+    required this.publicKey,
+    required this.delegatorPublicKey,
+    required this.timestamp,
+    required this.signature,
+  });
+}
+
+@UseRowClass(AdminTrustedSenderEntity)
+class AdminTrustedSenders extends Table {
+  TextColumn get publicKey => text()();
+  TextColumn get delegatorPublicKey => text()();
+  IntColumn get timestamp => integer()();
+  TextColumn get signature => text()();
+
+  @override
+  Set<Column> get primaryKey => {publicKey};
+}
+
 class UserProfileEntity {
   final String publicKey;
   final String name;

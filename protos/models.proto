@@ -54,10 +54,19 @@ message DeletedItem {
   int64 timestamp = 2;
 }
 
+message TrustDelegation {
+  string id = 1;
+  string delegator_public_key = 2;
+  string delegatee_public_key = 3;
+  int64 timestamp = 4;
+  string signature = 5;
+}
+
 message SyncPayload {
   repeated HazardMarker markers = 1;
   repeated NewsItem news = 2;
   repeated UserProfile profiles = 3;
   repeated DeletedItem deleted_items = 4;
   repeated AreaMarker areas = 5;
+  repeated TrustDelegation delegations = 6;
 }

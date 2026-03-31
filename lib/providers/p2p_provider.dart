@@ -594,6 +594,11 @@ class P2pService extends _$P2pService {
         for (final d in deletedItems) {
           bloomFilter.add('del_${d.id}');
         }
+        
+        final adminTrusted = await db.select(db.adminTrustedSenders).get();
+        for (final a in adminTrusted) {
+          bloomFilter.add('delg_${a.publicKey}');
+        }
 
         await db.close();
         return (bloomFilter.bits, size);
@@ -637,16 +642,18 @@ class P2pService extends _$P2pService {
         final allProfiles = await db.select(db.userProfiles).get();
         final allDeleted = await db.select(db.deletedItems).get();
         final allAreas = await db.select(db.areas).get();
+        final allAdminTrusted = await db.select(db.adminTrustedSenders).get();
 
         final newHazards = allHazards.where((h) => !peerBloomFilter.mightContain(h.id)).take(200).toList();
         final newNews = allNews.where((n) => !peerBloomFilter.mightContain(n.id)).take(200).toList();
         final newProfiles = allProfiles.where((p) => !peerBloomFilter.mightContain('${p.publicKey}_${p.timestamp}')).take(200).toList();
         final newDeleted = allDeleted.where((d) => !peerBloomFilter.mightContain('del_${d.id}')).take(200).toList();
         final newAreas = allAreas.where((a) => !peerBloomFilter.mightContain(a.id)).take(200).toList();
+        final newDelegations = allAdminTrusted.where((a) => !peerBloomFilter.mightContain('delg_${a.publicKey}')).take(200).toList();
 
         await db.close();
 
-        return (newHazards, newNews, newProfiles, newDeleted, newAreas);
+        return (newHazards, newNews, newProfiles, newDeleted, newAreas, newDelegations);
       });
 
       final newHazards = filterResult.$1;
@@ -654,13 +661,14 @@ class P2pService extends _$P2pService {
       final newProfiles = filterResult.$3;
       final newDeleted = filterResult.$4;
       final newAreas = filterResult.$5;
+      final newDelegations = filterResult.$6;
 
-      if (newHazards.isEmpty && newNews.isEmpty && newProfiles.isEmpty && newDeleted.isEmpty && newAreas.isEmpty) {
+      if (newHazards.isEmpty && newNews.isEmpty && newProfiles.isEmpty && newDeleted.isEmpty && newAreas.isEmpty && newDelegations.isEmpty) {
         state = state.copyWith(isSyncing: false, syncMessage: 'Up to date.');
         return;
       }
 
-      state = state.copyWith(syncMessage: 'Sending ${newHazards.length} markers, ${newNews.length} news, ${newProfiles.length} profiles, ${newAreas.length} areas, ${newDeleted.length} deletions...');
+      state = state.copyWith(syncMessage: 'Sending ${newHazards.length} markers, ${newNews.length} news, ${newProfiles.length} profiles, ${newAreas.length} areas, ${newDeleted.length} deletions, ${newDelegations.length} delegations...');
 
       final payload = pb.SyncPayload();
 
@@ -727,6 +735,16 @@ class P2pService extends _$P2pService {
         payload.areas.add(areaMarker);
       }
 
+      for (final d in newDelegations) {
+        payload.delegations.add(pb.TrustDelegation(
+          id: 'delg_${d.publicKey}',
+          delegatorPublicKey: d.delegatorPublicKey,
+          delegateePublicKey: d.publicKey,
+          timestamp: Int64(d.timestamp),
+          signature: d.signature,
+        ));
+      }
+
       final encoded = base64Encode(payload.writeToBuffer());
       await broadcastText(jsonEncode({'type': 'payload', 'data': encoded}));
       state = state.copyWith(syncMessage: 'Data sent successfully.');
@@ -771,7 +789,7 @@ class P2pService extends _$P2pService {
       final data = base64Decode(json['data']);
       final payload = pb.SyncPayload.fromBuffer(data);
 
-      if (payload.markers.isEmpty && payload.news.isEmpty && payload.profiles.isEmpty && payload.deletedItems.isEmpty && payload.areas.isEmpty) {
+      if (payload.markers.isEmpty && payload.news.isEmpty && payload.profiles.isEmpty && payload.deletedItems.isEmpty && payload.areas.isEmpty && payload.delegations.isEmpty) {
         state = state.copyWith(syncMessage: 'Empty payload received.');
         return;
       }
@@ -788,6 +806,9 @@ class P2pService extends _$P2pService {
       final untrustedSenders = await db.select(db.untrustedSenders).get();
       final untrustedKeys = untrustedSenders.map((e) => e.publicKey).toList();
 
+      final adminTrustedSenders = await db.select(db.adminTrustedSenders).get();
+      final adminTrustedKeys = adminTrustedSenders.map((e) => e.publicKey).toList();
+
       final deletedItems = await db.select(db.deletedItems).get();
       final deletedIds = deletedItems.map((e) => e.id).toSet();
 
@@ -795,8 +816,33 @@ class P2pService extends _$P2pService {
         deletedIds.add(d.id);
       }
 
-      final validMarkers = <HazardMarkersCompanion>[];
       final seenIds = <SeenMessageIdsCompanion>[];
+      final validDelegations = <AdminTrustedSendersCompanion>[];
+      for (final d in payload.delegations) {
+        final isValid = await crypto.verifyDelegation(
+          delegateePublicKeyStr: d.delegateePublicKey,
+          timestamp: d.timestamp.toInt(),
+          signatureStr: d.signature,
+          delegatorPublicKeyStr: d.delegatorPublicKey,
+        );
+        if (isValid) {
+          validDelegations.add(AdminTrustedSendersCompanion.insert(
+            publicKey: d.delegateePublicKey,
+            delegatorPublicKey: d.delegatorPublicKey,
+            timestamp: d.timestamp.toInt(),
+            signature: d.signature,
+          ));
+          adminTrustedKeys.add(d.delegateePublicKey);
+          seenIds.add(SeenMessageIdsCompanion.insert(
+            messageId: d.id,
+            timestamp: DateTime.now().millisecondsSinceEpoch,
+          ));
+        } else {
+          print("Invalid signature for delegation ${d.id}, dropping.");
+        }
+      }
+
+      final validMarkers = <HazardMarkersCompanion>[];
       for (final m in payload.markers) {
         if (deletedIds.contains(m.id)) continue;
         final payloadToSign = utf8.encode('${m.id}${m.type}${m.timestamp}${m.imageId}');
@@ -805,6 +851,7 @@ class P2pService extends _$P2pService {
           signatureStr: m.signature,
           senderPublicKeyStr: m.senderId,
           trustedPublicKeys: trustedKeys,
+          adminTrustedPublicKeys: adminTrustedKeys,
           untrustedPublicKeys: untrustedKeys,
         );
 
@@ -839,6 +886,7 @@ class P2pService extends _$P2pService {
           signatureStr: n.signature,
           senderPublicKeyStr: n.senderId,
           trustedPublicKeys: trustedKeys,
+          adminTrustedPublicKeys: adminTrustedKeys,
           untrustedPublicKeys: untrustedKeys,
         );
 
@@ -869,6 +917,7 @@ class P2pService extends _$P2pService {
           signatureStr: p.signature,
           senderPublicKeyStr: p.publicKey,
           trustedPublicKeys: trustedKeys,
+          adminTrustedPublicKeys: adminTrustedKeys,
           untrustedPublicKeys: untrustedKeys,
         );
 
@@ -898,6 +947,7 @@ class P2pService extends _$P2pService {
           signatureStr: a.signature,
           senderPublicKeyStr: a.senderId,
           trustedPublicKeys: trustedKeys,
+          adminTrustedPublicKeys: adminTrustedKeys,
           untrustedPublicKeys: untrustedKeys,
         );
 
@@ -939,6 +989,7 @@ class P2pService extends _$P2pService {
         batch.insertAll(db.areas, validAreas, mode: InsertMode.insertOrReplace);
         batch.insertAll(db.seenMessageIds, seenIds, mode: InsertMode.insertOrReplace);
         batch.insertAll(db.deletedItems, validDeleted, mode: InsertMode.insertOrReplace);
+        batch.insertAll(db.adminTrustedSenders, validDelegations, mode: InsertMode.insertOrReplace);
       });
 
       await db.transaction(() async {
@@ -946,6 +997,14 @@ class P2pService extends _$P2pService {
           await (db.delete(db.hazardMarkers)..where((t) => t.id.equals(d.id.value))).go();
           await (db.delete(db.newsItems)..where((t) => t.id.equals(d.id.value))).go();
           await (db.delete(db.areas)..where((t) => t.id.equals(d.id.value))).go();
+        }
+        for (final d in validDelegations) {
+          await (db.update(db.hazardMarkers)..where((t) => t.senderId.equals(d.publicKey.value) & t.trustTier.isBiggerThanValue(2)))
+              .write(const HazardMarkersCompanion(trustTier: Value(2)));
+          await (db.update(db.newsItems)..where((t) => t.senderId.equals(d.publicKey.value) & t.trustTier.isBiggerThanValue(2)))
+              .write(const NewsItemsCompanion(trustTier: Value(2)));
+          await (db.update(db.areas)..where((t) => t.senderId.equals(d.publicKey.value) & t.trustTier.isBiggerThanValue(2)))
+              .write(const AreasCompanion(trustTier: Value(2)));
         }
       });
 
