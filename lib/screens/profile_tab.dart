@@ -282,6 +282,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
     String selectedType = marker.type;
     final descController = TextEditingController(text: marker.description);
     int? selectedTtlHours = 24; // Default to extending by 24h
+    bool isCritical = marker.isCritical;
 
     showDialog(
       context: context,
@@ -327,6 +328,14 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                   ],
                   onChanged: (val) => setInnerState(() => selectedTtlHours = val),
                 ),
+                const SizedBox(height: 16),
+                CheckboxListTile(
+                  title: const Text('Mark as Critical Emergency', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                  value: isCritical,
+                  onChanged: (val) => setInnerState(() => isCritical = val ?? false),
+                  controlAffinity: ListTileControlAffinity.leading,
+                  activeColor: Colors.red,
+                ),
               ],
             ),
           ),
@@ -345,8 +354,9 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                     ? timestamp + (selectedTtlHours! * 3600000)
                     : null;
 
+                final isCriticalStr = isCritical ? "1" : "0";
                 final payloadToSign = utf8.encode(
-                  '$newId$selectedType$timestamp${marker.imageId ?? ""}${expiresAt ?? ""}',
+                  '$newId$selectedType$timestamp${marker.imageId ?? ""}${expiresAt ?? ""}$isCriticalStr',
                 );
                 final signature = await cryptoService.signData(payloadToSign);
 
@@ -362,6 +372,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                   trustTier: marker.trustTier,
                   imageId: marker.imageId,
                   expiresAt: expiresAt,
+                  isCritical: isCritical,
                 );
 
                 await ref
@@ -1314,9 +1325,10 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                               ),
                             ),
                             title: Text(
-                              'Hazard: ${item.type}',
-                              style: const TextStyle(
+                              'Hazard: ${item.type}${item.isCritical ? ' (CRITICAL)' : ''}',
+                              style: TextStyle(
                                 fontWeight: FontWeight.w600,
+                                color: item.isCritical ? Colors.red : null,
                               ),
                             ),
                             subtitle: Column(

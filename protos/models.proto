@@ -43,6 +43,7 @@ message HazardMarker {
   int32 trust_tier = 9;
   string image_id = 10;
   int64 expires_at = 11;
+  bool is_critical = 12;
 }
 
 message NewsItem {

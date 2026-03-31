@@ -13,6 +13,7 @@ class HazardMarkerEntity {
   final int trustTier;
   final String? imageId;
   final int? expiresAt;
+  final bool isCritical;
 
   HazardMarkerEntity({
     required this.id,
@@ -26,6 +27,7 @@ class HazardMarkerEntity {
     required this.trustTier,
     this.imageId,
     this.expiresAt,
+    this.isCritical = false,
   });
 }
 
@@ -42,6 +44,7 @@ class HazardMarkers extends Table {
   IntColumn get trustTier => integer()();
   TextColumn get imageId => text().nullable()();
   IntColumn get expiresAt => integer().nullable()();
+  BoolColumn get isCritical => boolean().withDefault(const Constant(false))();
 
   @override
   Set<Column> get primaryKey => {id};

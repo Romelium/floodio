@@ -12,7 +12,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 11;
+  int get schemaVersion => 12;
 
   Future<void> cleanupOldData() async {
     final now = DateTime.now().millisecondsSinceEpoch;
@@ -107,6 +107,9 @@ class AppDatabase extends _$AppDatabase {
         }
         if (from < 11) {
           await m.createTable(paths);
+        }
+        if (from < 12) {
+          await m.addColumn(hazardMarkers, hazardMarkers.isCritical);
         }
       },
     );

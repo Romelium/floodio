@@ -478,8 +478,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     String senderId;
     String signature;
 
+    final isCriticalStr = marker.isCritical ? "1" : "0";
     final payloadToSign = utf8.encode(
-      '${marker.id}${marker.type}$timestamp${marker.imageId ?? ""}${marker.expiresAt ?? ""}',
+      '${marker.id}${marker.type}$timestamp${marker.imageId ?? ""}${marker.expiresAt ?? ""}$isCriticalStr',
     );
 
     if (settings.isOfficialMode) {
@@ -530,6 +531,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       trustTier: trustTier,
       imageId: marker.imageId,
       expiresAt: marker.expiresAt,
+      isCritical: marker.isCritical,
     );
 
     await ref
@@ -550,6 +552,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         trustTier: updatedMarker.trustTier,
         imageId: updatedMarker.imageId ?? '',
         expiresAt: Int64(updatedMarker.expiresAt ?? 0),
+        isCritical: updatedMarker.isCritical,
       ),
     );
 
@@ -1070,6 +1073,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
     XFile? selectedImage;
     int? selectedTtlHours = 24;
+    bool isCritical = false;
 
     showDialog(
       context: context,
@@ -1161,6 +1165,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       setInnerState(() => selectedTtlHours = val),
                 ),
                 const SizedBox(height: 16),
+                CheckboxListTile(
+                  title: const Text('Mark as Critical Emergency', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                  value: isCritical,
+                  onChanged: (val) => setInnerState(() => isCritical = val ?? false),
+                  controlAffinity: ListTileControlAffinity.leading,
+                  activeColor: Colors.red,
+                ),
+                const SizedBox(height: 16),
                 if (selectedImage != null) ...[
                   ClipRRect(
                     borderRadius: BorderRadius.circular(8),
@@ -1245,8 +1257,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       .broadcastFile(savedImage);
                 }
 
+                final isCriticalStr = isCritical ? "1" : "0";
                 final payloadToSign = utf8.encode(
-                  '$id$type$timestamp${imageId ?? ""}${expiresAt ?? ""}',
+                  '$id$type$timestamp${imageId ?? ""}${expiresAt ?? ""}$isCriticalStr',
                 );
                 final signature = await cryptoService.signData(payloadToSign);
                 final untrustedSendersAsync = ref.read(
@@ -1302,6 +1315,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   trustTier: trustTier,
                   imageId: imageId,
                   expiresAt: expiresAt,
+                  isCritical: isCritical,
                 );
                 await ref
                     .read(hazardMarkersControllerProvider.notifier)
@@ -2174,8 +2188,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 final color = getHazardColor(m.type, m.trustTier);
                 return Marker(
                   point: LatLng(m.latitude, m.longitude),
-                  width: 40,
-                  height: 40,
+                  width: m.isCritical ? 50 : 40,
+                  height: m.isCritical ? 50 : 40,
                   alignment: Alignment.topCenter,
                   child: GestureDetector(
                     behavior: HitTestBehavior.opaque,
@@ -2338,16 +2352,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     },
                     child: Stack(
                       alignment: Alignment.center,
+                      clipBehavior: Clip.none,
                       children: [
-                        Icon(Icons.location_on, color: color, size: 40),
+                        Icon(Icons.location_on, color: color, size: m.isCritical ? 50 : 40),
                         Positioned(
-                          top: 6,
+                          top: m.isCritical ? 8 : 6,
                           child: Icon(
                             getHazardIcon(m.type),
                             color: Colors.white,
-                            size: 16,
+                            size: m.isCritical ? 20 : 16,
                           ),
                         ),
+                        if (m.isCritical)
+                          const Positioned(
+                            right: -4,
+                            top: -4,
+                            child: Icon(Icons.warning, color: Colors.red, size: 20),
+                          ),
                       ],
                     ),
                   ),
@@ -2549,10 +2570,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                                 CrossAxisAlignment.start,
                                             children: [
                                               Text(
-                                                'Hazard: ${item.type}',
-                                                style: const TextStyle(
+                                                'Hazard: ${item.type}${item.isCritical ? ' (CRITICAL)' : ''}',
+                                                style: TextStyle(
                                                   fontWeight: FontWeight.bold,
                                                   fontSize: 16,
+                                                  color: item.isCritical ? Colors.red : null,
                                                 ),
                                               ),
                                               Text(

@@ -75,7 +75,7 @@ class MockGovApiService extends _$MockGovApiService {
 
     final type = 'Flood';
     final desc = 'Automated sensor detected rising water levels.';
-    final payloadToSignMarker = utf8.encode('${id}_m$type$timestamp$expiresAt');
+    final payloadToSignMarker = utf8.encode('${id}_m$type$timestamp$expiresAt' '1');
     final (_, signatureMarker) = await generateOfficialMarkerSignature(payloadToSignMarker);
 
     final newMarker = HazardMarkerEntity(
@@ -89,6 +89,7 @@ class MockGovApiService extends _$MockGovApiService {
       signature: signatureMarker,
       trustTier: 1,
       expiresAt: expiresAt,
+      isCritical: true,
     );
     await ref.read(hazardMarkersControllerProvider.notifier).addMarker(newMarker);
   }

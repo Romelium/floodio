@@ -702,6 +702,7 @@ class P2pService extends _$P2pService {
           trustTier: h.trustTier,
           imageId: h.imageId ?? '',
           expiresAt: Int64(h.expiresAt ?? 0),
+          isCritical: h.isCritical,
         ));
       }
 
@@ -960,7 +961,8 @@ class P2pService extends _$P2pService {
 
         final imageIdStr = m.imageId;
         final expiresAtStr = m.expiresAt == 0 ? "" : m.expiresAt.toString();
-        final payloadToSign = utf8.encode('${m.id}${m.type}${m.timestamp}$imageIdStr$expiresAtStr');
+        final isCriticalStr = m.isCritical ? "1" : "0";
+        final payloadToSign = utf8.encode('${m.id}${m.type}${m.timestamp}$imageIdStr$expiresAtStr$isCriticalStr');
         final trustTier = await crypto.verifyAndGetTrustTier(
           data: payloadToSign,
           signatureStr: m.signature,
@@ -984,6 +986,7 @@ class P2pService extends _$P2pService {
             trustTier: trustTier,
             imageId: Value(m.imageId.isEmpty ? null : m.imageId),
             expiresAt: Value(m.expiresAt == 0 ? null : m.expiresAt.toInt()),
+            isCritical: Value(m.isCritical),
           ));
           seenIds.add(SeenMessageIdsCompanion.insert(
             messageId: m.id,
