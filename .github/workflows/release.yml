@@ -35,9 +35,13 @@ jobs:
           channel: 'stable'
           cache: true
 
-      # NEW STEP: Install protoc required by your Makefile
       - name: Install Protoc
         run: sudo apt-get update && sudo apt-get install -y protobuf-compiler
+
+      - name: Install protoc_plugin for Dart
+        run: |
+          flutter pub global activate protoc_plugin
+          echo "$HOME/.pub-cache/bin" >> $GITHUB_PATH
 
       - name: Install dependencies
         run: flutter pub get
