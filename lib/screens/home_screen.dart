@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:async';
 
 import 'package:fixnum/fixnum.dart';
 import 'package:flutter/material.dart';
@@ -48,6 +49,46 @@ import '../widgets/mesh_status_chip.dart';
 import 'command_tab.dart';
 import 'initializer_screen.dart';
 import 'profile_tab.dart';
+
+class _SearchBar extends ConsumerStatefulWidget {
+  const _SearchBar();
+
+  @override
+  ConsumerState<_SearchBar> createState() => _SearchBarState();
+}
+
+class _SearchBarState extends ConsumerState<_SearchBar> {
+  Timer? _debounce;
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      decoration: InputDecoration(
+        hintText: 'Search reports...',
+        prefixIcon: const Icon(Icons.search),
+        filled: true,
+        fillColor: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide.none,
+        ),
+        contentPadding: const EdgeInsets.symmetric(vertical: 0),
+      ),
+      onChanged: (val) {
+        if (_debounce?.isActive ?? false) _debounce!.cancel();
+        _debounce = Timer(const Duration(milliseconds: 300), () {
+          ref.read(feedFilterControllerProvider.notifier).updateSearchQuery(val);
+        });
+      },
+    );
+  }
+}
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -2092,7 +2133,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         final pathsAsync = ref.watch(pathsControllerProvider);
         final profilesAsync = ref.watch(userProfilesControllerProvider);
         final offlineRegionsAsync = ref.watch(offlineRegionsProvider);
-        final locationAsync = ref.watch(locationControllerProvider);
         final settings = ref.watch(appSettingsProvider);
 
         final markers = markersAsync.value ?? [];
@@ -2100,7 +2140,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         final paths = pathsAsync.value ?? [];
         final profiles = profilesAsync.value ?? [];
         final offlineRegions = offlineRegionsAsync.value ?? [];
-        final currentPosition = locationAsync.value;
 
         final adminTrustedAsync = ref.watch(
           adminTrustedSendersControllerProvider,
@@ -2144,9 +2183,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         return FlutterMap(
           mapController: _mapController,
           options: MapOptions(
-            initialCenter: currentPosition != null
-                ? LatLng(currentPosition.latitude, currentPosition.longitude)
-                : const LatLng(37.7749, -122.4194),
+            initialCenter: const LatLng(37.7749, -122.4194),
             initialZoom: 13.0,
             onTap: (tapPosition, point) {
               final drawingState = ref.read(drawingControllerProvider);
@@ -2445,34 +2482,40 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 );
               }).toList(),
             ),
-            if (currentPosition != null)
-              MarkerLayer(
-                markers: [
-                  Marker(
-                    point: LatLng(
-                      currentPosition.latitude,
-                      currentPosition.longitude,
-                    ),
-                    width: 24,
-                    height: 24,
-                    alignment: Alignment.center,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Colors.blue,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 3),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.blue.withValues(alpha: 0.5),
-                            blurRadius: 10,
-                            spreadRadius: 5,
-                          ),
-                        ],
+            Consumer(
+              builder: (context, ref, child) {
+                final locationAsync = ref.watch(locationControllerProvider);
+                final currentPosition = locationAsync.value;
+                if (currentPosition == null) return const SizedBox.shrink();
+                return MarkerLayer(
+                  markers: [
+                    Marker(
+                      point: LatLng(
+                        currentPosition.latitude,
+                        currentPosition.longitude,
+                      ),
+                      width: 24,
+                      height: 24,
+                      alignment: Alignment.center,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.blue,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 3),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.blue.withValues(alpha: 0.5),
+                              blurRadius: 10,
+                              spreadRadius: 5,
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                ],
-              ),
+                  ],
+                );
+              },
+            ),
             const RichAttributionWidget(
               attributions: [
                 TextSourceAttribution('OpenStreetMap contributors'),
@@ -2514,25 +2557,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         Container(
           color: Theme.of(context).colorScheme.surface,
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-          child: Consumer(
-            builder: (context, ref, child) {
-              final filterNotifier = ref.read(feedFilterControllerProvider.notifier);
-              return TextField(
-                decoration: InputDecoration(
-                  hintText: 'Search reports...',
-                  prefixIcon: const Icon(Icons.search),
-                  filled: true,
-                  fillColor: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: BorderSide.none,
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(vertical: 0),
-                ),
-                onChanged: (val) => filterNotifier.updateSearchQuery(val),
-              );
-            },
-          ),
+          child: const _SearchBar(),
         ),
         Consumer(
           builder: (context, ref, child) {

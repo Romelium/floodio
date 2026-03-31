@@ -722,37 +722,6 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
     final myContact = localUser?.contact ?? '';
     final myPublicKey = localUser?.publicKey;
 
-    final mapCacheSizeAsync = ref.watch(mapCacheSizeControllerProvider);
-    final mapCacheSize = mapCacheSizeAsync.value ?? 0;
-    final trustedSendersAsync = ref.watch(trustedSendersControllerProvider);
-    final untrustedSendersAsync = ref.watch(untrustedSendersControllerProvider);
-    final markersAsync = ref.watch(hazardMarkersControllerProvider);
-    final newsAsync = ref.watch(newsItemsControllerProvider);
-    final areasAsync = ref.watch(areasControllerProvider);
-    final offlineRegionsAsync = ref.watch(offlineRegionsProvider);
-
-    final trustedSenders = trustedSendersAsync.value ?? [];
-    final offlineRegions = offlineRegionsAsync.value ?? [];
-    final untrustedSenders = untrustedSendersAsync.value ?? [];
-    final myMarkers = (markersAsync.value ?? [])
-        .where((m) => m.senderId == myPublicKey)
-        .toList();
-    final myNews = (newsAsync.value ?? [])
-        .where((n) => n.senderId == myPublicKey)
-        .toList();
-    final myAreas = (areasAsync.value ?? [])
-        .where((a) => a.senderId == myPublicKey)
-        .toList();
-    final pathsAsync = ref.watch(pathsControllerProvider);
-    final myPaths = (pathsAsync.value ?? [])
-        .where((p) => p.senderId == myPublicKey)
-        .toList();
-
-    final myReports = <dynamic>[...myMarkers, ...myNews, ...myAreas, ...myPaths];
-    myReports.sort(
-      (a, b) => (b.timestamp as int).compareTo(a.timestamp as int),
-    );
-
     return CustomScrollView(
       slivers: [
         SliverToBoxAdapter(
@@ -900,757 +869,816 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                 const SizedBox(height: 24),
 
                 // Trusted Senders
-                Row(
-                  children: [
-                    const Icon(Icons.verified_user, color: Colors.green),
-                    const SizedBox(width: 8),
-                    const Text(
-                      'Trusted Senders',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const Spacer(),
-                    Chip(
-                      label: Text('${trustedSenders.length}'),
-                      visualDensity: VisualDensity.compact,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                if (trustedSenders.isEmpty)
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade100,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.grey.shade300),
-                    ),
-                    child: const Row(
+                Consumer(
+                  builder: (context, ref, child) {
+                    final trustedSendersAsync = ref.watch(trustedSendersControllerProvider);
+                    final trustedSenders = trustedSendersAsync.value ?? [];
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(Icons.info_outline, color: Colors.grey),
-                        SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            'You have not trusted any senders yet. Trust senders from the feed to prioritize their reports.',
-                            style: TextStyle(color: Colors.grey),
-                          ),
+                        Row(
+                          children: [
+                            const Icon(Icons.verified_user, color: Colors.green),
+                            const SizedBox(width: 8),
+                            const Text(
+                              'Trusted Senders',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const Spacer(),
+                            Chip(
+                              label: Text('${trustedSenders.length}'),
+                              visualDensity: VisualDensity.compact,
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                  )
-                else
-                  Card(
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      side: BorderSide(color: Colors.grey.shade300),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: ListView.separated(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: trustedSenders.length,
-                      separatorBuilder: (context, index) =>
-                          const Divider(height: 1),
-                      itemBuilder: (context, index) {
-                        final sender = trustedSenders[index];
-                        return ListTile(
-                          leading: CircleAvatar(
-                            backgroundColor: Colors.green.shade100,
-                            child: const Icon(
-                              Icons.person,
-                              color: Colors.green,
+                        const SizedBox(height: 12),
+                        if (trustedSenders.isEmpty)
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade100,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.grey.shade300),
                             ),
-                          ),
-                          title: Text(
-                            sender.name,
-                            style: const TextStyle(fontWeight: FontWeight.w600),
-                          ),
-                          subtitle: Text(
-                            'Key: ${sender.publicKey.substring(0, 12)}...',
-                            style: const TextStyle(fontSize: 12),
-                          ),
-                          trailing: IconButton(
-                            icon: const Icon(
-                              Icons.remove_circle_outline,
-                              color: Colors.red,
-                            ),
-                            tooltip: 'Remove Trust',
-                            onPressed: () {
-                              showDialog(
-                                context: context,
-                                builder: (context) => AlertDialog(
-                                  title: const Text('Remove Trusted Sender?'),
-                                  content: Text(
-                                    'Are you sure you want to remove ${sender.name} from your trusted senders? Their future reports will be marked as Crowdsourced.',
+                            child: const Row(
+                              children: [
+                                Icon(Icons.info_outline, color: Colors.grey),
+                                SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    'You have not trusted any senders yet. Trust senders from the feed to prioritize their reports.',
+                                    style: TextStyle(color: Colors.grey),
                                   ),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () => Navigator.pop(context),
-                                      child: const Text('Cancel'),
-                                    ),
-                                    FilledButton(
-                                      style: FilledButton.styleFrom(
-                                        backgroundColor: Colors.red,
-                                      ),
-                                      onPressed: () {
-                                        Navigator.pop(context);
-                                        _removeTrustedSender(sender.publicKey);
-                                      },
-                                      child: const Text('Remove'),
-                                    ),
-                                  ],
                                 ),
-                              );
-                            },
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                const SizedBox(height: 32),
-
-                // Blocked Senders
-                Row(
-                  children: [
-                    const Icon(Icons.block, color: Colors.red),
-                    const SizedBox(width: 8),
-                    const Text(
-                      'Blocked Senders',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const Spacer(),
-                    Chip(
-                      label: Text('${untrustedSenders.length}'),
-                      visualDensity: VisualDensity.compact,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                if (untrustedSenders.isEmpty)
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade100,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.grey.shade300),
-                    ),
-                    child: const Row(
-                      children: [
-                        Icon(Icons.info_outline, color: Colors.grey),
-                        SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            'You have not blocked any senders.',
-                            style: TextStyle(color: Colors.grey),
-                          ),
-                        ),
-                      ],
-                    ),
-                  )
-                else
-                  Card(
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      side: BorderSide(color: Colors.grey.shade300),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: ListView.separated(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: untrustedSenders.length,
-                      separatorBuilder: (context, index) =>
-                          const Divider(height: 1),
-                      itemBuilder: (context, index) {
-                        final sender = untrustedSenders[index];
-                        return ListTile(
-                          leading: CircleAvatar(
-                            backgroundColor: Colors.red.shade100,
-                            child: const Icon(
-                              Icons.person_off,
-                              color: Colors.red,
+                              ],
                             ),
-                          ),
-                          title: Text(
-                            'Key: ${sender.publicKey.substring(0, 12)}...',
-                            style: const TextStyle(fontWeight: FontWeight.w600),
-                          ),
-                          trailing: IconButton(
-                            icon: const Icon(Icons.restore, color: Colors.blue),
-                            tooltip: 'Unblock',
-                            onPressed: () {
-                              ref
-                                  .read(
-                                    untrustedSendersControllerProvider.notifier,
-                                  )
-                                  .removeUntrustedSender(sender.publicKey);
-                            },
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                const SizedBox(height: 32),
-
-                // Map Storage
-                Row(
-                  children: [
-                    const Icon(Icons.map, color: Colors.orange),
-                    const SizedBox(width: 8),
-                    const Text(
-                      'Offline Maps',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Card(
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    side: BorderSide(color: Colors.grey.shade300),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Column(
-                    children: [
-                      ListTile(
-                        leading: const CircleAvatar(
-                          backgroundColor: Colors.orangeAccent,
-                          child: Icon(Icons.storage, color: Colors.white),
-                        ),
-                        title: const Text('Storage Used'),
-                        subtitle: Text(_formatBytes(mapCacheSize)),
-                        trailing: IconButton(
-                          icon: const Icon(
-                            Icons.delete_outline,
-                            color: Colors.red,
-                          ),
-                          tooltip: 'Clear All Offline Maps',
-                          onPressed: () {
-                            showDialog(
-                              context: context,
-                              builder: (dialogContext) => AlertDialog(
-                                title: const Text('Clear All Offline Maps?'),
-                                content: const Text(
-                                  'This will delete all downloaded map tiles.',
-                                ),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () =>
-                                        Navigator.pop(dialogContext),
-                                    child: const Text('Cancel'),
-                                  ),
-                                  FilledButton(
-                                    style: FilledButton.styleFrom(
-                                      backgroundColor: Colors.red,
+                          )
+                        else
+                          Card(
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              side: BorderSide(color: Colors.grey.shade300),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: ListView.separated(
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              itemCount: trustedSenders.length,
+                              separatorBuilder: (context, index) =>
+                                  const Divider(height: 1),
+                              itemBuilder: (context, index) {
+                                final sender = trustedSenders[index];
+                                return ListTile(
+                                  leading: CircleAvatar(
+                                    backgroundColor: Colors.green.shade100,
+                                    child: const Icon(
+                                      Icons.person,
+                                      color: Colors.green,
                                     ),
-                                    onPressed: () async {
-                                      Navigator.pop(dialogContext);
-                                      await ref
-                                          .read(mapCacheServiceProvider)
-                                          .clearCache();
-                                      await ref
-                                          .read(offlineRegionsProvider.notifier)
-                                          .clearRegions();
-                                      ref.read(mapCacheSizeControllerProvider.notifier).refresh();
-                                      if (!context.mounted) return;
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        const SnackBar(
-                                          content: Text('Offline maps cleared'),
+                                  ),
+                                  title: Text(
+                                    sender.name,
+                                    style: const TextStyle(fontWeight: FontWeight.w600),
+                                  ),
+                                  subtitle: Text(
+                                    'Key: ${sender.publicKey.substring(0, 12)}...',
+                                    style: const TextStyle(fontSize: 12),
+                                  ),
+                                  trailing: IconButton(
+                                    icon: const Icon(
+                                      Icons.remove_circle_outline,
+                                      color: Colors.red,
+                                    ),
+                                    tooltip: 'Remove Trust',
+                                    onPressed: () {
+                                      showDialog(
+                                        context: context,
+                                        builder: (context) => AlertDialog(
+                                          title: const Text('Remove Trusted Sender?'),
+                                          content: Text(
+                                            'Are you sure you want to remove ${sender.name} from your trusted senders? Their future reports will be marked as Crowdsourced.',
+                                          ),
+                                          actions: [
+                                            TextButton(
+                                              onPressed: () => Navigator.pop(context),
+                                              child: const Text('Cancel'),
+                                            ),
+                                            FilledButton(
+                                              style: FilledButton.styleFrom(
+                                                backgroundColor: Colors.red,
+                                              ),
+                                              onPressed: () {
+                                                Navigator.pop(context);
+                                                _removeTrustedSender(sender.publicKey);
+                                              },
+                                              child: const Text('Remove'),
+                                            ),
+                                          ],
                                         ),
                                       );
                                     },
-                                    child: const Text('Clear All'),
                                   ),
-                                ],
+                                );
+                              },
+                            ),
+                          ),
+                      ],
+                    );
+                  }
+                ),
+                const SizedBox(height: 32),
+
+                // Blocked Senders
+                Consumer(
+                  builder: (context, ref, child) {
+                    final untrustedSendersAsync = ref.watch(untrustedSendersControllerProvider);
+                    final untrustedSenders = untrustedSendersAsync.value ?? [];
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.block, color: Colors.red),
+                            const SizedBox(width: 8),
+                            const Text(
+                              'Blocked Senders',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
                               ),
-                            );
-                          },
+                            ),
+                            const Spacer(),
+                            Chip(
+                              label: Text('${untrustedSenders.length}'),
+                              visualDensity: VisualDensity.compact,
+                            ),
+                          ],
                         ),
-                      ),
-                      if (offlineRegions.isNotEmpty) ...[
-                        const Divider(height: 1),
-                        ListView.separated(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          itemCount: offlineRegions.length,
-                          separatorBuilder: (context, index) =>
-                              const Divider(height: 1),
-                          itemBuilder: (context, index) {
-                            final region = offlineRegions[index];
-                            return ListTile(
-                              leading: const Icon(
-                                Icons.map_outlined,
-                                color: Colors.orange,
-                              ),
-                              title: Text(
-                                'Region ${index + 1} (Zoom ${region.minZoom}-${region.maxZoom})',
-                              ),
-                              subtitle: Text(
-                                'Bounds: ${region.bounds.north.toStringAsFixed(2)}, ${region.bounds.west.toStringAsFixed(2)} to ${region.bounds.south.toStringAsFixed(2)}, ${region.bounds.east.toStringAsFixed(2)}',
-                                style: const TextStyle(fontSize: 12),
-                              ),
-                              trailing: IconButton(
-                                icon: const Icon(
-                                  Icons.remove_circle_outline,
-                                  color: Colors.red,
+                        const SizedBox(height: 12),
+                        if (untrustedSenders.isEmpty)
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade100,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.grey.shade300),
+                            ),
+                            child: const Row(
+                              children: [
+                                Icon(Icons.info_outline, color: Colors.grey),
+                                SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    'You have not blocked any senders.',
+                                    style: TextStyle(color: Colors.grey),
+                                  ),
                                 ),
-                                tooltip: 'Delete Region',
-                                onPressed: () {
-                                  showDialog(
-                                    context: context,
-                                    builder: (dialogContext) => AlertDialog(
-                                      title: const Text('Delete Region?'),
-                                      content: const Text(
-                                        'This will delete the map tiles for this region. Overlapping regions may lose some tiles.',
-                                      ),
-                                      actions: [
-                                        TextButton(
-                                          onPressed: () =>
-                                              Navigator.pop(dialogContext),
-                                          child: const Text('Cancel'),
-                                        ),
-                                        FilledButton(
-                                          style: FilledButton.styleFrom(
-                                            backgroundColor: Colors.red,
-                                          ),
-                                          onPressed: () async {
-                                            Navigator.pop(dialogContext);
-                                            await ref
-                                                .read(
-                                                  offlineRegionsProvider
-                                                      .notifier,
-                                                )
-                                                .removeRegion(region);
-                                            await ref
-                                                .read(mapCacheServiceProvider)
-                                                .deleteRegionTiles(region);
-                                            ref.read(mapCacheSizeControllerProvider.notifier).refresh();
-                                            if (!context.mounted) return;
-                                            ScaffoldMessenger.of(
-                                              context,
-                                            ).showSnackBar(
-                                              const SnackBar(
-                                                content: Text('Region deleted'),
-                                              ),
-                                            );
-                                          },
-                                          child: const Text('Delete'),
-                                        ),
-                                      ],
+                              ],
+                            ),
+                          )
+                        else
+                          Card(
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              side: BorderSide(color: Colors.grey.shade300),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: ListView.separated(
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              itemCount: untrustedSenders.length,
+                              separatorBuilder: (context, index) =>
+                                  const Divider(height: 1),
+                              itemBuilder: (context, index) {
+                                final sender = untrustedSenders[index];
+                                return ListTile(
+                                  leading: CircleAvatar(
+                                    backgroundColor: Colors.red.shade100,
+                                    child: const Icon(
+                                      Icons.person_off,
+                                      color: Colors.red,
                                     ),
-                                  );
-                                },
+                                  ),
+                                  title: Text(
+                                    'Key: ${sender.publicKey.substring(0, 12)}...',
+                                    style: const TextStyle(fontWeight: FontWeight.w600),
+                                  ),
+                                  trailing: IconButton(
+                                    icon: const Icon(Icons.restore, color: Colors.blue),
+                                    tooltip: 'Unblock',
+                                    onPressed: () {
+                                      ref
+                                          .read(
+                                            untrustedSendersControllerProvider.notifier,
+                                          )
+                                          .removeUntrustedSender(sender.publicKey);
+                                    },
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                      ],
+                    );
+                  }
+                ),
+                const SizedBox(height: 32),
+
+                // Map Storage
+                Consumer(
+                  builder: (context, ref, child) {
+                    final mapCacheSizeAsync = ref.watch(mapCacheSizeControllerProvider);
+                    final mapCacheSize = mapCacheSizeAsync.value ?? 0;
+                    final offlineRegionsAsync = ref.watch(offlineRegionsProvider);
+                    final offlineRegions = offlineRegionsAsync.value ?? [];
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.map, color: Colors.orange),
+                            const SizedBox(width: 8),
+                            const Text(
+                              'Offline Maps',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
                               ),
-                            );
-                          },
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Card(
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            side: BorderSide(color: Colors.grey.shade300),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Column(
+                            children: [
+                              ListTile(
+                                leading: const CircleAvatar(
+                                  backgroundColor: Colors.orangeAccent,
+                                  child: Icon(Icons.storage, color: Colors.white),
+                                ),
+                                title: const Text('Storage Used'),
+                                subtitle: Text(_formatBytes(mapCacheSize)),
+                                trailing: IconButton(
+                                  icon: const Icon(
+                                    Icons.delete_outline,
+                                    color: Colors.red,
+                                  ),
+                                  tooltip: 'Clear All Offline Maps',
+                                  onPressed: () {
+                                    showDialog(
+                                      context: context,
+                                      builder: (dialogContext) => AlertDialog(
+                                        title: const Text('Clear All Offline Maps?'),
+                                        content: const Text(
+                                          'This will delete all downloaded map tiles.',
+                                        ),
+                                        actions: [
+                                          TextButton(
+                                            onPressed: () =>
+                                                Navigator.pop(dialogContext),
+                                            child: const Text('Cancel'),
+                                          ),
+                                          FilledButton(
+                                            style: FilledButton.styleFrom(
+                                              backgroundColor: Colors.red,
+                                            ),
+                                            onPressed: () async {
+                                              Navigator.pop(dialogContext);
+                                              await ref
+                                                  .read(mapCacheServiceProvider)
+                                                  .clearCache();
+                                              await ref
+                                                  .read(offlineRegionsProvider.notifier)
+                                                  .clearRegions();
+                                              ref.read(mapCacheSizeControllerProvider.notifier).refresh();
+                                              if (!context.mounted) return;
+                                              ScaffoldMessenger.of(
+                                                context,
+                                              ).showSnackBar(
+                                                const SnackBar(
+                                                  content: Text('Offline maps cleared'),
+                                                ),
+                                              );
+                                            },
+                                            child: const Text('Clear All'),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                              if (offlineRegions.isNotEmpty) ...[
+                                const Divider(height: 1),
+                                ListView.separated(
+                                  shrinkWrap: true,
+                                  physics: const NeverScrollableScrollPhysics(),
+                                  itemCount: offlineRegions.length,
+                                  separatorBuilder: (context, index) =>
+                                      const Divider(height: 1),
+                                  itemBuilder: (context, index) {
+                                    final region = offlineRegions[index];
+                                    return ListTile(
+                                      leading: const Icon(
+                                        Icons.map_outlined,
+                                        color: Colors.orange,
+                                      ),
+                                      title: Text(
+                                        'Region ${index + 1} (Zoom ${region.minZoom}-${region.maxZoom})',
+                                      ),
+                                      subtitle: Text(
+                                        'Bounds: ${region.bounds.north.toStringAsFixed(2)}, ${region.bounds.west.toStringAsFixed(2)} to ${region.bounds.south.toStringAsFixed(2)}, ${region.bounds.east.toStringAsFixed(2)}',
+                                        style: const TextStyle(fontSize: 12),
+                                      ),
+                                      trailing: IconButton(
+                                        icon: const Icon(
+                                          Icons.remove_circle_outline,
+                                          color: Colors.red,
+                                        ),
+                                        tooltip: 'Delete Region',
+                                        onPressed: () {
+                                          showDialog(
+                                            context: context,
+                                            builder: (dialogContext) => AlertDialog(
+                                              title: const Text('Delete Region?'),
+                                              content: const Text(
+                                                'This will delete the map tiles for this region. Overlapping regions may lose some tiles.',
+                                              ),
+                                              actions: [
+                                                TextButton(
+                                                  onPressed: () =>
+                                                      Navigator.pop(dialogContext),
+                                                  child: const Text('Cancel'),
+                                                ),
+                                                FilledButton(
+                                                  style: FilledButton.styleFrom(
+                                                    backgroundColor: Colors.red,
+                                                  ),
+                                                  onPressed: () async {
+                                                    Navigator.pop(dialogContext);
+                                                    await ref
+                                                        .read(
+                                                          offlineRegionsProvider
+                                                              .notifier,
+                                                        )
+                                                        .removeRegion(region);
+                                                    await ref
+                                                        .read(mapCacheServiceProvider)
+                                                        .deleteRegionTiles(region);
+                                                    ref.read(mapCacheSizeControllerProvider.notifier).refresh();
+                                                    if (!context.mounted) return;
+                                                    ScaffoldMessenger.of(
+                                                      context,
+                                                    ).showSnackBar(
+                                                      const SnackBar(
+                                                        content: Text('Region deleted'),
+                                                      ),
+                                                    );
+                                                  },
+                                                  child: const Text('Delete'),
+                                                ),
+                                              ],
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ],
+                            ],
+                          ),
                         ),
                       ],
-                    ],
-                  ),
+                    );
+                  }
                 ),
                 const SizedBox(height: 32),
 
                 // My Reports
-                Row(
-                  children: [
-                    const Icon(Icons.my_library_books, color: Colors.blue),
-                    const SizedBox(width: 8),
-                    const Text(
-                      'My Reports',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const Spacer(),
-                    Chip(
-                      label: Text('${myReports.length}'),
-                      visualDensity: VisualDensity.compact,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                if (myReports.isEmpty)
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade100,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.grey.shade300),
-                    ),
-                    child: const Row(
+                Consumer(
+                  builder: (context, ref, child) {
+                    final markersAsync = ref.watch(hazardMarkersControllerProvider);
+                    final newsAsync = ref.watch(newsItemsControllerProvider);
+                    final areasAsync = ref.watch(areasControllerProvider);
+                    final pathsAsync = ref.watch(pathsControllerProvider);
+                    final localUserAsync = ref.watch(localUserControllerProvider);
+                    final myPublicKey = localUserAsync.value?.publicKey;
+
+                    final myMarkers = (markersAsync.value ?? []).where((m) => m.senderId == myPublicKey).toList();
+                    final myNews = (newsAsync.value ?? []).where((n) => n.senderId == myPublicKey).toList();
+                    final myAreas = (areasAsync.value ?? []).where((a) => a.senderId == myPublicKey).toList();
+                    final myPaths = (pathsAsync.value ?? []).where((p) => p.senderId == myPublicKey).toList();
+
+                    final myReports = <dynamic>[...myMarkers, ...myNews, ...myAreas, ...myPaths];
+                    myReports.sort((a, b) => (b.timestamp as int).compareTo(a.timestamp as int));
+
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(Icons.info_outline, color: Colors.grey),
-                        SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            'You have not made any reports yet.',
-                            style: TextStyle(color: Colors.grey),
-                          ),
+                        Row(
+                          children: [
+                            const Icon(Icons.my_library_books, color: Colors.blue),
+                            const SizedBox(width: 8),
+                            const Text(
+                              'My Reports',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const Spacer(),
+                            Chip(
+                              label: Text('${myReports.length}'),
+                              visualDensity: VisualDensity.compact,
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                  )
-                else
-                  ListView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: myReports.length,
-                    itemBuilder: (context, index) {
-                      final item = myReports[index];
-                      if (item is HazardMarkerEntity) {
-                        return Card(
-                          elevation: 0,
-                          margin: const EdgeInsets.only(bottom: 8),
-                          shape: RoundedRectangleBorder(
-                            side: BorderSide(color: Colors.grey.shade300),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: ListTile(
-                            onTap: () {
-                              widget.onNavigateToMap(LatLng(item.latitude, item.longitude));
-                            },
-                            leading: CircleAvatar(
-                              backgroundColor: Colors.orange.shade100,
-                              child: const Icon(
-                                Icons.warning,
-                                color: Colors.orange,
-                              ),
+                        const SizedBox(height: 12),
+                        if (myReports.isEmpty)
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade100,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.grey.shade300),
                             ),
-                            title: Text(
-                              'Hazard: ${item.type}${item.isCritical ? ' (CRITICAL)' : ''}',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w600,
-                                color: item.isCritical ? Colors.red : null,
-                              ),
-                            ),
-                            subtitle: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                            child: const Row(
                               children: [
-                                const SizedBox(height: 4),
-                                Text(
-                                  item.description,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
+                                Icon(Icons.info_outline, color: Colors.grey),
+                                SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    'You have not made any reports yet.',
+                                    style: TextStyle(color: Colors.grey),
+                                  ),
                                 ),
-                                if (item.imageId != null &&
-                                    item.imageId!.isNotEmpty)
-                                  const Padding(
-                                    padding: EdgeInsets.only(top: 4.0),
-                                    child: Row(
+                              ],
+                            ),
+                          )
+                        else
+                          ListView.builder(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            itemCount: myReports.length,
+                            itemBuilder: (context, index) {
+                              final item = myReports[index];
+                              if (item is HazardMarkerEntity) {
+                                return Card(
+                                  elevation: 0,
+                                  margin: const EdgeInsets.only(bottom: 8),
+                                  shape: RoundedRectangleBorder(
+                                    side: BorderSide(color: Colors.grey.shade300),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: ListTile(
+                                    onTap: () {
+                                      widget.onNavigateToMap(LatLng(item.latitude, item.longitude));
+                                    },
+                                    leading: CircleAvatar(
+                                      backgroundColor: Colors.orange.shade100,
+                                      child: const Icon(
+                                        Icons.warning,
+                                        color: Colors.orange,
+                                      ),
+                                    ),
+                                    title: Text(
+                                      'Hazard: ${item.type}${item.isCritical ? ' (CRITICAL)' : ''}',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                        color: item.isCritical ? Colors.red : null,
+                                      ),
+                                    ),
+                                    subtitle: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
-                                        Icon(
-                                          Icons.image,
-                                          size: 12,
-                                          color: Colors.grey,
-                                        ),
-                                        SizedBox(width: 4),
+                                        const SizedBox(height: 4),
                                         Text(
-                                          'Image attached',
+                                          item.description,
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        if (item.imageId != null &&
+                                            item.imageId!.isNotEmpty)
+                                          const Padding(
+                                            padding: EdgeInsets.only(top: 4.0),
+                                            child: Row(
+                                              children: [
+                                                Icon(
+                                                  Icons.image,
+                                                  size: 12,
+                                                  color: Colors.grey,
+                                                ),
+                                                SizedBox(width: 4),
+                                                Text(
+                                                  'Image attached',
+                                                  style: TextStyle(
+                                                    fontSize: 11,
+                                                    color: Colors.grey,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          DateTime.fromMillisecondsSinceEpoch(
+                                            item.timestamp,
+                                          ).toString().substring(0, 16),
                                           style: TextStyle(
                                             fontSize: 11,
-                                            color: Colors.grey,
+                                            color: Colors.grey.shade600,
                                           ),
                                         ),
                                       ],
                                     ),
-                                  ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  DateTime.fromMillisecondsSinceEpoch(
-                                    item.timestamp,
-                                  ).toString().substring(0, 16),
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: Colors.grey.shade600,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            isThreeLine: true,
-                            trailing: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                IconButton(
-                                  icon: const Icon(
-                                    Icons.edit,
-                                    color: Colors.blue,
-                                  ),
-                                  onPressed: () => _editMarker(item),
-                                ),
-                                IconButton(
-                                  icon: const Icon(
-                                    Icons.delete_outline,
-                                    color: Colors.red,
-                                  ),
-                                  onPressed: () => _deleteMarker(item.id),
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      } else if (item is NewsItemEntity) {
-                        return Card(
-                          elevation: 0,
-                          margin: const EdgeInsets.only(bottom: 8),
-                          shape: RoundedRectangleBorder(
-                            side: BorderSide(color: Colors.grey.shade300),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: ListTile(
-                            onTap: () {
-                              // News items don't have coordinates
-                            },
-                            leading: CircleAvatar(
-                              backgroundColor: Colors.blue.shade100,
-                              child: const Icon(
-                                Icons.campaign,
-                                color: Colors.blue,
-                              ),
-                            ),
-                            title: Text(
-                              'News: ${item.title}${item.isCritical ? ' (CRITICAL)' : ''}',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w600,
-                                color: item.isCritical ? Colors.red : null,
-                              ),
-                            ),
-                            subtitle: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const SizedBox(height: 4),
-                                Text(
-                                  item.content,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                if (item.imageId != null &&
-                                    item.imageId!.isNotEmpty)
-                                  const Padding(
-                                    padding: EdgeInsets.only(top: 4.0),
-                                    child: Row(
+                                    isThreeLine: true,
+                                    trailing: Row(
+                                      mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        Icon(
-                                          Icons.image,
-                                          size: 12,
-                                          color: Colors.grey,
-                                        ),
-                                        SizedBox(width: 4),
-                                        Text(
-                                          'Image attached',
-                                          style: TextStyle(
-                                            fontSize: 11,
-                                            color: Colors.grey,
+                                        IconButton(
+                                          icon: const Icon(
+                                            Icons.edit,
+                                            color: Colors.blue,
                                           ),
+                                          onPressed: () => _editMarker(item),
+                                        ),
+                                        IconButton(
+                                          icon: const Icon(
+                                            Icons.delete_outline,
+                                            color: Colors.red,
+                                          ),
+                                          onPressed: () => _deleteMarker(item.id),
                                         ),
                                       ],
                                     ),
                                   ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  DateTime.fromMillisecondsSinceEpoch(
-                                    item.timestamp,
-                                  ).toString().substring(0, 16),
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: Colors.grey.shade600,
+                                );
+                              } else if (item is NewsItemEntity) {
+                                return Card(
+                                  elevation: 0,
+                                  margin: const EdgeInsets.only(bottom: 8),
+                                  shape: RoundedRectangleBorder(
+                                    side: BorderSide(color: Colors.grey.shade300),
+                                    borderRadius: BorderRadius.circular(12),
                                   ),
-                                ),
-                              ],
-                            ),
-                            isThreeLine: true,
-                            trailing: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                IconButton(
-                                  icon: const Icon(
-                                    Icons.edit,
-                                    color: Colors.blue,
+                                  child: ListTile(
+                                    onTap: () {
+                                      // News items don't have coordinates
+                                    },
+                                    leading: CircleAvatar(
+                                      backgroundColor: Colors.blue.shade100,
+                                      child: const Icon(
+                                        Icons.campaign,
+                                        color: Colors.blue,
+                                      ),
+                                    ),
+                                    title: Text(
+                                      'News: ${item.title}${item.isCritical ? ' (CRITICAL)' : ''}',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                        color: item.isCritical ? Colors.red : null,
+                                      ),
+                                    ),
+                                    subtitle: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          item.content,
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        if (item.imageId != null &&
+                                            item.imageId!.isNotEmpty)
+                                          const Padding(
+                                            padding: EdgeInsets.only(top: 4.0),
+                                            child: Row(
+                                              children: [
+                                                Icon(
+                                                  Icons.image,
+                                                  size: 12,
+                                                  color: Colors.grey,
+                                                ),
+                                                SizedBox(width: 4),
+                                                Text(
+                                                  'Image attached',
+                                                  style: TextStyle(
+                                                    fontSize: 11,
+                                                    color: Colors.grey,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          DateTime.fromMillisecondsSinceEpoch(
+                                            item.timestamp,
+                                          ).toString().substring(0, 16),
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            color: Colors.grey.shade600,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    isThreeLine: true,
+                                    trailing: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        IconButton(
+                                          icon: const Icon(
+                                            Icons.edit,
+                                            color: Colors.blue,
+                                          ),
+                                          onPressed: () => _editNews(item),
+                                        ),
+                                        IconButton(
+                                          icon: const Icon(
+                                            Icons.delete_outline,
+                                            color: Colors.red,
+                                          ),
+                                          onPressed: () => _deleteNews(item.id),
+                                        ),
+                                      ],
+                                    ),
                                   ),
-                                  onPressed: () => _editNews(item),
-                                ),
-                                IconButton(
-                                  icon: const Icon(
-                                    Icons.delete_outline,
-                                    color: Colors.red,
+                                );
+                              } else if (item is AreaEntity) {
+                                return Card(
+                                  elevation: 0,
+                                  margin: const EdgeInsets.only(bottom: 8),
+                                  shape: RoundedRectangleBorder(
+                                    side: BorderSide(color: Colors.grey.shade300),
+                                    borderRadius: BorderRadius.circular(12),
                                   ),
-                                  onPressed: () => _deleteNews(item.id),
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      } else if (item is AreaEntity) {
-                        return Card(
-                          elevation: 0,
-                          margin: const EdgeInsets.only(bottom: 8),
-                          shape: RoundedRectangleBorder(
-                            side: BorderSide(color: Colors.grey.shade300),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: ListTile(
-                            onTap: () {
-                              if (item.coordinates.isNotEmpty) {
-                                widget.onNavigateToMap(LatLng(
-                                  item.coordinates.first['lat']!,
-                                  item.coordinates.first['lng']!,
-                                ));
+                                  child: ListTile(
+                                    onTap: () {
+                                      if (item.coordinates.isNotEmpty) {
+                                        widget.onNavigateToMap(LatLng(
+                                          item.coordinates.first['lat']!,
+                                          item.coordinates.first['lng']!,
+                                        ));
+                                      }
+                                    },
+                                    leading: CircleAvatar(
+                                      backgroundColor: Colors.purple.shade100,
+                                      child: const Icon(
+                                        Icons.format_shapes,
+                                        color: Colors.purple,
+                                      ),
+                                    ),
+                                    title: Text(
+                                      'Area: ${item.type}${item.isCritical ? ' (CRITICAL)' : ''}',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                        color: item.isCritical ? Colors.red : null,
+                                      ),
+                                    ),
+                                    subtitle: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          item.description,
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          DateTime.fromMillisecondsSinceEpoch(
+                                            item.timestamp,
+                                          ).toString().substring(0, 16),
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            color: Colors.grey.shade600,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    isThreeLine: true,
+                                    trailing: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        IconButton(
+                                          icon: const Icon(
+                                            Icons.edit_location_alt,
+                                            color: Colors.purple,
+                                          ),
+                                          tooltip: 'Edit Shape',
+                                          onPressed: () =>
+                                              widget.onEditAreaShape(item),
+                                        ),
+                                        IconButton(
+                                          icon: const Icon(
+                                            Icons.edit,
+                                            color: Colors.blue,
+                                          ),
+                                          onPressed: () => _editArea(item),
+                                        ),
+                                        IconButton(
+                                          icon: const Icon(
+                                            Icons.delete_outline,
+                                            color: Colors.red,
+                                          ),
+                                          onPressed: () => _deleteArea(item.id),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              } else if (item is PathEntity) {
+                                return Card(
+                                  elevation: 0,
+                                  margin: const EdgeInsets.only(bottom: 8),
+                                  shape: RoundedRectangleBorder(
+                                    side: BorderSide(color: Colors.grey.shade300),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: ListTile(
+                                    leading: CircleAvatar(
+                                      backgroundColor: Colors.teal.shade100,
+                                      child: const Icon(
+                                        Icons.route,
+                                        color: Colors.teal,
+                                      ),
+                                    ),
+                                    title: Text(
+                                      'Path: ${item.type}${item.isCritical ? ' (CRITICAL)' : ''}',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                        color: item.isCritical ? Colors.red : null,
+                                      ),
+                                    ),
+                                    subtitle: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          item.description,
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          DateTime.fromMillisecondsSinceEpoch(
+                                            item.timestamp,
+                                          ).toString().substring(0, 16),
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            color: Colors.grey.shade600,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    isThreeLine: true,
+                                    trailing: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        IconButton(
+                                          icon: const Icon(
+                                            Icons.edit_location_alt,
+                                            color: Colors.teal,
+                                          ),
+                                          tooltip: 'Edit Shape',
+                                          onPressed: () =>
+                                              widget.onEditPathShape(item),
+                                        ),
+                                        IconButton(
+                                          icon: const Icon(
+                                            Icons.edit,
+                                            color: Colors.blue,
+                                          ),
+                                          onPressed: () => _editPath(item),
+                                        ),
+                                        IconButton(
+                                          icon: const Icon(
+                                            Icons.delete_outline,
+                                            color: Colors.red,
+                                          ),
+                                          onPressed: () => _deletePath(item.id),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
                               }
+                              return const SizedBox.shrink();
                             },
-                            leading: CircleAvatar(
-                              backgroundColor: Colors.purple.shade100,
-                              child: const Icon(
-                                Icons.format_shapes,
-                                color: Colors.purple,
-                              ),
-                            ),
-                            title: Text(
-                              'Area: ${item.type}${item.isCritical ? ' (CRITICAL)' : ''}',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w600,
-                                color: item.isCritical ? Colors.red : null,
-                              ),
-                            ),
-                            subtitle: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const SizedBox(height: 4),
-                                Text(
-                                  item.description,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  DateTime.fromMillisecondsSinceEpoch(
-                                    item.timestamp,
-                                  ).toString().substring(0, 16),
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: Colors.grey.shade600,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            isThreeLine: true,
-                            trailing: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                IconButton(
-                                  icon: const Icon(
-                                    Icons.edit_location_alt,
-                                    color: Colors.purple,
-                                  ),
-                                  tooltip: 'Edit Shape',
-                                  onPressed: () =>
-                                      widget.onEditAreaShape(item),
-                                ),
-                                IconButton(
-                                  icon: const Icon(
-                                    Icons.edit,
-                                    color: Colors.blue,
-                                  ),
-                                  onPressed: () => _editArea(item),
-                                ),
-                                IconButton(
-                                  icon: const Icon(
-                                    Icons.delete_outline,
-                                    color: Colors.red,
-                                  ),
-                                  onPressed: () => _deleteArea(item.id),
-                                ),
-                              ],
-                            ),
                           ),
-                        );
-                      } else if (item is PathEntity) {
-                        return Card(
-                          elevation: 0,
-                          margin: const EdgeInsets.only(bottom: 8),
-                          shape: RoundedRectangleBorder(
-                            side: BorderSide(color: Colors.grey.shade300),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: ListTile(
-                            leading: CircleAvatar(
-                              backgroundColor: Colors.teal.shade100,
-                              child: const Icon(
-                                Icons.route,
-                                color: Colors.teal,
-                              ),
-                            ),
-                            title: Text(
-                              'Path: ${item.type}${item.isCritical ? ' (CRITICAL)' : ''}',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w600,
-                                color: item.isCritical ? Colors.red : null,
-                              ),
-                            ),
-                            subtitle: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const SizedBox(height: 4),
-                                Text(
-                                  item.description,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  DateTime.fromMillisecondsSinceEpoch(
-                                    item.timestamp,
-                                  ).toString().substring(0, 16),
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: Colors.grey.shade600,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            isThreeLine: true,
-                            trailing: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                IconButton(
-                                  icon: const Icon(
-                                    Icons.edit_location_alt,
-                                    color: Colors.teal,
-                                  ),
-                                  tooltip: 'Edit Shape',
-                                  onPressed: () =>
-                                      widget.onEditPathShape(item),
-                                ),
-                                IconButton(
-                                  icon: const Icon(
-                                    Icons.edit,
-                                    color: Colors.blue,
-                                  ),
-                                  onPressed: () => _editPath(item),
-                                ),
-                                IconButton(
-                                  icon: const Icon(
-                                    Icons.delete_outline,
-                                    color: Colors.red,
-                                  ),
-                                  onPressed: () => _deletePath(item.id),
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      }
-                      return const SizedBox.shrink();
-                    },
-                  ),
+                      ],
+                    );
+                  }
+                ),
               ],
             ),
           ),
