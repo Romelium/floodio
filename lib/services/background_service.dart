@@ -11,6 +11,7 @@ import '../database/connection.dart';
 import '../database/database.dart';
 import '../providers/database_provider.dart';
 import '../providers/p2p_provider.dart';
+import '../providers/offline_regions_provider.dart';
 
 Future<void> initializeBackgroundService() async {
   final service = FlutterBackgroundService();
@@ -125,6 +126,12 @@ void onStart(ServiceInstance service) async {
   service.on('connectToDevice').listen((event) {
     if (event != null && event['deviceAddress'] != null) {
       p2pNotifier.connectToDeviceByAddress(event['deviceAddress']);
+    }
+  });
+
+  service.on('requestMapRegion').listen((event) {
+    if (event != null) {
+      p2pNotifier.requestMapRegion(OfflineRegion.fromJson(Map<String, dynamic>.from(event)));
     }
   });
 

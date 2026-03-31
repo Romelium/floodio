@@ -3409,6 +3409,8 @@ class SyncBottomSheet extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final p2pState = ref.watch(uiP2pServiceProvider);
     final p2pNotifier = ref.read(uiP2pServiceProvider.notifier);
+    final myRegionsAsync = ref.watch(offlineRegionsProvider);
+    final myRegions = myRegionsAsync.value ?? [];
 
     return Container(
       margin: const EdgeInsets.all(16),
@@ -3562,6 +3564,60 @@ class SyncBottomSheet extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: 16),
+
+                // Peer Offline Maps Section
+                if (p2pState.peerOfflineRegions.isNotEmpty) ...[
+                  Text(
+                    'Peer Offline Maps',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey.shade300),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Column(
+                      children: p2pState.peerOfflineRegions.map((region) {
+                        final alreadyHave = myRegions.any((r) => 
+                          (r.bounds.north - region.bounds.north).abs() < 0.0001 &&
+                          (r.bounds.south - region.bounds.south).abs() < 0.0001 &&
+                          (r.bounds.east - region.bounds.east).abs() < 0.0001 &&
+                          (r.bounds.west - region.bounds.west).abs() < 0.0001 &&
+                          r.minZoom == region.minZoom &&
+                          r.maxZoom == region.maxZoom
+                        );
+
+                        return ListTile(
+                          leading: const Icon(Icons.map, color: Colors.orange),
+                          title: Text('Map Region (Zoom ${region.minZoom}-${region.maxZoom})'),
+                          subtitle: Text('Bounds: ${region.bounds.north.toStringAsFixed(2)}, ${region.bounds.west.toStringAsFixed(2)} to ${region.bounds.south.toStringAsFixed(2)}, ${region.bounds.east.toStringAsFixed(2)}'),
+                          trailing: alreadyHave 
+                            ? const Tooltip(
+                                message: 'Already downloaded',
+                                child: Icon(Icons.check_circle, color: Colors.green),
+                              )
+                            : IconButton(
+                                icon: const Icon(Icons.download),
+                                tooltip: 'Request from peer',
+                                onPressed: p2pState.isSyncing ? null : () {
+                                  p2pNotifier.requestMapRegion(region);
+                                  Navigator.pop(context);
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Requested map region from peer...')),
+                                  );
+                                },
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
 
                 // Manual Controls
                 Text(

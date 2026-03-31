@@ -3,6 +3,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../models/p2p_models.dart';
 import 'p2p_provider.dart';
+import 'offline_regions_provider.dart';
 
 part 'ui_p2p_provider.g.dart';
 
@@ -49,5 +50,9 @@ class UiP2pService extends _$UiP2pService {
 
   void connectToDevice(AppDiscoveredDevice device) {
     FlutterBackgroundService().invoke('connectToDevice', {'deviceAddress': device.deviceAddress});
+  }
+
+  void requestMapRegion(OfflineRegion region) {
+    FlutterBackgroundService().invoke('requestMapRegion', region.toJson());
   }
 }

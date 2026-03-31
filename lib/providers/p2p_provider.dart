@@ -6,18 +6,21 @@ import 'dart:math';
 
 import 'package:drift/drift.dart';
 import 'package:fixnum/fixnum.dart';
+import 'package:floodio/providers/offline_regions_provider.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_p2p_connection/flutter_p2p_connection.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../crypto/crypto_service.dart';
 import '../database/connection.dart';
 import '../database/database.dart';
+import '../models/p2p_models.dart';
 import '../protos/models.pb.dart' as pb;
 import '../services/map_cache_service.dart';
 import '../utils/bloom_filter.dart';
 import 'database_provider.dart';
-import '../models/p2p_models.dart';
 
 part 'p2p_provider.g.dart';
 
@@ -33,6 +36,7 @@ class P2pState {
   final List<AppDiscoveredDevice> discoveredDevices;
   final List<AppClientInfo> connectedClients;
   final List<String> receivedTexts;
+  final List<OfflineRegion> peerOfflineRegions;
 
   const P2pState({
     this.isHosting = false,
@@ -46,6 +50,7 @@ class P2pState {
     this.discoveredDevices = const [],
     this.connectedClients = const [],
     this.receivedTexts = const [],
+    this.peerOfflineRegions = const [],
   });
 
   P2pState copyWith({
@@ -62,6 +67,7 @@ class P2pState {
     List<AppDiscoveredDevice>? discoveredDevices,
     List<AppClientInfo>? connectedClients,
     List<String>? receivedTexts,
+    List<OfflineRegion>? peerOfflineRegions,
   }) {
     return P2pState(
       isHosting: isHosting ?? this.isHosting,
@@ -75,6 +81,7 @@ class P2pState {
       discoveredDevices: discoveredDevices ?? this.discoveredDevices,
       connectedClients: connectedClients ?? this.connectedClients,
       receivedTexts: receivedTexts ?? this.receivedTexts,
+      peerOfflineRegions: peerOfflineRegions ?? this.peerOfflineRegions,
     );
   }
 
@@ -107,6 +114,7 @@ class P2pState {
         'username': c.username,
         'isHost': c.isHost,
       }).toList(),
+      'peerOfflineRegions': peerOfflineRegions.map((r) => r.toJson()).toList(),
     };
   }
 
@@ -122,6 +130,7 @@ class P2pState {
       clientState: map['clientState'] != null ? AppClientState.fromMap(Map<String, dynamic>.from(map['clientState'])) : null,
       discoveredDevices: (map['discoveredDevices'] as List?)?.map((d) => AppDiscoveredDevice.fromMap(Map<String, dynamic>.from(d))).toList() ?? [],
       connectedClients: (map['connectedClients'] as List?)?.map((c) => AppClientInfo.fromMap(Map<String, dynamic>.from(c))).toList() ?? [],
+      peerOfflineRegions: (map['peerOfflineRegions'] as List?)?.map((r) => OfflineRegion.fromJson(Map<String, dynamic>.from(r))).toList() ?? [],
     );
   }
 }
@@ -463,7 +472,7 @@ class P2pService extends _$P2pService {
           await _handlePayload(json);
           return;
         } else if (json['type'] == 'request_map') {
-          await _handleRequestMap();
+          await _handleRequestMap(json);
           return;
         } else if (json['type'] == 'request_image') {
           await _handleRequestImage(json['imageId']);
@@ -520,6 +529,26 @@ class P2pService extends _$P2pService {
             try {
               final mapCache = ref.read(mapCacheServiceProvider);
               await mapCache.unpackMap(downloadedFile);
+              
+              if (file.info.name.startsWith('map_')) {
+                try {
+                  final parts = file.info.name.replaceAll('.fmap', '').split('_');
+                  if (parts.length == 7) {
+                    final region = OfflineRegion(
+                      bounds: LatLngBounds(
+                        LatLng(double.parse(parts[2]), double.parse(parts[4])), // south, west
+                        LatLng(double.parse(parts[1]), double.parse(parts[3])), // north, east
+                      ),
+                      minZoom: int.parse(parts[5]),
+                      maxZoom: int.parse(parts[6]),
+                    );
+                    ref.read(offlineRegionsProvider.notifier).addRegion(region);
+                  }
+                } catch (e) {
+                  print("Failed to parse region from map filename: $e");
+                }
+              }
+              
               state = state.copyWith(isSyncing: false, syncMessage: 'Map updated successfully.');
             } catch (e) {
               print("Error unpacking map: $e");
@@ -570,14 +599,13 @@ class P2pService extends _$P2pService {
         return (bloomFilter.bits, size);
       });
   
-        final mapCache = ref.read(mapCacheServiceProvider);
-        final mapVersion = await mapCache.getLocalMapVersion();
+      final offlineRegions = ref.read(offlineRegionsProvider).value ?? [];
   
       final manifest = {
         'type': 'manifest',
         'bloomFilter': bloomBits,
         'bloomSize': bloomSize,
-        'mapVersion': mapVersion,
+        'offlineRegions': offlineRegions.map((r) => r.toJson()).toList(),
       };
   
       await broadcastText(jsonEncode(manifest));
@@ -590,13 +618,10 @@ class P2pService extends _$P2pService {
     _idleTicks = 0;
     state = state.copyWith(isSyncing: true, syncMessage: 'Comparing data...');
     try {
-      final peerMapVersion = json['mapVersion'] as int? ?? 0;
-      final mapCache = ref.read(mapCacheServiceProvider);
-      final localMapVersion = await mapCache.getLocalMapVersion();
-      
-      if (peerMapVersion > localMapVersion) {
-        await broadcastText(jsonEncode({'type': 'request_map'}));
-      }
+      final peerRegionsJson = json['offlineRegions'] as List<dynamic>? ?? [];
+      final peerRegions = peerRegionsJson.map((e) => OfflineRegion.fromJson(Map<String, dynamic>.from(e))).toList();
+
+      state = state.copyWith(peerOfflineRegions: peerRegions);
 
       final bloomSize = json['bloomSize'] as int? ?? 32768;
       final bloomBits = (json['bloomFilter'] as List<dynamic>?)?.map((e) => (e as num).toInt()).toList() ?? [];
@@ -713,11 +738,15 @@ class P2pService extends _$P2pService {
     }
   }
 
-  Future<void> _handleRequestMap() async {
+  Future<void> _handleRequestMap(Map<String, dynamic> json) async {
     state = state.copyWith(isSyncing: true, syncMessage: 'Packing offline map for transfer...');
     try {
+      OfflineRegion? region;
+      if (json['region'] != null) {
+        region = OfflineRegion.fromJson(Map<String, dynamic>.from(json['region']));
+      }
       final mapCache = ref.read(mapCacheServiceProvider);
-      final packFile = await mapCache.packMap();
+      final packFile = await mapCache.packMap(region: region);
       
       if (_host != null && state.hostState?.isActive == true) {
         await _host!.broadcastFile(packFile);
@@ -947,6 +976,13 @@ class P2pService extends _$P2pService {
 
   Future<void> triggerSync() async {
     await _sendManifest();
+  }
+
+  Future<void> requestMapRegion(OfflineRegion region) async {
+    await broadcastText(jsonEncode({
+      'type': 'request_map',
+      'region': region.toJson(),
+    }));
   }
 
   Future<void> broadcastText(String text) async {

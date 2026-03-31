@@ -3,7 +3,6 @@ import 'dart:math';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/map_cache_service.dart';
 import 'offline_regions_provider.dart';
@@ -99,9 +98,6 @@ class MapDownloader extends _$MapDownloader {
     }
     
     state = DownloadProgress(total: tilesToDownload.length, downloaded: downloaded, isDownloading: false);
-    
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt('local_map_version', DateTime.now().millisecondsSinceEpoch);
   }
   
   void cancelDownload() {

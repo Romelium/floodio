@@ -50,6 +50,18 @@ class OfflineRegions extends _$OfflineRegions {
 
   Future<void> addRegion(OfflineRegion region) async {
     final current = state.value ?? [];
+    
+    final isDuplicate = current.any((r) => 
+      (r.bounds.north - region.bounds.north).abs() < 0.0001 &&
+      (r.bounds.south - region.bounds.south).abs() < 0.0001 &&
+      (r.bounds.east - region.bounds.east).abs() < 0.0001 &&
+      (r.bounds.west - region.bounds.west).abs() < 0.0001 &&
+      r.minZoom == region.minZoom &&
+      r.maxZoom == region.maxZoom
+    );
+    
+    if (isDuplicate) return;
+
     final updated = [...current, region];
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('offline_regions', jsonEncode(updated.map((e) => e.toJson()).toList()));

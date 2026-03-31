@@ -1,21 +1,38 @@
 import 'dart:io';
 import 'dart:isolate';
+import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../providers/offline_regions_provider.dart';
+
 part 'map_cache_service.g.dart';
 
 class MapPackData {
   final String dirPath;
-  MapPackData(this.dirPath);
+  final Map<String, dynamic>? regionJson;
+  MapPackData(this.dirPath, this.regionJson);
+}
+
+int _lon2tilex(double lon, int z) {
+  return ((lon + 180.0) / 360.0 * pow(2.0, z)).floor();
+}
+
+int _lat2tiley(double lat, int z) {
+  return ((1.0 - log(tan(lat * pi / 180.0) + 1.0 / cos(lat * pi / 180.0)) / pi) / 2.0 * pow(2.0, z)).floor();
 }
 
 Future<String> _isolatePackMap(MapPackData data) async {
   final mapDir = Directory('${data.dirPath}/map_tiles');
-  final packFile = File('${data.dirPath}/offline_map.fmap');
+  
+  String fileName = 'offline_map.fmap';
+  if (data.regionJson != null) {
+    fileName = 'map_${data.regionJson!['n']}_${data.regionJson!['s']}_${data.regionJson!['e']}_${data.regionJson!['w']}_${data.regionJson!['minZ']}_${data.regionJson!['maxZ']}.fmap';
+  }
+  final packFile = File('${data.dirPath}/$fileName');
   
   if (!await mapDir.exists()) {
     await mapDir.create(recursive: true);
@@ -45,6 +62,24 @@ Future<String> _isolatePackMap(MapPackData data) async {
       final y = int.tryParse(yStr);
       
       if (z != null && x != null && y != null) {
+        if (data.regionJson != null) {
+          final n = data.regionJson!['n'] as double;
+          final s = data.regionJson!['s'] as double;
+          final e = data.regionJson!['e'] as double;
+          final w = data.regionJson!['w'] as double;
+          final minZ = data.regionJson!['minZ'] as int;
+          final maxZ = data.regionJson!['maxZ'] as int;
+          
+          if (z < minZ || z > maxZ) continue;
+          final minX = _lon2tilex(w, z);
+          final maxX = _lon2tilex(e, z);
+          final minY = _lat2tiley(n, z);
+          final maxY = _lat2tiley(s, z);
+          if (x < min(minX, maxX) || x > max(minX, maxX) || y < min(minY, maxY) || y > max(minY, maxY)) {
+            continue;
+          }
+        }
+
         final fileData = await entity.readAsBytes();
         
         final header = ByteData(13);
@@ -101,7 +136,7 @@ Future<int> _isolateUnpackMap(MapUnpackData data) async {
       await tileFile.parent.create(recursive: true);
       await tileFile.writeAsBytes(fileData);
     }
-    return timestamp;
+    return timestamp; // Kept for backwards compatibility with older file headers
   } finally {
     await raf.close();
   }
@@ -150,7 +185,7 @@ class MapCacheService {
     return null;
   }
 
-  Future<File> packMap() async {
+  Future<File> packMap({OfflineRegion? region}) async {
     final dir = await getApplicationDocumentsDirectory();
     
     // Clean up old pack files
@@ -163,31 +198,18 @@ class MapCacheService {
       }
     }
 
-    final result = await Isolate.run(() => _isolatePackMap(MapPackData(dir.path)));
+    final result = await Isolate.run(() => _isolatePackMap(MapPackData(dir.path, region?.toJson())));
     final parts = result.split('_');
-    final timestamp = int.parse(parts[0]);
     final path = result.substring(parts[0].length + 1);
-    
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt('local_map_version', timestamp);
     
     return File(path);
   }
 
   Future<void> unpackMap(File packFile) async {
     final dir = await getApplicationDocumentsDirectory();
-    final timestamp = await Isolate.run(() => _isolateUnpackMap(MapUnpackData(dir.path, packFile.path)));
-    
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt('local_map_version', timestamp);
+    await Isolate.run(() => _isolateUnpackMap(MapUnpackData(dir.path, packFile.path)));
   }
   
-  Future<int> getLocalMapVersion() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.reload();
-    return prefs.getInt('local_map_version') ?? 0;
-  }
-
   Future<int> getCacheSize() async {
     final dir = await getApplicationDocumentsDirectory();
     final mapDir = Directory('${dir.path}/map_tiles');
@@ -209,7 +231,6 @@ class MapCacheService {
       await mapDir.delete(recursive: true);
     }
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('local_map_version');
     await prefs.remove('offline_regions');
   }
 }
