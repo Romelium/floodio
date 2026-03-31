@@ -717,6 +717,7 @@ class P2pService extends _$P2pService {
           trustTier: n.trustTier,
           expiresAt: Int64(n.expiresAt ?? 0),
           imageId: n.imageId ?? '',
+          isCritical: n.isCritical,
         ));
       }
 
@@ -747,6 +748,7 @@ class P2pService extends _$P2pService {
           signature: a.signature ?? '',
           trustTier: a.trustTier,
           expiresAt: Int64(a.expiresAt ?? 0),
+          isCritical: a.isCritical,
         );
         for (final coord in a.coordinates) {
           areaMarker.coordinates.add(pb.Coordinate(
@@ -767,6 +769,7 @@ class P2pService extends _$P2pService {
           signature: p.signature ?? '',
           trustTier: p.trustTier,
           expiresAt: Int64(p.expiresAt ?? 0),
+          isCritical: p.isCritical,
         );
         for (final coord in p.coordinates) {
           pathMarker.coordinates.add(pb.Coordinate(
@@ -1005,7 +1008,8 @@ class P2pService extends _$P2pService {
 
         final imageIdStr = n.imageId;
         final expiresAtStr = n.expiresAt == 0 ? "" : n.expiresAt.toString();
-        final payloadToSign = utf8.encode('${n.id}${n.title}${n.timestamp}$imageIdStr$expiresAtStr');
+        final isCriticalStr = n.isCritical ? "1" : "0";
+        final payloadToSign = utf8.encode('${n.id}${n.title}${n.timestamp}$imageIdStr$expiresAtStr$isCriticalStr');
         final trustTier = await crypto.verifyAndGetTrustTier(
           data: payloadToSign,
           signatureStr: n.signature,
@@ -1027,6 +1031,7 @@ class P2pService extends _$P2pService {
             trustTier: trustTier,
             expiresAt: Value(n.expiresAt == 0 ? null : n.expiresAt.toInt()),
             imageId: Value(n.imageId.isEmpty ? null : n.imageId),
+            isCritical: Value(n.isCritical),
           ));
           seenIds.add(SeenMessageIdsCompanion.insert(
             messageId: n.id,
@@ -1077,7 +1082,8 @@ class P2pService extends _$P2pService {
         if (a.timestamp.toInt() <= existingTs) continue; // LWW CRDT
 
         final expiresAtStr = a.expiresAt == 0 ? "" : a.expiresAt.toString();
-        final payloadToSign = utf8.encode('${a.id}${a.type}${a.timestamp}$expiresAtStr');
+        final isCriticalStr = a.isCritical ? "1" : "0";
+        final payloadToSign = utf8.encode('${a.id}${a.type}${a.timestamp}$expiresAtStr$isCriticalStr');
         final trustTier = await crypto.verifyAndGetTrustTier(
           data: payloadToSign,
           signatureStr: a.signature,
@@ -1100,6 +1106,7 @@ class P2pService extends _$P2pService {
             signature: Value(a.signature),
             trustTier: trustTier,
             expiresAt: Value(a.expiresAt == 0 ? null : a.expiresAt.toInt()),
+            isCritical: Value(a.isCritical),
           ));
           seenIds.add(SeenMessageIdsCompanion.insert(
             messageId: a.id,
@@ -1117,7 +1124,8 @@ class P2pService extends _$P2pService {
         if (p.timestamp.toInt() <= existingTs) continue; // LWW CRDT
 
         final expiresAtStr = p.expiresAt == 0 ? "" : p.expiresAt.toString();
-        final payloadToSign = utf8.encode('${p.id}${p.type}${p.timestamp}$expiresAtStr');
+        final isCriticalStr = p.isCritical ? "1" : "0";
+        final payloadToSign = utf8.encode('${p.id}${p.type}${p.timestamp}$expiresAtStr$isCriticalStr');
         final trustTier = await crypto.verifyAndGetTrustTier(
           data: payloadToSign,
           signatureStr: p.signature,
@@ -1140,6 +1148,7 @@ class P2pService extends _$P2pService {
             signature: Value(p.signature),
             trustTier: trustTier,
             expiresAt: Value(p.expiresAt == 0 ? null : p.expiresAt.toInt()),
+            isCritical: Value(p.isCritical),
           ));
           seenIds.add(SeenMessageIdsCompanion.insert(
             messageId: p.id,

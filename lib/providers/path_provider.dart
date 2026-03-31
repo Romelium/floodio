@@ -29,6 +29,7 @@ class PathsController extends _$PathsController {
           signature: Value(path.signature),
           trustTier: path.trustTier,
           expiresAt: Value(path.expiresAt),
+          isCritical: Value(path.isCritical),
         ),
         mode: InsertMode.insertOrReplace,
       );

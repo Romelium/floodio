@@ -44,7 +44,8 @@ class MockGovApiService extends _$MockGovApiService {
     final title = 'Gov API: Severe Weather Warning';
     final content = 'Automated alert from National Weather Service. Heavy rainfall expected in your area.';
     final expiresAt = timestamp + (24 * 3600000); // 24 hours TTL
-    final payloadToSignNews = utf8.encode('$id$title$timestamp$expiresAt'); // imageId is empty
+    final isCriticalStr = "1";
+    final payloadToSignNews = utf8.encode('$id$title$timestamp$expiresAt$isCriticalStr'); // imageId is empty
     final (senderId, signatureNews) = await generateOfficialMarkerSignature(payloadToSignNews);
 
     final newNews = NewsItemEntity(
@@ -56,6 +57,7 @@ class MockGovApiService extends _$MockGovApiService {
       signature: signatureNews,
       trustTier: 1,
       expiresAt: expiresAt,
+      isCritical: true,
     );
     await ref.read(newsItemsControllerProvider.notifier).addNewsItem(newNews);
 

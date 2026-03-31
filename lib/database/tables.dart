@@ -60,6 +60,7 @@ class NewsItemEntity {
   final int trustTier;
   final int? expiresAt;
   final String? imageId;
+  final bool isCritical;
 
   NewsItemEntity({
     required this.id,
@@ -71,6 +72,7 @@ class NewsItemEntity {
     required this.trustTier,
     this.expiresAt,
     this.imageId,
+    this.isCritical = false,
   });
 }
 
@@ -85,6 +87,7 @@ class NewsItems extends Table {
   IntColumn get trustTier => integer()();
   IntColumn get expiresAt => integer().nullable()();
   TextColumn get imageId => text().nullable()();
+  BoolColumn get isCritical => boolean().withDefault(const Constant(false))();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -266,6 +269,7 @@ class AreaEntity {
   final String? signature;
   final int trustTier;
   final int? expiresAt;
+  final bool isCritical;
 
   AreaEntity({
     required this.id,
@@ -277,6 +281,7 @@ class AreaEntity {
     this.signature,
     required this.trustTier,
     this.expiresAt,
+    this.isCritical = false,
   });
 }
 
@@ -291,6 +296,7 @@ class Areas extends Table {
   TextColumn get signature => text().nullable()();
   IntColumn get trustTier => integer()();
   IntColumn get expiresAt => integer().nullable()();
+  BoolColumn get isCritical => boolean().withDefault(const Constant(false))();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -306,6 +312,7 @@ class PathEntity {
   final String? signature;
   final int trustTier;
   final int? expiresAt;
+  final bool isCritical;
 
   PathEntity({
     required this.id,
@@ -317,6 +324,7 @@ class PathEntity {
     this.signature,
     required this.trustTier,
     this.expiresAt,
+    this.isCritical = false,
   });
 }
 
@@ -331,6 +339,7 @@ class Paths extends Table {
   TextColumn get signature => text().nullable()();
   IntColumn get trustTier => integer()();
   IntColumn get expiresAt => integer().nullable()();
+  BoolColumn get isCritical => boolean().withDefault(const Constant(false))();
 
   @override
   Set<Column> get primaryKey => {id};

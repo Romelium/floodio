@@ -17,6 +17,7 @@ message AreaMarker {
   string signature = 7;
   int32 trust_tier = 8;
   int64 expires_at = 9;
+  bool is_critical = 10;
 }
 
 message PathMarker {
@@ -29,6 +30,7 @@ message PathMarker {
   string signature = 7;
   int32 trust_tier = 8;
   int64 expires_at = 9;
+  bool is_critical = 10;
 }
 
 message HazardMarker {
@@ -56,6 +58,7 @@ message NewsItem {
   int32 trust_tier = 7;
   int64 expires_at = 8;
   string image_id = 9;
+  bool is_critical = 10;
 }
 
 message UserProfile {

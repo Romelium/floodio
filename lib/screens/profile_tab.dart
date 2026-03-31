@@ -396,6 +396,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
     final titleController = TextEditingController(text: news.title);
     final contentController = TextEditingController(text: news.content);
     int? selectedTtlHours = 24;
+    bool isCritical = news.isCritical;
 
     showDialog(
       context: context,
@@ -432,6 +433,14 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                   ],
                   onChanged: (val) => setInnerState(() => selectedTtlHours = val),
                 ),
+                const SizedBox(height: 16),
+                CheckboxListTile(
+                  title: const Text('Mark as Critical Emergency', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                  value: isCritical,
+                  onChanged: (val) => setInnerState(() => isCritical = val ?? false),
+                  controlAffinity: ListTileControlAffinity.leading,
+                  activeColor: Colors.red,
+                ),
               ],
             ),
           ),
@@ -450,8 +459,9 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                     ? timestamp + (selectedTtlHours! * 3600000)
                     : null;
 
+                final isCriticalStr = isCritical ? "1" : "0";
                 final payloadToSign = utf8.encode(
-                  '$newId${titleController.text}$timestamp${news.imageId ?? ""}${expiresAt ?? ""}',
+                  '$newId${titleController.text}$timestamp${news.imageId ?? ""}${expiresAt ?? ""}$isCriticalStr',
                 );
                 final signature = await cryptoService.signData(payloadToSign);
 
@@ -465,6 +475,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                   trustTier: news.trustTier,
                   expiresAt: expiresAt,
                   imageId: news.imageId,
+                  isCritical: isCritical,
                 );
 
                 await ref
@@ -488,6 +499,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
     String selectedType = area.type;
     final descController = TextEditingController(text: area.description);
     int? selectedTtlHours = 24;
+    bool isCritical = area.isCritical;
 
     showDialog(
       context: context,
@@ -551,6 +563,14 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                   ],
                   onChanged: (val) => setInnerState(() => selectedTtlHours = val),
                 ),
+                const SizedBox(height: 16),
+                CheckboxListTile(
+                  title: const Text('Mark as Critical Emergency', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                  value: isCritical,
+                  onChanged: (val) => setInnerState(() => isCritical = val ?? false),
+                  controlAffinity: ListTileControlAffinity.leading,
+                  activeColor: Colors.red,
+                ),
               ],
             ),
           ),
@@ -569,8 +589,9 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                     ? timestamp + (selectedTtlHours! * 3600000)
                     : null;
 
+                final isCriticalStr = isCritical ? "1" : "0";
                 final payloadToSign = utf8.encode(
-                  '$newId$selectedType$timestamp${expiresAt ?? ""}',
+                  '$newId$selectedType$timestamp${expiresAt ?? ""}$isCriticalStr',
                 );
                 final signature = await cryptoService.signData(payloadToSign);
 
@@ -584,6 +605,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                   signature: signature,
                   trustTier: area.trustTier,
                   expiresAt: expiresAt,
+                  isCritical: isCritical,
                 );
 
                 await ref
@@ -607,6 +629,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
     String selectedType = path.type;
     final descController = TextEditingController(text: path.description);
     int? selectedTtlHours = 24;
+    bool isCritical = path.isCritical;
 
     showDialog(
       context: context,
@@ -668,6 +691,14 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                   ],
                   onChanged: (val) => setInnerState(() => selectedTtlHours = val),
                 ),
+                const SizedBox(height: 16),
+                CheckboxListTile(
+                  title: const Text('Mark as Critical Emergency', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                  value: isCritical,
+                  onChanged: (val) => setInnerState(() => isCritical = val ?? false),
+                  controlAffinity: ListTileControlAffinity.leading,
+                  activeColor: Colors.red,
+                ),
               ],
             ),
           ),
@@ -686,8 +717,9 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                     ? timestamp + (selectedTtlHours! * 3600000)
                     : null;
 
+                final isCriticalStr = isCritical ? "1" : "0";
                 final payloadToSign = utf8.encode(
-                  '$newId$selectedType$timestamp${expiresAt ?? ""}',
+                  '$newId$selectedType$timestamp${expiresAt ?? ""}$isCriticalStr',
                 );
                 final signature = await cryptoService.signData(payloadToSign);
 
@@ -701,6 +733,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                   signature: signature,
                   trustTier: path.trustTier,
                   expiresAt: expiresAt,
+                  isCritical: isCritical,
                 );
 
                 await ref
@@ -1416,9 +1449,10 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                               ),
                             ),
                             title: Text(
-                              'News: ${item.title}',
-                              style: const TextStyle(
+                              'News: ${item.title}${item.isCritical ? ' (CRITICAL)' : ''}',
+                              style: TextStyle(
                                 fontWeight: FontWeight.w600,
+                                color: item.isCritical ? Colors.red : null,
                               ),
                             ),
                             subtitle: Column(
@@ -1511,9 +1545,10 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                               ),
                             ),
                             title: Text(
-                              'Area: ${item.type}',
-                              style: const TextStyle(
+                              'Area: ${item.type}${item.isCritical ? ' (CRITICAL)' : ''}',
+                              style: TextStyle(
                                 fontWeight: FontWeight.w600,
+                                color: item.isCritical ? Colors.red : null,
                               ),
                             ),
                             subtitle: Column(
@@ -1585,9 +1620,10 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                               ),
                             ),
                             title: Text(
-                              'Path: ${item.type}',
-                              style: const TextStyle(
+                              'Path: ${item.type}${item.isCritical ? ' (CRITICAL)' : ''}',
+                              style: TextStyle(
                                 fontWeight: FontWeight.w600,
+                                color: item.isCritical ? Colors.red : null,
                               ),
                             ),
                             subtitle: Column(

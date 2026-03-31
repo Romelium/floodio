@@ -32,6 +32,7 @@ class NewsItemsController extends _$NewsItemsController {
           trustTier: item.trustTier,
           expiresAt: Value(item.expiresAt),
           imageId: Value(item.imageId),
+          isCritical: Value(item.isCritical),
         ),
         mode: InsertMode.insertOrReplace,
       );

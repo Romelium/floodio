@@ -577,8 +577,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     String senderId;
     String signature;
 
+    final isCriticalStr = area.isCritical ? "1" : "0";
     final payloadToSign = utf8.encode(
-      '${area.id}${area.type}$timestamp${area.expiresAt ?? ""}',
+      '${area.id}${area.type}$timestamp${area.expiresAt ?? ""}$isCriticalStr',
     );
 
     if (settings.isOfficialMode) {
@@ -627,6 +628,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       signature: signature,
       trustTier: trustTier,
       expiresAt: area.expiresAt,
+      isCritical: area.isCritical,
     );
 
     await ref.read(areasControllerProvider.notifier).addArea(updatedArea);
@@ -641,6 +643,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       signature: updatedArea.signature ?? '',
       trustTier: updatedArea.trustTier,
       expiresAt: Int64(updatedArea.expiresAt ?? 0),
+      isCritical: updatedArea.isCritical,
     );
     for (final coord in updatedArea.coordinates) {
       areaMarker.coordinates.add(
@@ -670,8 +673,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     String senderId;
     String signature;
 
+    final isCriticalStr = path.isCritical ? "1" : "0";
     final payloadToSign = utf8.encode(
-      '${path.id}${path.type}$timestamp${path.expiresAt ?? ""}',
+      '${path.id}${path.type}$timestamp${path.expiresAt ?? ""}$isCriticalStr',
     );
 
     if (settings.isOfficialMode) {
@@ -720,6 +724,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       signature: signature,
       trustTier: trustTier,
       expiresAt: path.expiresAt,
+      isCritical: path.isCritical,
     );
 
     await ref.read(pathsControllerProvider.notifier).addPath(updatedPath);
@@ -734,6 +739,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       signature: updatedPath.signature ?? '',
       trustTier: updatedPath.trustTier,
       expiresAt: Int64(updatedPath.expiresAt ?? 0),
+      isCritical: updatedPath.isCritical,
     );
     for (final coord in updatedPath.coordinates) {
       pathMarker.coordinates.add(
@@ -763,8 +769,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     String senderId;
     String signature;
 
+    final isCriticalStr = news.isCritical ? "1" : "0";
     final payloadToSign = utf8.encode(
-      '${news.id}${news.title}$timestamp${news.imageId ?? ""}${news.expiresAt ?? ""}',
+      '${news.id}${news.title}$timestamp${news.imageId ?? ""}${news.expiresAt ?? ""}$isCriticalStr',
     );
 
     if (settings.isOfficialMode) {
@@ -813,6 +820,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       trustTier: trustTier,
       expiresAt: news.expiresAt,
       imageId: news.imageId,
+      isCritical: news.isCritical,
     );
 
     await ref
@@ -831,6 +839,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         trustTier: updatedNews.trustTier,
         expiresAt: Int64(updatedNews.expiresAt ?? 0),
         imageId: updatedNews.imageId ?? '',
+        isCritical: updatedNews.isCritical,
       ),
     );
 
@@ -1345,6 +1354,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       text: existingArea?.description ?? '',
     );
     int? selectedTtlHours = 24;
+    bool isCritical = existingArea?.isCritical ?? false;
 
     showDialog(
       context: context,
@@ -1432,6 +1442,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ],
                 onChanged: (val) => setInnerState(() => selectedTtlHours = val),
               ),
+              const SizedBox(height: 16),
+              CheckboxListTile(
+                title: const Text('Mark as Critical Emergency', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                value: isCritical,
+                onChanged: (val) => setInnerState(() => isCritical = val ?? false),
+                controlAffinity: ListTileControlAffinity.leading,
+                activeColor: Colors.red,
+              ),
             ],
           ),
           actions: [
@@ -1460,8 +1478,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     existingArea?.senderId ??
                     await cryptoService.getPublicKeyString();
 
+                final isCriticalStr = isCritical ? "1" : "0";
                 final payloadToSign = utf8.encode(
-                  '$id$type$timestamp${expiresAt ?? ""}',
+                  '$id$type$timestamp${expiresAt ?? ""}$isCriticalStr',
                 );
                 final signature = await cryptoService.signData(payloadToSign);
                 final untrustedSendersAsync = ref.read(
@@ -1519,6 +1538,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   signature: signature,
                   trustTier: trustTier,
                   expiresAt: expiresAt,
+                  isCritical: isCritical,
                 );
                 await ref
                     .read(areasControllerProvider.notifier)
@@ -1554,6 +1574,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       text: existingPath?.description ?? '',
     );
     int? selectedTtlHours = 24;
+    bool isCritical = existingPath?.isCritical ?? false;
 
     showDialog(
       context: context,
@@ -1634,6 +1655,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ],
                 onChanged: (val) => setInnerState(() => selectedTtlHours = val),
               ),
+              const SizedBox(height: 16),
+              CheckboxListTile(
+                title: const Text('Mark as Critical Emergency', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                value: isCritical,
+                onChanged: (val) => setInnerState(() => isCritical = val ?? false),
+                controlAffinity: ListTileControlAffinity.leading,
+                activeColor: Colors.red,
+              ),
             ],
           ),
           actions: [
@@ -1662,8 +1691,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     existingPath?.senderId ??
                     await cryptoService.getPublicKeyString();
 
+                final isCriticalStr = isCritical ? "1" : "0";
                 final payloadToSign = utf8.encode(
-                  '$id$type$timestamp${expiresAt ?? ""}',
+                  '$id$type$timestamp${expiresAt ?? ""}$isCriticalStr',
                 );
                 final signature = await cryptoService.signData(payloadToSign);
                 final untrustedSendersAsync = ref.read(
@@ -1721,6 +1751,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   signature: signature,
                   trustTier: trustTier,
                   expiresAt: expiresAt,
+                  isCritical: isCritical,
                 );
                 await ref
                     .read(pathsControllerProvider.notifier)
@@ -1807,6 +1838,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
     int? selectedTtlHours = 24;
     XFile? selectedImage;
+    bool isCritical = false;
 
     showDialog(
       context: context,
@@ -1865,6 +1897,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   ],
                   onChanged: (val) =>
                       setInnerState(() => selectedTtlHours = val),
+                ),
+                const SizedBox(height: 16),
+                CheckboxListTile(
+                  title: const Text('Mark as Critical Emergency', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                  value: isCritical,
+                  onChanged: (val) => setInnerState(() => isCritical = val ?? false),
+                  controlAffinity: ListTileControlAffinity.leading,
+                  activeColor: Colors.red,
                 ),
                 const SizedBox(height: 16),
                 if (selectedImage != null) ...[
@@ -1945,8 +1985,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       .broadcastFile(savedImage);
                 }
 
+                final isCriticalStr = isCritical ? "1" : "0";
                 final payloadToSign = utf8.encode(
-                  '$id$title$timestamp${imageId ?? ""}${expiresAt ?? ""}',
+                  '$id$title$timestamp${imageId ?? ""}${expiresAt ?? ""}$isCriticalStr',
                 );
 
                 final (senderId, signature) =
@@ -2006,6 +2047,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   trustTier: trustTier,
                   expiresAt: expiresAt,
                   imageId: imageId,
+                  isCritical: isCritical,
                 );
                 await ref
                     .read(newsItemsControllerProvider.notifier)
@@ -2117,11 +2159,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   final points = a.coordinates
                       .map((c) => LatLng(c['lat']!, c['lng']!))
                       .toList();
-                  final color =
+                  final color = a.isCritical ? Colors.red : (
                       a.type.toLowerCase().contains('safe') ||
                           a.type.toLowerCase().contains('evacuation')
                       ? Colors.green
-                      : Colors.red;
+                      : Colors.orange);
                   return Polygon(
                     points: points,
                     color: color.withValues(alpha: 0.3),
@@ -2144,11 +2186,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   final points = p.coordinates
                       .map((c) => LatLng(c['lat']!, c['lng']!))
                       .toList();
-                  final color =
+                  final color = p.isCritical ? Colors.red : (
                       p.type.toLowerCase().contains('safe') ||
                           p.type.toLowerCase().contains('evacuation')
                       ? Colors.green
-                      : Colors.red;
+                      : Colors.orange);
                   return Polyline(
                     points: points,
                     color: color,
@@ -2815,10 +2857,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                               CrossAxisAlignment.start,
                                           children: [
                                             Text(
-                                              item.title,
-                                              style: const TextStyle(
+                                              '${item.title}${item.isCritical ? ' (CRITICAL)' : ''}',
+                                              style: TextStyle(
                                                 fontWeight: FontWeight.bold,
                                                 fontSize: 16,
+                                                color: item.isCritical ? Colors.red : null,
                                               ),
                                             ),
                                             Text(
@@ -3064,10 +3107,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                                 CrossAxisAlignment.start,
                                             children: [
                                               Text(
-                                                'Area: ${item.type}',
-                                                style: const TextStyle(
+                                                'Area: ${item.type}${item.isCritical ? ' (CRITICAL)' : ''}',
+                                                style: TextStyle(
                                                   fontWeight: FontWeight.bold,
                                                   fontSize: 16,
+                                                  color: item.isCritical ? Colors.red : null,
                                                 ),
                                               ),
                                               Text(
@@ -3322,10 +3366,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                                 CrossAxisAlignment.start,
                                             children: [
                                               Text(
-                                                'Path: ${item.type}',
-                                                style: const TextStyle(
+                                                'Path: ${item.type}${item.isCritical ? ' (CRITICAL)' : ''}',
+                                                style: TextStyle(
                                                   fontWeight: FontWeight.bold,
                                                   fontSize: 16,
+                                                  color: item.isCritical ? Colors.red : null,
                                                 ),
                                               ),
                                               Text(
