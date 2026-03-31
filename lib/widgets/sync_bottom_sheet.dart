@@ -66,15 +66,10 @@ class SyncBottomSheet extends ConsumerWidget {
                 Card(
                   color: (p2pState.isSyncing || p2pState.isConnecting)
                       ? Theme.of(context).colorScheme.primaryContainer
-                      : Theme.of(context).colorScheme.surface,
+                      : Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
                   elevation: 0,
                   shape: RoundedRectangleBorder(
-                    side: BorderSide(
-                      color: (p2pState.isSyncing || p2pState.isConnecting)
-                          ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.3)
-                          : Theme.of(context).colorScheme.outlineVariant,
-                    ),
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(20),
                   ),
                   child: Padding(
                     padding: const EdgeInsets.all(20.0),
@@ -82,15 +77,22 @@ class SyncBottomSheet extends ConsumerWidget {
                       children: [
                         if (p2pState.isSyncing || p2pState.isConnecting)
                           const SizedBox(
-                            width: 24,
-                            height: 24,
-                            child: CircularProgressIndicator(strokeWidth: 2.5),
+                            width: 28,
+                            height: 28,
+                            child: CircularProgressIndicator(strokeWidth: 3),
                           )
                         else
-                          Icon(
-                            Icons.radar,
-                            color: Theme.of(context).colorScheme.primary,
-                            size: 28,
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              Icons.radar,
+                              color: Theme.of(context).colorScheme.primary,
+                              size: 28,
+                            ),
                           ),
                         const SizedBox(width: 16),
                         Expanded(
@@ -100,9 +102,10 @@ class SyncBottomSheet extends ConsumerWidget {
                               Text(
                                 'Sync Status',
                                 style: TextStyle(
-                                  fontSize: 12,
+                                  fontSize: 13,
                                   color: Colors.grey.shade600,
                                   fontWeight: FontWeight.bold,
+                                  letterSpacing: 0.5,
                                 ),
                               ),
                               const SizedBox(height: 4),
@@ -110,7 +113,7 @@ class SyncBottomSheet extends ConsumerWidget {
                                 p2pState.syncMessage ??
                                     'Ready to sync. Choose an option below.',
                                 style: TextStyle(
-                                  fontSize: 15,
+                                  fontSize: 16,
                                   fontWeight: FontWeight.w600,
                                   color:
                                       (p2pState.isSyncing ||
@@ -125,7 +128,7 @@ class SyncBottomSheet extends ConsumerWidget {
                                 ClipRRect(
                                   borderRadius: BorderRadius.circular(4),
                                   child: LinearProgressIndicator(
-                                    backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                                    backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
                                     color: Theme.of(context).colorScheme.primary,
                                     minHeight: 6,
                                   ),
@@ -146,12 +149,12 @@ class SyncBottomSheet extends ConsumerWidget {
                     border: Border.all(
                       color: p2pState.isAutoSyncing
                           ? Colors.blue.shade300
-                          : Colors.grey.shade300,
+                          : Colors.grey.shade200,
                     ),
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(20),
                     color: p2pState.isAutoSyncing
                         ? Colors.blue.shade50
-                        : Colors.white,
+                        : Theme.of(context).colorScheme.surface,
                   ),
                   child: SwitchListTile(
                     title: Text(
@@ -173,7 +176,11 @@ class SyncBottomSheet extends ConsumerWidget {
                     ),
                     value: p2pState.isAutoSyncing,
                     activeThumbColor: Colors.blue,
+                    activeTrackColor: Colors.blue.shade200,
                     onChanged: (val) => p2pNotifier.toggleAutoSync(),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 16),

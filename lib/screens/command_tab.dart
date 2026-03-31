@@ -25,12 +25,12 @@ class CommandTab extends ConsumerWidget {
               children: [
                 const Text(
                   'Command Center',
-                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                  style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900),
                 ),
                 const SizedBox(height: 8),
                 const Text(
                   'Manage official volunteers and broadcast emergency alerts.',
-                  style: TextStyle(color: Colors.grey),
+                  style: TextStyle(color: Colors.grey, fontSize: 16),
                 ),
                 const SizedBox(height: 24),
                 

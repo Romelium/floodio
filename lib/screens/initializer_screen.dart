@@ -41,8 +41,8 @@ class _InitializerScreenState extends State<InitializerScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.hub, size: 64, color: Colors.blue),
-              SizedBox(height: 24),
+              Icon(Icons.hub, size: 80, color: Colors.blue),
+              SizedBox(height: 32),
               CircularProgressIndicator(),
             ],
           ),

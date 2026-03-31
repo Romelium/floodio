@@ -27,11 +27,11 @@ class MeshStatusChip extends ConsumerWidget {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
           color: isConnected
-              ? Colors.green.shade700
+              ? Colors.green.shade600
               : (p2pState.isAutoSyncing
-                    ? Colors.orange.shade700
-                    : Colors.grey.shade700),
-          borderRadius: BorderRadius.circular(20),
+                    ? Colors.orange.shade600
+                    : Colors.grey.shade600),
+          borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.1),

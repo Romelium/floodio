@@ -748,135 +748,106 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                 // Profile Card
                 Card(
                   elevation: 0,
-                  color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(24),
                   ),
                   child: Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Row(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
                       children: [
                         CircleAvatar(
-                          radius: 36,
-                          backgroundColor: Theme.of(
-                            context,
-                          ).colorScheme.primary,
-                          foregroundColor: Theme.of(
-                            context,
-                          ).colorScheme.onPrimary,
+                          radius: 48,
+                          backgroundColor: Theme.of(context).colorScheme.primary,
+                          foregroundColor: Theme.of(context).colorScheme.onPrimary,
                           child: Text(
                             myName.isNotEmpty ? myName[0].toUpperCase() : '?',
                             style: const TextStyle(
-                              fontSize: 28,
+                              fontSize: 36,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
                         ),
                         const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                        Text(
+                          myName,
+                          style: const TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        if (myContact.isNotEmpty) ...[
+                          const SizedBox(height: 8),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      myName,
-                                      style: const TextStyle(
-                                        fontSize: 22,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                  IconButton(
-                                    icon: const Icon(Icons.edit, size: 20),
-                                    onPressed: _editProfile,
-                                    tooltip: 'Edit Profile',
-                                  ),
-                                  IconButton(
-                                    icon: const Icon(Icons.settings, size: 20),
-                                    onPressed: () => Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (_) => const SettingsScreen(),
-                                      ),
-                                    ),
-                                    tooltip: 'Settings',
-                                  ),
-                                ],
-                              ),
-                              if (myContact.isNotEmpty) ...[
-                                const SizedBox(height: 4),
-                                Row(
-                                  children: [
-                                    Icon(
-                                      Icons.phone,
-                                      size: 14,
-                                      color: Colors.grey.shade700,
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      myContact,
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        color: Colors.grey.shade700,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                              const SizedBox(height: 8),
-                              InkWell(
-                                onTap: () {
-                                  if (myPublicKey != null) {
-                                    Clipboard.setData(
-                                      ClipboardData(text: myPublicKey),
-                                    );
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text(
-                                          'Public Key copied to clipboard',
-                                        ),
-                                        behavior: SnackBarBehavior.floating,
-                                      ),
-                                    );
-                                  }
-                                },
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      Icons.key,
-                                      size: 14,
-                                      color: Theme.of(
-                                        context,
-                                      ).colorScheme.primary,
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      myPublicKey != null
-                                          ? '${myPublicKey.substring(0, 12)}...'
-                                          : 'Loading key...',
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        color: Theme.of(
-                                          context,
-                                        ).colorScheme.primary,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Icon(
-                                      Icons.copy,
-                                      size: 12,
-                                      color: Theme.of(
-                                        context,
-                                      ).colorScheme.primary,
-                                    ),
-                                  ],
-                                ),
+                              Icon(Icons.phone, size: 16, color: Colors.grey.shade700),
+                              const SizedBox(width: 8),
+                              Text(
+                                myContact,
+                                style: TextStyle(fontSize: 16, color: Colors.grey.shade700),
                               ),
                             ],
                           ),
+                        ],
+                        const SizedBox(height: 16),
+                        InkWell(
+                          borderRadius: BorderRadius.circular(8),
+                          onTap: () {
+                            if (myPublicKey != null) {
+                              Clipboard.setData(ClipboardData(text: myPublicKey));
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Public Key copied to clipboard'),
+                                  behavior: SnackBarBehavior.floating,
+                                ),
+                              );
+                            }
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.key, size: 16, color: Theme.of(context).colorScheme.primary),
+                                const SizedBox(width: 8),
+                                Text(
+                                  myPublicKey != null ? '${myPublicKey.substring(0, 16)}...' : 'Loading key...',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Theme.of(context).colorScheme.primary,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Icon(Icons.copy, size: 14, color: Theme.of(context).colorScheme.primary),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            FilledButton.tonalIcon(
+                              onPressed: _editProfile,
+                              icon: const Icon(Icons.edit, size: 18),
+                              label: const Text('Edit Profile'),
+                            ),
+                            const SizedBox(width: 12),
+                            OutlinedButton.icon(
+                              onPressed: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (_) => const SettingsScreen()),
+                              ),
+                              icon: const Icon(Icons.settings, size: 18),
+                              label: const Text('Settings'),
+                            ),
+                          ],
                         ),
                       ],
                     ),

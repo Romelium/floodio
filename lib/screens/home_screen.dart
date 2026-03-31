@@ -94,12 +94,12 @@ class _SearchBarState extends ConsumerState<_SearchBar> {
               )
             : null,
         filled: true,
-        fillColor: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+        fillColor: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(24),
           borderSide: BorderSide.none,
         ),
-        contentPadding: const EdgeInsets.symmetric(vertical: 0),
+        contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 20),
       ),
       onChanged: (val) {
         setState(() {});
@@ -2661,20 +2661,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.inbox_outlined, size: 80, color: Colors.grey.shade300),
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.inbox_outlined, size: 64, color: Theme.of(context).colorScheme.primary),
+            ),
             const SizedBox(height: 24),
             Text(
               'No reports found',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.grey.shade700),
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.grey.shade800),
             ),
             const SizedBox(height: 12),
             Text(
               'Try adjusting your filters, or sync with nearby devices to receive the latest updates.',
               textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey.shade500, fontSize: 16),
+              style: TextStyle(color: Colors.grey.shade600, fontSize: 16, height: 1.4),
             ),
             const SizedBox(height: 24),
-            FilledButton.tonalIcon(
+            FilledButton.icon(
               onPressed: () {
                 showModalBottomSheet(
                   context: context,
@@ -2685,6 +2692,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               },
               icon: const Icon(Icons.sync),
               label: const Text('Open Sync Menu'),
+              style: FilledButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              ),
             )
           ],
         ),
@@ -3793,6 +3803,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         selectedColor: Theme.of(
                           context,
                         ).colorScheme.primaryContainer,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
                       ),
                     ),
                   )
@@ -3839,6 +3852,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       onSelected: (selected) => filterNotifier
                           .updateTrustFilter(selected ? tier : null),
                       selectedColor: getTierColor(tier).withValues(alpha: 0.2),
+                      labelStyle: TextStyle(
+                        color: filter.trustFilter == tier ? getTierColor(tier) : null,
+                        fontWeight: filter.trustFilter == tier ? FontWeight.bold : null,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                        side: BorderSide(
+                          color: filter.trustFilter == tier ? getTierColor(tier) : Colors.grey.shade300,
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -4196,6 +4219,28 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           const SizedBox(height: 16),
                         ],
                         FloatingActionButton.small(
+                          heroTag: 'zoom_in',
+                          onPressed: () {
+                            final currentZoom = _mapController.camera.zoom;
+                            _mapController.move(_mapController.camera.center, currentZoom + 1);
+                          },
+                          backgroundColor: Theme.of(context).colorScheme.surface,
+                          foregroundColor: Theme.of(context).colorScheme.primary,
+                          child: const Icon(Icons.add),
+                        ),
+                        const SizedBox(height: 8),
+                        FloatingActionButton.small(
+                          heroTag: 'zoom_out',
+                          onPressed: () {
+                            final currentZoom = _mapController.camera.zoom;
+                            _mapController.move(_mapController.camera.center, currentZoom - 1);
+                          },
+                          backgroundColor: Theme.of(context).colorScheme.surface,
+                          foregroundColor: Theme.of(context).colorScheme.primary,
+                          child: const Icon(Icons.remove),
+                        ),
+                        const SizedBox(height: 16),
+                        FloatingActionButton.small(
                           heroTag: 'layers',
                           onPressed: () {
                             ref.read(showOfflineRegionsProvider.notifier).toggle();
@@ -4211,6 +4256,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               ),
                             );
                           },
+                          backgroundColor: Theme.of(context).colorScheme.surface,
+                          foregroundColor: Theme.of(context).colorScheme.primary,
                           child: const Icon(Icons.layers),
                         ),
                         const SizedBox(height: 16),
@@ -4242,6 +4289,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               debugPrint('Map not ready yet: $e');
                             }
                           },
+                          backgroundColor: Theme.of(context).colorScheme.surface,
+                          foregroundColor: Theme.of(context).colorScheme.primary,
                           child: const Icon(Icons.my_location),
                         ),
                         const SizedBox(height: 16),

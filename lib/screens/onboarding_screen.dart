@@ -82,14 +82,14 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             const SizedBox(height: 24),
             const Text(
               'Welcome to Floodio',
-              style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+              style: TextStyle(fontSize: 32, fontWeight: FontWeight.w900, letterSpacing: 1.2),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 16),
             const Text(
               'Set up your profile to start sharing and receiving critical emergency information.',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 16, color: Colors.grey),
+              style: TextStyle(fontSize: 16, color: Colors.grey, height: 1.5),
             ),
             const SizedBox(height: 32),
             TextField(
