@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:path_provider/path_provider.dart';
@@ -23,6 +24,7 @@ import 'providers/area_provider.dart';
 import 'providers/cached_tile_provider.dart';
 import 'providers/database_provider.dart';
 import 'providers/hazard_marker_provider.dart';
+import 'providers/location_provider.dart';
 import 'providers/map_downloader_provider.dart';
 import 'providers/news_item_provider.dart';
 import 'providers/offline_regions_provider.dart';
@@ -390,6 +392,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   final MapController _mapController = MapController();
   bool _isDrawingArea = false;
   final List<LatLng> _currentAreaPoints = [];
+  bool _hasCenteredOnLocation = false;
 
   @override
   void initState() {
@@ -1198,6 +1201,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     AsyncValue<List<AreaEntity>> areasAsync,
     List<UserProfileEntity> profiles,
     List<OfflineRegion> offlineRegions,
+    Position? currentPosition,
   ) {
     final markers = markersAsync.value ?? [];
     final areas = areasAsync.value ?? [];
@@ -1205,7 +1209,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return FlutterMap(
       mapController: _mapController,
       options: MapOptions(
-        initialCenter: const LatLng(37.7749, -122.4194),
+        initialCenter: currentPosition != null 
+            ? LatLng(currentPosition.latitude, currentPosition.longitude)
+            : const LatLng(37.7749, -122.4194),
         initialZoom: 13.0,
         onTap: (tapPosition, point) {
           if (_isDrawingArea) {
@@ -1440,6 +1446,31 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               )
               .toList(),
         ),
+        if (currentPosition != null)
+          MarkerLayer(
+            markers: [
+              Marker(
+                point: LatLng(currentPosition.latitude, currentPosition.longitude),
+                width: 24,
+                height: 24,
+                alignment: Alignment.center,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.blue,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 3),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.blue.withValues(alpha: 0.5),
+                        blurRadius: 10,
+                        spreadRadius: 5,
+                      )
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
         const RichAttributionWidget(
           attributions: [TextSourceAttribution('OpenStreetMap contributors')],
         ),
@@ -2000,8 +2031,25 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final cryptoState = ref.watch(cryptoServiceProvider);
     final offlineRegionsAsync = ref.watch(offlineRegionsProvider);
     final downloadProgress = ref.watch(mapDownloaderProvider);
+    final locationAsync = ref.watch(locationControllerProvider);
+    
     final profiles = profilesAsync.value ?? [];
     final offlineRegions = offlineRegionsAsync.value ?? [];
+    final currentPosition = locationAsync.value;
+
+    if (currentPosition != null && !_hasCenteredOnLocation) {
+      _hasCenteredOnLocation = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        try {
+          _mapController.move(
+            LatLng(currentPosition.latitude, currentPosition.longitude),
+            15.0,
+          );
+        } catch (e) {
+          debugPrint('Map not ready yet: $e');
+        }
+      });
+    }
 
     return Listener(
       behavior: HitTestBehavior.translucent,
@@ -2099,7 +2147,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         body: IndexedStack(
           index: _currentIndex,
           children: [
-            _buildMap(markersAsync, areasAsync, profiles, offlineRegions),
+            _buildMap(markersAsync, areasAsync, profiles, offlineRegions, currentPosition),
             _buildFeed(markersAsync, newsAsync, areasAsync, profiles),
             const ProfileTab(),
           ],
@@ -2178,12 +2226,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       if (_currentIndex == 0) ...[
                         FloatingActionButton.small(
                           heroTag: 'center_map',
-                          onPressed: () {
+                          onPressed: () async {
                             try {
-                              _mapController.move(
-                                const LatLng(37.7749, -122.4194),
-                                13.0,
-                              );
+                              final pos = await ref.read(locationControllerProvider.notifier).getCurrentPosition();
+                              if (pos != null) {
+                                _mapController.move(
+                                  LatLng(pos.latitude, pos.longitude),
+                                  15.0,
+                                );
+                              } else {
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Location not available')),
+                                  );
+                                }
+                              }
                             } catch (e) {
                               debugPrint('Map not ready yet: $e');
                             }
@@ -2205,12 +2262,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       const SizedBox(height: 16),
                       FloatingActionButton.extended(
                         heroTag: 'area',
-                        onPressed: () {
+                        onPressed: () async {
                           setState(() {
                             _isDrawingArea = true;
                             _currentAreaPoints.clear();
                             _currentIndex = 0; // Switch to map tab
                           });
+                          
+                          final pos = await ref.read(locationControllerProvider.notifier).getCurrentPosition();
+                          if (pos != null) {
+                            try {
+                              _mapController.move(LatLng(pos.latitude, pos.longitude), 15.0);
+                            } catch (_) {}
+                          }
+
+                          if (mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
                               content: Text(
@@ -2218,6 +2284,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               ),
                             ),
                           );
+                          }
                         },
                         backgroundColor: Colors.purple,
                         icon: const Icon(
@@ -2232,11 +2299,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       const SizedBox(height: 16),
                       FloatingActionButton.extended(
                         heroTag: 'user',
-                        onPressed: () {
-                          LatLng point = const LatLng(37.7749, -122.4194);
-                          try {
-                            point = _mapController.camera.center;
-                          } catch (_) {}
+                        onPressed: () async {
+                          LatLng point;
+                          final pos = await ref.read(locationControllerProvider.notifier).getCurrentPosition();
+                          if (pos != null) {
+                            point = LatLng(pos.latitude, pos.longitude);
+                          } else {
+                            try {
+                              point = _mapController.camera.center;
+                            } catch (_) {
+                              point = const LatLng(37.7749, -122.4194);
+                            }
+                          }
                           _showAddHazardDialog(point);
                         },
                         icon: const Icon(Icons.add_location_alt),

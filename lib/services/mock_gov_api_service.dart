@@ -8,6 +8,7 @@ import '../database/tables.dart';
 import '../providers/admin_trusted_sender_provider.dart';
 import '../providers/hazard_marker_provider.dart';
 import '../providers/news_item_provider.dart';
+import '../providers/location_provider.dart';
 
 part 'mock_gov_api_service.g.dart';
 
@@ -55,8 +56,20 @@ class MockGovApiService extends _$MockGovApiService {
     );
     await ref.read(newsItemsControllerProvider.notifier).addNewsItem(newNews);
 
-    final lat = 37.7749 + (DateTime.now().second % 10) * 0.001;
-    final lng = -122.4194 + (DateTime.now().second % 10) * 0.001;
+    double lat = 37.7749;
+    double lng = -122.4194;
+    
+    try {
+      final pos = await ref.read(locationControllerProvider.notifier).getCurrentPosition();
+      if (pos != null) {
+        lat = pos.latitude;
+        lng = pos.longitude;
+      }
+    } catch (_) {}
+
+    lat += (DateTime.now().second % 10 - 5) * 0.002;
+    lng += (DateTime.now().second % 10 - 5) * 0.002;
+
     final type = 'Flood';
     final desc = 'Automated sensor detected rising water levels.';
     final payloadToSignMarker = utf8.encode('${id}_m$type$timestamp');
