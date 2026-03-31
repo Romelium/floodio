@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:isolate';
 import 'dart:math';
 
 import 'package:drift/drift.dart';
@@ -10,6 +11,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../crypto/crypto_service.dart';
+import '../database/connection.dart';
 import '../database/database.dart';
 import '../protos/models.pb.dart' as pb;
 import '../services/map_cache_service.dart';
@@ -463,6 +465,9 @@ class P2pService extends _$P2pService {
         } else if (json['type'] == 'request_map') {
           await _handleRequestMap();
           return;
+        } else if (json['type'] == 'request_image') {
+          await _handleRequestImage(json['imageId']);
+          return;
         }
       }
     } catch (e) {
@@ -473,6 +478,18 @@ class P2pService extends _$P2pService {
     state = state.copyWith(
       receivedTexts: [...state.receivedTexts, text],
     );
+  }
+
+  Future<void> _handleRequestImage(String imageId) async {
+    try {
+      final dir = await getApplicationDocumentsDirectory();
+      final file = File('${dir.path}/$imageId');
+      if (await file.exists()) {
+        await broadcastFile(file);
+      }
+    } catch (e) {
+      print("Error handling request_image: $e");
+    }
   }
 
   void _handleReceivedFiles(List<ReceivableFileInfo> files, dynamic p2pInstance) async {
@@ -531,26 +548,35 @@ class P2pService extends _$P2pService {
   Future<void> _sendManifest() async {
     _idleTicks = 0;
     try {
-      final db = ref.read(databaseProvider);
-  
-      final seenIds = await db.select(db.seenMessageIds).get();
-  
-      final bloomFilter = BloomFilter(32768, 5);
-      for (final seen in seenIds) {
-        bloomFilter.add(seen.messageId);
-      }
-  
+      final (bloomBits, bloomSize) = await Isolate.run(() async {
+        final connection = await getSharedConnection();
+        final db = AppDatabase(connection);
+
+        final seenIds = await db.select(db.seenMessageIds).get();
         final deletedItems = await db.select(db.deletedItems).get();
+
+        final itemCount = seenIds.length + deletedItems.length;
+        final size = max<int>(32768, itemCount * 10);
+        final bloomFilter = BloomFilter(size, 5);
+
+        for (final seen in seenIds) {
+          bloomFilter.add(seen.messageId);
+        }
         for (final d in deletedItems) {
           bloomFilter.add('del_${d.id}');
         }
+
+        await db.close();
+        return (bloomFilter.bits, size);
+      });
   
         final mapCache = ref.read(mapCacheServiceProvider);
         final mapVersion = await mapCache.getLocalMapVersion();
   
       final manifest = {
         'type': 'manifest',
-        'bloomFilter': bloomFilter.bits,
+        'bloomFilter': bloomBits,
+        'bloomSize': bloomSize,
         'mapVersion': mapVersion,
       };
   
@@ -572,22 +598,37 @@ class P2pService extends _$P2pService {
         await broadcastText(jsonEncode({'type': 'request_map'}));
       }
 
+      final bloomSize = json['bloomSize'] as int? ?? 32768;
       final bloomBits = (json['bloomFilter'] as List<dynamic>?)?.map((e) => (e as num).toInt()).toList() ?? [];
-      final peerBloomFilter = BloomFilter.fromList(bloomBits, 32768, 5);
 
-      final db = ref.read(databaseProvider);
+      final filterResult = await Isolate.run(() async {
+        final peerBloomFilter = BloomFilter.fromList(bloomBits, bloomSize, 5);
 
-      final allHazards = await db.select(db.hazardMarkers).get();
-      final allNews = await db.select(db.newsItems).get();
-      final allProfiles = await db.select(db.userProfiles).get();
-      final allDeleted = await db.select(db.deletedItems).get();
-      final allAreas = await db.select(db.areas).get();
+        final connection = await getSharedConnection();
+        final db = AppDatabase(connection);
 
-      final newHazards = allHazards.where((h) => !peerBloomFilter.mightContain(h.id)).take(200).toList();
-      final newNews = allNews.where((n) => !peerBloomFilter.mightContain(n.id)).take(200).toList();
-      final newProfiles = allProfiles.where((p) => !peerBloomFilter.mightContain('${p.publicKey}_${p.timestamp}')).take(200).toList();
-      final newDeleted = allDeleted.where((d) => !peerBloomFilter.mightContain('del_${d.id}')).take(200).toList();
-      final newAreas = allAreas.where((a) => !peerBloomFilter.mightContain(a.id)).take(200).toList();
+        final allHazards = await db.select(db.hazardMarkers).get();
+        final allNews = await db.select(db.newsItems).get();
+        final allProfiles = await db.select(db.userProfiles).get();
+        final allDeleted = await db.select(db.deletedItems).get();
+        final allAreas = await db.select(db.areas).get();
+
+        final newHazards = allHazards.where((h) => !peerBloomFilter.mightContain(h.id)).take(200).toList();
+        final newNews = allNews.where((n) => !peerBloomFilter.mightContain(n.id)).take(200).toList();
+        final newProfiles = allProfiles.where((p) => !peerBloomFilter.mightContain('${p.publicKey}_${p.timestamp}')).take(200).toList();
+        final newDeleted = allDeleted.where((d) => !peerBloomFilter.mightContain('del_${d.id}')).take(200).toList();
+        final newAreas = allAreas.where((a) => !peerBloomFilter.mightContain(a.id)).take(200).toList();
+
+        await db.close();
+
+        return (newHazards, newNews, newProfiles, newDeleted, newAreas);
+      });
+
+      final newHazards = filterResult.$1;
+      final newNews = filterResult.$2;
+      final newProfiles = filterResult.$3;
+      final newDeleted = filterResult.$4;
+      final newAreas = filterResult.$5;
 
       if (newHazards.isEmpty && newNews.isEmpty && newProfiles.isEmpty && newDeleted.isEmpty && newAreas.isEmpty) {
         state = state.copyWith(isSyncing: false, syncMessage: 'Up to date.');
@@ -878,6 +919,18 @@ class P2pService extends _$P2pService {
           await (db.delete(db.areas)..where((t) => t.id.equals(d.id.value))).go();
         }
       });
+
+      // Request missing images
+      final dir = await getApplicationDocumentsDirectory();
+      for (final m in validMarkers) {
+        final imageId = m.imageId.value;
+        if (imageId != null && imageId.isNotEmpty) {
+          final file = File('${dir.path}/$imageId');
+          if (!await file.exists()) {
+            await broadcastText(jsonEncode({'type': 'request_image', 'imageId': imageId}));
+          }
+        }
+      }
 
       state = state.copyWith(
         isSyncing: false,
