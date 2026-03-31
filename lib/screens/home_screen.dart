@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:path_provider/path_provider.dart';
@@ -33,6 +34,7 @@ import '../providers/path_provider.dart';
 import '../providers/revoked_delegation_provider.dart';
 import '../providers/settings_provider.dart';
 import '../providers/trusted_sender_provider.dart';
+import '../providers/ui_state_provider.dart';
 import '../providers/untrusted_sender_provider.dart';
 import '../providers/user_profile_provider.dart';
 import '../services/cloud_sync_service.dart';
@@ -57,29 +59,13 @@ class HomeScreen extends ConsumerStatefulWidget {
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   int _tapCount = 0;
   DateTime? _lastTapTime;
-  int _currentIndex = 0;
   final MapController _mapController = MapController();
-  bool _isDrawingArea = false;
-  String? _editingAreaId;
-  final List<LatLng> _currentAreaPoints = [];
-  bool _isDrawingPath = false;
-  String? _editingPathId;
-  final List<LatLng> _currentPathPoints = [];
   bool _hasCenteredOnLocation = false;
-  bool _showOfflineRegions = true;
-
-  final ScrollController _feedScrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
     _initPermissions();
-    _feedScrollController.addListener(() {
-      if (_feedScrollController.position.pixels >=
-          _feedScrollController.position.maxScrollExtent - 200) {
-        ref.read(feedLimitProvider.notifier).loadMore();
-      }
-    });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(cloudSyncServiceProvider);
     });
@@ -87,7 +73,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   void dispose() {
-    _feedScrollController.dispose();
     super.dispose();
   }
 
@@ -915,13 +900,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   subtitle: const Text('Draw a polygon on the map'),
                   onTap: () async {
                     Navigator.pop(context);
-                    setState(() {
-                      _isDrawingArea = true;
-                      _isDrawingPath = false;
-                      _editingAreaId = null;
-                      _currentAreaPoints.clear();
-                      _currentIndex = 0;
-                    });
+                    ref.read(drawingControllerProvider.notifier).startDrawingArea();
+                    ref.read(navigationIndexProvider.notifier).setIndex(0);
                     final pos = await ref
                         .read(locationControllerProvider.notifier)
                         .getCurrentPosition();
@@ -953,13 +933,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   subtitle: const Text('Draw a line on the map'),
                   onTap: () async {
                     Navigator.pop(context);
-                    setState(() {
-                      _isDrawingPath = true;
-                      _isDrawingArea = false;
-                      _editingPathId = null;
-                      _currentPathPoints.clear();
-                      _currentIndex = 0;
-                    });
+                    ref.read(drawingControllerProvider.notifier).startDrawingPath();
+                    ref.read(navigationIndexProvider.notifier).setIndex(0);
                     final pos = await ref
                         .read(locationControllerProvider.notifier)
                         .getCurrentPosition();
@@ -1342,7 +1317,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  void _showAddAreaDialog({AreaEntity? existingArea}) {
+  void _showAddAreaDialog({AreaEntity? existingArea, required List<LatLng> points}) {
     final validTypes = [
       'Flooded Area',
       'Evacuation Zone',
@@ -1482,7 +1457,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     await cryptoService.getPublicKeyString();
 
                 final isCriticalStr = isCritical ? "1" : "0";
-                final coordsStr = _currentAreaPoints.map((p) => '${p.latitude},${p.longitude}').join('|');
+                final coordsStr = points.map((p) => '${p.latitude},${p.longitude}').join('|');
                 final payloadToSign = utf8.encode(
                   '$id$coordsStr$type$description$timestamp${expiresAt ?? ""}$isCriticalStr',
                 );
@@ -1528,7 +1503,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   revokedPublicKeys: revokedKeys,
                 );
 
-                final coords = _currentAreaPoints
+                final coords = points
                     .map((p) => {'lat': p.latitude, 'lng': p.longitude})
                     .toList();
 
@@ -1549,11 +1524,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     .addArea(newArea);
 
                 if (!mounted) return;
-                setState(() {
-                  _isDrawingArea = false;
-                  _editingAreaId = null;
-                  _currentAreaPoints.clear();
-                });
+                ref.read(drawingControllerProvider.notifier).cancel();
               },
               icon: const Icon(Icons.send, size: 18),
               label: const Text('Report'),
@@ -1564,7 +1535,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  void _showAddPathDialog({PathEntity? existingPath}) {
+  void _showAddPathDialog({PathEntity? existingPath, required List<LatLng> points}) {
     final validTypes = [
       'Evacuation Route',
       'Safe Path',
@@ -1696,7 +1667,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     await cryptoService.getPublicKeyString();
 
                 final isCriticalStr = isCritical ? "1" : "0";
-                final coordsStr = _currentPathPoints.map((p) => '${p.latitude},${p.longitude}').join('|');
+                final coordsStr = points.map((p) => '${p.latitude},${p.longitude}').join('|');
                 final payloadToSign = utf8.encode(
                   '$id$coordsStr$type$description$timestamp${expiresAt ?? ""}$isCriticalStr',
                 );
@@ -1742,7 +1713,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   revokedPublicKeys: revokedKeys,
                 );
 
-                final coords = _currentPathPoints
+                final coords = points
                     .map((p) => {'lat': p.latitude, 'lng': p.longitude})
                     .toList();
 
@@ -1763,11 +1734,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     .addPath(newPath);
 
                 if (!mounted) return;
-                setState(() {
-                  _isDrawingPath = false;
-                  _editingPathId = null;
-                  _currentPathPoints.clear();
-                });
+                ref.read(drawingControllerProvider.notifier).cancel();
               },
               icon: const Icon(Icons.send, size: 18),
               label: const Text('Report'),
@@ -2150,20 +2117,29 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   !revokedKeys.contains(a.publicKey),
             );
         final isAdmin = settings.isOfficialMode || isTier2;
+        final drawingState = ref.watch(drawingControllerProvider);
+        final showOfflineRegions = ref.watch(showOfflineRegionsProvider);
 
-        if (currentPosition != null && !_hasCenteredOnLocation) {
-          _hasCenteredOnLocation = true;
-          WidgetsBinding.instance.addPostFrameCallback((_) {
+        ref.listen<LatLng?>(mapTargetProvider, (prev, next) {
+          if (next != null) {
             try {
-              _mapController.move(
-                LatLng(currentPosition.latitude, currentPosition.longitude),
-                15.0,
-              );
+              _mapController.move(next, 15.0);
             } catch (e) {
               debugPrint('Map not ready yet: $e');
             }
-          });
-        }
+          }
+        });
+
+        ref.listen<AsyncValue<Position?>>(locationControllerProvider, (prev, next) {
+          if (prev?.value == null && next.value != null && !_hasCenteredOnLocation) {
+            _hasCenteredOnLocation = true;
+            try {
+              _mapController.move(LatLng(next.value!.latitude, next.value!.longitude), 15.0);
+            } catch (e) {
+              debugPrint('Map not ready yet: $e');
+            }
+          }
+        });
 
         return FlutterMap(
           mapController: _mapController,
@@ -2173,14 +2149,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 : const LatLng(37.7749, -122.4194),
             initialZoom: 13.0,
             onTap: (tapPosition, point) {
-              if (_isDrawingArea) {
-                setState(() {
-                  _currentAreaPoints.add(point);
-                });
-              } else if (_isDrawingPath) {
-                setState(() {
-                  _currentPathPoints.add(point);
-                });
+              final drawingState = ref.read(drawingControllerProvider);
+              if (drawingState.mode == DrawingMode.area) {
+                ref.read(drawingControllerProvider.notifier).addPoint(point);
+              } else if (drawingState.mode == DrawingMode.path) {
+                ref.read(drawingControllerProvider.notifier).addPoint(point);
               } else {
                 _showAddHazardDialog(point);
               }
@@ -2196,7 +2169,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
             PolygonLayer(
               polygons: [
-                if (_showOfflineRegions)
+                if (showOfflineRegions)
                   ...offlineRegions.map(
                     (r) => Polygon(
                       points: [
@@ -2226,9 +2199,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     borderStrokeWidth: 2,
                   );
                 }),
-                if (_isDrawingArea && _currentAreaPoints.isNotEmpty)
+                if (drawingState.mode == DrawingMode.area && drawingState.points.isNotEmpty)
                   Polygon(
-                    points: _currentAreaPoints,
+                    points: drawingState.points,
                     color: Colors.blue.withValues(alpha: 0.3),
                     borderColor: Colors.blue,
                     borderStrokeWidth: 2,
@@ -2255,9 +2228,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         : const StrokePattern.solid(),
                   );
                 }),
-                if (_isDrawingPath && _currentPathPoints.isNotEmpty)
+                if (drawingState.mode == DrawingMode.path && drawingState.points.isNotEmpty)
                   Polyline(
-                    points: _currentPathPoints,
+                    points: drawingState.points,
                     color: Colors.teal,
                     strokeWidth: 4.0,
                     pattern: StrokePattern.dashed(segments: const [10.0, 10.0]),
@@ -2569,58 +2542,64 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           },
         ),
         Expanded(
-          child: Consumer(
-            builder: (context, ref, child) {
-              final localUserAsync = ref.watch(localUserControllerProvider);
-              final myPublicKey = localUserAsync.value?.publicKey;
-              final combined = ref.watch(combinedFeedProvider);
-              final profiles = ref.watch(userProfilesControllerProvider).value ?? [];
-              final settings = ref.watch(appSettingsProvider);
-
-              final isLoading =
-                  ref.watch(filteredHazardMarkersProvider).isLoading ||
-                  ref.watch(filteredNewsItemsProvider).isLoading ||
-                  ref.watch(filteredAreasProvider).isLoading;
-
-              final adminTrustedAsync = ref.watch(
-                adminTrustedSendersControllerProvider,
-              );
-              final revokedAsync = ref.watch(revokedDelegationsControllerProvider);
-              final adminTrusted = adminTrustedAsync.value ?? [];
-              final revoked = revokedAsync.value ?? [];
-              final revokedKeys = revoked.map((e) => e.delegateePublicKey).toSet();
-              final isTier2 =
-                  myPublicKey != null &&
-                  adminTrusted.any(
-                    (a) =>
-                        a.publicKey == myPublicKey &&
-                        !revokedKeys.contains(a.publicKey),
-                  );
-              final isAdmin = settings.isOfficialMode || isTier2;
-
-              if (combined.isEmpty) {
-                return _buildEmptyFeedState(isLoading);
+          child: NotificationListener<ScrollNotification>(
+            onNotification: (ScrollNotification scrollInfo) {
+              if (scrollInfo.metrics.pixels >= scrollInfo.metrics.maxScrollExtent - 200) {
+                ref.read(feedLimitProvider.notifier).loadMore();
               }
+              return false;
+            },
+            child: Consumer(
+              builder: (context, ref, child) {
+                final localUserAsync = ref.watch(localUserControllerProvider);
+                final myPublicKey = localUserAsync.value?.publicKey;
+                final combined = ref.watch(combinedFeedProvider);
+                final profiles = ref.watch(userProfilesControllerProvider).value ?? [];
+                final settings = ref.watch(appSettingsProvider);
 
-              return ListView.builder(
-                controller: _feedScrollController,
-                padding: const EdgeInsets.only(top: 8, bottom: 80),
-                itemCount:
-                    combined.length +
-                    (combined.length >= ref.watch(feedLimitProvider)
-                        ? 1
-                        : 0),
-                itemBuilder: (context, index) {
-                  if (index == combined.length) {
-                    return const Padding(
-                      padding: EdgeInsets.all(16.0),
-                      child: Center(child: CircularProgressIndicator()),
+                final isLoading =
+                    ref.watch(filteredHazardMarkersProvider).isLoading ||
+                    ref.watch(filteredNewsItemsProvider).isLoading ||
+                    ref.watch(filteredAreasProvider).isLoading;
+
+                final adminTrustedAsync = ref.watch(
+                  adminTrustedSendersControllerProvider,
+                );
+                final revokedAsync = ref.watch(revokedDelegationsControllerProvider);
+                final adminTrusted = adminTrustedAsync.value ?? [];
+                final revoked = revokedAsync.value ?? [];
+                final revokedKeys = revoked.map((e) => e.delegateePublicKey).toSet();
+                final isTier2 =
+                    myPublicKey != null &&
+                    adminTrusted.any(
+                      (a) =>
+                          a.publicKey == myPublicKey &&
+                          !revokedKeys.contains(a.publicKey),
                     );
-                  }
-                  final item = combined[index];
-                  final canEndorse =
-                      isAdmin &&
-                      (item.trustTier == 3 || item.trustTier == 4);
+                final isAdmin = settings.isOfficialMode || isTier2;
+
+                if (combined.isEmpty) {
+                  return _buildEmptyFeedState(isLoading);
+                }
+
+                return ListView.builder(
+                  padding: const EdgeInsets.only(top: 8, bottom: 80),
+                  itemCount:
+                      combined.length +
+                      (combined.length >= ref.watch(feedLimitProvider)
+                          ? 1
+                          : 0),
+                  itemBuilder: (context, index) {
+                    if (index == combined.length) {
+                      return const Padding(
+                        padding: EdgeInsets.all(16.0),
+                        child: Center(child: CircularProgressIndicator()),
+                      );
+                    }
+                    final item = combined[index];
+                    final canEndorse =
+                        isAdmin &&
+                        (item.trustTier == 3 || item.trustTier == 4);
 
                         if (item is HazardMarkerEntity) {
                           final color = getHazardColor(
@@ -2641,19 +2620,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             ),
                             child: InkWell(
                               onTap: () {
-                                setState(() => _currentIndex = 0);
-                                WidgetsBinding.instance.addPostFrameCallback((
-                                  _,
-                                ) {
-                                  try {
-                                    _mapController.move(
-                                      LatLng(item.latitude, item.longitude),
-                                      15.0,
-                                    );
-                                  } catch (e) {
-                                    debugPrint('Map not ready yet: $e');
-                                  }
-                                });
+                                ref.read(navigationIndexProvider.notifier).setIndex(0);
+                                ref.read(mapTargetProvider.notifier).setTarget(LatLng(item.latitude, item.longitude));
                               },
                               child: Padding(
                                 padding: const EdgeInsets.all(16.0),
@@ -3121,24 +3089,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             clipBehavior: Clip.antiAlias,
                             child: InkWell(
                               onTap: () {
-                                setState(() => _currentIndex = 0);
-                                WidgetsBinding.instance.addPostFrameCallback((
-                                  _,
-                                ) {
-                                  try {
-                                    if (item.coordinates.isNotEmpty) {
-                                      _mapController.move(
-                                        LatLng(
-                                          item.coordinates.first['lat']!,
-                                          item.coordinates.first['lng']!,
-                                        ),
-                                        14.0,
-                                      );
-                                    }
-                                  } catch (e) {
-                                    debugPrint('Map not ready yet: $e');
-                                  }
-                                });
+                                if (item.coordinates.isNotEmpty) {
+                                  ref.read(navigationIndexProvider.notifier).setIndex(0);
+                                  ref.read(mapTargetProvider.notifier).setTarget(LatLng(
+                                    item.coordinates.first['lat']!,
+                                    item.coordinates.first['lng']!,
+                                  ));
+                                }
                               },
                               child: Padding(
                                 padding: const EdgeInsets.all(16.0),
@@ -3380,24 +3337,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             clipBehavior: Clip.antiAlias,
                             child: InkWell(
                               onTap: () {
-                                setState(() => _currentIndex = 0);
-                                WidgetsBinding.instance.addPostFrameCallback((
-                                  _,
-                                ) {
-                                  try {
-                                    if (item.coordinates.isNotEmpty) {
-                                      _mapController.move(
-                                        LatLng(
-                                          item.coordinates.first['lat']!,
-                                          item.coordinates.first['lng']!,
-                                        ),
-                                        14.0,
-                                      );
-                                    }
-                                  } catch (e) {
-                                    debugPrint('Map not ready yet: $e');
-                                  }
-                                });
+                                if (item.coordinates.isNotEmpty) {
+                                  ref.read(navigationIndexProvider.notifier).setIndex(0);
+                                  ref.read(mapTargetProvider.notifier).setTarget(LatLng(
+                                    item.coordinates.first['lat']!,
+                                    item.coordinates.first['lng']!,
+                                  ));
+                                }
                               },
                               child: Padding(
                                 padding: const EdgeInsets.all(16.0),
@@ -3625,8 +3571,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         }
                         return const SizedBox.shrink();
                       },
-              );
-            },
+                );
+              },
+            ),
           ),
         ),
       ],
@@ -3735,10 +3682,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final cryptoState = ref.watch(cryptoServiceProvider);
     final downloadProgress = ref.watch(mapDownloaderProvider);
     final settings = ref.watch(appSettingsProvider);
+    final effectiveIndex = ref.watch(navigationIndexProvider);
 
-    int effectiveIndex = _currentIndex;
-    if (!settings.isOfficialMode && effectiveIndex > 2) {
-      effectiveIndex = 2;
+    int displayIndex = effectiveIndex;
+    if (!settings.isOfficialMode && displayIndex > 2) {
+      displayIndex = 2;
     }
 
     return Listener(
@@ -3802,22 +3750,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ],
         ),
         body: IndexedStack(
-          index: effectiveIndex,
+          index: displayIndex,
           children: [
             _buildMap(),
             _buildFeed(),
             ProfileTab(
               onEditAreaShape: (area) {
-                setState(() {
-                  _isDrawingArea = true;
-                  _isDrawingPath = false;
-                  _editingAreaId = area.id;
-                  _currentAreaPoints.clear();
-                  _currentAreaPoints.addAll(
-                    area.coordinates.map((c) => LatLng(c['lat']!, c['lng']!)),
-                  );
-                  _currentIndex = 0;
-                });
+                ref.read(navigationIndexProvider.notifier).setIndex(0);
+                ref.read(drawingControllerProvider.notifier).startDrawingArea(
+                  area.id,
+                  area.coordinates.map((c) => LatLng(c['lat']!, c['lng']!)).toList(),
+                );
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
                     content: Text('Edit the area shape on the map.'),
@@ -3825,16 +3768,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 );
               },
               onEditPathShape: (path) {
-                setState(() {
-                  _isDrawingPath = true;
-                  _isDrawingArea = false;
-                  _editingPathId = path.id;
-                  _currentPathPoints.clear();
-                  _currentPathPoints.addAll(
-                    path.coordinates.map((c) => LatLng(c['lat']!, c['lng']!)),
-                  );
-                  _currentIndex = 0;
-                });
+                ref.read(navigationIndexProvider.notifier).setIndex(0);
+                ref.read(drawingControllerProvider.notifier).startDrawingPath(
+                  path.id,
+                  path.coordinates.map((c) => LatLng(c['lat']!, c['lng']!)).toList(),
+                );
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
                     content: Text('Edit the path shape on the map.'),
@@ -3842,23 +3780,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 );
               },
               onNavigateToMap: (point) {
-                setState(() => _currentIndex = 0);
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  try {
-                    _mapController.move(point, 14.0);
-                  } catch (e) {
-                    debugPrint('Map not ready yet: $e');
-                  }
-                });
+                ref.read(navigationIndexProvider.notifier).setIndex(0);
+                ref.read(mapTargetProvider.notifier).setTarget(point);
               },
             ),
             if (settings.isOfficialMode) const CommandTab(),
           ],
         ),
         bottomNavigationBar: NavigationBar(
-          selectedIndex: effectiveIndex,
+          selectedIndex: displayIndex,
           onDestinationSelected: (index) =>
-              setState(() => _currentIndex = index),
+              ref.read(navigationIndexProvider.notifier).setIndex(index),
           destinations: [
             const NavigationDestination(
               icon: Icon(Icons.map_outlined),
@@ -3883,25 +3815,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
           ],
         ),
-        floatingActionButton: (effectiveIndex == 2 || effectiveIndex == 3)
+        floatingActionButton: (displayIndex == 2 || displayIndex == 3)
             ? null
             : cryptoState.when(
                 data: (_) {
-                  if (_isDrawingArea || _isDrawingPath) {
+                  final drawingState = ref.watch(drawingControllerProvider);
+                  if (drawingState.mode != DrawingMode.none) {
                     return Row(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
                         FloatingActionButton.extended(
                           heroTag: 'cancel_draw',
                           onPressed: () {
-                            setState(() {
-                              _isDrawingArea = false;
-                              _isDrawingPath = false;
-                              _editingAreaId = null;
-                              _editingPathId = null;
-                              _currentAreaPoints.clear();
-                              _currentPathPoints.clear();
-                            });
+                            ref.read(drawingControllerProvider.notifier).cancel();
                           },
                           backgroundColor: Colors.red,
                           icon: const Icon(Icons.close, color: Colors.white),
@@ -3911,18 +3837,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           ),
                         ),
                         const SizedBox(width: 16),
-                        if ((_isDrawingArea && _currentAreaPoints.isNotEmpty) ||
-                            (_isDrawingPath && _currentPathPoints.isNotEmpty))
+                        if (drawingState.points.isNotEmpty)
                           FloatingActionButton.extended(
                             heroTag: 'undo_draw',
                             onPressed: () {
-                              setState(() {
-                                if (_isDrawingArea) {
-                                  _currentAreaPoints.removeLast();
-                                } else {
-                                  _currentPathPoints.removeLast();
-                                }
-                              });
+                              ref.read(drawingControllerProvider.notifier).removeLastPoint();
                             },
                             backgroundColor: Colors.orange,
                             icon: const Icon(Icons.undo, color: Colors.white),
@@ -3932,38 +3851,38 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             ),
                           ),
                         const SizedBox(width: 16),
-                        if ((_isDrawingArea &&
-                                _currentAreaPoints.length >= 3) ||
-                            (_isDrawingPath && _currentPathPoints.length >= 2))
+                        if ((drawingState.mode == DrawingMode.area &&
+                                drawingState.points.length >= 3) ||
+                            (drawingState.mode == DrawingMode.path && drawingState.points.length >= 2))
                           FloatingActionButton.extended(
                             heroTag: 'done_draw',
                             onPressed: () async {
-                              if (_isDrawingArea) {
+                              if (drawingState.mode == DrawingMode.area) {
                                 AreaEntity? existingArea;
-                                if (_editingAreaId != null) {
+                                if (drawingState.editingId != null) {
                                   final areas =
                                       ref.read(areasControllerProvider).value ??
                                       [];
                                   try {
                                     existingArea = areas.firstWhere(
-                                      (a) => a.id == _editingAreaId,
+                                      (a) => a.id == drawingState.editingId,
                                     );
                                   } catch (_) {}
                                 }
-                                _showAddAreaDialog(existingArea: existingArea);
+                                _showAddAreaDialog(existingArea: existingArea, points: drawingState.points);
                               } else {
                                 PathEntity? existingPath;
-                                if (_editingPathId != null) {
+                                if (drawingState.editingId != null) {
                                   final paths =
                                       ref.read(pathsControllerProvider).value ??
                                       [];
                                   try {
                                     existingPath = paths.firstWhere(
-                                      (p) => p.id == _editingPathId,
+                                      (p) => p.id == drawingState.editingId,
                                     );
                                   } catch (_) {}
                                 }
-                                _showAddPathDialog(existingPath: existingPath);
+                                _showAddPathDialog(existingPath: existingPath, points: drawingState.points);
                               }
                             },
                             backgroundColor: Colors.green,
@@ -3982,17 +3901,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      if (effectiveIndex == 0) ...[
+                      if (displayIndex == 0) ...[
                         FloatingActionButton.small(
                           heroTag: 'layers',
                           onPressed: () {
-                            setState(() {
-                              _showOfflineRegions = !_showOfflineRegions;
-                            });
+                            ref.read(showOfflineRegionsProvider.notifier).toggle();
+                            final show = ref.read(showOfflineRegionsProvider);
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
                                 content: Text(
-                                  _showOfflineRegions
+                                  show
                                       ? 'Showing offline regions'
                                       : 'Hiding offline regions',
                                 ),
