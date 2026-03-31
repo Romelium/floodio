@@ -40,6 +40,9 @@ class AdminTrustedSendersController extends _$AdminTrustedSendersController {
 
       await (db.update(db.areas)..where((t) => t.senderId.equals(entity.publicKey) & t.trustTier.isBiggerThanValue(2)))
           .write(const AreasCompanion(trustTier: Value(2)));
+
+      await (db.update(db.paths)..where((t) => t.senderId.equals(entity.publicKey) & t.trustTier.isBiggerThanValue(2)))
+          .write(const PathsCompanion(trustTier: Value(2)));
     });
   }
 }

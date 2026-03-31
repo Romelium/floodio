@@ -39,6 +39,9 @@ class RevokedDelegationsController extends _$RevokedDelegationsController {
 
       await (db.update(db.areas)..where((t) => t.senderId.equals(entity.delegateePublicKey) & t.trustTier.equals(2)))
           .write(AreasCompanion(trustTier: Value(fallbackTier)));
+
+      await (db.update(db.paths)..where((t) => t.senderId.equals(entity.delegateePublicKey) & t.trustTier.equals(2)))
+          .write(PathsCompanion(trustTier: Value(fallbackTier)));
     });
   }
 }

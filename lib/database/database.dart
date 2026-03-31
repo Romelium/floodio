@@ -7,12 +7,12 @@ import 'tables.dart';
 
 part 'database.g.dart';
 
-@DriftDatabase(tables: [HazardMarkers, NewsItems, DeletedItems, SeenMessageIds, TrustedSenders, UntrustedSenders, UserProfiles, Areas, AdminTrustedSenders, RevokedDelegations])
+@DriftDatabase(tables: [HazardMarkers, NewsItems, DeletedItems, SeenMessageIds, TrustedSenders, UntrustedSenders, UserProfiles, Areas, Paths, AdminTrustedSenders, RevokedDelegations])
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 10;
+  int get schemaVersion => 11;
 
   Future<void> cleanupOldData() async {
     final now = DateTime.now().millisecondsSinceEpoch;
@@ -43,6 +43,10 @@ class AppDatabase extends _$AppDatabase {
           (t.expiresAt.isNull() & t.timestamp.isSmallerThanValue(cutoff))
       )).go();
       await (delete(areas)..where((t) => 
+          (t.expiresAt.isNotNull() & t.expiresAt.isSmallerThanValue(now)) |
+          (t.expiresAt.isNull() & t.timestamp.isSmallerThanValue(cutoff))
+      )).go();
+      await (delete(paths)..where((t) =>
           (t.expiresAt.isNotNull() & t.expiresAt.isSmallerThanValue(now)) |
           (t.expiresAt.isNull() & t.timestamp.isSmallerThanValue(cutoff))
       )).go();
@@ -100,6 +104,9 @@ class AppDatabase extends _$AppDatabase {
         }
         if (from < 10) {
           await m.addColumn(newsItems, newsItems.imageId);
+        }
+        if (from < 11) {
+          await m.createTable(paths);
         }
       },
     );

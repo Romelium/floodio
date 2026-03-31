@@ -117,12 +117,32 @@ Stream<List<AreaEntity>> filteredAreas(Ref ref) {
 }
 
 @riverpod
+Stream<List<PathEntity>> filteredPaths(Ref ref) {
+  final db = ref.watch(databaseProvider);
+  final limit = ref.watch(feedLimitProvider);
+  final filter = ref.watch(feedFilterControllerProvider);
+
+  var query = db.select(db.paths);
+  if (filter.trustFilter != null) {
+    query.where((t) => t.trustTier.equals(filter.trustFilter!));
+  }
+  if (filter.searchQuery.isNotEmpty) {
+    final q = '%${filter.searchQuery}%';
+    query.where((t) => t.type.like(q) | t.description.like(q));
+  }
+  query.orderBy([(t) => OrderingTerm.desc(t.timestamp)]);
+  query.limit(limit);
+  return query.watch();
+}
+
+@riverpod
 List<dynamic> combinedFeed(Ref ref) {
   final filter = ref.watch(feedFilterControllerProvider);
   
   final markers = ref.watch(filteredHazardMarkersProvider).value ?? [];
   final news = ref.watch(filteredNewsItemsProvider).value ?? [];
   final areas = ref.watch(filteredAreasProvider).value ?? [];
+  final paths = ref.watch(filteredPathsProvider).value ?? [];
 
   var combined = <dynamic>[];
 
@@ -134,6 +154,9 @@ List<dynamic> combinedFeed(Ref ref) {
   }
   if (filter.typeFilter == 'All' || filter.typeFilter == 'Areas') {
     combined.addAll(areas);
+  }
+  if (filter.typeFilter == 'All' || filter.typeFilter == 'Paths') {
+    combined.addAll(paths);
   }
 
   combined.sort((a, b) => (b.timestamp as int).compareTo(a.timestamp as int));

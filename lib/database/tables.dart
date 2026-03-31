@@ -292,3 +292,43 @@ class Areas extends Table {
   @override
   Set<Column> get primaryKey => {id};
 }
+
+class PathEntity {
+  final String id;
+  final List<Map<String, double>> coordinates;
+  final String type;
+  final String description;
+  final int timestamp;
+  final String senderId;
+  final String? signature;
+  final int trustTier;
+  final int? expiresAt;
+
+  PathEntity({
+    required this.id,
+    required this.coordinates,
+    required this.type,
+    required this.description,
+    required this.timestamp,
+    required this.senderId,
+    this.signature,
+    required this.trustTier,
+    this.expiresAt,
+  });
+}
+
+@UseRowClass(PathEntity)
+class Paths extends Table {
+  TextColumn get id => text()();
+  TextColumn get coordinates => text().map(const CoordinateListConverter())();
+  TextColumn get type => text()();
+  TextColumn get description => text()();
+  IntColumn get timestamp => integer()();
+  TextColumn get senderId => text()();
+  TextColumn get signature => text().nullable()();
+  IntColumn get trustTier => integer()();
+  IntColumn get expiresAt => integer().nullable()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}

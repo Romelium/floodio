@@ -37,6 +37,10 @@ class TrustedSendersController extends _$TrustedSendersController {
       // Update existing areas
       await (db.update(db.areas)..where((t) => t.senderId.equals(publicKey) & t.trustTier.isBiggerThanValue(3)))
           .write(const AreasCompanion(trustTier: Value(3)));
+
+      // Update existing paths
+      await (db.update(db.paths)..where((t) => t.senderId.equals(publicKey) & t.trustTier.isBiggerThanValue(3)))
+          .write(const PathsCompanion(trustTier: Value(3)));
     });
   }
 
@@ -56,6 +60,10 @@ class TrustedSendersController extends _$TrustedSendersController {
       // Downgrade existing areas
       await (db.update(db.areas)..where((t) => t.senderId.equals(publicKey) & t.trustTier.equals(3)))
           .write(const AreasCompanion(trustTier: Value(4)));
+
+      // Downgrade existing paths
+      await (db.update(db.paths)..where((t) => t.senderId.equals(publicKey) & t.trustTier.equals(3)))
+          .write(const PathsCompanion(trustTier: Value(4)));
     });
   }
 }

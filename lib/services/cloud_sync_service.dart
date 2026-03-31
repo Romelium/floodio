@@ -76,8 +76,9 @@ class CloudSyncService extends _$CloudSyncService {
       final markers = await db.select(db.hazardMarkers).get();
       final news = await db.select(db.newsItems).get();
       final areas = await db.select(db.areas).get();
+      final paths = await db.select(db.paths).get();
       
-      print('CloudSync: Uploaded ${markers.length} markers, ${news.length} news, ${areas.length} areas to the cloud.');
+      print('CloudSync: Uploaded ${markers.length} markers, ${news.length} news, ${areas.length} areas, ${paths.length} paths to the cloud.');
 
       // 2. "Download" new data from cloud
       // We trigger the MockGovApiService to generate some new data as if it came from the cloud

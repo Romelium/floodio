@@ -35,6 +35,7 @@ class UntrustedSendersController extends _$UntrustedSendersController {
       await (db.delete(db.hazardMarkers)..where((t) => t.senderId.equals(publicKey))).go();
       await (db.delete(db.newsItems)..where((t) => t.senderId.equals(publicKey))).go();
       await (db.delete(db.areas)..where((t) => t.senderId.equals(publicKey))).go();
+      await (db.delete(db.paths)..where((t) => t.senderId.equals(publicKey))).go();
     });
 
     try {

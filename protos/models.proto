@@ -19,6 +19,18 @@ message AreaMarker {
   int64 expires_at = 9;
 }
 
+message PathMarker {
+  string id = 1;
+  repeated Coordinate coordinates = 2;
+  string type = 3;
+  string description = 4;
+  int64 timestamp = 5;
+  string sender_id = 6;
+  string signature = 7;
+  int32 trust_tier = 8;
+  int64 expires_at = 9;
+}
+
 message HazardMarker {
   string id = 1;
   double latitude = 2;
@@ -81,4 +93,5 @@ message SyncPayload {
   repeated AreaMarker areas = 5;
   repeated TrustDelegation delegations = 6;
   repeated RevokedDelegation revoked_delegations = 7;
+  repeated PathMarker paths = 8;
 }
