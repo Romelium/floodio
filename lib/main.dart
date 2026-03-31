@@ -1648,7 +1648,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   point: LatLng(m.latitude, m.longitude),
                   width: 40,
                   height: 40,
-                  alignment: Alignment.center,
+                  alignment: Alignment.bottomCenter,
                   child: GestureDetector(
                     behavior: HitTestBehavior.opaque,
                     onTap: () {
