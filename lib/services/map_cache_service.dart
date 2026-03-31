@@ -153,6 +153,19 @@ MapCacheService mapCacheService(Ref ref) {
   return MapCacheService();
 }
 
+@riverpod
+class MapCacheSizeController extends _$MapCacheSizeController {
+  @override
+  Future<int> build() async {
+    return ref.read(mapCacheServiceProvider).getCacheSize();
+  }
+
+  Future<void> refresh() async {
+    state = const AsyncLoading();
+    state = AsyncData(await ref.read(mapCacheServiceProvider).getCacheSize());
+  }
+}
+
 class MapCacheService {
   final _memoryCache = <String, Uint8List>{};
   final int _maxMemoryCacheSize = 200; // Cache up to 200 tiles in memory

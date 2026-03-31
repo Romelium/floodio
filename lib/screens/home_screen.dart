@@ -24,6 +24,7 @@ import '../providers/database_provider.dart';
 import '../providers/feed_provider.dart';
 import '../providers/hazard_marker_provider.dart';
 import '../providers/location_provider.dart';
+import '../providers/local_user_provider.dart';
 import '../providers/map_downloader_provider.dart';
 import '../providers/news_item_provider.dart';
 import '../providers/offline_regions_provider.dart';
@@ -66,7 +67,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   final List<LatLng> _currentPathPoints = [];
   bool _hasCenteredOnLocation = false;
   bool _showOfflineRegions = true;
-  String? _myPublicKey;
 
   final ScrollController _feedScrollController = ScrollController();
 
@@ -74,7 +74,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   void initState() {
     super.initState();
     _initPermissions();
-    _loadMyPublicKey();
     _feedScrollController.addListener(() {
       if (_feedScrollController.position.pixels >=
           _feedScrollController.position.maxScrollExtent - 200) {
@@ -90,18 +89,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   void dispose() {
     _feedScrollController.dispose();
     super.dispose();
-  }
-
-  Future<void> _loadMyPublicKey() async {
-    await ref.read(cryptoServiceProvider.future);
-    final key = await ref
-        .read(cryptoServiceProvider.notifier)
-        .getPublicKeyString();
-    if (mounted) {
-      setState(() {
-        _myPublicKey = key;
-      });
-    }
   }
 
   Future<void> _initPermissions() async {
@@ -183,12 +170,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     await db.delete(db.untrustedSenders).go();
                     await db.delete(db.userProfiles).go();
                     await db.delete(db.areas).go();
+                    await db.delete(db.paths).go();
                     await db.delete(db.adminTrustedSenders).go();
                     await db.delete(db.revokedDelegations).go();
                   });
                   final prefs = await SharedPreferences.getInstance();
                   await prefs.remove('user_name');
                   await prefs.remove('user_contact');
+                  ref.invalidate(localUserControllerProvider);
                   if (!mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('All data cleared')),
@@ -223,9 +212,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 title: const Text('Make Me Admin-Trusted (Tier 2)'),
                 onTap: () async {
                   Navigator.pop(sheetContext);
-                  final myPubKey = await ref
-                      .read(cryptoServiceProvider.notifier)
-                      .getPublicKeyString();
+                  final localUser = ref.read(localUserControllerProvider).value;
+                  final myPubKey = localUser?.publicKey;
+                  if (myPubKey == null) return;
                   await ref
                       .read(mockGovApiServiceProvider.notifier)
                       .delegateAdminTrust(myPubKey);
@@ -242,9 +231,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 title: const Text('Revoke My Admin Trust'),
                 onTap: () async {
                   Navigator.pop(sheetContext);
-                  final myPubKey = await ref
-                      .read(cryptoServiceProvider.notifier)
-                      .getPublicKeyString();
+                  final localUser = ref.read(localUserControllerProvider).value;
+                  final myPubKey = localUser?.publicKey;
+                  if (myPubKey == null) return;
                   await ref
                       .read(mockGovApiServiceProvider.notifier)
                       .revokeAdminTrust(myPubKey);
@@ -470,6 +459,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   Future<void> _endorseHazard(HazardMarkerEntity marker) async {
+    final localUser = ref.read(localUserControllerProvider).value;
+    final _myPublicKey = localUser?.publicKey;
     if (_myPublicKey == null) return;
     final cryptoService = ref.read(cryptoServiceProvider.notifier);
     final timestamp = DateTime.now().millisecondsSinceEpoch;
@@ -569,6 +560,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   Future<void> _endorseArea(AreaEntity area) async {
+    final localUser = ref.read(localUserControllerProvider).value;
+    final _myPublicKey = localUser?.publicKey;
     if (_myPublicKey == null) return;
     final cryptoService = ref.read(cryptoServiceProvider.notifier);
     final timestamp = DateTime.now().millisecondsSinceEpoch;
@@ -666,6 +659,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   Future<void> _endorsePath(PathEntity path) async {
+    final localUser = ref.read(localUserControllerProvider).value;
+    final _myPublicKey = localUser?.publicKey;
     if (_myPublicKey == null) return;
     final cryptoService = ref.read(cryptoServiceProvider.notifier);
     final timestamp = DateTime.now().millisecondsSinceEpoch;
@@ -763,6 +758,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   Future<void> _endorseNews(NewsItemEntity news) async {
+    final localUser = ref.read(localUserControllerProvider).value;
+    final _myPublicKey = localUser?.publicKey;
     if (_myPublicKey == null) return;
     final cryptoService = ref.read(cryptoServiceProvider.notifier);
     final timestamp = DateTime.now().millisecondsSinceEpoch;
@@ -2121,6 +2118,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget _buildMap() {
     return Consumer(
       builder: (context, ref, child) {
+        final localUserAsync = ref.watch(localUserControllerProvider);
+        final _myPublicKey = localUserAsync.value?.publicKey;
         final markersAsync = ref.watch(hazardMarkersControllerProvider);
         final areasAsync = ref.watch(areasControllerProvider);
         final pathsAsync = ref.watch(pathsControllerProvider);
@@ -2572,6 +2571,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         Expanded(
           child: Consumer(
             builder: (context, ref, child) {
+              final localUserAsync = ref.watch(localUserControllerProvider);
+              final _myPublicKey = localUserAsync.value?.publicKey;
               final combined = ref.watch(combinedFeedProvider);
               final profiles = ref.watch(userProfilesControllerProvider).value ?? [];
               final settings = ref.watch(appSettingsProvider);
@@ -3735,10 +3736,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final downloadProgress = ref.watch(mapDownloaderProvider);
     final settings = ref.watch(appSettingsProvider);
 
-    if (!settings.isOfficialMode && _currentIndex == 3) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) setState(() => _currentIndex = 0);
-      });
+    int effectiveIndex = _currentIndex;
+    if (!settings.isOfficialMode && effectiveIndex > 2) {
+      effectiveIndex = 2;
     }
 
     return Listener(
@@ -3802,7 +3802,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ],
         ),
         body: IndexedStack(
-          index: _currentIndex.clamp(0, settings.isOfficialMode ? 3 : 2),
+          index: effectiveIndex,
           children: [
             _buildMap(),
             _buildFeed(),
@@ -3856,10 +3856,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ],
         ),
         bottomNavigationBar: NavigationBar(
-          selectedIndex: _currentIndex.clamp(
-            0,
-            settings.isOfficialMode ? 3 : 2,
-          ),
+          selectedIndex: effectiveIndex,
           onDestinationSelected: (index) =>
               setState(() => _currentIndex = index),
           destinations: [
@@ -3886,7 +3883,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
           ],
         ),
-        floatingActionButton: (_currentIndex == 2 || _currentIndex == 3)
+        floatingActionButton: (effectiveIndex == 2 || effectiveIndex == 3)
             ? null
             : cryptoState.when(
                 data: (_) {
@@ -3985,7 +3982,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      if (_currentIndex == 0) ...[
+                      if (effectiveIndex == 0) ...[
                         FloatingActionButton.small(
                           heroTag: 'layers',
                           onPressed: () {

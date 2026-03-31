@@ -14,6 +14,7 @@ import '../providers/area_provider.dart';
 import '../providers/hazard_marker_provider.dart';
 import '../providers/news_item_provider.dart';
 import '../providers/offline_regions_provider.dart';
+import '../providers/local_user_provider.dart';
 import '../providers/path_provider.dart';
 import '../providers/trusted_sender_provider.dart';
 import '../providers/untrusted_sender_provider.dart';
@@ -32,45 +33,9 @@ class ProfileTab extends ConsumerStatefulWidget {
 }
 
 class _ProfileTabState extends ConsumerState<ProfileTab> {
-  String? _myPublicKey;
-  String _myName = '';
-  String _myContact = '';
-  int _mapCacheSize = 0;
-
   @override
   void initState() {
     super.initState();
-    _loadProfile();
-    _loadMapCacheSize();
-  }
-
-  Future<void> _loadProfile() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.reload();
-    final name = prefs.getString('user_name') ?? 'Unknown';
-    final contact = prefs.getString('user_contact') ?? '';
-
-    await ref.read(cryptoServiceProvider.future);
-    final cryptoService = ref.read(cryptoServiceProvider.notifier);
-    final pubKey = await cryptoService.getPublicKeyString();
-
-    if (mounted) {
-      setState(() {
-        _myName = name;
-        _myContact = contact;
-        _myPublicKey = pubKey;
-      });
-    }
-  }
-
-  Future<void> _loadMapCacheSize() async {
-    final mapCache = ref.read(mapCacheServiceProvider);
-    final size = await mapCache.getCacheSize();
-    if (mounted) {
-      setState(() {
-        _mapCacheSize = size;
-      });
-    }
   }
 
   String _formatBytes(int bytes) {
@@ -191,8 +156,9 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
   }
 
   void _editProfile() {
-    final nameController = TextEditingController(text: _myName);
-    final contactController = TextEditingController(text: _myContact);
+    final localUser = ref.read(localUserControllerProvider).value;
+    final nameController = TextEditingController(text: localUser?.name ?? '');
+    final contactController = TextEditingController(text: localUser?.contact ?? '');
 
     showDialog(
       context: context,
@@ -227,10 +193,6 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
 
               Navigator.pop(dialogContext);
 
-              final prefs = await SharedPreferences.getInstance();
-              await prefs.setString('user_name', newName);
-              await prefs.setString('user_contact', newContact);
-
               final cryptoService = ref.read(cryptoServiceProvider.notifier);
               final publicKey = await cryptoService.getPublicKeyString();
               final timestamp = DateTime.now().millisecondsSinceEpoch;
@@ -252,11 +214,9 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                   .read(userProfilesControllerProvider.notifier)
                   .saveProfile(profile);
 
+              await ref.read(localUserControllerProvider.notifier).updateProfile(newName, newContact);
+
               if (mounted) {
-                setState(() {
-                  _myName = newName;
-                  _myContact = newContact;
-                });
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Profile updated')),
                 );
@@ -757,6 +717,14 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
 
   @override
   Widget build(BuildContext context) {
+    final localUserAsync = ref.watch(localUserControllerProvider);
+    final localUser = localUserAsync.value;
+    final _myName = localUser?.name ?? 'Unknown';
+    final _myContact = localUser?.contact ?? '';
+    final _myPublicKey = localUser?.publicKey;
+
+    final mapCacheSizeAsync = ref.watch(mapCacheSizeControllerProvider);
+    final _mapCacheSize = mapCacheSizeAsync.value ?? 0;
     final trustedSendersAsync = ref.watch(trustedSendersControllerProvider);
     final untrustedSendersAsync = ref.watch(untrustedSendersControllerProvider);
     final markersAsync = ref.watch(hazardMarkersControllerProvider);
@@ -1191,7 +1159,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                                       await ref
                                           .read(offlineRegionsProvider.notifier)
                                           .clearRegions();
-                                      _loadMapCacheSize();
+                                      ref.read(mapCacheSizeControllerProvider.notifier).refresh();
                                       if (!context.mounted) return;
                                       ScaffoldMessenger.of(
                                         context,
@@ -1266,7 +1234,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                                             await ref
                                                 .read(mapCacheServiceProvider)
                                                 .deleteRegionTiles(region);
-                                            _loadMapCacheSize();
+                                            ref.read(mapCacheSizeControllerProvider.notifier).refresh();
                                             if (!context.mounted) return;
                                             ScaffoldMessenger.of(
                                               context,

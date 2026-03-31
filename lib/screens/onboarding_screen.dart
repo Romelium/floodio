@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../crypto/crypto_service.dart';
 import '../database/tables.dart';
+import '../providers/local_user_provider.dart';
 import '../providers/user_profile_provider.dart';
 import 'home_screen.dart';
 
@@ -53,6 +54,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     await ref
         .read(userProfilesControllerProvider.notifier)
         .saveProfile(profile);
+        
+    ref.invalidate(localUserControllerProvider);
 
     if (mounted) {
       Navigator.of(
