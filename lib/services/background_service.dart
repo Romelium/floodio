@@ -12,6 +12,7 @@ import '../database/database.dart';
 import '../providers/database_provider.dart';
 import '../providers/p2p_provider.dart';
 import '../providers/offline_regions_provider.dart';
+import '../services/cloud_sync_service.dart';
 
 Future<void> initializeBackgroundService() async {
   final service = FlutterBackgroundService();
@@ -84,6 +85,7 @@ void onStart(ServiceInstance service) async {
     ],
   );
   final p2pNotifier = container.read(p2pServiceProvider.notifier);
+  container.read(cloudSyncServiceProvider); // Initialize cloud sync
 
   if (service is AndroidServiceInstance) {
     service.on('setAsForeground').listen((event) {

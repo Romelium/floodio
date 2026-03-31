@@ -36,6 +36,7 @@ import 'providers/ui_p2p_provider.dart';
 import 'providers/untrusted_sender_provider.dart';
 import 'providers/user_profile_provider.dart';
 import 'services/background_service.dart';
+import 'services/cloud_sync_service.dart';
 import 'services/map_cache_service.dart';
 import 'services/mock_gov_api_service.dart';
 import 'utils/permission_utils.dart';
@@ -406,6 +407,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       if (_feedScrollController.position.pixels >= _feedScrollController.position.maxScrollExtent - 200) {
         ref.read(feedLimitProvider.notifier).loadMore();
       }
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(cloudSyncServiceProvider);
     });
   }
 
@@ -3987,6 +3991,59 @@ class SyncBottomSheet extends ConsumerWidget {
                     activeThumbColor: Colors.blue,
                     onChanged: (val) => p2pNotifier.toggleAutoSync(),
                   ),
+                ),
+                const SizedBox(height: 16),
+
+                // Cloud Sync Section
+                Consumer(
+                  builder: (context, ref, child) {
+                    final cloudSyncState = ref.watch(cloudSyncServiceProvider);
+                    final cloudSyncNotifier = ref.read(cloudSyncServiceProvider.notifier);
+                    
+                    String lastSyncText = 'Never';
+                    if (cloudSyncState.lastSyncTime != null) {
+                      final dt = cloudSyncState.lastSyncTime!.toLocal();
+                      lastSyncText = '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+                    }
+
+                    return Container(
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey.shade300),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Column(
+                        children: [
+                          ListTile(
+                            leading: const Icon(Icons.cloud_sync, color: Colors.blue),
+                            title: const Text('Cloud Gateway Sync', style: TextStyle(fontWeight: FontWeight.bold)),
+                            subtitle: Text('Last synced: $lastSyncText\nSyncs local data with the cloud when internet is available.'),
+                            trailing: cloudSyncState.isSyncing
+                                ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))
+                                : FilledButton.tonal(
+                                    onPressed: () async {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(content: Text('Checking internet and syncing with cloud...')),
+                                      );
+                                      final success = await cloudSyncNotifier.syncWithCloud();
+                                      if (context.mounted) {
+                                        if (success) {
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            const SnackBar(content: Text('Cloud sync complete.')),
+                                          );
+                                        } else {
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            const SnackBar(content: Text('Cloud sync failed. No internet?')),
+                                          );
+                                        }
+                                      }
+                                    },
+                                    child: const Text('Sync Now'),
+                                  ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
                 ),
                 const SizedBox(height: 16),
 
