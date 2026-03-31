@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 part 'offline_regions_provider.g.dart';
@@ -81,12 +82,14 @@ class OfflineRegions extends _$OfflineRegions {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('offline_regions', jsonEncode(updated.map((e) => e.toJson()).toList()));
     state = AsyncData(updated);
+    FlutterBackgroundService().invoke('reloadOfflineRegions');
   }
 
   Future<void> clearRegions() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('offline_regions');
     state = const AsyncData([]);
+    FlutterBackgroundService().invoke('reloadOfflineRegions');
   }
 
   Future<void> removeRegion(OfflineRegion region) async {
@@ -103,5 +106,6 @@ class OfflineRegions extends _$OfflineRegions {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('offline_regions', jsonEncode(updated.map((e) => e.toJson()).toList()));
     state = AsyncData(updated);
+    FlutterBackgroundService().invoke('reloadOfflineRegions');
   }
 }

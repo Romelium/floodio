@@ -35,6 +35,7 @@ import '../providers/path_provider.dart';
 import '../providers/revoked_delegation_provider.dart';
 import '../providers/settings_provider.dart';
 import '../providers/trusted_sender_provider.dart';
+import '../providers/ui_p2p_provider.dart';
 import '../providers/ui_state_provider.dart';
 import '../providers/untrusted_sender_provider.dart';
 import '../providers/user_profile_provider.dart';
@@ -416,8 +417,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
 
     final encoded = base64Encode(payload.writeToBuffer());
-    await ref
-        .read(p2pServiceProvider.notifier)
+    ref
+        .read(uiP2pServiceProvider.notifier)
         .broadcastText(jsonEncode({'type': 'payload', 'data': encoded}));
 
     if (mounted) {
@@ -574,8 +575,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
 
     final encoded = base64Encode(payload.writeToBuffer());
-    await ref
-        .read(p2pServiceProvider.notifier)
+    ref
+        .read(uiP2pServiceProvider.notifier)
         .broadcastText(jsonEncode({'type': 'payload', 'data': encoded}));
 
     if (mounted) {
@@ -673,8 +674,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     payload.areas.add(areaMarker);
 
     final encoded = base64Encode(payload.writeToBuffer());
-    await ref
-        .read(p2pServiceProvider.notifier)
+    ref
+        .read(uiP2pServiceProvider.notifier)
         .broadcastText(jsonEncode({'type': 'payload', 'data': encoded}));
 
     if (mounted) {
@@ -772,8 +773,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     payload.paths.add(pathMarker);
 
     final encoded = base64Encode(payload.writeToBuffer());
-    await ref
-        .read(p2pServiceProvider.notifier)
+    ref
+        .read(uiP2pServiceProvider.notifier)
         .broadcastText(jsonEncode({'type': 'payload', 'data': encoded}));
 
     if (mounted) {
@@ -869,8 +870,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
 
     final encoded = base64Encode(payload.writeToBuffer());
-    await ref
-        .read(p2pServiceProvider.notifier)
+    ref
+        .read(uiP2pServiceProvider.notifier)
         .broadcastText(jsonEncode({'type': 'payload', 'data': encoded}));
 
     if (mounted) {
@@ -1281,7 +1282,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   await File(selectedImage!.path).copy(savedImage.path);
 
                   ref
-                      .read(p2pServiceProvider.notifier)
+                      .read(uiP2pServiceProvider.notifier)
                       .broadcastFile(savedImage);
                 }
 
@@ -2042,7 +2043,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   await File(selectedImage!.path).copy(savedImage.path);
 
                   ref
-                      .read(p2pServiceProvider.notifier)
+                      .read(uiP2pServiceProvider.notifier)
                       .broadcastFile(savedImage);
                 }
 

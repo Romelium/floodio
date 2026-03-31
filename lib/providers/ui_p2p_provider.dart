@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
@@ -58,5 +59,17 @@ class UiP2pService extends _$UiP2pService {
 
   void broadcastMapRegion(OfflineRegion? region) {
     FlutterBackgroundService().invoke('broadcastMapRegion', {'region': region?.toJson()});
+  }
+
+  void triggerSync() {
+    FlutterBackgroundService().invoke('triggerSync');
+  }
+
+  void broadcastText(String text) {
+    FlutterBackgroundService().invoke('broadcastText', {'text': text});
+  }
+
+  void broadcastFile(File file) {
+    FlutterBackgroundService().invoke('broadcastFile', {'filePath': file.path});
   }
 }

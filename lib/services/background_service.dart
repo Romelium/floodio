@@ -14,7 +14,6 @@ import '../providers/database_provider.dart';
 import '../providers/p2p_provider.dart';
 import '../providers/offline_regions_provider.dart';
 import '../providers/settings_provider.dart';
-import '../services/cloud_sync_service.dart';
 
 Future<void> initializeBackgroundService() async {
   final service = FlutterBackgroundService();
@@ -89,7 +88,6 @@ void onStart(ServiceInstance service) async {
     ],
   );
   final p2pNotifier = container.read(p2pServiceProvider.notifier);
-  container.read(cloudSyncServiceProvider); // Initialize cloud sync
 
   if (service is AndroidServiceInstance) {
     service.on('setAsForeground').listen((event) {
@@ -147,6 +145,32 @@ void onStart(ServiceInstance service) async {
       region = OfflineRegion.fromJson(Map<String, dynamic>.from(event['region']));
     }
     p2pNotifier.broadcastMapRegion(region);
+  });
+
+  service.on('triggerSync').listen((event) {
+    p2pNotifier.triggerSync();
+  });
+
+  service.on('broadcastText').listen((event) {
+    if (event != null && event['text'] != null) {
+      p2pNotifier.broadcastText(event['text']);
+    }
+  });
+
+  service.on('broadcastFile').listen((event) {
+    if (event != null && event['filePath'] != null) {
+      p2pNotifier.broadcastFile(File(event['filePath']));
+    }
+  });
+
+  service.on('reloadSettings').listen((_) async {
+    await prefs.reload();
+    container.invalidate(appSettingsProvider);
+  });
+
+  service.on('reloadOfflineRegions').listen((_) async {
+    await prefs.reload();
+    container.invalidate(offlineRegionsProvider);
   });
 
   service.on('requestState').listen((event) {

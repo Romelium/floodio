@@ -2,14 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers/admin_trusted_sender_provider.dart';
-import '../providers/p2p_provider.dart';
+import '../providers/offline_regions_provider.dart';
 import '../providers/revoked_delegation_provider.dart';
+import '../providers/ui_p2p_provider.dart';
 import '../providers/user_profile_provider.dart';
 import '../services/cloud_sync_service.dart';
 import '../services/mock_gov_api_service.dart';
 import '../utils/ui_helpers.dart';
-import '../providers/offline_regions_provider.dart';
-import '../providers/ui_p2p_provider.dart';
 
 class CommandTab extends ConsumerWidget {
   const CommandTab({super.key});
@@ -185,7 +184,7 @@ class CommandTab extends ConsumerWidget {
                                               onPressed: () async {
                                                 Navigator.pop(dialogContext);
                                                 await ref.read(mockGovApiServiceProvider.notifier).revokeAdminTrust(volunteer.publicKey);
-                                                ref.read(p2pServiceProvider.notifier).triggerSync();
+                                                ref.read(uiP2pServiceProvider.notifier).triggerSync();
                                                 if (context.mounted) {
                                                   ScaffoldMessenger.of(context).showSnackBar(
                                                     const SnackBar(content: Text('Volunteer status revoked.')),
