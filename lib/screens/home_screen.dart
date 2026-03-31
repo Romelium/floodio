@@ -1194,42 +1194,46 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       fit: BoxFit.cover,
                     ),
                   ),
-                  TextButton.icon(
-                    onPressed: () => setInnerState(() => selectedImage = null),
-                    icon: const Icon(Icons.delete, color: Colors.red),
-                    label: const Text(
-                      'Remove Image',
-                      style: TextStyle(color: Colors.red),
+                  Center(
+                    child: TextButton.icon(
+                      onPressed: () => setInnerState(() => selectedImage = null),
+                      icon: const Icon(Icons.delete, color: Colors.red),
+                      label: const Text(
+                        'Remove Image',
+                        style: TextStyle(color: Colors.red),
+                      ),
                     ),
                   ),
                 ] else
-                  OutlinedButton.icon(
-                    onPressed: () async {
-                      final picker = ImagePicker();
-                      final image = await picker.pickImage(
-                        source: ImageSource.camera,
-                        imageQuality: 60,
-                        maxWidth: 1024,
-                        maxHeight: 1024,
-                      );
-                      if (image != null) {
-                        final size = await File(image.path).length();
-                        if (size > 1024 * 1024) {
-                          if (!mounted) return;
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text(
-                                'Image is too large (limit 1MB). Please try again.',
+                  Center(
+                    child: OutlinedButton.icon(
+                      onPressed: () async {
+                        final picker = ImagePicker();
+                        final image = await picker.pickImage(
+                          source: ImageSource.camera,
+                          imageQuality: 60,
+                          maxWidth: 1024,
+                          maxHeight: 1024,
+                        );
+                        if (image != null) {
+                          final size = await File(image.path).length();
+                          if (size > 1024 * 1024) {
+                            if (!mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Image is too large (limit 1MB). Please try again.',
+                                ),
                               ),
-                            ),
-                          );
-                        } else {
-                          setInnerState(() => selectedImage = image);
+                            );
+                          } else {
+                            setInnerState(() => selectedImage = image);
+                          }
                         }
-                      }
-                    },
-                    icon: const Icon(Icons.camera_alt),
-                    label: const Text('Attach Photo'),
+                      },
+                      icon: const Icon(Icons.camera_alt),
+                      label: const Text('Attach Photo'),
+                    ),
                   ),
               ],
             ),
@@ -1844,6 +1848,29 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     XFile? selectedImage;
     bool isCritical = false;
 
+    final templates = [
+      {
+        'title': 'Evacuation Order',
+        'content': 'Move to higher ground immediately. Flood waters rising.',
+        'critical': true,
+      },
+      {
+        'title': 'Boil Water Advisory',
+        'content': 'Tap water is unsafe to drink. Boil water for at least 1 minute before consumption.',
+        'critical': false,
+      },
+      {
+        'title': 'Shelter Open',
+        'content': 'Emergency shelter is now open and accepting evacuees.',
+        'critical': false,
+      },
+      {
+        'title': 'All Clear',
+        'content': 'The emergency has passed. It is safe to return.',
+        'critical': false,
+      },
+    ];
+
     showDialog(
       context: context,
       builder: (dialogContext) => StatefulBuilder(
@@ -1861,7 +1888,32 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                const Text(
+                  'Quick Templates:',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey),
+                ),
+                const SizedBox(height: 8),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: templates.map((t) => Padding(
+                      padding: const EdgeInsets.only(right: 8.0),
+                      child: ActionChip(
+                        label: Text(t['title'] as String),
+                        onPressed: () {
+                          setInnerState(() {
+                            titleController.text = t['title'] as String;
+                            contentController.text = t['content'] as String;
+                            isCritical = t['critical'] as bool;
+                          });
+                        },
+                      ),
+                    )).toList(),
+                  ),
+                ),
+                const SizedBox(height: 16),
                 TextField(
                   controller: titleController,
                   decoration: InputDecoration(
