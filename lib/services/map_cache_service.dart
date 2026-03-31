@@ -233,4 +233,25 @@ class MapCacheService {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('offline_regions');
   }
+
+  Future<void> deleteRegionTiles(OfflineRegion region) async {
+    final dir = await getApplicationDocumentsDirectory();
+    for (int z = region.minZoom; z <= region.maxZoom; z++) {
+      final minX = _lon2tilex(region.bounds.west, z);
+      final maxX = _lon2tilex(region.bounds.east, z);
+      final minY = _lat2tiley(region.bounds.north, z);
+      final maxY = _lat2tiley(region.bounds.south, z);
+
+      for (int x = min(minX, maxX); x <= max(minX, maxX); x++) {
+        for (int y = min(minY, maxY); y <= max(minY, maxY); y++) {
+          final file = File('${dir.path}/map_tiles/$z/$x/$y.png');
+          if (await file.exists()) {
+            try {
+              await file.delete();
+            } catch (_) {}
+          }
+        }
+      }
+    }
+  }
 }

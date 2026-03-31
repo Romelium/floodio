@@ -73,4 +73,20 @@ class OfflineRegions extends _$OfflineRegions {
     await prefs.remove('offline_regions');
     state = const AsyncData([]);
   }
+
+  Future<void> removeRegion(OfflineRegion region) async {
+    final current = state.value ?? [];
+    final updated = current.where((r) =>
+      (r.bounds.north - region.bounds.north).abs() > 0.0001 ||
+      (r.bounds.south - region.bounds.south).abs() > 0.0001 ||
+      (r.bounds.east - region.bounds.east).abs() > 0.0001 ||
+      (r.bounds.west - region.bounds.west).abs() > 0.0001 ||
+      r.minZoom != region.minZoom ||
+      r.maxZoom != region.maxZoom
+    ).toList();
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('offline_regions', jsonEncode(updated.map((e) => e.toJson()).toList()));
+    state = AsyncData(updated);
+  }
 }

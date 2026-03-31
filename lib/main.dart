@@ -2980,8 +2980,10 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
     final markersAsync = ref.watch(hazardMarkersControllerProvider);
     final newsAsync = ref.watch(newsItemsControllerProvider);
     final areasAsync = ref.watch(areasControllerProvider);
+    final offlineRegionsAsync = ref.watch(offlineRegionsProvider);
 
     final trustedSenders = trustedSendersAsync.value ?? [];
+    final offlineRegions = offlineRegionsAsync.value ?? [];
     final untrustedSenders = untrustedSendersAsync.value ?? [];
     final myMarkers = (markersAsync.value ?? [])
         .where((m) => m.senderId == _myPublicKey)
@@ -3352,56 +3354,113 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                     side: BorderSide(color: Colors.grey.shade300),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: ListTile(
-                    leading: const CircleAvatar(
-                      backgroundColor: Colors.orangeAccent,
-                      child: Icon(Icons.storage, color: Colors.white),
-                    ),
-                    title: const Text('Storage Used'),
-                    subtitle: Text(_formatBytes(_mapCacheSize)),
-                    trailing: IconButton(
-                      icon: const Icon(Icons.delete_outline, color: Colors.red),
-                      tooltip: 'Clear Offline Maps',
-                      onPressed: () {
-                        showDialog(
-                          context: context,
-                          builder: (dialogContext) => AlertDialog(
-                            title: const Text('Clear Offline Maps?'),
-                            content: const Text(
-                              'This will delete all downloaded map tiles.',
-                            ),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.pop(dialogContext),
-                                child: const Text('Cancel'),
-                              ),
-                              FilledButton(
-                                style: FilledButton.styleFrom(
-                                  backgroundColor: Colors.red,
+                  child: Column(
+                    children: [
+                      ListTile(
+                        leading: const CircleAvatar(
+                          backgroundColor: Colors.orangeAccent,
+                          child: Icon(Icons.storage, color: Colors.white),
+                        ),
+                        title: const Text('Storage Used'),
+                        subtitle: Text(_formatBytes(_mapCacheSize)),
+                        trailing: IconButton(
+                          icon: const Icon(Icons.delete_outline, color: Colors.red),
+                          tooltip: 'Clear All Offline Maps',
+                          onPressed: () {
+                            showDialog(
+                              context: context,
+                              builder: (dialogContext) => AlertDialog(
+                                title: const Text('Clear All Offline Maps?'),
+                                content: const Text(
+                                  'This will delete all downloaded map tiles.',
                                 ),
-                                onPressed: () async {
-                                  Navigator.pop(dialogContext);
-                                  await ref
-                                      .read(mapCacheServiceProvider)
-                                      .clearCache();
-                                  await ref
-                                      .read(offlineRegionsProvider.notifier)
-                                      .clearRegions();
-                                  _loadMapCacheSize();
-                                  if (!context.mounted) return;
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Offline maps cleared'),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(dialogContext),
+                                    child: const Text('Cancel'),
+                                  ),
+                                  FilledButton(
+                                    style: FilledButton.styleFrom(
+                                      backgroundColor: Colors.red,
+                                    ),
+                                    onPressed: () async {
+                                      Navigator.pop(dialogContext);
+                                      await ref
+                                          .read(mapCacheServiceProvider)
+                                          .clearCache();
+                                      await ref
+                                          .read(offlineRegionsProvider.notifier)
+                                          .clearRegions();
+                                      _loadMapCacheSize();
+                                      if (!context.mounted) return;
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                          content: Text('Offline maps cleared'),
+                                        ),
+                                      );
+                                    },
+                                    child: const Text('Clear All'),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      if (offlineRegions.isNotEmpty) ...[
+                        const Divider(height: 1),
+                        ListView.separated(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: offlineRegions.length,
+                          separatorBuilder: (context, index) => const Divider(height: 1),
+                          itemBuilder: (context, index) {
+                            final region = offlineRegions[index];
+                            return ListTile(
+                              leading: const Icon(Icons.map_outlined, color: Colors.orange),
+                              title: Text('Region ${index + 1} (Zoom ${region.minZoom}-${region.maxZoom})'),
+                              subtitle: Text(
+                                'Bounds: ${region.bounds.north.toStringAsFixed(2)}, ${region.bounds.west.toStringAsFixed(2)} to ${region.bounds.south.toStringAsFixed(2)}, ${region.bounds.east.toStringAsFixed(2)}',
+                                style: const TextStyle(fontSize: 12),
+                              ),
+                              trailing: IconButton(
+                                icon: const Icon(Icons.remove_circle_outline, color: Colors.red),
+                                tooltip: 'Delete Region',
+                                onPressed: () {
+                                  showDialog(
+                                    context: context,
+                                    builder: (dialogContext) => AlertDialog(
+                                      title: const Text('Delete Region?'),
+                                      content: const Text('This will delete the map tiles for this region. Overlapping regions may lose some tiles.'),
+                                      actions: [
+                                        TextButton(
+                                          onPressed: () => Navigator.pop(dialogContext),
+                                          child: const Text('Cancel'),
+                                        ),
+                                        FilledButton(
+                                          style: FilledButton.styleFrom(backgroundColor: Colors.red),
+                                          onPressed: () async {
+                                            Navigator.pop(dialogContext);
+                                            await ref.read(offlineRegionsProvider.notifier).removeRegion(region);
+                                            await ref.read(mapCacheServiceProvider).deleteRegionTiles(region);
+                                            _loadMapCacheSize();
+                                            if (!context.mounted) return;
+                                            ScaffoldMessenger.of(context).showSnackBar(
+                                              const SnackBar(content: Text('Region deleted')),
+                                            );
+                                          },
+                                          child: const Text('Delete'),
+                                        ),
+                                      ],
                                     ),
                                   );
                                 },
-                                child: const Text('Clear'),
                               ),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
+                            );
+                          },
+                        ),
+                      ],
+                    ],
                   ),
                 ),
                 const SizedBox(height: 32),
