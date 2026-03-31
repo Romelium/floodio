@@ -395,6 +395,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   final List<LatLng> _currentAreaPoints = [];
   bool _hasCenteredOnLocation = false;
 
+  String _searchQuery = '';
+  String _feedTypeFilter = 'All';
+  int? _feedTrustFilter;
+
   @override
   void initState() {
     super.initState();
@@ -1591,6 +1595,36 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
+  Widget _buildEmptyFeedState(AsyncValue markersAsync, AsyncValue newsAsync) {
+    if (markersAsync.isLoading || newsAsync.isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (markersAsync.hasError) {
+      return Center(child: Text('Error: ${markersAsync.error}'));
+    }
+    if (newsAsync.hasError) {
+      return Center(child: Text('Error: ${newsAsync.error}'));
+    }
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.inbox_outlined, size: 64, color: Colors.grey.shade400),
+          const SizedBox(height: 16),
+          Text(
+            'No data available.',
+            style: TextStyle(fontSize: 18, color: Colors.grey.shade600),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Try adjusting your filters or sync with nearby devices.',
+            style: TextStyle(color: Colors.grey.shade500),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildFeed(
     AsyncValue<List<HazardMarkerEntity>> markersAsync,
     AsyncValue<List<NewsItemEntity>> newsAsync,
@@ -1601,45 +1635,112 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final news = newsAsync.value ?? [];
     final areas = areasAsync.value ?? [];
 
-    final combined = <dynamic>[...markers, ...news, ...areas];
-    combined.sort((a, b) => (b.timestamp as int).compareTo(a.timestamp as int));
-
-    if (combined.isEmpty) {
-      if (markersAsync.isLoading || newsAsync.isLoading) {
-        return const Center(child: CircularProgressIndicator());
-      }
-      if (markersAsync.hasError) {
-        return Center(child: Text('Error: ${markersAsync.error}'));
-      }
-      if (newsAsync.hasError) {
-        return Center(child: Text('Error: ${newsAsync.error}'));
-      }
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.inbox_outlined, size: 64, color: Colors.grey.shade400),
-            const SizedBox(height: 16),
-            Text(
-              'No data available.',
-              style: TextStyle(fontSize: 18, color: Colors.grey.shade600),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Sync with nearby devices or create a report.',
-              style: TextStyle(color: Colors.grey.shade500),
-            ),
-          ],
-        ),
-      );
+    var combined = <dynamic>[];
+    
+    if (_feedTypeFilter == 'All' || _feedTypeFilter == 'Hazards') {
+      combined.addAll(markers);
+    }
+    if (_feedTypeFilter == 'All' || _feedTypeFilter == 'News') {
+      combined.addAll(news);
+    }
+    if (_feedTypeFilter == 'All' || _feedTypeFilter == 'Areas') {
+      combined.addAll(areas);
     }
 
-    return ListView.builder(
-      padding: const EdgeInsets.only(top: 8, bottom: 80),
-      itemCount: combined.length,
-      itemBuilder: (context, index) {
-        final item = combined[index];
+    if (_feedTrustFilter != null) {
+      combined = combined.where((item) => item.trustTier == _feedTrustFilter).toList();
+    }
+
+    if (_searchQuery.isNotEmpty) {
+      final query = _searchQuery.toLowerCase();
+      combined = combined.where((item) {
         if (item is HazardMarkerEntity) {
+          return item.type.toLowerCase().contains(query) || item.description.toLowerCase().contains(query);
+        } else if (item is NewsItemEntity) {
+          return item.title.toLowerCase().contains(query) || item.content.toLowerCase().contains(query);
+        } else if (item is AreaEntity) {
+          return item.type.toLowerCase().contains(query) || item.description.toLowerCase().contains(query);
+        }
+        return false;
+      }).toList();
+    }
+
+    combined.sort((a, b) => (b.timestamp as int).compareTo(a.timestamp as int));
+
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+          child: TextField(
+            decoration: InputDecoration(
+              hintText: 'Search reports...',
+              prefixIcon: const Icon(Icons.search),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              contentPadding: const EdgeInsets.symmetric(vertical: 0),
+            ),
+            onChanged: (val) => setState(() => _searchQuery = val),
+          ),
+        ),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          child: Row(
+            children: [
+              const Text('Type: ', style: TextStyle(fontWeight: FontWeight.bold)),
+              const SizedBox(width: 8),
+              ...['All', 'News', 'Hazards', 'Areas'].map((type) => Padding(
+                padding: const EdgeInsets.only(right: 8.0),
+                child: ChoiceChip(
+                  label: Text(type),
+                  selected: _feedTypeFilter == type,
+                  onSelected: (selected) {
+                    if (selected) setState(() => _feedTypeFilter = type);
+                  },
+                ),
+              )),
+            ],
+          ),
+        ),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          child: Row(
+            children: [
+              const Text('Trust: ', style: TextStyle(fontWeight: FontWeight.bold)),
+              const SizedBox(width: 8),
+              ChoiceChip(
+                label: const Text('All'),
+                selected: _feedTrustFilter == null,
+                onSelected: (selected) {
+                  if (selected) setState(() => _feedTrustFilter = null);
+                },
+              ),
+              const SizedBox(width: 8),
+              ...[1, 2, 3, 4].map((tier) => Padding(
+                padding: const EdgeInsets.only(right: 8.0),
+                child: ChoiceChip(
+                  label: Text(_getTrustTierName(tier)),
+                  selected: _feedTrustFilter == tier,
+                  onSelected: (selected) {
+                    setState(() => _feedTrustFilter = selected ? tier : null);
+                  },
+                ),
+              )),
+            ],
+          ),
+        ),
+        const Divider(),
+        Expanded(
+          child: combined.isEmpty
+              ? _buildEmptyFeedState(markersAsync, newsAsync)
+              : ListView.builder(
+                  padding: const EdgeInsets.only(top: 8, bottom: 80),
+                  itemCount: combined.length,
+                  itemBuilder: (context, index) {
+                    final item = combined[index];
+                    if (item is HazardMarkerEntity) {
           return Card(
             margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             clipBehavior: Clip.antiAlias,
@@ -2083,6 +2184,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         }
         return const SizedBox.shrink();
       },
+    ),
+        ),
+      ],
     );
   }
 
