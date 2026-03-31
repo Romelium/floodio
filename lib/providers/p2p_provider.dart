@@ -706,6 +706,7 @@ class P2pService extends _$P2pService {
           signature: n.signature ?? '',
           trustTier: n.trustTier,
           expiresAt: Int64(n.expiresAt ?? 0),
+          imageId: n.imageId ?? '',
         ));
       }
 
@@ -964,8 +965,9 @@ class P2pService extends _$P2pService {
         final existingTs = newsTimestamps[n.id] ?? 0;
         if (n.timestamp.toInt() <= existingTs) continue; // LWW CRDT
 
+        final imageIdStr = n.imageId;
         final expiresAtStr = n.expiresAt == 0 ? "" : n.expiresAt.toString();
-        final payloadToSign = utf8.encode('${n.id}${n.title}${n.timestamp}$expiresAtStr');
+        final payloadToSign = utf8.encode('${n.id}${n.title}${n.timestamp}$imageIdStr$expiresAtStr');
         final trustTier = await crypto.verifyAndGetTrustTier(
           data: payloadToSign,
           signatureStr: n.signature,
@@ -986,6 +988,7 @@ class P2pService extends _$P2pService {
             signature: Value(n.signature),
             trustTier: trustTier,
             expiresAt: Value(n.expiresAt == 0 ? null : n.expiresAt.toInt()),
+            imageId: Value(n.imageId.isEmpty ? null : n.imageId),
           ));
           seenIds.add(SeenMessageIdsCompanion.insert(
             messageId: n.id,
@@ -1120,6 +1123,15 @@ class P2pService extends _$P2pService {
       final dir = await getApplicationDocumentsDirectory();
       for (final m in validMarkers) {
         final imageId = m.imageId.value;
+        if (imageId != null && imageId.isNotEmpty) {
+          final file = File('${dir.path}/$imageId');
+          if (!await file.exists()) {
+            await broadcastText(jsonEncode({'type': 'request_image', 'imageId': imageId}));
+          }
+        }
+      }
+      for (final n in validNews) {
+        final imageId = n.imageId.value;
         if (imageId != null && imageId.isNotEmpty) {
           final file = File('${dir.path}/$imageId');
           if (!await file.exists()) {

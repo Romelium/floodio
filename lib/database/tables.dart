@@ -56,6 +56,7 @@ class NewsItemEntity {
   final String? signature;
   final int trustTier;
   final int? expiresAt;
+  final String? imageId;
 
   NewsItemEntity({
     required this.id,
@@ -66,6 +67,7 @@ class NewsItemEntity {
     this.signature,
     required this.trustTier,
     this.expiresAt,
+    this.imageId,
   });
 }
 
@@ -79,6 +81,7 @@ class NewsItems extends Table {
   TextColumn get signature => text().nullable()();
   IntColumn get trustTier => integer()();
   IntColumn get expiresAt => integer().nullable()();
+  TextColumn get imageId => text().nullable()();
 
   @override
   Set<Column> get primaryKey => {id};

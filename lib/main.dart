@@ -75,13 +75,31 @@ class _LocalImageDisplayState extends State<LocalImageDisplay> {
     if (_imageFile == null) return const SizedBox.shrink();
     return Padding(
       padding: const EdgeInsets.only(top: 8.0),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(8),
-        child: Image.file(
-          _imageFile!,
-          height: 150,
-          width: double.infinity,
-          fit: BoxFit.cover,
+      child: GestureDetector(
+        onTap: () {
+          Navigator.of(context).push(MaterialPageRoute(
+            builder: (_) => Scaffold(
+              backgroundColor: Colors.black,
+              appBar: AppBar(
+                backgroundColor: Colors.black,
+                iconTheme: const IconThemeData(color: Colors.white),
+              ),
+              body: Center(
+                child: InteractiveViewer(
+                  child: Image.file(_imageFile!),
+                ),
+              ),
+            ),
+          ));
+        },
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: Image.file(
+            _imageFile!,
+            height: 150,
+            width: double.infinity,
+            fit: BoxFit.cover,
+          ),
         ),
       ),
     );
@@ -394,8 +412,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   int _currentIndex = 0;
   final MapController _mapController = MapController();
   bool _isDrawingArea = false;
+  String? _editingAreaId;
   final List<LatLng> _currentAreaPoints = [];
   bool _hasCenteredOnLocation = false;
+  bool _showOfflineRegions = true;
 
   final ScrollController _feedScrollController = ScrollController();
 
@@ -930,9 +950,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  void _showAddAreaDialog() {
-    String selectedType = 'Flooded Area';
-    final descController = TextEditingController();
+  void _showAddAreaDialog({AreaEntity? existingArea}) {
+    final validTypes = ['Flooded Area', 'Evacuation Zone', 'Safe Zone', 'Fire Zone', 'Other'];
+    String selectedType = validTypes.contains(existingArea?.type) ? existingArea!.type : 'Flooded Area';
+    final descController = TextEditingController(text: existingArea?.description ?? '');
     int? selectedTtlHours = 24;
 
     showDialog(
@@ -942,11 +963,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          title: const Row(
+          title: Row(
             children: [
-              Icon(Icons.format_shapes, color: Colors.purple),
-              SizedBox(width: 8),
-              Text('Report Area'),
+              const Icon(Icons.format_shapes, color: Colors.purple),
+              const SizedBox(width: 8),
+              Text(existingArea != null ? 'Edit Area' : 'Report Area'),
             ],
           ),
           content: Column(
@@ -1033,12 +1054,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   trustedSendersControllerProvider,
                 );
 
-                final id = DateTime.now().millisecondsSinceEpoch.toString();
+                final id = existingArea?.id ?? DateTime.now().millisecondsSinceEpoch.toString();
                 final type = selectedType;
                 final description = descController.text;
                 final timestamp = DateTime.now().millisecondsSinceEpoch;
                 final expiresAt = selectedTtlHours != null ? timestamp + (selectedTtlHours! * 3600000) : null;
-                final senderId = await cryptoService.getPublicKeyString();
+                final senderId = existingArea?.senderId ?? await cryptoService.getPublicKeyString();
 
                 final payloadToSign = utf8.encode('$id$type$timestamp${expiresAt ?? ""}');
                 final signature = await cryptoService.signData(payloadToSign);
@@ -1104,6 +1125,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
                 this.setState(() {
                   _isDrawingArea = false;
+                  _editingAreaId = null;
                   _currentAreaPoints.clear();
                 });
               },
@@ -1180,59 +1202,99 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       text: 'Move to higher ground immediately. Flood waters rising.',
     );
     int? selectedTtlHours = 24;
+    XFile? selectedImage;
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Row(
-          children: [
-            Icon(Icons.campaign, color: Colors.blue),
-            SizedBox(width: 8),
-            Text('Official Alert'),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: titleController,
-              decoration: InputDecoration(
-                labelText: 'Title',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Row(
+            children: [
+              Icon(Icons.campaign, color: Colors.blue),
+              SizedBox(width: 8),
+              Text('Official Alert'),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                controller: titleController,
+                decoration: InputDecoration(
+                  labelText: 'Title',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: contentController,
-              decoration: InputDecoration(
-                labelText: 'Content',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
+              const SizedBox(height: 16),
+              TextField(
+                controller: contentController,
+                decoration: InputDecoration(
+                  labelText: 'Content',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                 ),
+                maxLines: 3,
               ),
-              maxLines: 3,
-            ),
-            const SizedBox(height: 16),
-            DropdownButtonFormField<int?>(
-              initialValue: selectedTtlHours,
-              decoration: InputDecoration(
-                labelText: 'Expires In',
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<int?>(
+                initialValue: selectedTtlHours,
+                decoration: InputDecoration(
+                  labelText: 'Expires In',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                items: const [
+                  DropdownMenuItem(value: 1, child: Text('1 Hour')),
+                  DropdownMenuItem(value: 12, child: Text('12 Hours')),
+                  DropdownMenuItem(value: 24, child: Text('24 Hours')),
+                  DropdownMenuItem(value: 72, child: Text('3 Days')),
+                  DropdownMenuItem(value: 168, child: Text('7 Days')),
+                  DropdownMenuItem(value: null, child: Text('No Expiration')),
+                ],
+                onChanged: (val) => setState(() => selectedTtlHours = val),
               ),
-              items: const [
-                DropdownMenuItem(value: 1, child: Text('1 Hour')),
-                DropdownMenuItem(value: 12, child: Text('12 Hours')),
-                DropdownMenuItem(value: 24, child: Text('24 Hours')),
-                DropdownMenuItem(value: 72, child: Text('3 Days')),
-                DropdownMenuItem(value: 168, child: Text('7 Days')),
-                DropdownMenuItem(value: null, child: Text('No Expiration')),
-              ],
-              onChanged: (val) => selectedTtlHours = val,
-            ),
-          ],
+              const SizedBox(height: 16),
+              if (selectedImage != null) ...[
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.file(
+                    File(selectedImage!.path),
+                    height: 120,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+                TextButton.icon(
+                  onPressed: () => setState(() => selectedImage = null),
+                  icon: const Icon(Icons.delete, color: Colors.red),
+                  label: const Text(
+                    'Remove Image',
+                    style: TextStyle(color: Colors.red),
+                  ),
+                ),
+              ] else
+                OutlinedButton.icon(
+                  onPressed: () async {
+                    final picker = ImagePicker();
+                    final image = await picker.pickImage(
+                      source: ImageSource.camera,
+                      imageQuality: 60,
+                      maxWidth: 1024,
+                      maxHeight: 1024,
+                    );
+                    if (image != null) {
+                      setState(() => selectedImage = image);
+                    }
+                  },
+                  icon: const Icon(Icons.camera_alt),
+                  label: const Text('Attach Photo'),
+                ),
+            ],
+          ),
         ),
         actions: [
           TextButton(
@@ -1248,7 +1310,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               final timestamp = DateTime.now().millisecondsSinceEpoch;
               final expiresAt = selectedTtlHours != null ? timestamp + (selectedTtlHours! * 3600000) : null;
 
-              final payloadToSign = utf8.encode('$id$title$timestamp${expiresAt ?? ""}');
+              String? imageId;
+              if (selectedImage != null) {
+                imageId = 'img_$id.jpg';
+                final dir = await getApplicationDocumentsDirectory();
+                final savedImage = File('${dir.path}/$imageId');
+                await File(selectedImage!.path).copy(savedImage.path);
+
+                ref
+                    .read(p2pServiceProvider.notifier)
+                    .broadcastFile(savedImage);
+              }
+
+              final payloadToSign = utf8.encode('$id$title$timestamp${imageId ?? ""}${expiresAt ?? ""}');
 
               final (senderId, signature) =
                   await runGenerateOfficialMarkerSignature(payloadToSign);
@@ -1304,6 +1378,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 signature: signature,
                 trustTier: trustTier,
                 expiresAt: expiresAt,
+                imageId: imageId,
               );
               await ref
                   .read(newsItemsControllerProvider.notifier)
@@ -1313,6 +1388,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             label: const Text('Broadcast'),
           ),
         ],
+      ),
       ),
     );
   }
@@ -1363,19 +1439,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ),
         PolygonLayer(
           polygons: [
-            ...offlineRegions.map(
-              (r) => Polygon(
-                points: [
-                  LatLng(r.bounds.north, r.bounds.west),
-                  LatLng(r.bounds.north, r.bounds.east),
-                  LatLng(r.bounds.south, r.bounds.east),
-                  LatLng(r.bounds.south, r.bounds.west),
-                ],
-                color: Colors.teal.withValues(alpha: 0.15),
-                borderColor: Colors.teal,
-                borderStrokeWidth: 2,
+            if (_showOfflineRegions)
+              ...offlineRegions.map(
+                (r) => Polygon(
+                  points: [
+                    LatLng(r.bounds.north, r.bounds.west),
+                    LatLng(r.bounds.north, r.bounds.east),
+                    LatLng(r.bounds.south, r.bounds.east),
+                    LatLng(r.bounds.south, r.bounds.west),
+                  ],
+                  color: Colors.teal.withValues(alpha: 0.15),
+                  borderColor: Colors.teal,
+                  borderStrokeWidth: 2,
+                ),
               ),
-            ),
             ...areas.map((a) {
               final points = a.coordinates
                   .map((c) => LatLng(c['lat']!, c['lng']!))
@@ -1937,6 +2014,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     item.content,
                     style: const TextStyle(fontSize: 14, height: 1.4),
                   ),
+                  if (item.imageId != null && item.imageId!.isNotEmpty)
+                    LocalImageDisplay(imageId: item.imageId!),
                   Builder(
                     builder: (context) {
                       final profile = _getProfile(item.senderId, profiles);
@@ -2350,7 +2429,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           children: [
             _buildMap(markersAsync, areasAsync, profiles, offlineRegions, currentPosition),
             _buildFeed(profiles),
-            const ProfileTab(),
+            ProfileTab(
+              onEditAreaShape: (area) {
+                setState(() {
+                  _isDrawingArea = true;
+                  _editingAreaId = area.id;
+                  _currentAreaPoints.clear();
+                  _currentAreaPoints.addAll(area.coordinates.map((c) => LatLng(c['lat']!, c['lng']!)));
+                  _currentIndex = 0;
+                });
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Edit the area shape on the map.')),
+                );
+              },
+            ),
           ],
         ),
         bottomNavigationBar: BottomNavigationBar(
@@ -2375,6 +2467,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           onPressed: () {
                             setState(() {
                               _isDrawingArea = false;
+                              _editingAreaId = null;
                               _currentAreaPoints.clear();
                             });
                           },
@@ -2405,8 +2498,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         if (_currentAreaPoints.length >= 3)
                           FloatingActionButton.extended(
                             heroTag: 'done_area',
-                            onPressed: () {
-                              _showAddAreaDialog();
+                            onPressed: () async {
+                              AreaEntity? existingArea;
+                              if (_editingAreaId != null) {
+                                final areas = ref.read(areasControllerProvider).value ?? [];
+                                try {
+                                  existingArea = areas.firstWhere((a) => a.id == _editingAreaId);
+                                } catch (_) {}
+                              }
+                              _showAddAreaDialog(existingArea: existingArea);
                             },
                             backgroundColor: Colors.green,
                             icon: const Icon(Icons.check, color: Colors.white),
@@ -2425,6 +2525,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       if (_currentIndex == 0) ...[
+                        FloatingActionButton.small(
+                          heroTag: 'layers',
+                          onPressed: () {
+                            setState(() {
+                              _showOfflineRegions = !_showOfflineRegions;
+                            });
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text(_showOfflineRegions ? 'Showing offline regions' : 'Hiding offline regions')),
+                            );
+                          },
+                          child: const Icon(Icons.layers),
+                        ),
+                        const SizedBox(height: 16),
                         FloatingActionButton.small(
                           heroTag: 'center_map',
                           onPressed: () async {
@@ -2466,6 +2579,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         onPressed: () async {
                           setState(() {
                             _isDrawingArea = true;
+                            _editingAreaId = null;
                             _currentAreaPoints.clear();
                             _currentIndex = 0; // Switch to map tab
                           });
@@ -2535,7 +2649,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 }
 
 class ProfileTab extends ConsumerStatefulWidget {
-  const ProfileTab({super.key});
+  final Function(AreaEntity) onEditAreaShape;
+  const ProfileTab({super.key, required this.onEditAreaShape});
 
   @override
   ConsumerState<ProfileTab> createState() => _ProfileTabState();
@@ -2868,54 +2983,55 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
 
     showDialog(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Edit News'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: titleController,
-                decoration: const InputDecoration(labelText: 'Title'),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: contentController,
-                decoration: const InputDecoration(labelText: 'Content'),
-                maxLines: 3,
-              ),
-              const SizedBox(height: 16),
-              DropdownButtonFormField<int?>(
-                initialValue: selectedTtlHours,
-                decoration: const InputDecoration(labelText: 'Extend Expiration By'),
-                items: const [
-                  DropdownMenuItem(value: 1, child: Text('1 Hour')),
-                  DropdownMenuItem(value: 12, child: Text('12 Hours')),
-                  DropdownMenuItem(value: 24, child: Text('24 Hours')),
-                  DropdownMenuItem(value: 72, child: Text('3 Days')),
-                  DropdownMenuItem(value: 168, child: Text('7 Days')),
-                  DropdownMenuItem(value: null, child: Text('No Expiration')),
-                ],
-                onChanged: (val) => selectedTtlHours = val,
-              ),
-            ],
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (innerContext, setState) => AlertDialog(
+          title: const Text('Edit News'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: titleController,
+                  decoration: const InputDecoration(labelText: 'Title'),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: contentController,
+                  decoration: const InputDecoration(labelText: 'Content'),
+                  maxLines: 3,
+                ),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<int?>(
+                  initialValue: selectedTtlHours,
+                  decoration: const InputDecoration(labelText: 'Extend Expiration By'),
+                  items: const [
+                    DropdownMenuItem(value: 1, child: Text('1 Hour')),
+                    DropdownMenuItem(value: 12, child: Text('12 Hours')),
+                    DropdownMenuItem(value: 24, child: Text('24 Hours')),
+                    DropdownMenuItem(value: 72, child: Text('3 Days')),
+                    DropdownMenuItem(value: 168, child: Text('7 Days')),
+                    DropdownMenuItem(value: null, child: Text('No Expiration')),
+                  ],
+                  onChanged: (val) => setState(() => selectedTtlHours = val),
+                ),
+              ],
+            ),
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () async {
-              Navigator.pop(dialogContext);
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(innerContext),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () async {
+                Navigator.pop(innerContext);
               final cryptoService = ref.read(cryptoServiceProvider.notifier);
               final timestamp = DateTime.now().millisecondsSinceEpoch;
               final newId = news.id; // Keep same ID for LWW CRDT
               final expiresAt = selectedTtlHours != null ? timestamp + (selectedTtlHours! * 3600000) : null;
 
               final payloadToSign = utf8.encode(
-                '$newId${titleController.text}$timestamp${expiresAt ?? ""}',
+                '$newId${titleController.text}$timestamp${news.imageId ?? ""}${expiresAt ?? ""}',
               );
               final signature = await cryptoService.signData(payloadToSign);
 
@@ -2928,6 +3044,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                 signature: signature,
                 trustTier: news.trustTier,
                 expiresAt: expiresAt,
+                imageId: news.imageId,
               );
 
               await ref
@@ -2942,6 +3059,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
             child: const Text('Save'),
           ),
         ],
+      ),
       ),
     );
   }
@@ -3719,6 +3837,28 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                                   maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
                                 ),
+                                if (item.imageId != null &&
+                                    item.imageId!.isNotEmpty)
+                                  const Padding(
+                                    padding: EdgeInsets.only(top: 4.0),
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          Icons.image,
+                                          size: 12,
+                                          color: Colors.grey,
+                                        ),
+                                        SizedBox(width: 4),
+                                        Text(
+                                          'Image attached',
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            color: Colors.grey,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
                                 const SizedBox(height: 4),
                                 Text(
                                   DateTime.fromMillisecondsSinceEpoch(

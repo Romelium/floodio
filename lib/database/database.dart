@@ -9,7 +9,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 9;
+  int get schemaVersion => 10;
 
   Future<void> cleanupOldData() async {
     final now = DateTime.now().millisecondsSinceEpoch;
@@ -66,6 +66,9 @@ class AppDatabase extends _$AppDatabase {
         }
         if (from < 9) {
           await m.createTable(revokedDelegations);
+        }
+        if (from < 10) {
+          await m.addColumn(newsItems, newsItems.imageId);
         }
       },
     );
