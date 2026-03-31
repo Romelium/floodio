@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:isolate';
 
 import 'package:cryptography/cryptography.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -7,7 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 part 'crypto_service.g.dart';
 
-Future<(SimpleKeyPairData, SimplePublicKey, String?)> _isolateInitKeys(String? privateKeyStr) async {
+Future<(SimpleKeyPairData, SimplePublicKey, String?)> _initKeysLogic(String? privateKeyStr) async {
   final algorithm = Ed25519();
   SimpleKeyPair userKeyPair;
   String? newPrivKeyStr;
@@ -36,13 +35,13 @@ Future<(SimpleKeyPairData, SimplePublicKey, String?)> _isolateInitKeys(String? p
   return (userKeyPairExtracted, serverPubKey, newPrivKeyStr);
 }
 
-Future<String> _isolateSignData(SimpleKeyPairData keyPairData, List<int> data) async {
+Future<String> _signDataLogic(SimpleKeyPairData keyPairData, List<int> data) async {
   final algorithm = Ed25519();
   final signature = await algorithm.sign(data, keyPair: keyPairData);
   return base64Encode(signature.bytes);
 }
 
-Future<int> _isolateVerifyData(List<int> data, String signatureStr, String senderPublicKeyStr, List<int> serverPubKeyBytes, List<String> trustedPublicKeys, List<String> adminTrustedPublicKeys, List<String> untrustedPublicKeys) async {
+Future<int> _verifyDataLogic(List<int> data, String signatureStr, String senderPublicKeyStr, List<int> serverPubKeyBytes, List<String> trustedPublicKeys, List<String> adminTrustedPublicKeys, List<String> untrustedPublicKeys) async {
   try {
     if (untrustedPublicKeys.contains(senderPublicKeyStr)) {
       return 5; // Drop
@@ -73,7 +72,7 @@ Future<int> _isolateVerifyData(List<int> data, String signatureStr, String sende
   }
 }
 
-Future<bool> _isolateVerifyDelegation(String delegateePublicKeyStr, int timestamp, String signatureStr, String delegatorPublicKeyStr, List<int> serverPubKeyBytes) async {
+Future<bool> _verifyDelegationLogic(String delegateePublicKeyStr, int timestamp, String signatureStr, String delegatorPublicKeyStr, List<int> serverPubKeyBytes) async {
   try {
     if (delegatorPublicKeyStr != base64Encode(serverPubKeyBytes)) {
       return false;
@@ -92,7 +91,7 @@ Future<bool> _isolateVerifyDelegation(String delegateePublicKeyStr, int timestam
   }
 }
 
-Future<bool> _isolateVerifyRevocation(String delegateePublicKeyStr, int timestamp, String signatureStr, String delegatorPublicKeyStr, List<int> serverPubKeyBytes) async {
+Future<bool> _verifyRevocationLogic(String delegateePublicKeyStr, int timestamp, String signatureStr, String delegatorPublicKeyStr, List<int> serverPubKeyBytes) async {
   try {
     if (delegatorPublicKeyStr != base64Encode(serverPubKeyBytes)) {
       return false;
@@ -111,27 +110,7 @@ Future<bool> _isolateVerifyRevocation(String delegateePublicKeyStr, int timestam
   }
 }
 
-Future<(SimpleKeyPairData, SimplePublicKey, String?)> _runInitKeys(String? privateKeyStr) {
-  return Isolate.run(() => _isolateInitKeys(privateKeyStr));
-}
-
-Future<String> _runSignData(SimpleKeyPairData keyPair, List<int> data) {
-  return Isolate.run(() => _isolateSignData(keyPair, data));
-}
-
-Future<int> _runVerifyData(List<int> data, String signatureStr, String senderPublicKeyStr, List<int> serverPubKeyBytes, List<String> trustedPublicKeys, List<String> adminTrustedPublicKeys, List<String> untrustedPublicKeys) {
-  return Isolate.run(() => _isolateVerifyData(data, signatureStr, senderPublicKeyStr, serverPubKeyBytes, trustedPublicKeys, adminTrustedPublicKeys, untrustedPublicKeys));
-}
-
-Future<bool> _runVerifyDelegation(String delegateePublicKeyStr, int timestamp, String signatureStr, String delegatorPublicKeyStr, List<int> serverPubKeyBytes) {
-  return Isolate.run(() => _isolateVerifyDelegation(delegateePublicKeyStr, timestamp, signatureStr, delegatorPublicKeyStr, serverPubKeyBytes));
-}
-
-Future<bool> _runVerifyRevocation(String delegateePublicKeyStr, int timestamp, String signatureStr, String delegatorPublicKeyStr, List<int> serverPubKeyBytes) {
-  return Isolate.run(() => _isolateVerifyRevocation(delegateePublicKeyStr, timestamp, signatureStr, delegatorPublicKeyStr, serverPubKeyBytes));
-}
-
-Future<(String, String)> _generateOfficialMarkerSignature(List<int> payloadToSign) async {
+Future<(String, String)> generateOfficialMarkerSignature(List<int> payloadToSign) async {
   final algorithm = Ed25519();
   final serverKeyPair = await algorithm.newKeyPairFromSeed(List<int>.filled(32, 1));
   final serverPubKey = await serverKeyPair.extractPublicKey();
@@ -140,10 +119,6 @@ Future<(String, String)> _generateOfficialMarkerSignature(List<int> payloadToSig
   final signatureObj = await algorithm.sign(payloadToSign, keyPair: serverKeyPair);
   final signature = base64Encode(signatureObj.bytes);
   return (senderId, signature);
-}
-
-Future<(String, String)> runGenerateOfficialMarkerSignature(List<int> payloadToSign) {
-  return Isolate.run(() => _generateOfficialMarkerSignature(payloadToSign));
 }
 
 @Riverpod(keepAlive: true)
@@ -161,7 +136,7 @@ class CryptoService extends _$CryptoService {
     await prefs.reload();
     final privateKeyStr = prefs.getString('user_private_key');
     
-    final (userKeyPairData, serverPublicKey, newPrivateKeyStr) = await _runInitKeys(privateKeyStr);
+    final (userKeyPairData, serverPublicKey, newPrivateKeyStr) = await _initKeysLogic(privateKeyStr);
 
     if (newPrivateKeyStr != null) {
       await prefs.setString('user_private_key', newPrivateKeyStr);
@@ -172,7 +147,7 @@ class CryptoService extends _$CryptoService {
   }
 
   Future<String> signData(List<int> data) async {
-    return _runSignData(_userKeyPair, data);
+    return _signDataLogic(_userKeyPair, data);
   }
 
   Future<String> getPublicKeyString() async {
@@ -187,7 +162,7 @@ class CryptoService extends _$CryptoService {
     required String delegatorPublicKeyStr,
   }) async {
     final serverPubKeyBytes = _serverPublicKey.bytes;
-    return _runVerifyDelegation(delegateePublicKeyStr, timestamp, signatureStr, delegatorPublicKeyStr, serverPubKeyBytes);
+    return _verifyDelegationLogic(delegateePublicKeyStr, timestamp, signatureStr, delegatorPublicKeyStr, serverPubKeyBytes);
   }
 
   Future<bool> verifyRevocation({
@@ -197,7 +172,7 @@ class CryptoService extends _$CryptoService {
     required String delegatorPublicKeyStr,
   }) async {
     final serverPubKeyBytes = _serverPublicKey.bytes;
-    return _runVerifyRevocation(delegateePublicKeyStr, timestamp, signatureStr, delegatorPublicKeyStr, serverPubKeyBytes);
+    return _verifyRevocationLogic(delegateePublicKeyStr, timestamp, signatureStr, delegatorPublicKeyStr, serverPubKeyBytes);
   }
 
   Future<int> verifyAndGetTrustTier({
@@ -216,6 +191,6 @@ class CryptoService extends _$CryptoService {
     final effectiveTrustedKeys = [...trustedPublicKeys, myPubKeyStr];
     final effectiveAdminKeys = adminTrustedPublicKeys.where((k) => !revokedPublicKeys.contains(k)).toList();
 
-    return _runVerifyData(data, signatureStr, senderPublicKeyStr, serverPubKeyBytes, effectiveTrustedKeys, effectiveAdminKeys, untrustedPublicKeys);
+    return _verifyDataLogic(data, signatureStr, senderPublicKeyStr, serverPubKeyBytes, effectiveTrustedKeys, effectiveAdminKeys, untrustedPublicKeys);
   }
 }

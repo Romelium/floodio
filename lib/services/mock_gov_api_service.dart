@@ -45,7 +45,7 @@ class MockGovApiService extends _$MockGovApiService {
     final content = 'Automated alert from National Weather Service. Heavy rainfall expected in your area.';
     final expiresAt = timestamp + (24 * 3600000); // 24 hours TTL
     final payloadToSignNews = utf8.encode('$id$title$timestamp$expiresAt'); // imageId is empty
-    final (senderId, signatureNews) = await runGenerateOfficialMarkerSignature(payloadToSignNews);
+    final (senderId, signatureNews) = await generateOfficialMarkerSignature(payloadToSignNews);
 
     final newNews = NewsItemEntity(
       id: id,
@@ -76,7 +76,7 @@ class MockGovApiService extends _$MockGovApiService {
     final type = 'Flood';
     final desc = 'Automated sensor detected rising water levels.';
     final payloadToSignMarker = utf8.encode('${id}_m$type$timestamp$expiresAt');
-    final (_, signatureMarker) = await runGenerateOfficialMarkerSignature(payloadToSignMarker);
+    final (_, signatureMarker) = await generateOfficialMarkerSignature(payloadToSignMarker);
 
     final newMarker = HazardMarkerEntity(
       id: '${id}_m',
@@ -96,7 +96,7 @@ class MockGovApiService extends _$MockGovApiService {
   Future<void> delegateAdminTrust(String delegateePublicKey) async {
     final timestamp = DateTime.now().millisecondsSinceEpoch;
     final payloadToSign = utf8.encode('$delegateePublicKey$timestamp');
-    final (delegatorId, signature) = await runGenerateOfficialMarkerSignature(payloadToSign);
+    final (delegatorId, signature) = await generateOfficialMarkerSignature(payloadToSign);
     
     final entity = AdminTrustedSenderEntity(
       publicKey: delegateePublicKey,
@@ -111,7 +111,7 @@ class MockGovApiService extends _$MockGovApiService {
   Future<void> revokeAdminTrust(String delegateePublicKey) async {
     final timestamp = DateTime.now().millisecondsSinceEpoch;
     final payloadToSign = utf8.encode('revoke_$delegateePublicKey$timestamp');
-    final (delegatorId, signature) = await runGenerateOfficialMarkerSignature(payloadToSign);
+    final (delegatorId, signature) = await generateOfficialMarkerSignature(payloadToSign);
 
     final entity = RevokedDelegationEntity(
       delegateePublicKey: delegateePublicKey,

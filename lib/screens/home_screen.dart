@@ -1234,7 +1234,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 );
 
                 final (senderId, signature) =
-                    await runGenerateOfficialMarkerSignature(payloadToSign);
+                    await generateOfficialMarkerSignature(payloadToSign);
 
                 final trustedSendersAsync = ref.read(
                   trustedSendersControllerProvider,
