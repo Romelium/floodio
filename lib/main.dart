@@ -4376,6 +4376,15 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                               children: [
                                 IconButton(
                                   icon: const Icon(
+                                    Icons.edit_location_alt,
+                                    color: Colors.purple,
+                                  ),
+                                  tooltip: 'Edit Shape',
+                                  onPressed: () =>
+                                      widget.onEditAreaShape(item),
+                                ),
+                                IconButton(
+                                  icon: const Icon(
                                     Icons.edit,
                                     color: Colors.blue,
                                   ),
