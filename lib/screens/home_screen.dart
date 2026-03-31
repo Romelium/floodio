@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:fixnum/fixnum.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
@@ -15,6 +16,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../crypto/crypto_service.dart';
 import '../database/tables.dart';
+import '../protos/models.pb.dart' as pb;
 import '../providers/admin_trusted_sender_provider.dart';
 import '../providers/area_provider.dart';
 import '../providers/cached_tile_provider.dart';
@@ -64,6 +66,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   final List<LatLng> _currentPathPoints = [];
   bool _hasCenteredOnLocation = false;
   bool _showOfflineRegions = true;
+  String? _myPublicKey;
 
   final ScrollController _feedScrollController = ScrollController();
 
@@ -71,6 +74,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   void initState() {
     super.initState();
     _initPermissions();
+    _loadMyPublicKey();
     _feedScrollController.addListener(() {
       if (_feedScrollController.position.pixels >=
           _feedScrollController.position.maxScrollExtent - 200) {
@@ -86,6 +90,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   void dispose() {
     _feedScrollController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadMyPublicKey() async {
+    await ref.read(cryptoServiceProvider.future);
+    final key = await ref.read(cryptoServiceProvider.notifier).getPublicKeyString();
+    if (mounted) {
+      setState(() {
+        _myPublicKey = key;
+      });
+    }
   }
 
   Future<void> _initPermissions() async {
@@ -387,6 +401,322 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _endorseHazard(HazardMarkerEntity marker) async {
+    if (_myPublicKey == null) return;
+    final cryptoService = ref.read(cryptoServiceProvider.notifier);
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+    final settings = ref.read(appSettingsProvider);
+    
+    String senderId;
+    String signature;
+    
+    final payloadToSign = utf8.encode('${marker.id}${marker.type}$timestamp${marker.imageId ?? ""}${marker.expiresAt ?? ""}');
+    
+    if (settings.isOfficialMode) {
+      final official = await generateOfficialMarkerSignature(payloadToSign);
+      senderId = official.$1;
+      signature = official.$2;
+    } else {
+      senderId = _myPublicKey!;
+      signature = await cryptoService.signData(payloadToSign);
+    }
+    
+    final trustedSendersAsync = ref.read(trustedSendersControllerProvider);
+    final untrustedSendersAsync = ref.read(untrustedSendersControllerProvider);
+    final revokedSendersAsync = ref.read(revokedDelegationsControllerProvider);
+    final adminTrustedSendersAsync = ref.read(adminTrustedSendersControllerProvider);
+    
+    final trustedKeys = trustedSendersAsync.value?.map((e) => e.publicKey).toList() ?? [];
+    final untrustedKeys = untrustedSendersAsync.value?.map((e) => e.publicKey).toList() ?? [];
+    final revokedKeys = revokedSendersAsync.value?.map((e) => e.delegateePublicKey).toList() ?? [];
+    final adminTrustedKeys = adminTrustedSendersAsync.value?.map((e) => e.publicKey).toList() ?? [];
+    
+    final trustTier = await cryptoService.verifyAndGetTrustTier(
+      data: payloadToSign,
+      signatureStr: signature,
+      senderPublicKeyStr: senderId,
+      trustedPublicKeys: trustedKeys,
+      adminTrustedPublicKeys: adminTrustedKeys,
+      untrustedPublicKeys: untrustedKeys,
+      revokedPublicKeys: revokedKeys,
+    );
+    
+    final updatedMarker = HazardMarkerEntity(
+      id: marker.id,
+      latitude: marker.latitude,
+      longitude: marker.longitude,
+      type: marker.type,
+      description: marker.description,
+      timestamp: timestamp,
+      senderId: senderId,
+      signature: signature,
+      trustTier: trustTier,
+      imageId: marker.imageId,
+      expiresAt: marker.expiresAt,
+    );
+    
+    await ref.read(hazardMarkersControllerProvider.notifier).addMarker(updatedMarker);
+    
+    final payload = pb.SyncPayload();
+    payload.markers.add(pb.HazardMarker(
+      id: updatedMarker.id,
+      latitude: updatedMarker.latitude,
+      longitude: updatedMarker.longitude,
+      type: updatedMarker.type,
+      description: updatedMarker.description,
+      timestamp: Int64(updatedMarker.timestamp),
+      senderId: updatedMarker.senderId,
+      signature: updatedMarker.signature ?? '',
+      trustTier: updatedMarker.trustTier,
+      imageId: updatedMarker.imageId ?? '',
+      expiresAt: Int64(updatedMarker.expiresAt ?? 0),
+    ));
+    
+    final encoded = base64Encode(payload.writeToBuffer());
+    await ref.read(p2pServiceProvider.notifier).broadcastText(jsonEncode({'type': 'payload', 'data': encoded}));
+    
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Hazard verified and endorsed!')));
+    }
+  }
+
+  Future<void> _endorseArea(AreaEntity area) async {
+    if (_myPublicKey == null) return;
+    final cryptoService = ref.read(cryptoServiceProvider.notifier);
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+    final settings = ref.read(appSettingsProvider);
+    
+    String senderId;
+    String signature;
+    
+    final payloadToSign = utf8.encode('${area.id}${area.type}$timestamp${area.expiresAt ?? ""}');
+    
+    if (settings.isOfficialMode) {
+      final official = await generateOfficialMarkerSignature(payloadToSign);
+      senderId = official.$1;
+      signature = official.$2;
+    } else {
+      senderId = _myPublicKey!;
+      signature = await cryptoService.signData(payloadToSign);
+    }
+    
+    final trustedSendersAsync = ref.read(trustedSendersControllerProvider);
+    final untrustedSendersAsync = ref.read(untrustedSendersControllerProvider);
+    final revokedSendersAsync = ref.read(revokedDelegationsControllerProvider);
+    final adminTrustedSendersAsync = ref.read(adminTrustedSendersControllerProvider);
+    
+    final trustedKeys = trustedSendersAsync.value?.map((e) => e.publicKey).toList() ?? [];
+    final untrustedKeys = untrustedSendersAsync.value?.map((e) => e.publicKey).toList() ?? [];
+    final revokedKeys = revokedSendersAsync.value?.map((e) => e.delegateePublicKey).toList() ?? [];
+    final adminTrustedKeys = adminTrustedSendersAsync.value?.map((e) => e.publicKey).toList() ?? [];
+    
+    final trustTier = await cryptoService.verifyAndGetTrustTier(
+      data: payloadToSign,
+      signatureStr: signature,
+      senderPublicKeyStr: senderId,
+      trustedPublicKeys: trustedKeys,
+      adminTrustedPublicKeys: adminTrustedKeys,
+      untrustedPublicKeys: untrustedKeys,
+      revokedPublicKeys: revokedKeys,
+    );
+    
+    final updatedArea = AreaEntity(
+      id: area.id,
+      coordinates: area.coordinates,
+      type: area.type,
+      description: area.description,
+      timestamp: timestamp,
+      senderId: senderId,
+      signature: signature,
+      trustTier: trustTier,
+      expiresAt: area.expiresAt,
+    );
+    
+    await ref.read(areasControllerProvider.notifier).addArea(updatedArea);
+    
+    final payload = pb.SyncPayload();
+    final areaMarker = pb.AreaMarker(
+      id: updatedArea.id,
+      type: updatedArea.type,
+      description: updatedArea.description,
+      timestamp: Int64(updatedArea.timestamp),
+      senderId: updatedArea.senderId,
+      signature: updatedArea.signature ?? '',
+      trustTier: updatedArea.trustTier,
+      expiresAt: Int64(updatedArea.expiresAt ?? 0),
+    );
+    for (final coord in updatedArea.coordinates) {
+      areaMarker.coordinates.add(pb.Coordinate(
+        latitude: coord['lat']!,
+        longitude: coord['lng']!,
+      ));
+    }
+    payload.areas.add(areaMarker);
+    
+    final encoded = base64Encode(payload.writeToBuffer());
+    await ref.read(p2pServiceProvider.notifier).broadcastText(jsonEncode({'type': 'payload', 'data': encoded}));
+    
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Area verified and endorsed!')));
+    }
+  }
+
+  Future<void> _endorsePath(PathEntity path) async {
+    if (_myPublicKey == null) return;
+    final cryptoService = ref.read(cryptoServiceProvider.notifier);
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+    final settings = ref.read(appSettingsProvider);
+
+    String senderId;
+    String signature;
+
+    final payloadToSign = utf8.encode('${path.id}${path.type}$timestamp${path.expiresAt ?? ""}');
+
+    if (settings.isOfficialMode) {
+      final official = await generateOfficialMarkerSignature(payloadToSign);
+      senderId = official.$1;
+      signature = official.$2;
+    } else {
+      senderId = _myPublicKey!;
+      signature = await cryptoService.signData(payloadToSign);
+    }
+
+    final trustedSendersAsync = ref.read(trustedSendersControllerProvider);
+    final untrustedSendersAsync = ref.read(untrustedSendersControllerProvider);
+    final revokedSendersAsync = ref.read(revokedDelegationsControllerProvider);
+    final adminTrustedSendersAsync = ref.read(adminTrustedSendersControllerProvider);
+
+    final trustedKeys = trustedSendersAsync.value?.map((e) => e.publicKey).toList() ?? [];
+    final untrustedKeys = untrustedSendersAsync.value?.map((e) => e.publicKey).toList() ?? [];
+    final revokedKeys = revokedSendersAsync.value?.map((e) => e.delegateePublicKey).toList() ?? [];
+    final adminTrustedKeys = adminTrustedSendersAsync.value?.map((e) => e.publicKey).toList() ?? [];
+
+    final trustTier = await cryptoService.verifyAndGetTrustTier(
+      data: payloadToSign,
+      signatureStr: signature,
+      senderPublicKeyStr: senderId,
+      trustedPublicKeys: trustedKeys,
+      adminTrustedPublicKeys: adminTrustedKeys,
+      untrustedPublicKeys: untrustedKeys,
+      revokedPublicKeys: revokedKeys,
+    );
+
+    final updatedPath = PathEntity(
+      id: path.id,
+      coordinates: path.coordinates,
+      type: path.type,
+      description: path.description,
+      timestamp: timestamp,
+      senderId: senderId,
+      signature: signature,
+      trustTier: trustTier,
+      expiresAt: path.expiresAt,
+    );
+
+    await ref.read(pathsControllerProvider.notifier).addPath(updatedPath);
+
+    final payload = pb.SyncPayload();
+    final pathMarker = pb.PathMarker(
+      id: updatedPath.id,
+      type: updatedPath.type,
+      description: updatedPath.description,
+      timestamp: Int64(updatedPath.timestamp),
+      senderId: updatedPath.senderId,
+      signature: updatedPath.signature ?? '',
+      trustTier: updatedPath.trustTier,
+      expiresAt: Int64(updatedPath.expiresAt ?? 0),
+    );
+    for (final coord in updatedPath.coordinates) {
+      pathMarker.coordinates.add(pb.Coordinate(
+        latitude: coord['lat']!,
+        longitude: coord['lng']!,
+      ));
+    }
+    payload.paths.add(pathMarker);
+
+    final encoded = base64Encode(payload.writeToBuffer());
+    await ref.read(p2pServiceProvider.notifier).broadcastText(jsonEncode({'type': 'payload', 'data': encoded}));
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Path verified and endorsed!')));
+    }
+  }
+
+  Future<void> _endorseNews(NewsItemEntity news) async {
+    if (_myPublicKey == null) return;
+    final cryptoService = ref.read(cryptoServiceProvider.notifier);
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+    final settings = ref.read(appSettingsProvider);
+
+    String senderId;
+    String signature;
+
+    final payloadToSign = utf8.encode('${news.id}${news.title}$timestamp${news.imageId ?? ""}${news.expiresAt ?? ""}');
+
+    if (settings.isOfficialMode) {
+      final official = await generateOfficialMarkerSignature(payloadToSign);
+      senderId = official.$1;
+      signature = official.$2;
+    } else {
+      senderId = _myPublicKey!;
+      signature = await cryptoService.signData(payloadToSign);
+    }
+
+    final trustedSendersAsync = ref.read(trustedSendersControllerProvider);
+    final untrustedSendersAsync = ref.read(untrustedSendersControllerProvider);
+    final revokedSendersAsync = ref.read(revokedDelegationsControllerProvider);
+    final adminTrustedSendersAsync = ref.read(adminTrustedSendersControllerProvider);
+
+    final trustedKeys = trustedSendersAsync.value?.map((e) => e.publicKey).toList() ?? [];
+    final untrustedKeys = untrustedSendersAsync.value?.map((e) => e.publicKey).toList() ?? [];
+    final revokedKeys = revokedSendersAsync.value?.map((e) => e.delegateePublicKey).toList() ?? [];
+    final adminTrustedKeys = adminTrustedSendersAsync.value?.map((e) => e.publicKey).toList() ?? [];
+
+    final trustTier = await cryptoService.verifyAndGetTrustTier(
+      data: payloadToSign,
+      signatureStr: signature,
+      senderPublicKeyStr: senderId,
+      trustedPublicKeys: trustedKeys,
+      adminTrustedPublicKeys: adminTrustedKeys,
+      untrustedPublicKeys: untrustedKeys,
+      revokedPublicKeys: revokedKeys,
+    );
+
+    final updatedNews = NewsItemEntity(
+      id: news.id,
+      title: news.title,
+      content: news.content,
+      timestamp: timestamp,
+      senderId: senderId,
+      signature: signature,
+      trustTier: trustTier,
+      expiresAt: news.expiresAt,
+      imageId: news.imageId,
+    );
+
+    await ref.read(newsItemsControllerProvider.notifier).addNewsItem(updatedNews);
+
+    final payload = pb.SyncPayload();
+    payload.news.add(pb.NewsItem(
+      id: updatedNews.id,
+      title: updatedNews.title,
+      content: updatedNews.content,
+      timestamp: Int64(updatedNews.timestamp),
+      senderId: updatedNews.senderId,
+      signature: updatedNews.signature ?? '',
+      trustTier: updatedNews.trustTier,
+      expiresAt: Int64(updatedNews.expiresAt ?? 0),
+      imageId: updatedNews.imageId ?? '',
+    ));
+
+    final encoded = base64Encode(payload.writeToBuffer());
+    await ref.read(p2pServiceProvider.notifier).broadcastText(jsonEncode({'type': 'payload', 'data': encoded}));
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('News verified and endorsed!')));
+    }
   }
 
   void _showReportOptions() {
@@ -1455,6 +1785,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         final offlineRegions = offlineRegionsAsync.value ?? [];
         final currentPosition = locationAsync.value;
 
+        final adminTrustedAsync = ref.watch(adminTrustedSendersControllerProvider);
+        final revokedAsync = ref.watch(revokedDelegationsControllerProvider);
+        final adminTrusted = adminTrustedAsync.value ?? [];
+        final revoked = revokedAsync.value ?? [];
+        final revokedKeys = revoked.map((e) => e.delegateePublicKey).toSet();
+        final isTier2 = _myPublicKey != null && adminTrusted.any((a) => a.publicKey == _myPublicKey && !revokedKeys.contains(a.publicKey));
+        final isAdmin = settings.isOfficialMode || isTier2;
+
         if (currentPosition != null && !_hasCenteredOnLocation) {
           _hasCenteredOnLocation = true;
           WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -1591,6 +1929,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   child: GestureDetector(
                     behavior: HitTestBehavior.opaque,
                     onTap: () {
+                      final canEndorse = isAdmin && (m.trustTier == 3 || m.trustTier == 4);
+
                       showDialog(
                         context: context,
                         builder: (dialogContext) => AlertDialog(
@@ -1667,6 +2007,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             ],
                           ),
                           actions: [
+                            if (canEndorse)
+                              TextButton.icon(
+                                onPressed: () {
+                                  Navigator.pop(dialogContext);
+                                  _endorseHazard(m);
+                                },
+                                icon: const Icon(Icons.verified, size: 18),
+                                label: const Text('Verify & Endorse'),
+                                style: TextButton.styleFrom(foregroundColor: Colors.purple),
+                              ),
                             TextButton.icon(
                               onPressed: () {
                                 Navigator.pop(dialogContext);
@@ -1824,6 +2174,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ref.watch(filteredNewsItemsProvider).isLoading ||
             ref.watch(filteredAreasProvider).isLoading;
 
+        final adminTrustedAsync = ref.watch(adminTrustedSendersControllerProvider);
+        final revokedAsync = ref.watch(revokedDelegationsControllerProvider);
+        final adminTrusted = adminTrustedAsync.value ?? [];
+        final revoked = revokedAsync.value ?? [];
+        final revokedKeys = revoked.map((e) => e.delegateePublicKey).toSet();
+        final isTier2 = _myPublicKey != null && adminTrusted.any((a) => a.publicKey == _myPublicKey && !revokedKeys.contains(a.publicKey));
+        final isAdmin = settings.isOfficialMode || isTier2;
+
     return Column(
       children: [
         Container(
@@ -1862,6 +2220,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       );
                     }
                     final item = combined[index];
+                    final canEndorse = isAdmin && (item.trustTier == 3 || item.trustTier == 4);
+
                     if (item is HazardMarkerEntity) {
                       return Card(
                         margin: const EdgeInsets.symmetric(
@@ -1997,6 +2357,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                   spacing: 8,
                                   runSpacing: 8,
                                   children: [
+                                    if (canEndorse)
+                                      FilledButton.tonalIcon(
+                                        onPressed: () => _endorseHazard(item),
+                                        icon: const Icon(Icons.verified, size: 16),
+                                        label: const Text('Verify & Endorse'),
+                                        style: FilledButton.styleFrom(
+                                          foregroundColor: Colors.purple.shade700,
+                                          backgroundColor: Colors.purple.shade50,
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 12,
+                                            vertical: 8,
+                                          ),
+                                        ),
+                                      ),
                                     TextButton.icon(
                                       onPressed: () => _resolveMarker(item.id),
                                       icon: const Icon(
@@ -2167,6 +2541,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                 spacing: 8,
                                 runSpacing: 8,
                                 children: [
+                                  if (canEndorse)
+                                    FilledButton.tonalIcon(
+                                      onPressed: () => _endorseNews(item),
+                                      icon: const Icon(Icons.verified, size: 16),
+                                      label: const Text('Verify & Endorse'),
+                                      style: FilledButton.styleFrom(
+                                        foregroundColor: Colors.purple.shade700,
+                                        backgroundColor: Colors.purple.shade50,
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 12,
+                                          vertical: 8,
+                                        ),
+                                      ),
+                                    ),
                                   TextButton.icon(
                                     onPressed: () => _dismissNews(item.id),
                                     icon: const Icon(Icons.clear, size: 16),
@@ -2352,6 +2740,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                   spacing: 8,
                                   runSpacing: 8,
                                   children: [
+                                    if (canEndorse)
+                                      FilledButton.tonalIcon(
+                                        onPressed: () => _endorseArea(item),
+                                        icon: const Icon(Icons.verified, size: 16),
+                                        label: const Text('Verify & Endorse'),
+                                        style: FilledButton.styleFrom(
+                                          foregroundColor: Colors.purple.shade700,
+                                          backgroundColor: Colors.purple.shade50,
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 12,
+                                            vertical: 8,
+                                          ),
+                                        ),
+                                      ),
                                     TextButton.icon(
                                       onPressed: () => _resolveArea(item.id),
                                       icon: const Icon(
@@ -2541,6 +2943,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                   spacing: 8,
                                   runSpacing: 8,
                                   children: [
+                                    if (canEndorse)
+                                      FilledButton.tonalIcon(
+                                        onPressed: () => _endorsePath(item),
+                                        icon: const Icon(Icons.verified, size: 16),
+                                        label: const Text('Verify & Endorse'),
+                                        style: FilledButton.styleFrom(
+                                          foregroundColor: Colors.purple.shade700,
+                                          backgroundColor: Colors.purple.shade50,
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 12,
+                                            vertical: 8,
+                                          ),
+                                        ),
+                                      ),
                                     TextButton.icon(
                                       onPressed: () => _resolvePath(item.id),
                                       icon: const Icon(
