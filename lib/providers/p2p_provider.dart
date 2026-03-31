@@ -566,7 +566,7 @@ class P2pService extends _$P2pService {
             }
           }
         } else if (file.info.name.startsWith('img_')) {
-          state = state.copyWith(isSyncing: false, syncMessage: 'Image downloaded.');
+          // Image downloaded, no special unpacking needed.
         }
       } else if (file.state == ReceivableFileState.downloading) {
         isDownloadingAny = true;

@@ -1400,7 +1400,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 points: points,
                 color: color,
                 strokeWidth: 4.0,
-                pattern: p.type.toLowerCase().contains('blocked') ? StrokePattern.dashed(segments: const [10, 10]) : const StrokePattern.solid(),
+                pattern: p.type.toLowerCase().contains('blocked') ? StrokePattern.dashed(segments: const [10.0, 10.0]) : const StrokePattern.solid(),
               );
             }),
             if (_isDrawingPath && _currentPathPoints.isNotEmpty)
@@ -1408,7 +1408,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 points: _currentPathPoints,
                 color: Colors.teal,
                 strokeWidth: 4.0,
-                pattern: StrokePattern.dashed(segments: const [10, 10]),
+                pattern: StrokePattern.dashed(segments: const [10.0, 10.0]),
               ),
           ],
         ),
