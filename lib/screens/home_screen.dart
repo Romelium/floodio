@@ -124,6 +124,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   DateTime? _lastTapTime;
   final MapController _mapController = MapController();
   bool _hasCenteredOnLocation = false;
+  double _mapRotation = 0.0;
 
   @override
   void initState() {
@@ -2289,6 +2290,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           options: MapOptions(
             initialCenter: const LatLng(37.7749, -122.4194),
             initialZoom: 13.0,
+            onPositionChanged: (camera, hasGesture) {
+              if (camera.rotation != _mapRotation) {
+                setState(() {
+                  _mapRotation = camera.rotation;
+                });
+              }
+            },
             onTap: (tapPosition, point) {
               final drawingState = ref.read(drawingControllerProvider);
               if (drawingState.mode == DrawingMode.area) {
@@ -2340,7 +2348,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     borderStrokeWidth: 2,
                   );
                 }),
-                if (drawingState.mode == DrawingMode.area && drawingState.points.isNotEmpty)
+                if (drawingState.mode == DrawingMode.area && drawingState.points.length >= 3)
                   Polygon(
                     points: drawingState.points,
                     color: Colors.blue.withValues(alpha: 0.3),
@@ -2371,13 +2379,25 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 }),
                 if (drawingState.mode == DrawingMode.path && drawingState.points.isNotEmpty)
                   Polyline(
-                    points: drawingState.points,
-                    color: Colors.teal,
+                    points: drawingState.mode == DrawingMode.area 
+                        ? (drawingState.points.length > 1 ? [...drawingState.points, drawingState.points.first] : drawingState.points)
+                        : drawingState.points,
+                    color: drawingState.mode == DrawingMode.area ? Colors.blue : Colors.teal,
                     strokeWidth: 4.0,
                     pattern: StrokePattern.dashed(segments: const [10.0, 10.0]),
                   ),
               ],
             ),
+            if (drawingState.mode != DrawingMode.none && drawingState.points.isNotEmpty)
+              CircleLayer(
+                circles: drawingState.points.map((p) => CircleMarker(
+                  point: p,
+                  radius: 6,
+                  color: Colors.white,
+                  borderColor: drawingState.mode == DrawingMode.area ? Colors.blue : Colors.teal,
+                  borderStrokeWidth: 2,
+                )).toList(),
+              ),
             CircleLayer(
               circles: markers
                   .where((m) => m.trustTier == 1 || m.trustTier == 2)
@@ -2807,7 +2827,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                                 CrossAxisAlignment.start,
                                             children: [
                                               Text(
-                                                'Hazard: ${item.type}${item.isCritical ? ' (CRITICAL)' : ''}',
+                                                '${item.type}${item.isCritical ? ' (CRITICAL)' : ''}',
                                                 style: TextStyle(
                                                   fontWeight: FontWeight.bold,
                                                   fontSize: 16,
@@ -3291,7 +3311,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                                 CrossAxisAlignment.start,
                                             children: [
                                               Text(
-                                                'Area: ${item.type}${item.isCritical ? ' (CRITICAL)' : ''}',
+                                                '${item.type}${item.isCritical ? ' (CRITICAL)' : ''}',
                                                 style: TextStyle(
                                                   fontWeight: FontWeight.bold,
                                                   fontSize: 16,
@@ -3539,7 +3559,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                                 CrossAxisAlignment.start,
                                             children: [
                                               Text(
-                                                'Path: ${item.type}${item.isCritical ? ' (CRITICAL)' : ''}',
+                                              '${item.type}${item.isCritical ? ' (CRITICAL)' : ''}',
                                                 style: TextStyle(
                                                   fontWeight: FontWeight.bold,
                                                   fontSize: 16,
@@ -4163,6 +4183,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       if (displayIndex == 0) ...[
+                        if (_mapRotation != 0.0) ...[
+                          FloatingActionButton.small(
+                            heroTag: 'reset_rotation',
+                            onPressed: () {
+                              _mapController.rotate(0);
+                            },
+                            backgroundColor: Theme.of(context).colorScheme.surface,
+                            foregroundColor: Theme.of(context).colorScheme.primary,
+                            child: const Icon(Icons.explore),
+                          ),
+                          const SizedBox(height: 16),
+                        ],
                         FloatingActionButton.small(
                           heroTag: 'layers',
                           onPressed: () {

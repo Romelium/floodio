@@ -1390,7 +1390,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                                       ),
                                     ),
                                     title: Text(
-                                      'Hazard: ${item.type}${item.isCritical ? ' (CRITICAL)' : ''}',
+                                      '${item.type}${item.isCritical ? ' (CRITICAL)' : ''}',
                                       style: TextStyle(
                                         fontWeight: FontWeight.w600,
                                         color: item.isCritical ? Colors.red : null,
@@ -1481,7 +1481,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                                       ),
                                     ),
                                     title: Text(
-                                      'News: ${item.title}${item.isCritical ? ' (CRITICAL)' : ''}',
+                                      '${item.title}${item.isCritical ? ' (CRITICAL)' : ''}',
                                       style: TextStyle(
                                         fontWeight: FontWeight.w600,
                                         color: item.isCritical ? Colors.red : null,
@@ -1577,7 +1577,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                                       ),
                                     ),
                                     title: Text(
-                                      'Area: ${item.type}${item.isCritical ? ' (CRITICAL)' : ''}',
+                                      '${item.type}${item.isCritical ? ' (CRITICAL)' : ''}',
                                       style: TextStyle(
                                         fontWeight: FontWeight.w600,
                                         color: item.isCritical ? Colors.red : null,
@@ -1652,7 +1652,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                                       ),
                                     ),
                                     title: Text(
-                                      'Path: ${item.type}${item.isCritical ? ' (CRITICAL)' : ''}',
+                                      '${item.type}${item.isCritical ? ' (CRITICAL)' : ''}',
                                       style: TextStyle(
                                         fontWeight: FontWeight.w600,
                                         color: item.isCritical ? Colors.red : null,

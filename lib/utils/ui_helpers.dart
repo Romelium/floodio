@@ -66,7 +66,20 @@ IconData getHazardIcon(String type) {
 
 String formatTimestamp(int timestamp) {
   final dt = DateTime.fromMillisecondsSinceEpoch(timestamp).toLocal();
-  return '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+  final now = DateTime.now();
+  final diff = now.difference(dt);
+
+  if (diff.inSeconds < 60 && diff.inSeconds >= 0) {
+    return 'Just now';
+  } else if (diff.inMinutes < 60 && diff.inMinutes >= 0) {
+    return '${diff.inMinutes}m ago';
+  } else if (diff.inHours < 24 && diff.inHours >= 0) {
+    return '${diff.inHours}h ago';
+  } else if (diff.inDays < 7 && diff.inDays >= 0) {
+    return '${diff.inDays}d ago';
+  } else {
+    return '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+  }
 }
 
 Widget buildTrustBadge(int tier) {
