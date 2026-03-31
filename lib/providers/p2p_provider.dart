@@ -12,6 +12,7 @@ import 'package:flutter_p2p_connection/flutter_p2p_connection.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../crypto/crypto_service.dart';
 import '../database/connection.dart';
@@ -239,8 +240,13 @@ class P2pService extends _$P2pService {
     }
 
     if (state.isAutoSyncing && !_disposed) {
-      // Randomize cycle between 12 and 25 seconds to prevent perfect sync loops
-      final nextCycleSeconds = 12 + Random().nextInt(14);
+      // Read the latest interval from preferences
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.reload();
+      final baseInterval = prefs.getInt('settings_sync_interval') ?? 30;
+      
+      // Add a small jitter (0-5s) to prevent perfect sync loops between two devices
+      final nextCycleSeconds = baseInterval + Random().nextInt(6);
       _autoSyncTimer = Timer(Duration(seconds: nextCycleSeconds), _runAutoSyncCycle);
     }
   }
