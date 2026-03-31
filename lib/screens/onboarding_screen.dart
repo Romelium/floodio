@@ -75,16 +75,16 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const SizedBox(height: 32),
-            const Icon(Icons.hub, size: 64, color: Colors.blue),
+            const Icon(Icons.hub, size: 80, color: Colors.blue),
             const SizedBox(height: 24),
             const Text(
-              'Personal Information',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              'Welcome to Floodio',
+              style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 16),
             const Text(
-              'This information will be shared with nearby devices to help coordinate relief efforts.',
+              'Set up your profile to start sharing and receiving critical emergency information.',
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 16, color: Colors.grey),
             ),

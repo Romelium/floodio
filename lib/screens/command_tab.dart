@@ -112,20 +112,20 @@ class CommandTab extends ConsumerWidget {
                         const SizedBox(height: 12),
                         if (activeVolunteers.isEmpty)
                           Container(
-                            padding: const EdgeInsets.all(16),
+                            padding: const EdgeInsets.all(20),
                             decoration: BoxDecoration(
-                              color: Colors.grey.shade100,
+                              color: Colors.purple.shade50,
                               borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Colors.grey.shade300),
+                              border: Border.all(color: Colors.purple.shade100),
                             ),
-                            child: const Row(
+                            child: Row(
                               children: [
-                                Icon(Icons.info_outline, color: Colors.grey),
-                                SizedBox(width: 12),
+                                Icon(Icons.admin_panel_settings_outlined, color: Colors.purple.shade300, size: 32),
+                                const SizedBox(width: 16),
                                 Expanded(
                                   child: Text(
                                     'No active volunteers. You can promote trusted users from the feed.',
-                                    style: TextStyle(color: Colors.grey),
+                                    style: TextStyle(color: Colors.purple.shade800),
                                   ),
                                 ),
                               ],

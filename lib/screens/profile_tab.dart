@@ -897,20 +897,20 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                         const SizedBox(height: 12),
                         if (trustedSenders.isEmpty)
                           Container(
-                            padding: const EdgeInsets.all(16),
+                            padding: const EdgeInsets.all(20),
                             decoration: BoxDecoration(
-                              color: Colors.grey.shade100,
+                              color: Colors.green.shade50,
                               borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Colors.grey.shade300),
+                              border: Border.all(color: Colors.green.shade100),
                             ),
-                            child: const Row(
+                            child: Row(
                               children: [
-                                Icon(Icons.info_outline, color: Colors.grey),
-                                SizedBox(width: 12),
+                                Icon(Icons.verified_user_outlined, color: Colors.green.shade300, size: 32),
+                                const SizedBox(width: 16),
                                 Expanded(
                                   child: Text(
                                     'You have not trusted any senders yet. Trust senders from the feed to prioritize their reports.',
-                                    style: TextStyle(color: Colors.grey),
+                                    style: TextStyle(color: Colors.green.shade800),
                                   ),
                                 ),
                               ],
@@ -1020,20 +1020,20 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                         const SizedBox(height: 12),
                         if (untrustedSenders.isEmpty)
                           Container(
-                            padding: const EdgeInsets.all(16),
+                            padding: const EdgeInsets.all(20),
                             decoration: BoxDecoration(
-                              color: Colors.grey.shade100,
+                              color: Colors.red.shade50,
                               borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Colors.grey.shade300),
+                              border: Border.all(color: Colors.red.shade100),
                             ),
-                            child: const Row(
+                            child: Row(
                               children: [
-                                Icon(Icons.info_outline, color: Colors.grey),
-                                SizedBox(width: 12),
+                                Icon(Icons.block_outlined, color: Colors.red.shade300, size: 32),
+                                const SizedBox(width: 16),
                                 Expanded(
                                   child: Text(
                                     'You have not blocked any senders.',
-                                    style: TextStyle(color: Colors.grey),
+                                    style: TextStyle(color: Colors.red.shade800),
                                   ),
                                 ),
                               ],
@@ -1305,20 +1305,20 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                         const SizedBox(height: 12),
                         if (myReports.isEmpty)
                           Container(
-                            padding: const EdgeInsets.all(16),
+                            padding: const EdgeInsets.all(20),
                             decoration: BoxDecoration(
-                              color: Colors.grey.shade100,
+                              color: Colors.blue.shade50,
                               borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Colors.grey.shade300),
+                              border: Border.all(color: Colors.blue.shade100),
                             ),
-                            child: const Row(
+                            child: Row(
                               children: [
-                                Icon(Icons.info_outline, color: Colors.grey),
-                                SizedBox(width: 12),
+                                Icon(Icons.my_library_books_outlined, color: Colors.blue.shade300, size: 32),
+                                const SizedBox(width: 16),
                                 Expanded(
                                   child: Text(
                                     'You have not made any reports yet.',
-                                    style: TextStyle(color: Colors.grey),
+                                    style: TextStyle(color: Colors.blue.shade800),
                                   ),
                                 ),
                               ],

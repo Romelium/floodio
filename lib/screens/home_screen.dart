@@ -1,8 +1,9 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'dart:async';
 
 import 'package:fixnum/fixnum.dart';
+import 'package:floodio/widgets/sync_bottom_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
@@ -60,19 +61,32 @@ class _SearchBar extends ConsumerStatefulWidget {
 
 class _SearchBarState extends ConsumerState<_SearchBar> {
   Timer? _debounce;
+  final _controller = TextEditingController();
 
   @override
   void dispose() {
     _debounce?.cancel();
+    _controller.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return TextField(
+      controller: _controller,
       decoration: InputDecoration(
         hintText: 'Search reports...',
         prefixIcon: const Icon(Icons.search),
+        suffixIcon: _controller.text.isNotEmpty
+            ? IconButton(
+                icon: const Icon(Icons.clear),
+                onPressed: () {
+                  _controller.clear();
+                  ref.read(feedFilterControllerProvider.notifier).updateSearchQuery('');
+                  setState(() {});
+                },
+              )
+            : null,
         filled: true,
         fillColor: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
         border: OutlineInputBorder(
@@ -82,6 +96,7 @@ class _SearchBarState extends ConsumerState<_SearchBar> {
         contentPadding: const EdgeInsets.symmetric(vertical: 0),
       ),
       onChanged: (val) {
+        setState(() {});
         if (_debounce?.isActive ?? false) _debounce!.cancel();
         _debounce = Timer(const Duration(milliseconds: 300), () {
           ref.read(feedFilterControllerProvider.notifier).updateSearchQuery(val);
@@ -908,21 +923,31 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (context) => SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 16.0),
+          padding: const EdgeInsets.symmetric(vertical: 8.0),
           child: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
+                Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 16, top: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
                 const Padding(
                   padding: EdgeInsets.only(bottom: 16.0),
                   child: Text(
                     'Create Report',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                   ),
                 ),
                 ListTile(
@@ -2539,21 +2564,38 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       return const Center(child: CircularProgressIndicator());
     }
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.inbox_outlined, size: 64, color: Colors.grey.shade400),
-          const SizedBox(height: 16),
-          Text(
-            'No data available.',
-            style: TextStyle(fontSize: 18, color: Colors.grey.shade600),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Try adjusting your filters or sync with nearby devices.',
-            style: TextStyle(color: Colors.grey.shade500),
-          ),
-        ],
+      child: Padding(
+        padding: const EdgeInsets.all(32.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.inbox_outlined, size: 80, color: Colors.grey.shade300),
+            const SizedBox(height: 24),
+            Text(
+              'No reports found',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.grey.shade700),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Try adjusting your filters, or sync with nearby devices to receive the latest updates.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.grey.shade500, fontSize: 16),
+            ),
+            const SizedBox(height: 24),
+            FilledButton.tonalIcon(
+              onPressed: () {
+                showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  backgroundColor: Colors.transparent,
+                  builder: (context) => const SyncBottomSheet(),
+                );
+              },
+              icon: const Icon(Icons.sync),
+              label: const Text('Open Sync Menu'),
+            )
+          ],
+        ),
       ),
     );
   }
