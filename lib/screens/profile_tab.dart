@@ -188,7 +188,17 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
             onPressed: () async {
               final newName = nameController.text.trim();
               final newContact = contactController.text.trim();
-              if (newName.isEmpty) return;
+              if (newName.isEmpty) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Name cannot be empty'),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                }
+                return;
+              }
 
               Navigator.pop(dialogContext);
 

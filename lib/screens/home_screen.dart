@@ -105,7 +105,9 @@ class _SearchBarState extends ConsumerState<_SearchBar> {
         setState(() {});
         if (_debounce?.isActive ?? false) _debounce!.cancel();
         _debounce = Timer(const Duration(milliseconds: 300), () {
-          ref.read(feedFilterControllerProvider.notifier).updateSearchQuery(val);
+          if (mounted) {
+            ref.read(feedFilterControllerProvider.notifier).updateSearchQuery(val);
+          }
         });
       },
     );
@@ -1337,7 +1339,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               ),
                             );
                           } else {
-                            setInnerState(() => selectedImage = image);
+                            try {
+                              setInnerState(() => selectedImage = image);
+                            } catch (_) {}
                           }
                         }
                       },
@@ -2377,14 +2381,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         : const StrokePattern.solid(),
                   );
                 }),
-                if (drawingState.mode == DrawingMode.path && drawingState.points.isNotEmpty)
+                if (drawingState.mode != DrawingMode.none && drawingState.points.isNotEmpty)
                   Polyline(
                     points: drawingState.mode == DrawingMode.area 
                         ? (drawingState.points.length > 1 ? [...drawingState.points, drawingState.points.first] : drawingState.points)
                         : drawingState.points,
                     color: drawingState.mode == DrawingMode.area ? Colors.blue : Colors.teal,
                     strokeWidth: 4.0,
-                    pattern: StrokePattern.dashed(segments: const [10.0, 10.0]),
+                    pattern: StrokePattern.dashed(segments: [10.0, 10.0]),
                   ),
               ],
             ),
@@ -4221,8 +4225,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         FloatingActionButton.small(
                           heroTag: 'zoom_in',
                           onPressed: () {
-                            final currentZoom = _mapController.camera.zoom;
-                            _mapController.move(_mapController.camera.center, currentZoom + 1);
+                            try {
+                              final currentZoom = _mapController.camera.zoom;
+                              _mapController.move(_mapController.camera.center, currentZoom + 1);
+                            } catch (e) {
+                              debugPrint('Map not ready: $e');
+                            }
                           },
                           backgroundColor: Theme.of(context).colorScheme.surface,
                           foregroundColor: Theme.of(context).colorScheme.primary,
@@ -4232,8 +4240,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         FloatingActionButton.small(
                           heroTag: 'zoom_out',
                           onPressed: () {
-                            final currentZoom = _mapController.camera.zoom;
-                            _mapController.move(_mapController.camera.center, currentZoom - 1);
+                            try {
+                              final currentZoom = _mapController.camera.zoom;
+                              _mapController.move(_mapController.camera.center, currentZoom - 1);
+                            } catch (e) {
+                              debugPrint('Map not ready: $e');
+                            }
                           },
                           backgroundColor: Theme.of(context).colorScheme.surface,
                           foregroundColor: Theme.of(context).colorScheme.primary,

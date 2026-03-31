@@ -550,7 +550,7 @@ class P2pService extends _$P2pService {
           dir.path,
           onProgress: (progress) {
             _idleTicks = 0; // Reset idle timer during download
-            if (progress.progressPercent % 10 < 1) {
+            if (progress.progressPercent.toInt() % 10 == 0) {
               state = state.copyWith(isSyncing: true, syncMessage: 'Downloading file: ${progress.progressPercent.toStringAsFixed(0)}%');
             }
           }
