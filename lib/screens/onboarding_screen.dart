@@ -27,7 +27,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     if (name.isEmpty) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Name is required')));
+      ).showSnackBar(const SnackBar(
+        content: Text('Name is required'),
+        behavior: SnackBarBehavior.floating,
+      ));
       return;
     }
 

@@ -105,20 +105,20 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
   void _deleteArea(String id) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Delete Area?'),
         content: const Text(
           'Are you sure you want to delete this area report?',
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text('Cancel'),
           ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () {
-              Navigator.pop(context);
+              Navigator.pop(dialogContext);
               ref.read(areasControllerProvider.notifier).deleteArea(id);
             },
             child: const Text('Delete'),
@@ -131,20 +131,20 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
   void _deletePath(String id) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Delete Path?'),
         content: const Text(
           'Are you sure you want to delete this path report?',
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text('Cancel'),
           ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () {
-              Navigator.pop(context);
+              Navigator.pop(dialogContext);
               ref.read(pathsControllerProvider.notifier).deletePath(id);
             },
             child: const Text('Delete'),
@@ -217,7 +217,10 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
 
               if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Profile updated')),
+                  const SnackBar(
+                    content: Text('Profile updated'),
+                    behavior: SnackBarBehavior.floating,
+                  ),
                 );
               }
             },
@@ -300,12 +303,12 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(innerContext),
+              onPressed: () => Navigator.pop(dialogContext),
               child: const Text('Cancel'),
             ),
             FilledButton(
               onPressed: () async {
-                Navigator.pop(innerContext);
+                Navigator.pop(dialogContext);
                 final cryptoService = ref.read(cryptoServiceProvider.notifier);
                 final timestamp = DateTime.now().millisecondsSinceEpoch;
                 final newId = marker.id; // Keep same ID for LWW CRDT
@@ -339,7 +342,10 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                     .addMarker(updatedMarker);
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Hazard updated')),
+                    const SnackBar(
+                      content: Text('Hazard updated'),
+                      behavior: SnackBarBehavior.floating,
+                    ),
                   );
                 }
               },
@@ -405,12 +411,12 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(innerContext),
+              onPressed: () => Navigator.pop(dialogContext),
               child: const Text('Cancel'),
             ),
             FilledButton(
               onPressed: () async {
-                Navigator.pop(innerContext);
+                Navigator.pop(dialogContext);
                 final cryptoService = ref.read(cryptoServiceProvider.notifier);
                 final timestamp = DateTime.now().millisecondsSinceEpoch;
                 final newId = news.id; // Keep same ID for LWW CRDT
@@ -443,7 +449,10 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                 if (mounted) {
                   ScaffoldMessenger.of(
                     context,
-                  ).showSnackBar(const SnackBar(content: Text('News updated')));
+                  ).showSnackBar(const SnackBar(
+                    content: Text('News updated'),
+                    behavior: SnackBarBehavior.floating,
+                  ));
                 }
               },
               child: const Text('Save'),
@@ -535,12 +544,12 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(innerContext),
+              onPressed: () => Navigator.pop(dialogContext),
               child: const Text('Cancel'),
             ),
             FilledButton(
               onPressed: () async {
-                Navigator.pop(innerContext);
+                Navigator.pop(dialogContext);
                 final cryptoService = ref.read(cryptoServiceProvider.notifier);
                 final timestamp = DateTime.now().millisecondsSinceEpoch;
                 final newId = area.id; // Keep same ID for LWW CRDT
@@ -574,7 +583,10 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                 if (mounted) {
                   ScaffoldMessenger.of(
                     context,
-                  ).showSnackBar(const SnackBar(content: Text('Area updated')));
+                  ).showSnackBar(const SnackBar(
+                    content: Text('Area updated'),
+                    behavior: SnackBarBehavior.floating,
+                  ));
                 }
               },
               child: const Text('Save'),
@@ -664,12 +676,12 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(innerContext),
+              onPressed: () => Navigator.pop(dialogContext),
               child: const Text('Cancel'),
             ),
             FilledButton(
               onPressed: () async {
-                Navigator.pop(innerContext);
+                Navigator.pop(dialogContext);
                 final cryptoService = ref.read(cryptoServiceProvider.notifier);
                 final timestamp = DateTime.now().millisecondsSinceEpoch;
                 final newId = path.id; // Keep same ID for LWW CRDT
@@ -703,7 +715,10 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                 if (mounted) {
                   ScaffoldMessenger.of(
                     context,
-                  ).showSnackBar(const SnackBar(content: Text('Path updated')));
+                  ).showSnackBar(const SnackBar(
+                    content: Text('Path updated'),
+                    behavior: SnackBarBehavior.floating,
+                  ));
                 }
               },
               child: const Text('Save'),
@@ -822,6 +837,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                                         content: Text(
                                           'Public Key copied to clipboard',
                                         ),
+                                        behavior: SnackBarBehavior.floating,
                                       ),
                                     );
                                   }
@@ -956,14 +972,14 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                                     onPressed: () {
                                       showDialog(
                                         context: context,
-                                        builder: (context) => AlertDialog(
+                                        builder: (dialogContext) => AlertDialog(
                                           title: const Text('Remove Trusted Sender?'),
                                           content: Text(
                                             'Are you sure you want to remove ${sender.name} from your trusted senders? Their future reports will be marked as Crowdsourced.',
                                           ),
                                           actions: [
                                             TextButton(
-                                              onPressed: () => Navigator.pop(context),
+                                              onPressed: () => Navigator.pop(dialogContext),
                                               child: const Text('Cancel'),
                                             ),
                                             FilledButton(
@@ -971,7 +987,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                                                 backgroundColor: Colors.red,
                                               ),
                                               onPressed: () {
-                                                Navigator.pop(context);
+                                                Navigator.pop(dialogContext);
                                                 _removeTrustedSender(sender.publicKey);
                                               },
                                               child: const Text('Remove'),
@@ -1070,11 +1086,32 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                                     icon: const Icon(Icons.restore, color: Colors.blue),
                                     tooltip: 'Unblock',
                                     onPressed: () {
-                                      ref
-                                          .read(
-                                            untrustedSendersControllerProvider.notifier,
-                                          )
-                                          .removeUntrustedSender(sender.publicKey);
+                                      showDialog(
+                                        context: context,
+                                        builder: (dialogContext) => AlertDialog(
+                                          title: const Text('Unblock Sender?'),
+                                          content: const Text('Are you sure you want to unblock this sender?'),
+                                          actions: [
+                                            TextButton(
+                                              onPressed: () => Navigator.pop(dialogContext),
+                                              child: const Text('Cancel'),
+                                            ),
+                                            FilledButton(
+                                              onPressed: () {
+                                                Navigator.pop(dialogContext);
+                                                ref.read(untrustedSendersControllerProvider.notifier).removeUntrustedSender(sender.publicKey);
+                                                ScaffoldMessenger.of(context).showSnackBar(
+                                                  const SnackBar(
+                                                    content: Text('Sender unblocked.'),
+                                                    behavior: SnackBarBehavior.floating,
+                                                  ),
+                                                );
+                                              },
+                                              child: const Text('Unblock'),
+                                            ),
+                                          ],
+                                        ),
+                                      );
                                     },
                                   ),
                                 );
@@ -1165,6 +1202,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                                               ).showSnackBar(
                                                 const SnackBar(
                                                   content: Text('Offline maps cleared'),
+                                                  behavior: SnackBarBehavior.floating,
                                                 ),
                                               );
                                             },
@@ -1240,6 +1278,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                                                     ).showSnackBar(
                                                       const SnackBar(
                                                         content: Text('Region deleted'),
+                                                        behavior: SnackBarBehavior.floating,
                                                       ),
                                                     );
                                                   },

@@ -229,6 +229,7 @@ class SyncBottomSheet extends ConsumerWidget {
                                           content: Text(
                                             'Syncing with cloud...',
                                           ),
+                                          behavior: SnackBarBehavior.floating,
                                         ),
                                       );
                                       final success = await cloudSyncNotifier
@@ -242,6 +243,7 @@ class SyncBottomSheet extends ConsumerWidget {
                                               content: Text(
                                                 'Cloud sync complete.',
                                               ),
+                                              behavior: SnackBarBehavior.floating,
                                             ),
                                           );
                                         } else {
@@ -252,6 +254,7 @@ class SyncBottomSheet extends ConsumerWidget {
                                               content: Text(
                                                 'Cloud sync failed.',
                                               ),
+                                              behavior: SnackBarBehavior.floating,
                                             ),
                                           );
                                         }
@@ -330,6 +333,7 @@ class SyncBottomSheet extends ConsumerWidget {
                                               content: Text(
                                                 'Requested map region from peer...',
                                               ),
+                                              behavior: SnackBarBehavior.floating,
                                             ),
                                           );
                                         },

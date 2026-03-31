@@ -187,7 +187,10 @@ class CommandTab extends ConsumerWidget {
                                                 ref.read(uiP2pServiceProvider.notifier).triggerSync();
                                                 if (context.mounted) {
                                                   ScaffoldMessenger.of(context).showSnackBar(
-                                                    const SnackBar(content: Text('Volunteer status revoked.')),
+                                                    const SnackBar(
+                                                      content: Text('Volunteer status revoked.'),
+                                                      behavior: SnackBarBehavior.floating,
+                                                    ),
                                                   );
                                                 }
                                               },
@@ -314,17 +317,26 @@ class CommandTab extends ConsumerWidget {
                     ? null
                     : () async {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Initiating cloud sync...')),
+                          const SnackBar(
+                            content: Text('Initiating cloud sync...'),
+                            behavior: SnackBarBehavior.floating,
+                          ),
                         );
                         final success = await cloudNotifier.syncWithCloud();
                         if (context.mounted) {
                           if (success) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Cloud sync complete.')),
+                              const SnackBar(
+                                content: Text('Cloud sync complete.'),
+                                behavior: SnackBarBehavior.floating,
+                              ),
                             );
                           } else {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Cloud sync failed. Check connection.')),
+                              const SnackBar(
+                                content: Text('Cloud sync failed. Check connection.'),
+                                behavior: SnackBarBehavior.floating,
+                              ),
                             );
                           }
                         }
@@ -417,7 +429,10 @@ class CommandTab extends ConsumerWidget {
                   Navigator.pop(dialogContext);
                   ref.read(uiP2pServiceProvider.notifier).broadcastMapRegion(region);
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Packing and broadcasting map...')),
+                    const SnackBar(
+                      content: Text('Packing and broadcasting map...'),
+                      behavior: SnackBarBehavior.floating,
+                    ),
                   );
                 },
               );

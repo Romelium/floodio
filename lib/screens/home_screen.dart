@@ -72,6 +72,12 @@ class _SearchBarState extends ConsumerState<_SearchBar> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen(feedFilterControllerProvider, (prev, next) {
+      if (next.searchQuery.isEmpty && _controller.text.isNotEmpty) {
+        _controller.clear();
+      }
+    });
+
     return TextField(
       controller: _controller,
       decoration: InputDecoration(
@@ -144,6 +150,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             onPressed: () => openAppSettings(),
           ),
           duration: const Duration(seconds: 5),
+          behavior: SnackBarBehavior.floating,
         ),
       );
     } else if (granted) {
@@ -163,6 +170,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             'Please enable Location Services (GPS) for Bluetooth discovery.',
           ),
           duration: Duration(seconds: 5),
+          behavior: SnackBarBehavior.floating,
         ),
       );
     }
@@ -223,7 +231,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   ref.invalidate(localUserControllerProvider);
                   if (!mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('All data cleared')),
+                    const SnackBar(
+                      content: Text('All data cleared'),
+                      behavior: SnackBarBehavior.floating,
+                    ),
                   );
                   Navigator.of(context).pushAndRemoveUntil(
                     MaterialPageRoute(
@@ -243,7 +254,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       .fetchAndInjectMockData();
                   if (!mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Mock Gov API data injected')),
+                    const SnackBar(
+                      content: Text('Mock Gov API data injected'),
+                      behavior: SnackBarBehavior.floating,
+                    ),
                   );
                 },
               ),
@@ -265,6 +279,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
                       content: Text('You are now an Admin-Trusted Volunteer!'),
+                      behavior: SnackBarBehavior.floating,
                     ),
                   );
                 },
@@ -284,6 +299,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
                       content: Text('Your Admin Trust has been revoked!'),
+                      behavior: SnackBarBehavior.floating,
                     ),
                   );
                 },
@@ -308,6 +324,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       content: Text(
                         'Official Mode: ${!current ? "ON" : "OFF"}',
                       ),
+                      behavior: SnackBarBehavior.floating,
                     ),
                   );
                 },
@@ -320,12 +337,31 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   void _blockSender(String senderId) {
-    ref
-        .read(untrustedSendersControllerProvider.notifier)
-        .addUntrustedSender(senderId);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Sender blocked. Their reports have been removed.'),
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Block Sender?'),
+        content: const Text('Are you sure you want to block this sender? All their reports will be hidden and deleted from your device.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () {
+              Navigator.pop(dialogContext);
+              ref.read(untrustedSendersControllerProvider.notifier).addUntrustedSender(senderId);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Sender blocked. Their reports have been removed.'),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            },
+            child: const Text('Block'),
+          ),
+        ],
       ),
     );
   }
@@ -333,25 +369,28 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   void _resolveMarker(String id) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Resolve Hazard?'),
         content: const Text(
           'Marking this hazard as resolved will remove it from the map for you and nearby users upon sync.',
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text('Cancel'),
           ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: Colors.green),
             onPressed: () {
-              Navigator.pop(context);
+              Navigator.pop(dialogContext);
               ref
                   .read(hazardMarkersControllerProvider.notifier)
                   .deleteMarker(id);
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Hazard marked as resolved.')),
+                const SnackBar(
+                  content: Text('Hazard marked as resolved.'),
+                  behavior: SnackBarBehavior.floating,
+                ),
               );
             },
             child: const Text('Resolve'),
@@ -364,23 +403,26 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   void _resolveArea(String id) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Resolve Area?'),
         content: const Text(
           'Marking this area as resolved will remove it from the map for you and nearby users upon sync.',
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text('Cancel'),
           ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: Colors.green),
             onPressed: () {
-              Navigator.pop(context);
+              Navigator.pop(dialogContext);
               ref.read(areasControllerProvider.notifier).deleteArea(id);
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Area marked as resolved.')),
+                const SnackBar(
+                  content: Text('Area marked as resolved.'),
+                  behavior: SnackBarBehavior.floating,
+                ),
               );
             },
             child: const Text('Resolve'),
@@ -393,23 +435,26 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   void _resolvePath(String id) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Resolve Path?'),
         content: const Text(
           'Marking this path as resolved will remove it from the map for you and nearby users upon sync.',
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text('Cancel'),
           ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: Colors.green),
             onPressed: () {
-              Navigator.pop(context);
+              Navigator.pop(dialogContext);
               ref.read(pathsControllerProvider.notifier).deletePath(id);
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Path marked as resolved.')),
+                const SnackBar(
+                  content: Text('Path marked as resolved.'),
+                  behavior: SnackBarBehavior.floating,
+                ),
               );
             },
             child: const Text('Resolve'),
@@ -446,6 +491,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Report debunked and removal broadcasted.'),
+          behavior: SnackBarBehavior.floating,
         ),
       );
     }
@@ -454,20 +500,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   void _confirmDebunkReport(String id, String type) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Debunk Report?'),
         content: const Text(
           'Marking this report as false will actively delete it from the mesh network and broadcast the removal to all nearby devices.',
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text('Cancel'),
           ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () {
-              Navigator.pop(context);
+              Navigator.pop(dialogContext);
               _debunkReport(id, type);
             },
             child: const Text('Debunk'),
@@ -480,24 +526,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   void _dismissNews(String id) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Dismiss News?'),
         content: const Text(
           'This will remove the news item from your feed and for nearby users upon sync.',
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text('Cancel'),
           ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: Colors.green),
             onPressed: () {
-              Navigator.pop(context);
+              Navigator.pop(dialogContext);
               ref.read(newsItemsControllerProvider.notifier).deleteNewsItem(id);
               ScaffoldMessenger.of(
                 context,
-              ).showSnackBar(const SnackBar(content: Text('News dismissed.')));
+              ).showSnackBar(const SnackBar(
+                content: Text('News dismissed.'),
+                behavior: SnackBarBehavior.floating,
+              ));
             },
             child: const Text('Dismiss'),
           ),
@@ -602,7 +651,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Hazard verified and endorsed!')),
+        const SnackBar(
+          content: Text('Hazard verified and endorsed!'),
+          behavior: SnackBarBehavior.floating,
+        ),
       );
     }
   }
@@ -701,7 +753,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Area verified and endorsed!')),
+        const SnackBar(
+          content: Text('Area verified and endorsed!'),
+          behavior: SnackBarBehavior.floating,
+        ),
       );
     }
   }
@@ -800,7 +855,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Path verified and endorsed!')),
+        const SnackBar(
+          content: Text('Path verified and endorsed!'),
+          behavior: SnackBarBehavior.floating,
+        ),
       );
     }
   }
@@ -897,7 +955,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('News verified and endorsed!')),
+        const SnackBar(
+          content: Text('News verified and endorsed!'),
+          behavior: SnackBarBehavior.floating,
+        ),
       );
     }
   }
@@ -992,6 +1053,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           content: Text(
                             'Tap on the map to draw an area polygon.',
                           ),
+                          behavior: SnackBarBehavior.floating,
                         ),
                       );
                     }
@@ -1023,6 +1085,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       ScaffoldMessenger.of(this.context).showSnackBar(
                         const SnackBar(
                           content: Text('Tap on the map to draw a path.'),
+                          behavior: SnackBarBehavior.floating,
                         ),
                       );
                     }
@@ -1269,6 +1332,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                 content: Text(
                                   'Image is too large (limit 1MB). Please try again.',
                                 ),
+                                behavior: SnackBarBehavior.floating,
                               ),
                             );
                           } else {
@@ -1830,7 +1894,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please wait for the map to load first.')),
+        const SnackBar(
+          content: Text('Please wait for the map to load first.'),
+          behavior: SnackBarBehavior.floating,
+        ),
       );
     }
   }
@@ -1840,6 +1907,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('APK sharing is only available on Android.'),
+          behavior: SnackBarBehavior.floating,
         ),
       );
       return;
@@ -1869,7 +1937,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('Failed to share APK: $e')));
+        ).showSnackBar(SnackBar(
+          content: Text('Failed to share APK: $e'),
+          behavior: SnackBarBehavior.floating,
+        ));
       }
     }
   }
@@ -2037,6 +2108,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               content: Text(
                                 'Image is too large (limit 1MB). Please try again.',
                               ),
+                              behavior: SnackBarBehavior.floating,
                             ),
                           );
                         } else {
@@ -2616,64 +2688,79 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           },
         ),
         Expanded(
-          child: NotificationListener<ScrollNotification>(
-            onNotification: (ScrollNotification scrollInfo) {
-              if (scrollInfo.metrics.pixels >= scrollInfo.metrics.maxScrollExtent - 200) {
-                ref.read(feedLimitProvider.notifier).loadMore();
-              }
-              return false;
+          child: RefreshIndicator(
+            onRefresh: () async {
+              ref.read(uiP2pServiceProvider.notifier).triggerSync();
+              ref.read(cloudSyncServiceProvider.notifier).syncWithCloud();
+              await Future.delayed(const Duration(seconds: 1));
             },
-            child: Consumer(
-              builder: (context, ref, child) {
-                final localUserAsync = ref.watch(localUserControllerProvider);
-                final myPublicKey = localUserAsync.value?.publicKey;
-                final combined = ref.watch(combinedFeedProvider);
-                final profiles = ref.watch(userProfilesControllerProvider).value ?? [];
-                final settings = ref.watch(appSettingsProvider);
-
-                final isLoading =
-                    ref.watch(filteredHazardMarkersProvider).isLoading ||
-                    ref.watch(filteredNewsItemsProvider).isLoading ||
-                    ref.watch(filteredAreasProvider).isLoading;
-
-                final adminTrustedAsync = ref.watch(
-                  adminTrustedSendersControllerProvider,
-                );
-                final revokedAsync = ref.watch(revokedDelegationsControllerProvider);
-                final adminTrusted = adminTrustedAsync.value ?? [];
-                final revoked = revokedAsync.value ?? [];
-                final revokedKeys = revoked.map((e) => e.delegateePublicKey).toSet();
-                final isTier2 =
-                    myPublicKey != null &&
-                    adminTrusted.any(
-                      (a) =>
-                          a.publicKey == myPublicKey &&
-                          !revokedKeys.contains(a.publicKey),
-                    );
-                final isAdmin = settings.isOfficialMode || isTier2;
-
-                if (combined.isEmpty) {
-                  return _buildEmptyFeedState(isLoading);
+            child: NotificationListener<ScrollNotification>(
+              onNotification: (ScrollNotification scrollInfo) {
+                if (scrollInfo.metrics.pixels >= scrollInfo.metrics.maxScrollExtent - 200) {
+                  ref.read(feedLimitProvider.notifier).loadMore();
                 }
+                return false;
+              },
+              child: Consumer(
+                builder: (context, ref, child) {
+                  final localUserAsync = ref.watch(localUserControllerProvider);
+                  final myPublicKey = localUserAsync.value?.publicKey;
+                  final combined = ref.watch(combinedFeedProvider);
+                  final profiles = ref.watch(userProfilesControllerProvider).value ?? [];
+                  final settings = ref.watch(appSettingsProvider);
 
-                return ListView.builder(
-                  padding: const EdgeInsets.only(top: 8, bottom: 80),
-                  itemCount:
-                      combined.length +
-                      (combined.length >= ref.watch(feedLimitProvider)
-                          ? 1
-                          : 0),
-                  itemBuilder: (context, index) {
-                    if (index == combined.length) {
-                      return const Padding(
-                        padding: EdgeInsets.all(16.0),
-                        child: Center(child: CircularProgressIndicator()),
+                  final isLoading =
+                      ref.watch(filteredHazardMarkersProvider).isLoading ||
+                      ref.watch(filteredNewsItemsProvider).isLoading ||
+                      ref.watch(filteredAreasProvider).isLoading;
+
+                  final adminTrustedAsync = ref.watch(
+                    adminTrustedSendersControllerProvider,
+                  );
+                  final revokedAsync = ref.watch(revokedDelegationsControllerProvider);
+                  final adminTrusted = adminTrustedAsync.value ?? [];
+                  final revoked = revokedAsync.value ?? [];
+                  final revokedKeys = revoked.map((e) => e.delegateePublicKey).toSet();
+                  final isTier2 =
+                      myPublicKey != null &&
+                      adminTrusted.any(
+                        (a) =>
+                            a.publicKey == myPublicKey &&
+                            !revokedKeys.contains(a.publicKey),
                       );
-                    }
-                    final item = combined[index];
-                    final canEndorse =
-                        isAdmin &&
-                        (item.trustTier == 3 || item.trustTier == 4);
+                  final isAdmin = settings.isOfficialMode || isTier2;
+
+                  if (combined.isEmpty) {
+                    return ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      children: [
+                        SizedBox(
+                          height: MediaQuery.of(context).size.height * 0.6,
+                          child: _buildEmptyFeedState(isLoading),
+                        ),
+                      ],
+                    );
+                  }
+
+                  return ListView.builder(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.only(top: 8, bottom: 80),
+                    itemCount:
+                        combined.length +
+                        (combined.length >= ref.watch(feedLimitProvider)
+                            ? 1
+                            : 0),
+                    itemBuilder: (context, index) {
+                      if (index == combined.length) {
+                        return const Padding(
+                          padding: EdgeInsets.all(16.0),
+                          child: Center(child: CircularProgressIndicator()),
+                        );
+                      }
+                      final item = combined[index];
+                      final canEndorse =
+                          isAdmin &&
+                          (item.trustTier == 3 || item.trustTier == 4);
 
                         if (item is HazardMarkerEntity) {
                           final color = getHazardColor(
@@ -3650,6 +3737,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
           ),
         ),
+        ),
       ],
     );
   }
@@ -3697,6 +3785,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
             child: Row(
               children: [
+                if (filter.typeFilter != 'All' || filter.trustFilter != null)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8.0),
+                    child: ActionChip(
+                      label: const Text('Clear'),
+                      avatar: const Icon(Icons.clear, size: 16),
+                      onPressed: () {
+                        filterNotifier.updateTypeFilter('All');
+                        filterNotifier.updateTrustFilter(null);
+                      },
+                    ),
+                  ),
                 const Icon(
                   Icons.verified_user_outlined,
                   size: 16,
@@ -3731,24 +3831,66 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   void _markAsTrusted(String senderId) {
-    ref
-        .read(trustedSendersControllerProvider.notifier)
-        .addTrustedSender(senderId, 'Trusted User');
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Sender marked as trusted!')));
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Trust Sender?'),
+        content: const Text('Are you sure you want to trust this sender? Their reports will be prioritized and marked as Trusted.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.green),
+            onPressed: () {
+              Navigator.pop(dialogContext);
+              ref.read(trustedSendersControllerProvider.notifier).addTrustedSender(senderId, 'Trusted User');
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Sender marked as trusted!'),
+                  behavior: SnackBarBehavior.floating,
+                )
+              );
+            },
+            child: const Text('Trust'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _makeOfficialVolunteer(String senderId) async {
-    await ref
-        .read(mockGovApiServiceProvider.notifier)
-        .delegateAdminTrust(senderId);
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('User upgraded to Official Volunteer!')),
-      );
-    }
-    ref.read(p2pServiceProvider.notifier).triggerSync();
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Make Official Volunteer?'),
+        content: const Text('Are you sure you want to promote this user to an Official Volunteer? Their reports will be marked as Verified.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.purple),
+            onPressed: () async {
+              Navigator.pop(dialogContext);
+              await ref.read(mockGovApiServiceProvider.notifier).delegateAdminTrust(senderId);
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('User upgraded to Official Volunteer!'),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              }
+              ref.read(p2pServiceProvider.notifier).triggerSync();
+            },
+            child: const Text('Promote'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -3826,11 +3968,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     if (hasInternet) {
                       ref.read(cloudSyncServiceProvider.notifier).syncWithCloud();
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Syncing with cloud...')),
+                        const SnackBar(
+                          content: Text('Syncing with cloud...'),
+                          behavior: SnackBarBehavior.floating,
+                        ),
                       );
                     } else {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('No internet connection available.')),
+                        const SnackBar(
+                          content: Text('No internet connection available.'),
+                          behavior: SnackBarBehavior.floating,
+                        ),
                       );
                     }
                   },
@@ -4027,6 +4175,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                       ? 'Showing offline regions'
                                       : 'Hiding offline regions',
                                 ),
+                                behavior: SnackBarBehavior.floating,
                               ),
                             );
                           },
@@ -4052,6 +4201,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                   ).showSnackBar(
                                     const SnackBar(
                                       content: Text('Location not available'),
+                                      behavior: SnackBarBehavior.floating,
                                     ),
                                   );
                                 }
