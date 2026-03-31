@@ -23,8 +23,8 @@ import '../providers/cached_tile_provider.dart';
 import '../providers/database_provider.dart';
 import '../providers/feed_provider.dart';
 import '../providers/hazard_marker_provider.dart';
-import '../providers/location_provider.dart';
 import '../providers/local_user_provider.dart';
+import '../providers/location_provider.dart';
 import '../providers/map_downloader_provider.dart';
 import '../providers/news_item_provider.dart';
 import '../providers/offline_regions_provider.dart';
@@ -460,8 +460,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   Future<void> _endorseHazard(HazardMarkerEntity marker) async {
     final localUser = ref.read(localUserControllerProvider).value;
-    final _myPublicKey = localUser?.publicKey;
-    if (_myPublicKey == null) return;
+    final myPublicKey = localUser?.publicKey;
+    if (myPublicKey == null) return;
     final cryptoService = ref.read(cryptoServiceProvider.notifier);
     final timestamp = DateTime.now().millisecondsSinceEpoch;
     final settings = ref.read(appSettingsProvider);
@@ -479,7 +479,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       senderId = official.$1;
       signature = official.$2;
     } else {
-      senderId = _myPublicKey!;
+      senderId = myPublicKey;
       signature = await cryptoService.signData(payloadToSign);
     }
 
@@ -561,8 +561,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   Future<void> _endorseArea(AreaEntity area) async {
     final localUser = ref.read(localUserControllerProvider).value;
-    final _myPublicKey = localUser?.publicKey;
-    if (_myPublicKey == null) return;
+    final myPublicKey = localUser?.publicKey;
+    if (myPublicKey == null) return;
     final cryptoService = ref.read(cryptoServiceProvider.notifier);
     final timestamp = DateTime.now().millisecondsSinceEpoch;
     final settings = ref.read(appSettingsProvider);
@@ -581,7 +581,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       senderId = official.$1;
       signature = official.$2;
     } else {
-      senderId = _myPublicKey!;
+      senderId = myPublicKey;
       signature = await cryptoService.signData(payloadToSign);
     }
 
@@ -660,8 +660,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   Future<void> _endorsePath(PathEntity path) async {
     final localUser = ref.read(localUserControllerProvider).value;
-    final _myPublicKey = localUser?.publicKey;
-    if (_myPublicKey == null) return;
+    final myPublicKey = localUser?.publicKey;
+    if (myPublicKey == null) return;
     final cryptoService = ref.read(cryptoServiceProvider.notifier);
     final timestamp = DateTime.now().millisecondsSinceEpoch;
     final settings = ref.read(appSettingsProvider);
@@ -680,7 +680,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       senderId = official.$1;
       signature = official.$2;
     } else {
-      senderId = _myPublicKey!;
+      senderId = myPublicKey;
       signature = await cryptoService.signData(payloadToSign);
     }
 
@@ -759,8 +759,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   Future<void> _endorseNews(NewsItemEntity news) async {
     final localUser = ref.read(localUserControllerProvider).value;
-    final _myPublicKey = localUser?.publicKey;
-    if (_myPublicKey == null) return;
+    final myPublicKey = localUser?.publicKey;
+    if (myPublicKey == null) return;
     final cryptoService = ref.read(cryptoServiceProvider.notifier);
     final timestamp = DateTime.now().millisecondsSinceEpoch;
     final settings = ref.read(appSettingsProvider);
@@ -778,7 +778,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       senderId = official.$1;
       signature = official.$2;
     } else {
-      senderId = _myPublicKey!;
+      senderId = myPublicKey;
       signature = await cryptoService.signData(payloadToSign);
     }
 
@@ -2119,7 +2119,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return Consumer(
       builder: (context, ref, child) {
         final localUserAsync = ref.watch(localUserControllerProvider);
-        final _myPublicKey = localUserAsync.value?.publicKey;
+        final myPublicKey = localUserAsync.value?.publicKey;
         final markersAsync = ref.watch(hazardMarkersControllerProvider);
         final areasAsync = ref.watch(areasControllerProvider);
         final pathsAsync = ref.watch(pathsControllerProvider);
@@ -2143,10 +2143,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         final revoked = revokedAsync.value ?? [];
         final revokedKeys = revoked.map((e) => e.delegateePublicKey).toSet();
         final isTier2 =
-            _myPublicKey != null &&
+            myPublicKey != null &&
             adminTrusted.any(
               (a) =>
-                  a.publicKey == _myPublicKey &&
+                  a.publicKey == myPublicKey &&
                   !revokedKeys.contains(a.publicKey),
             );
         final isAdmin = settings.isOfficialMode || isTier2;
@@ -2572,7 +2572,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           child: Consumer(
             builder: (context, ref, child) {
               final localUserAsync = ref.watch(localUserControllerProvider);
-              final _myPublicKey = localUserAsync.value?.publicKey;
+              final myPublicKey = localUserAsync.value?.publicKey;
               final combined = ref.watch(combinedFeedProvider);
               final profiles = ref.watch(userProfilesControllerProvider).value ?? [];
               final settings = ref.watch(appSettingsProvider);
@@ -2590,10 +2590,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               final revoked = revokedAsync.value ?? [];
               final revokedKeys = revoked.map((e) => e.delegateePublicKey).toSet();
               final isTier2 =
-                  _myPublicKey != null &&
+                  myPublicKey != null &&
                   adminTrusted.any(
                     (a) =>
-                        a.publicKey == _myPublicKey &&
+                        a.publicKey == myPublicKey &&
                         !revokedKeys.contains(a.publicKey),
                   );
               final isAdmin = settings.isOfficialMode || isTier2;

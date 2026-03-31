@@ -6,15 +6,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../crypto/crypto_service.dart';
 import '../database/tables.dart';
 import '../providers/area_provider.dart';
 import '../providers/hazard_marker_provider.dart';
+import '../providers/local_user_provider.dart';
 import '../providers/news_item_provider.dart';
 import '../providers/offline_regions_provider.dart';
-import '../providers/local_user_provider.dart';
 import '../providers/path_provider.dart';
 import '../providers/trusted_sender_provider.dart';
 import '../providers/untrusted_sender_provider.dart';
@@ -719,12 +718,12 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
   Widget build(BuildContext context) {
     final localUserAsync = ref.watch(localUserControllerProvider);
     final localUser = localUserAsync.value;
-    final _myName = localUser?.name ?? 'Unknown';
-    final _myContact = localUser?.contact ?? '';
-    final _myPublicKey = localUser?.publicKey;
+    final myName = localUser?.name ?? 'Unknown';
+    final myContact = localUser?.contact ?? '';
+    final myPublicKey = localUser?.publicKey;
 
     final mapCacheSizeAsync = ref.watch(mapCacheSizeControllerProvider);
-    final _mapCacheSize = mapCacheSizeAsync.value ?? 0;
+    final mapCacheSize = mapCacheSizeAsync.value ?? 0;
     final trustedSendersAsync = ref.watch(trustedSendersControllerProvider);
     final untrustedSendersAsync = ref.watch(untrustedSendersControllerProvider);
     final markersAsync = ref.watch(hazardMarkersControllerProvider);
@@ -736,17 +735,17 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
     final offlineRegions = offlineRegionsAsync.value ?? [];
     final untrustedSenders = untrustedSendersAsync.value ?? [];
     final myMarkers = (markersAsync.value ?? [])
-        .where((m) => m.senderId == _myPublicKey)
+        .where((m) => m.senderId == myPublicKey)
         .toList();
     final myNews = (newsAsync.value ?? [])
-        .where((n) => n.senderId == _myPublicKey)
+        .where((n) => n.senderId == myPublicKey)
         .toList();
     final myAreas = (areasAsync.value ?? [])
-        .where((a) => a.senderId == _myPublicKey)
+        .where((a) => a.senderId == myPublicKey)
         .toList();
     final pathsAsync = ref.watch(pathsControllerProvider);
     final myPaths = (pathsAsync.value ?? [])
-        .where((p) => p.senderId == _myPublicKey)
+        .where((p) => p.senderId == myPublicKey)
         .toList();
 
     final myReports = <dynamic>[...myMarkers, ...myNews, ...myAreas, ...myPaths];
@@ -782,7 +781,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                             context,
                           ).colorScheme.onPrimary,
                           child: Text(
-                            _myName.isNotEmpty ? _myName[0].toUpperCase() : '?',
+                            myName.isNotEmpty ? myName[0].toUpperCase() : '?',
                             style: const TextStyle(
                               fontSize: 28,
                               fontWeight: FontWeight.bold,
@@ -798,7 +797,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                                 children: [
                                   Expanded(
                                     child: Text(
-                                      _myName,
+                                      myName,
                                       style: const TextStyle(
                                         fontSize: 22,
                                         fontWeight: FontWeight.bold,
@@ -822,7 +821,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                                   ),
                                 ],
                               ),
-                              if (_myContact.isNotEmpty) ...[
+                              if (myContact.isNotEmpty) ...[
                                 const SizedBox(height: 4),
                                 Row(
                                   children: [
@@ -833,7 +832,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                                     ),
                                     const SizedBox(width: 4),
                                     Text(
-                                      _myContact,
+                                      myContact,
                                       style: TextStyle(
                                         fontSize: 14,
                                         color: Colors.grey.shade700,
@@ -845,9 +844,9 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                               const SizedBox(height: 8),
                               InkWell(
                                 onTap: () {
-                                  if (_myPublicKey != null) {
+                                  if (myPublicKey != null) {
                                     Clipboard.setData(
-                                      ClipboardData(text: _myPublicKey!),
+                                      ClipboardData(text: myPublicKey),
                                     );
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       const SnackBar(
@@ -869,8 +868,8 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                                     ),
                                     const SizedBox(width: 4),
                                     Text(
-                                      _myPublicKey != null
-                                          ? '${_myPublicKey!.substring(0, 12)}...'
+                                      myPublicKey != null
+                                          ? '${myPublicKey.substring(0, 12)}...'
                                           : 'Loading key...',
                                       style: TextStyle(
                                         fontSize: 13,
@@ -1126,7 +1125,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                           child: Icon(Icons.storage, color: Colors.white),
                         ),
                         title: const Text('Storage Used'),
-                        subtitle: Text(_formatBytes(_mapCacheSize)),
+                        subtitle: Text(_formatBytes(mapCacheSize)),
                         trailing: IconButton(
                           icon: const Icon(
                             Icons.delete_outline,
