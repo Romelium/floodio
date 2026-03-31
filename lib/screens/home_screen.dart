@@ -94,7 +94,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   Future<void> _loadMyPublicKey() async {
     await ref.read(cryptoServiceProvider.future);
-    final key = await ref.read(cryptoServiceProvider.notifier).getPublicKeyString();
+    final key = await ref
+        .read(cryptoServiceProvider.notifier)
+        .getPublicKeyString();
     if (mounted) {
       setState(() {
         _myPublicKey = key;
@@ -260,10 +262,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 onTap: () async {
                   Navigator.pop(sheetContext);
                   final current = ref.read(appSettingsProvider).isOfficialMode;
-                  await ref.read(appSettingsProvider.notifier).setOfficialMode(!current);
+                  await ref
+                      .read(appSettingsProvider.notifier)
+                      .setOfficialMode(!current);
                   if (!mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Official Mode: ${!current ? "ON" : "OFF"}')),
+                    SnackBar(
+                      content: Text(
+                        'Official Mode: ${!current ? "ON" : "OFF"}',
+                      ),
+                    ),
                   );
                 },
               ),
@@ -376,7 +384,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   Future<void> _debunkReport(String id, String type) async {
     final timestamp = DateTime.now().millisecondsSinceEpoch;
-    
+
     if (type == 'marker') {
       await ref.read(hazardMarkersControllerProvider.notifier).deleteMarker(id);
     } else if (type == 'news') {
@@ -388,16 +396,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
 
     final payload = pb.SyncPayload();
-    payload.deletedItems.add(pb.DeletedItem(
-      id: id,
-      timestamp: Int64(timestamp),
-    ));
+    payload.deletedItems.add(
+      pb.DeletedItem(id: id, timestamp: Int64(timestamp)),
+    );
 
     final encoded = base64Encode(payload.writeToBuffer());
-    await ref.read(p2pServiceProvider.notifier).broadcastText(jsonEncode({'type': 'payload', 'data': encoded}));
+    await ref
+        .read(p2pServiceProvider.notifier)
+        .broadcastText(jsonEncode({'type': 'payload', 'data': encoded}));
 
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Report debunked and removal broadcasted.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Report debunked and removal broadcasted.'),
+        ),
+      );
     }
   }
 
@@ -461,12 +474,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final cryptoService = ref.read(cryptoServiceProvider.notifier);
     final timestamp = DateTime.now().millisecondsSinceEpoch;
     final settings = ref.read(appSettingsProvider);
-    
+
     String senderId;
     String signature;
-    
-    final payloadToSign = utf8.encode('${marker.id}${marker.type}$timestamp${marker.imageId ?? ""}${marker.expiresAt ?? ""}');
-    
+
+    final payloadToSign = utf8.encode(
+      '${marker.id}${marker.type}$timestamp${marker.imageId ?? ""}${marker.expiresAt ?? ""}',
+    );
+
     if (settings.isOfficialMode) {
       final official = await generateOfficialMarkerSignature(payloadToSign);
       senderId = official.$1;
@@ -475,17 +490,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       senderId = _myPublicKey!;
       signature = await cryptoService.signData(payloadToSign);
     }
-    
+
     final trustedSendersAsync = ref.read(trustedSendersControllerProvider);
     final untrustedSendersAsync = ref.read(untrustedSendersControllerProvider);
     final revokedSendersAsync = ref.read(revokedDelegationsControllerProvider);
-    final adminTrustedSendersAsync = ref.read(adminTrustedSendersControllerProvider);
-    
-    final trustedKeys = trustedSendersAsync.value?.map((e) => e.publicKey).toList() ?? [];
-    final untrustedKeys = untrustedSendersAsync.value?.map((e) => e.publicKey).toList() ?? [];
-    final revokedKeys = revokedSendersAsync.value?.map((e) => e.delegateePublicKey).toList() ?? [];
-    final adminTrustedKeys = adminTrustedSendersAsync.value?.map((e) => e.publicKey).toList() ?? [];
-    
+    final adminTrustedSendersAsync = ref.read(
+      adminTrustedSendersControllerProvider,
+    );
+
+    final trustedKeys =
+        trustedSendersAsync.value?.map((e) => e.publicKey).toList() ?? [];
+    final untrustedKeys =
+        untrustedSendersAsync.value?.map((e) => e.publicKey).toList() ?? [];
+    final revokedKeys =
+        revokedSendersAsync.value?.map((e) => e.delegateePublicKey).toList() ??
+        [];
+    final adminTrustedKeys =
+        adminTrustedSendersAsync.value?.map((e) => e.publicKey).toList() ?? [];
+
     final trustTier = await cryptoService.verifyAndGetTrustTier(
       data: payloadToSign,
       signatureStr: signature,
@@ -495,7 +517,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       untrustedPublicKeys: untrustedKeys,
       revokedPublicKeys: revokedKeys,
     );
-    
+
     final updatedMarker = HazardMarkerEntity(
       id: marker.id,
       latitude: marker.latitude,
@@ -509,29 +531,37 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       imageId: marker.imageId,
       expiresAt: marker.expiresAt,
     );
-    
-    await ref.read(hazardMarkersControllerProvider.notifier).addMarker(updatedMarker);
-    
+
+    await ref
+        .read(hazardMarkersControllerProvider.notifier)
+        .addMarker(updatedMarker);
+
     final payload = pb.SyncPayload();
-    payload.markers.add(pb.HazardMarker(
-      id: updatedMarker.id,
-      latitude: updatedMarker.latitude,
-      longitude: updatedMarker.longitude,
-      type: updatedMarker.type,
-      description: updatedMarker.description,
-      timestamp: Int64(updatedMarker.timestamp),
-      senderId: updatedMarker.senderId,
-      signature: updatedMarker.signature ?? '',
-      trustTier: updatedMarker.trustTier,
-      imageId: updatedMarker.imageId ?? '',
-      expiresAt: Int64(updatedMarker.expiresAt ?? 0),
-    ));
-    
+    payload.markers.add(
+      pb.HazardMarker(
+        id: updatedMarker.id,
+        latitude: updatedMarker.latitude,
+        longitude: updatedMarker.longitude,
+        type: updatedMarker.type,
+        description: updatedMarker.description,
+        timestamp: Int64(updatedMarker.timestamp),
+        senderId: updatedMarker.senderId,
+        signature: updatedMarker.signature ?? '',
+        trustTier: updatedMarker.trustTier,
+        imageId: updatedMarker.imageId ?? '',
+        expiresAt: Int64(updatedMarker.expiresAt ?? 0),
+      ),
+    );
+
     final encoded = base64Encode(payload.writeToBuffer());
-    await ref.read(p2pServiceProvider.notifier).broadcastText(jsonEncode({'type': 'payload', 'data': encoded}));
-    
+    await ref
+        .read(p2pServiceProvider.notifier)
+        .broadcastText(jsonEncode({'type': 'payload', 'data': encoded}));
+
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Hazard verified and endorsed!')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Hazard verified and endorsed!')),
+      );
     }
   }
 
@@ -540,12 +570,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final cryptoService = ref.read(cryptoServiceProvider.notifier);
     final timestamp = DateTime.now().millisecondsSinceEpoch;
     final settings = ref.read(appSettingsProvider);
-    
+
     String senderId;
     String signature;
-    
-    final payloadToSign = utf8.encode('${area.id}${area.type}$timestamp${area.expiresAt ?? ""}');
-    
+
+    final payloadToSign = utf8.encode(
+      '${area.id}${area.type}$timestamp${area.expiresAt ?? ""}',
+    );
+
     if (settings.isOfficialMode) {
       final official = await generateOfficialMarkerSignature(payloadToSign);
       senderId = official.$1;
@@ -554,17 +586,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       senderId = _myPublicKey!;
       signature = await cryptoService.signData(payloadToSign);
     }
-    
+
     final trustedSendersAsync = ref.read(trustedSendersControllerProvider);
     final untrustedSendersAsync = ref.read(untrustedSendersControllerProvider);
     final revokedSendersAsync = ref.read(revokedDelegationsControllerProvider);
-    final adminTrustedSendersAsync = ref.read(adminTrustedSendersControllerProvider);
-    
-    final trustedKeys = trustedSendersAsync.value?.map((e) => e.publicKey).toList() ?? [];
-    final untrustedKeys = untrustedSendersAsync.value?.map((e) => e.publicKey).toList() ?? [];
-    final revokedKeys = revokedSendersAsync.value?.map((e) => e.delegateePublicKey).toList() ?? [];
-    final adminTrustedKeys = adminTrustedSendersAsync.value?.map((e) => e.publicKey).toList() ?? [];
-    
+    final adminTrustedSendersAsync = ref.read(
+      adminTrustedSendersControllerProvider,
+    );
+
+    final trustedKeys =
+        trustedSendersAsync.value?.map((e) => e.publicKey).toList() ?? [];
+    final untrustedKeys =
+        untrustedSendersAsync.value?.map((e) => e.publicKey).toList() ?? [];
+    final revokedKeys =
+        revokedSendersAsync.value?.map((e) => e.delegateePublicKey).toList() ??
+        [];
+    final adminTrustedKeys =
+        adminTrustedSendersAsync.value?.map((e) => e.publicKey).toList() ?? [];
+
     final trustTier = await cryptoService.verifyAndGetTrustTier(
       data: payloadToSign,
       signatureStr: signature,
@@ -574,7 +613,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       untrustedPublicKeys: untrustedKeys,
       revokedPublicKeys: revokedKeys,
     );
-    
+
     final updatedArea = AreaEntity(
       id: area.id,
       coordinates: area.coordinates,
@@ -586,9 +625,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       trustTier: trustTier,
       expiresAt: area.expiresAt,
     );
-    
+
     await ref.read(areasControllerProvider.notifier).addArea(updatedArea);
-    
+
     final payload = pb.SyncPayload();
     final areaMarker = pb.AreaMarker(
       id: updatedArea.id,
@@ -601,18 +640,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       expiresAt: Int64(updatedArea.expiresAt ?? 0),
     );
     for (final coord in updatedArea.coordinates) {
-      areaMarker.coordinates.add(pb.Coordinate(
-        latitude: coord['lat']!,
-        longitude: coord['lng']!,
-      ));
+      areaMarker.coordinates.add(
+        pb.Coordinate(latitude: coord['lat']!, longitude: coord['lng']!),
+      );
     }
     payload.areas.add(areaMarker);
-    
+
     final encoded = base64Encode(payload.writeToBuffer());
-    await ref.read(p2pServiceProvider.notifier).broadcastText(jsonEncode({'type': 'payload', 'data': encoded}));
-    
+    await ref
+        .read(p2pServiceProvider.notifier)
+        .broadcastText(jsonEncode({'type': 'payload', 'data': encoded}));
+
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Area verified and endorsed!')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Area verified and endorsed!')),
+      );
     }
   }
 
@@ -625,7 +667,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     String senderId;
     String signature;
 
-    final payloadToSign = utf8.encode('${path.id}${path.type}$timestamp${path.expiresAt ?? ""}');
+    final payloadToSign = utf8.encode(
+      '${path.id}${path.type}$timestamp${path.expiresAt ?? ""}',
+    );
 
     if (settings.isOfficialMode) {
       final official = await generateOfficialMarkerSignature(payloadToSign);
@@ -639,12 +683,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final trustedSendersAsync = ref.read(trustedSendersControllerProvider);
     final untrustedSendersAsync = ref.read(untrustedSendersControllerProvider);
     final revokedSendersAsync = ref.read(revokedDelegationsControllerProvider);
-    final adminTrustedSendersAsync = ref.read(adminTrustedSendersControllerProvider);
+    final adminTrustedSendersAsync = ref.read(
+      adminTrustedSendersControllerProvider,
+    );
 
-    final trustedKeys = trustedSendersAsync.value?.map((e) => e.publicKey).toList() ?? [];
-    final untrustedKeys = untrustedSendersAsync.value?.map((e) => e.publicKey).toList() ?? [];
-    final revokedKeys = revokedSendersAsync.value?.map((e) => e.delegateePublicKey).toList() ?? [];
-    final adminTrustedKeys = adminTrustedSendersAsync.value?.map((e) => e.publicKey).toList() ?? [];
+    final trustedKeys =
+        trustedSendersAsync.value?.map((e) => e.publicKey).toList() ?? [];
+    final untrustedKeys =
+        untrustedSendersAsync.value?.map((e) => e.publicKey).toList() ?? [];
+    final revokedKeys =
+        revokedSendersAsync.value?.map((e) => e.delegateePublicKey).toList() ??
+        [];
+    final adminTrustedKeys =
+        adminTrustedSendersAsync.value?.map((e) => e.publicKey).toList() ?? [];
 
     final trustTier = await cryptoService.verifyAndGetTrustTier(
       data: payloadToSign,
@@ -682,18 +733,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       expiresAt: Int64(updatedPath.expiresAt ?? 0),
     );
     for (final coord in updatedPath.coordinates) {
-      pathMarker.coordinates.add(pb.Coordinate(
-        latitude: coord['lat']!,
-        longitude: coord['lng']!,
-      ));
+      pathMarker.coordinates.add(
+        pb.Coordinate(latitude: coord['lat']!, longitude: coord['lng']!),
+      );
     }
     payload.paths.add(pathMarker);
 
     final encoded = base64Encode(payload.writeToBuffer());
-    await ref.read(p2pServiceProvider.notifier).broadcastText(jsonEncode({'type': 'payload', 'data': encoded}));
+    await ref
+        .read(p2pServiceProvider.notifier)
+        .broadcastText(jsonEncode({'type': 'payload', 'data': encoded}));
 
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Path verified and endorsed!')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Path verified and endorsed!')),
+      );
     }
   }
 
@@ -706,7 +760,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     String senderId;
     String signature;
 
-    final payloadToSign = utf8.encode('${news.id}${news.title}$timestamp${news.imageId ?? ""}${news.expiresAt ?? ""}');
+    final payloadToSign = utf8.encode(
+      '${news.id}${news.title}$timestamp${news.imageId ?? ""}${news.expiresAt ?? ""}',
+    );
 
     if (settings.isOfficialMode) {
       final official = await generateOfficialMarkerSignature(payloadToSign);
@@ -720,12 +776,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final trustedSendersAsync = ref.read(trustedSendersControllerProvider);
     final untrustedSendersAsync = ref.read(untrustedSendersControllerProvider);
     final revokedSendersAsync = ref.read(revokedDelegationsControllerProvider);
-    final adminTrustedSendersAsync = ref.read(adminTrustedSendersControllerProvider);
+    final adminTrustedSendersAsync = ref.read(
+      adminTrustedSendersControllerProvider,
+    );
 
-    final trustedKeys = trustedSendersAsync.value?.map((e) => e.publicKey).toList() ?? [];
-    final untrustedKeys = untrustedSendersAsync.value?.map((e) => e.publicKey).toList() ?? [];
-    final revokedKeys = revokedSendersAsync.value?.map((e) => e.delegateePublicKey).toList() ?? [];
-    final adminTrustedKeys = adminTrustedSendersAsync.value?.map((e) => e.publicKey).toList() ?? [];
+    final trustedKeys =
+        trustedSendersAsync.value?.map((e) => e.publicKey).toList() ?? [];
+    final untrustedKeys =
+        untrustedSendersAsync.value?.map((e) => e.publicKey).toList() ?? [];
+    final revokedKeys =
+        revokedSendersAsync.value?.map((e) => e.delegateePublicKey).toList() ??
+        [];
+    final adminTrustedKeys =
+        adminTrustedSendersAsync.value?.map((e) => e.publicKey).toList() ?? [];
 
     final trustTier = await cryptoService.verifyAndGetTrustTier(
       data: payloadToSign,
@@ -749,31 +812,41 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       imageId: news.imageId,
     );
 
-    await ref.read(newsItemsControllerProvider.notifier).addNewsItem(updatedNews);
+    await ref
+        .read(newsItemsControllerProvider.notifier)
+        .addNewsItem(updatedNews);
 
     final payload = pb.SyncPayload();
-    payload.news.add(pb.NewsItem(
-      id: updatedNews.id,
-      title: updatedNews.title,
-      content: updatedNews.content,
-      timestamp: Int64(updatedNews.timestamp),
-      senderId: updatedNews.senderId,
-      signature: updatedNews.signature ?? '',
-      trustTier: updatedNews.trustTier,
-      expiresAt: Int64(updatedNews.expiresAt ?? 0),
-      imageId: updatedNews.imageId ?? '',
-    ));
+    payload.news.add(
+      pb.NewsItem(
+        id: updatedNews.id,
+        title: updatedNews.title,
+        content: updatedNews.content,
+        timestamp: Int64(updatedNews.timestamp),
+        senderId: updatedNews.senderId,
+        signature: updatedNews.signature ?? '',
+        trustTier: updatedNews.trustTier,
+        expiresAt: Int64(updatedNews.expiresAt ?? 0),
+        imageId: updatedNews.imageId ?? '',
+      ),
+    );
 
     final encoded = base64Encode(payload.writeToBuffer());
-    await ref.read(p2pServiceProvider.notifier).broadcastText(jsonEncode({'type': 'payload', 'data': encoded}));
+    await ref
+        .read(p2pServiceProvider.notifier)
+        .broadcastText(jsonEncode({'type': 'payload', 'data': encoded}));
 
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('News verified and endorsed!')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('News verified and endorsed!')),
+      );
     }
   }
 
   Future<LatLng> _getPointForReport() async {
-    final pos = await ref.read(locationControllerProvider.notifier).getCurrentPosition();
+    final pos = await ref
+        .read(locationControllerProvider.notifier)
+        .getCurrentPosition();
     if (pos != null) {
       return LatLng(pos.latitude, pos.longitude);
     } else {
@@ -808,146 +881,169 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                   ),
                 ),
-              ListTile(
-                leading: const CircleAvatar(
-                  backgroundColor: Colors.blue,
-                  child: Icon(Icons.add_location_alt, color: Colors.white),
-                ),
-                title: const Text('Report Hazard'),
-                subtitle: const Text('Mark a specific point on the map'),
-                onTap: () async {
-                  Navigator.pop(context);
-                  LatLng point = await _getPointForReport();
-                  if (!mounted) return;
-                  _showAddHazardDialog(point);
-                },
-              ),
-              ListTile(
-                leading: const CircleAvatar(
-                  backgroundColor: Colors.purple,
-                  child: Icon(Icons.format_shapes, color: Colors.white),
-                ),
-                title: const Text('Report Area'),
-                subtitle: const Text('Draw a polygon on the map'),
-                onTap: () async {
-                  Navigator.pop(context);
-                  setState(() {
-                    _isDrawingArea = true;
-                    _isDrawingPath = false;
-                    _editingAreaId = null;
-                    _currentAreaPoints.clear();
-                    _currentIndex = 0;
-                  });
-                  final pos = await ref.read(locationControllerProvider.notifier).getCurrentPosition();
-                  if (pos != null) {
-                    try {
-                      _mapController.move(LatLng(pos.latitude, pos.longitude), 15.0);
-                    } catch (_) {}
-                  }
-                  if (mounted) {
-                    ScaffoldMessenger.of(this.context).showSnackBar(
-                      const SnackBar(content: Text('Tap on the map to draw an area polygon.')),
-                    );
-                  }
-                },
-              ),
-              ListTile(
-                leading: const CircleAvatar(
-                  backgroundColor: Colors.teal,
-                  child: Icon(Icons.route, color: Colors.white),
-                ),
-                title: const Text('Report Path'),
-                subtitle: const Text('Draw a line on the map'),
-                onTap: () async {
-                  Navigator.pop(context);
-                  setState(() {
-                    _isDrawingPath = true;
-                    _isDrawingArea = false;
-                    _editingPathId = null;
-                    _currentPathPoints.clear();
-                    _currentIndex = 0;
-                  });
-                  final pos = await ref.read(locationControllerProvider.notifier).getCurrentPosition();
-                  if (pos != null) {
-                    try {
-                      _mapController.move(LatLng(pos.latitude, pos.longitude), 15.0);
-                    } catch (_) {}
-                  }
-                  if (mounted) {
-                    ScaffoldMessenger.of(this.context).showSnackBar(
-                      const SnackBar(content: Text('Tap on the map to draw a path.')),
-                    );
-                  }
-                },
-              ),
-              ListTile(
-                leading: const CircleAvatar(
-                  backgroundColor: Colors.orange,
-                  child: Icon(Icons.campaign, color: Colors.white),
-                ),
-                title: const Text('Official Alert'),
-                subtitle: const Text('Broadcast a general news or alert'),
-                onTap: () {
-                  Navigator.pop(context);
-                  _showAddNewsDialog();
-                },
-              ),
-              if (isOfficial) ...[
-                const Divider(),
-                const Padding(
-                  padding: EdgeInsets.only(bottom: 8.0, top: 8.0),
-                  child: Text(
-                    'Official Reports',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.purple),
-                  ),
-                ),
                 ListTile(
                   leading: const CircleAvatar(
-                    backgroundColor: Colors.indigo,
-                    child: Icon(Icons.local_shipping, color: Colors.white),
+                    backgroundColor: Colors.blue,
+                    child: Icon(Icons.add_location_alt, color: Colors.white),
                   ),
-                  title: const Text('Report Supply'),
-                  subtitle: const Text('Mark a supply distribution point'),
+                  title: const Text('Report Hazard'),
+                  subtitle: const Text('Mark a specific point on the map'),
                   onTap: () async {
                     Navigator.pop(context);
                     LatLng point = await _getPointForReport();
                     if (!mounted) return;
-                    _showAddHazardDialog(point, initialType: 'Supply');
+                    _showAddHazardDialog(point);
                   },
                 ),
                 ListTile(
                   leading: const CircleAvatar(
-                    backgroundColor: Colors.pink,
-                    child: Icon(Icons.medical_services, color: Colors.white),
+                    backgroundColor: Colors.purple,
+                    child: Icon(Icons.format_shapes, color: Colors.white),
                   ),
-                  title: const Text('Medical Triage'),
-                  subtitle: const Text('Mark a medical triage area'),
+                  title: const Text('Report Area'),
+                  subtitle: const Text('Draw a polygon on the map'),
                   onTap: () async {
                     Navigator.pop(context);
-                    LatLng point = await _getPointForReport();
-                    if (!mounted) return;
-                    _showAddHazardDialog(point, initialType: 'Medical Triage');
+                    setState(() {
+                      _isDrawingArea = true;
+                      _isDrawingPath = false;
+                      _editingAreaId = null;
+                      _currentAreaPoints.clear();
+                      _currentIndex = 0;
+                    });
+                    final pos = await ref
+                        .read(locationControllerProvider.notifier)
+                        .getCurrentPosition();
+                    if (pos != null) {
+                      try {
+                        _mapController.move(
+                          LatLng(pos.latitude, pos.longitude),
+                          15.0,
+                        );
+                      } catch (_) {}
+                    }
+                    if (mounted) {
+                      ScaffoldMessenger.of(this.context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'Tap on the map to draw an area polygon.',
+                          ),
+                        ),
+                      );
+                    }
                   },
                 ),
                 ListTile(
                   leading: const CircleAvatar(
-                    backgroundColor: Colors.deepOrange,
-                    child: Icon(Icons.star, color: Colors.white),
+                    backgroundColor: Colors.teal,
+                    child: Icon(Icons.route, color: Colors.white),
                   ),
-                  title: const Text('Custom Official Marker'),
-                  subtitle: const Text('Mark a custom official point'),
+                  title: const Text('Report Path'),
+                  subtitle: const Text('Draw a line on the map'),
                   onTap: () async {
                     Navigator.pop(context);
-                    LatLng point = await _getPointForReport();
-                    if (!mounted) return;
-                    _showAddHazardDialog(point, initialType: 'Custom');
+                    setState(() {
+                      _isDrawingPath = true;
+                      _isDrawingArea = false;
+                      _editingPathId = null;
+                      _currentPathPoints.clear();
+                      _currentIndex = 0;
+                    });
+                    final pos = await ref
+                        .read(locationControllerProvider.notifier)
+                        .getCurrentPosition();
+                    if (pos != null) {
+                      try {
+                        _mapController.move(
+                          LatLng(pos.latitude, pos.longitude),
+                          15.0,
+                        );
+                      } catch (_) {}
+                    }
+                    if (mounted) {
+                      ScaffoldMessenger.of(this.context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Tap on the map to draw a path.'),
+                        ),
+                      );
+                    }
                   },
                 ),
+                ListTile(
+                  leading: const CircleAvatar(
+                    backgroundColor: Colors.orange,
+                    child: Icon(Icons.campaign, color: Colors.white),
+                  ),
+                  title: const Text('Official Alert'),
+                  subtitle: const Text('Broadcast a general news or alert'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _showAddNewsDialog();
+                  },
+                ),
+                if (isOfficial) ...[
+                  const Divider(),
+                  const Padding(
+                    padding: EdgeInsets.only(bottom: 8.0, top: 8.0),
+                    child: Text(
+                      'Official Reports',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.purple,
+                      ),
+                    ),
+                  ),
+                  ListTile(
+                    leading: const CircleAvatar(
+                      backgroundColor: Colors.indigo,
+                      child: Icon(Icons.local_shipping, color: Colors.white),
+                    ),
+                    title: const Text('Report Supply'),
+                    subtitle: const Text('Mark a supply distribution point'),
+                    onTap: () async {
+                      Navigator.pop(context);
+                      LatLng point = await _getPointForReport();
+                      if (!mounted) return;
+                      _showAddHazardDialog(point, initialType: 'Supply');
+                    },
+                  ),
+                  ListTile(
+                    leading: const CircleAvatar(
+                      backgroundColor: Colors.pink,
+                      child: Icon(Icons.medical_services, color: Colors.white),
+                    ),
+                    title: const Text('Medical Triage'),
+                    subtitle: const Text('Mark a medical triage area'),
+                    onTap: () async {
+                      Navigator.pop(context);
+                      LatLng point = await _getPointForReport();
+                      if (!mounted) return;
+                      _showAddHazardDialog(
+                        point,
+                        initialType: 'Medical Triage',
+                      );
+                    },
+                  ),
+                  ListTile(
+                    leading: const CircleAvatar(
+                      backgroundColor: Colors.deepOrange,
+                      child: Icon(Icons.star, color: Colors.white),
+                    ),
+                    title: const Text('Custom Official Marker'),
+                    subtitle: const Text('Mark a custom official point'),
+                    onTap: () async {
+                      Navigator.pop(context);
+                      LatLng point = await _getPointForReport();
+                      if (!mounted) return;
+                      _showAddHazardDialog(point, initialType: 'Custom');
+                    },
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
         ),
-      ),
       ),
     );
   }
@@ -964,13 +1060,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     String selectedType = initialType ?? 'Flood';
     final descController = TextEditingController(
-      text: initialType == 'Supply' 
-          ? 'Water and food distribution' 
-          : initialType == 'Medical Triage' 
-              ? 'First aid and triage' 
-              : initialType == 'Custom'
-                  ? 'Official custom marker'
-                  : 'Water level rising'
+      text: initialType == 'Supply'
+          ? 'Water and food distribution'
+          : initialType == 'Medical Triage'
+          ? 'First aid and triage'
+          : initialType == 'Custom'
+          ? 'Official custom marker'
+          : 'Water level rising',
     );
     XFile? selectedImage;
     int? selectedTtlHours = 24;
@@ -984,7 +1080,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
           title: Row(
             children: [
-              Icon(getHazardIcon(selectedType), color: getHazardColor(selectedType, isOfficial ? 1 : 4)),
+              Icon(
+                getHazardIcon(selectedType),
+                color: getHazardColor(selectedType, isOfficial ? 1 : 4),
+              ),
               const SizedBox(width: 8),
               const Text('Report Hazard'),
             ],
@@ -1058,7 +1157,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     DropdownMenuItem(value: 168, child: Text('7 Days')),
                     DropdownMenuItem(value: null, child: Text('No Expiration')),
                   ],
-                  onChanged: (val) => setInnerState(() => selectedTtlHours = val),
+                  onChanged: (val) =>
+                      setInnerState(() => selectedTtlHours = val),
                 ),
                 const SizedBox(height: 16),
                 if (selectedImage != null) ...[
@@ -1094,7 +1194,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         if (size > 1024 * 1024) {
                           if (!mounted) return;
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Image is too large (limit 1MB). Please try again.')),
+                            const SnackBar(
+                              content: Text(
+                                'Image is too large (limit 1MB). Please try again.',
+                              ),
+                            ),
                           );
                         } else {
                           setInnerState(() => selectedImage = image);
@@ -1467,11 +1571,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   ),
                 ),
                 items: validTypes
-                        .map(
-                          (type) =>
-                              DropdownMenuItem(value: type, child: Text(type)),
-                        )
-                        .toList(),
+                    .map(
+                      (type) =>
+                          DropdownMenuItem(value: type, child: Text(type)),
+                    )
+                    .toList(),
                 onChanged: (val) {
                   if (val != null) {
                     setInnerState(() => selectedType = val);
@@ -1745,7 +1849,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     DropdownMenuItem(value: 168, child: Text('7 Days')),
                     DropdownMenuItem(value: null, child: Text('No Expiration')),
                   ],
-                  onChanged: (val) => setInnerState(() => selectedTtlHours = val),
+                  onChanged: (val) =>
+                      setInnerState(() => selectedTtlHours = val),
                 ),
                 const SizedBox(height: 16),
                 if (selectedImage != null) ...[
@@ -1781,7 +1886,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         if (size > 1024 * 1024) {
                           if (!mounted) return;
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Image is too large (limit 1MB). Please try again.')),
+                            const SnackBar(
+                              content: Text(
+                                'Image is too large (limit 1MB). Please try again.',
+                              ),
+                            ),
                           );
                         } else {
                           setInnerState(() => selectedImage = image);
@@ -1915,12 +2024,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         final offlineRegions = offlineRegionsAsync.value ?? [];
         final currentPosition = locationAsync.value;
 
-        final adminTrustedAsync = ref.watch(adminTrustedSendersControllerProvider);
+        final adminTrustedAsync = ref.watch(
+          adminTrustedSendersControllerProvider,
+        );
         final revokedAsync = ref.watch(revokedDelegationsControllerProvider);
         final adminTrusted = adminTrustedAsync.value ?? [];
         final revoked = revokedAsync.value ?? [];
         final revokedKeys = revoked.map((e) => e.delegateePublicKey).toSet();
-        final isTier2 = _myPublicKey != null && adminTrusted.any((a) => a.publicKey == _myPublicKey && !revokedKeys.contains(a.publicKey));
+        final isTier2 =
+            _myPublicKey != null &&
+            adminTrusted.any(
+              (a) =>
+                  a.publicKey == _myPublicKey &&
+                  !revokedKeys.contains(a.publicKey),
+            );
         final isAdmin = settings.isOfficialMode || isTier2;
 
         if (currentPosition != null && !_hasCenteredOnLocation) {
@@ -1937,150 +2054,148 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           });
         }
 
-    return FlutterMap(
-      mapController: _mapController,
-      options: MapOptions(
-        initialCenter: currentPosition != null
-            ? LatLng(currentPosition.latitude, currentPosition.longitude)
-            : const LatLng(37.7749, -122.4194),
-        initialZoom: 13.0,
-        onTap: (tapPosition, point) {
-          if (_isDrawingArea) {
-            setState(() {
-              _currentAreaPoints.add(point);
-            });
-          } else if (_isDrawingPath) {
-            setState(() {
-              _currentPathPoints.add(point);
-            });
-          } else {
-            _showAddHazardDialog(point);
-          }
-        },
-      ),
-      children: [
-        TileLayer(
-          urlTemplate: settings.mapStyle.url,
-          userAgentPackageName: 'com.example.floodio',
-          tileProvider: CachedTileProvider(ref.read(mapCacheServiceProvider)),
-        ),
-        PolygonLayer(
-          polygons: [
-            if (_showOfflineRegions)
-              ...offlineRegions.map(
-                (r) => Polygon(
-                  points: [
-                    LatLng(r.bounds.north, r.bounds.west),
-                    LatLng(r.bounds.north, r.bounds.east),
-                    LatLng(r.bounds.south, r.bounds.east),
-                    LatLng(r.bounds.south, r.bounds.west),
-                  ],
-                  color: Colors.teal.withValues(alpha: 0.15),
-                  borderColor: Colors.teal,
-                  borderStrokeWidth: 2,
-                ),
+        return FlutterMap(
+          mapController: _mapController,
+          options: MapOptions(
+            initialCenter: currentPosition != null
+                ? LatLng(currentPosition.latitude, currentPosition.longitude)
+                : const LatLng(37.7749, -122.4194),
+            initialZoom: 13.0,
+            onTap: (tapPosition, point) {
+              if (_isDrawingArea) {
+                setState(() {
+                  _currentAreaPoints.add(point);
+                });
+              } else if (_isDrawingPath) {
+                setState(() {
+                  _currentPathPoints.add(point);
+                });
+              } else {
+                _showAddHazardDialog(point);
+              }
+            },
+          ),
+          children: [
+            TileLayer(
+              urlTemplate: settings.mapStyle.url,
+              userAgentPackageName: 'com.example.floodio',
+              tileProvider: CachedTileProvider(
+                ref.read(mapCacheServiceProvider),
               ),
-            ...areas.map((a) {
-              final points = a.coordinates
-                  .map((c) => LatLng(c['lat']!, c['lng']!))
-                  .toList();
-              final color =
-                  a.type.toLowerCase().contains('safe') ||
-                      a.type.toLowerCase().contains('evacuation')
-                  ? Colors.green
-                  : Colors.red;
-              return Polygon(
-                points: points,
-                color: color.withValues(alpha: 0.3),
-                borderColor: color,
-                borderStrokeWidth: 2,
-              );
-            }),
-            if (_isDrawingArea && _currentAreaPoints.isNotEmpty)
-              Polygon(
-                points: _currentAreaPoints,
-                color: Colors.blue.withValues(alpha: 0.3),
-                borderColor: Colors.blue,
-                borderStrokeWidth: 2,
-              ),
-          ],
-        ),
-        PolylineLayer(
-          polylines: [
-            ...paths.map((p) {
-              final points = p.coordinates
-                  .map((c) => LatLng(c['lat']!, c['lng']!))
-                  .toList();
-              final color =
-                  p.type.toLowerCase().contains('safe') ||
-                      p.type.toLowerCase().contains('evacuation')
-                  ? Colors.green
-                  : Colors.red;
-              return Polyline(
-                points: points,
-                color: color,
-                strokeWidth: 4.0,
-                pattern: p.type.toLowerCase().contains('blocked') ? StrokePattern.dashed(segments: const [10.0, 10.0]) : const StrokePattern.solid(),
-              );
-            }),
-            if (_isDrawingPath && _currentPathPoints.isNotEmpty)
-              Polyline(
-                points: _currentPathPoints,
-                color: Colors.teal,
-                strokeWidth: 4.0,
-                pattern: StrokePattern.dashed(segments: const [10.0, 10.0]),
-              ),
-          ],
-        ),
-        CircleLayer(
-          circles: markers
-              .where((m) => m.trustTier == 1 || m.trustTier == 2)
-              .map(
-                (m) {
-                  final color = getHazardColor(m.type, m.trustTier);
-                  return CircleMarker(
-                    point: LatLng(m.latitude, m.longitude),
-                    radius: m.trustTier == 1 ? 500 : 300,
-                    useRadiusInMeter: true,
-                    color: color.withValues(alpha: 0.2),
+            ),
+            PolygonLayer(
+              polygons: [
+                if (_showOfflineRegions)
+                  ...offlineRegions.map(
+                    (r) => Polygon(
+                      points: [
+                        LatLng(r.bounds.north, r.bounds.west),
+                        LatLng(r.bounds.north, r.bounds.east),
+                        LatLng(r.bounds.south, r.bounds.east),
+                        LatLng(r.bounds.south, r.bounds.west),
+                      ],
+                      color: Colors.teal.withValues(alpha: 0.15),
+                      borderColor: Colors.teal,
+                      borderStrokeWidth: 2,
+                    ),
+                  ),
+                ...areas.map((a) {
+                  final points = a.coordinates
+                      .map((c) => LatLng(c['lat']!, c['lng']!))
+                      .toList();
+                  final color =
+                      a.type.toLowerCase().contains('safe') ||
+                          a.type.toLowerCase().contains('evacuation')
+                      ? Colors.green
+                      : Colors.red;
+                  return Polygon(
+                    points: points,
+                    color: color.withValues(alpha: 0.3),
                     borderColor: color,
                     borderStrokeWidth: 2,
                   );
-                }
-              )
-              .toList(),
-        ),
-        MarkerLayer(
-          markers: markers
-              .map(
-                (m) {
-                  final color = getHazardColor(m.type, m.trustTier);
-                  return Marker(
-                    point: LatLng(m.latitude, m.longitude),
-                    width: 40,
-                    height: 40,
-                    alignment: Alignment.topCenter,
-                    child: GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onTap: () {
-                        final canEndorse = isAdmin && (m.trustTier == 3 || m.trustTier == 4);
+                }),
+                if (_isDrawingArea && _currentAreaPoints.isNotEmpty)
+                  Polygon(
+                    points: _currentAreaPoints,
+                    color: Colors.blue.withValues(alpha: 0.3),
+                    borderColor: Colors.blue,
+                    borderStrokeWidth: 2,
+                  ),
+              ],
+            ),
+            PolylineLayer(
+              polylines: [
+                ...paths.map((p) {
+                  final points = p.coordinates
+                      .map((c) => LatLng(c['lat']!, c['lng']!))
+                      .toList();
+                  final color =
+                      p.type.toLowerCase().contains('safe') ||
+                          p.type.toLowerCase().contains('evacuation')
+                      ? Colors.green
+                      : Colors.red;
+                  return Polyline(
+                    points: points,
+                    color: color,
+                    strokeWidth: 4.0,
+                    pattern: p.type.toLowerCase().contains('blocked')
+                        ? StrokePattern.dashed(segments: const [10.0, 10.0])
+                        : const StrokePattern.solid(),
+                  );
+                }),
+                if (_isDrawingPath && _currentPathPoints.isNotEmpty)
+                  Polyline(
+                    points: _currentPathPoints,
+                    color: Colors.teal,
+                    strokeWidth: 4.0,
+                    pattern: StrokePattern.dashed(segments: const [10.0, 10.0]),
+                  ),
+              ],
+            ),
+            CircleLayer(
+              circles: markers
+                  .where((m) => m.trustTier == 1 || m.trustTier == 2)
+                  .map((m) {
+                    final color = getHazardColor(m.type, m.trustTier);
+                    return CircleMarker(
+                      point: LatLng(m.latitude, m.longitude),
+                      radius: m.trustTier == 1 ? 500 : 300,
+                      useRadiusInMeter: true,
+                      color: color.withValues(alpha: 0.2),
+                      borderColor: color,
+                      borderStrokeWidth: 2,
+                    );
+                  })
+                  .toList(),
+            ),
+            MarkerLayer(
+              markers: markers.map((m) {
+                final color = getHazardColor(m.type, m.trustTier);
+                return Marker(
+                  point: LatLng(m.latitude, m.longitude),
+                  width: 40,
+                  height: 40,
+                  alignment: Alignment.topCenter,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () {
+                      final canEndorse =
+                          isAdmin && (m.trustTier == 3 || m.trustTier == 4);
 
-                        showDialog(
-                          context: context,
-                          builder: (dialogContext) => AlertDialog(
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            title: Row(
-                              children: [
-                                Icon(
-                                  getHazardIcon(m.type),
-                                  color: color,
-                                ),
-                                const SizedBox(width: 8),
-                                Text(m.type),
-                              ],
-                            ),
+                      showDialog(
+                        context: context,
+                        builder: (dialogContext) => AlertDialog(
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          title: Row(
+                            children: [
+                              Icon(getHazardIcon(m.type), color: color),
+                              const SizedBox(width: 8),
+                              Text(m.type),
+                            ],
+                          ),
                           content: Column(
                             mainAxisSize: MainAxisSize.min,
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -2143,7 +2258,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                 },
                                 icon: const Icon(Icons.verified, size: 18),
                                 label: const Text('Verify & Endorse'),
-                                style: TextButton.styleFrom(foregroundColor: Colors.purple),
+                                style: TextButton.styleFrom(
+                                  foregroundColor: Colors.purple,
+                                ),
                               ),
                             if (canEndorse)
                               TextButton.icon(
@@ -2153,7 +2270,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                 },
                                 icon: const Icon(Icons.gavel, size: 18),
                                 label: const Text('Debunk'),
-                                style: TextButton.styleFrom(foregroundColor: Colors.red),
+                                style: TextButton.styleFrom(
+                                  foregroundColor: Colors.red,
+                                ),
                               ),
                             TextButton.icon(
                               onPressed: () {
@@ -2181,7 +2300,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                   foregroundColor: Colors.red,
                                 ),
                               ),
-                            if (m.trustTier == 4 || (settings.isOfficialMode && m.trustTier == 3))
+                            if (m.trustTier == 4 ||
+                                (settings.isOfficialMode && m.trustTier == 3))
                               TextButton.icon(
                                 onPressed: () {
                                   Navigator.pop(dialogContext);
@@ -2192,12 +2312,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                   }
                                 },
                                 icon: Icon(
-                                  settings.isOfficialMode ? Icons.admin_panel_settings : Icons.verified_user,
+                                  settings.isOfficialMode
+                                      ? Icons.admin_panel_settings
+                                      : Icons.verified_user,
                                   size: 18,
                                 ),
-                                label: Text(settings.isOfficialMode ? 'Make Volunteer' : 'Trust'),
+                                label: Text(
+                                  settings.isOfficialMode
+                                      ? 'Make Volunteer'
+                                      : 'Trust',
+                                ),
                                 style: TextButton.styleFrom(
-                                  foregroundColor: settings.isOfficialMode ? Colors.purple : Colors.green,
+                                  foregroundColor: settings.isOfficialMode
+                                      ? Colors.purple
+                                      : Colors.green,
                                 ),
                               ),
                             TextButton(
@@ -2211,11 +2339,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     child: Stack(
                       alignment: Alignment.center,
                       children: [
-                        Icon(
-                          Icons.location_on,
-                          color: color,
-                          size: 40,
-                        ),
+                        Icon(Icons.location_on, color: color, size: 40),
                         Positioned(
                           top: 6,
                           child: Icon(
@@ -2228,43 +2352,43 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     ),
                   ),
                 );
-                }
-              )
-              .toList(),
-        ),
-        if (currentPosition != null)
-          MarkerLayer(
-            markers: [
-              Marker(
-                point: LatLng(
-                  currentPosition.latitude,
-                  currentPosition.longitude,
-                ),
-                width: 24,
-                height: 24,
-                alignment: Alignment.center,
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.blue,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 3),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.blue.withValues(alpha: 0.5),
-                        blurRadius: 10,
-                        spreadRadius: 5,
+              }).toList(),
+            ),
+            if (currentPosition != null)
+              MarkerLayer(
+                markers: [
+                  Marker(
+                    point: LatLng(
+                      currentPosition.latitude,
+                      currentPosition.longitude,
+                    ),
+                    width: 24,
+                    height: 24,
+                    alignment: Alignment.center,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.blue,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 3),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.blue.withValues(alpha: 0.5),
+                            blurRadius: 10,
+                            spreadRadius: 5,
+                          ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
-                ),
+                ],
               ),
-            ],
-          ),
-        const RichAttributionWidget(
-          attributions: [TextSourceAttribution('OpenStreetMap contributors')],
-        ),
-      ],
-    );
+            const RichAttributionWidget(
+              attributions: [
+                TextSourceAttribution('OpenStreetMap contributors'),
+              ],
+            ),
+          ],
+        );
       },
     );
   }
@@ -2307,891 +2431,1071 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ref.watch(filteredNewsItemsProvider).isLoading ||
             ref.watch(filteredAreasProvider).isLoading;
 
-        final adminTrustedAsync = ref.watch(adminTrustedSendersControllerProvider);
+        final adminTrustedAsync = ref.watch(
+          adminTrustedSendersControllerProvider,
+        );
         final revokedAsync = ref.watch(revokedDelegationsControllerProvider);
         final adminTrusted = adminTrustedAsync.value ?? [];
         final revoked = revokedAsync.value ?? [];
         final revokedKeys = revoked.map((e) => e.delegateePublicKey).toSet();
-        final isTier2 = _myPublicKey != null && adminTrusted.any((a) => a.publicKey == _myPublicKey && !revokedKeys.contains(a.publicKey));
+        final isTier2 =
+            _myPublicKey != null &&
+            adminTrusted.any(
+              (a) =>
+                  a.publicKey == _myPublicKey &&
+                  !revokedKeys.contains(a.publicKey),
+            );
         final isAdmin = settings.isOfficialMode || isTier2;
 
-    return Column(
-      children: [
-        Container(
-          color: Theme.of(context).colorScheme.surface,
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-          child: TextField(
-            decoration: InputDecoration(
-              hintText: 'Search reports...',
-              prefixIcon: const Icon(Icons.search),
-              filled: true,
-              fillColor: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
-                borderSide: BorderSide.none,
+        return Column(
+          children: [
+            Container(
+              color: Theme.of(context).colorScheme.surface,
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+              child: TextField(
+                decoration: InputDecoration(
+                  hintText: 'Search reports...',
+                  prefixIcon: const Icon(Icons.search),
+                  filled: true,
+                  fillColor: Theme.of(
+                    context,
+                  ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide.none,
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(vertical: 0),
+                ),
+                onChanged: (val) => filterNotifier.updateSearchQuery(val),
               ),
-              contentPadding: const EdgeInsets.symmetric(vertical: 0),
             ),
-            onChanged: (val) => filterNotifier.updateSearchQuery(val),
-          ),
-        ),
-        _buildFilterBar(filter, filterNotifier),
-        Expanded(
-          child: combined.isEmpty
-              ? _buildEmptyFeedState(isLoading)
-              : ListView.builder(
-                  controller: _feedScrollController,
-                  padding: const EdgeInsets.only(top: 8, bottom: 80),
-                  itemCount:
-                      combined.length +
-                      (combined.length >= ref.watch(feedLimitProvider) ? 1 : 0),
-                  itemBuilder: (context, index) {
-                    if (index == combined.length) {
-                      return const Padding(
-                        padding: EdgeInsets.all(16.0),
-                        child: Center(child: CircularProgressIndicator()),
-                      );
-                    }
-                    final item = combined[index];
-                    final canEndorse = isAdmin && (item.trustTier == 3 || item.trustTier == 4);
+            _buildFilterBar(filter, filterNotifier),
+            Expanded(
+              child: combined.isEmpty
+                  ? _buildEmptyFeedState(isLoading)
+                  : ListView.builder(
+                      controller: _feedScrollController,
+                      padding: const EdgeInsets.only(top: 8, bottom: 80),
+                      itemCount:
+                          combined.length +
+                          (combined.length >= ref.watch(feedLimitProvider)
+                              ? 1
+                              : 0),
+                      itemBuilder: (context, index) {
+                        if (index == combined.length) {
+                          return const Padding(
+                            padding: EdgeInsets.all(16.0),
+                            child: Center(child: CircularProgressIndicator()),
+                          );
+                        }
+                        final item = combined[index];
+                        final canEndorse =
+                            isAdmin &&
+                            (item.trustTier == 3 || item.trustTier == 4);
 
-                    if (item is HazardMarkerEntity) {
-                      final color = getHazardColor(item.type, item.trustTier);
-                      return Card(
-                        margin: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 8,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          side: BorderSide(
-                            color: color.withValues(alpha: 0.3),
-                            width: item.trustTier == 1 ? 2 : 1,
-                          ),
-                        ),
-                        child: InkWell(
-                          onTap: () {
-                            setState(() => _currentIndex = 0);
-                            WidgetsBinding.instance.addPostFrameCallback((_) {
-                              try {
-                                _mapController.move(
-                                  LatLng(item.latitude, item.longitude),
-                                  15.0,
-                                );
-                              } catch (e) {
-                                debugPrint('Map not ready yet: $e');
-                              }
-                            });
-                          },
-                          child: Padding(
-                            padding: const EdgeInsets.all(16.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    CircleAvatar(
-                                      backgroundColor: color.withValues(alpha: 0.2),
-                                      child: Icon(
-                                        getHazardIcon(item.type),
-                                        color: color,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            'Hazard: ${item.type}',
-                                            style: const TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 16,
-                                            ),
-                                          ),
-                                          Text(
-                                            formatTimestamp(item.timestamp),
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              color: Colors.grey.shade600,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    buildTrustBadge(item.trustTier),
-                                  ],
-                                ),
-                                const SizedBox(height: 12),
-                                Text(
-                                  item.description,
-                                  style: const TextStyle(
-                                    fontSize: 14,
-                                    height: 1.4,
-                                  ),
-                                ),
-                                if (item.imageId != null &&
-                                    item.imageId!.isNotEmpty)
-                                  LocalImageDisplay(imageId: item.imageId!),
-                                Builder(
-                                  builder: (context) {
-                                    final profile = getProfile(
-                                      item.senderId,
-                                      profiles,
-                                    );
-                                    if (profile != null) {
-                                      return Padding(
-                                        padding: const EdgeInsets.only(
-                                          top: 8.0,
-                                        ),
-                                        child: Text(
-                                          'By: ${profile.name}${profile.contactInfo.isNotEmpty ? ' (${profile.contactInfo})' : ''}',
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            color: Colors.grey.shade700,
-                                            fontStyle: FontStyle.italic,
-                                          ),
-                                        ),
-                                      );
-                                    } else {
-                                      return Padding(
-                                        padding: const EdgeInsets.only(
-                                          top: 8.0,
-                                        ),
-                                        child: Text(
-                                          'By: Unknown User',
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            color: Colors.grey.shade700,
-                                            fontStyle: FontStyle.italic,
-                                          ),
-                                        ),
-                                      );
-                                    }
-                                  },
-                                ),
-                                const SizedBox(height: 12),
-                                Wrap(
-                                  alignment: WrapAlignment.end,
-                                  spacing: 8,
-                                  runSpacing: 8,
-                                  children: [
-                                    if (canEndorse)
-                                      FilledButton.tonalIcon(
-                                        onPressed: () => _endorseHazard(item),
-                                        icon: const Icon(Icons.verified, size: 16),
-                                        label: const Text('Verify & Endorse'),
-                                        style: FilledButton.styleFrom(
-                                          foregroundColor: Colors.purple.shade700,
-                                          backgroundColor: Colors.purple.shade50,
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 12,
-                                            vertical: 8,
-                                          ),
-                                        ),
-                                      ),
-                                    if (canEndorse)
-                                      FilledButton.tonalIcon(
-                                        onPressed: () => _confirmDebunkReport(item.id, 'marker'),
-                                        icon: const Icon(Icons.gavel, size: 16),
-                                        label: const Text('Debunk'),
-                                        style: FilledButton.styleFrom(
-                                          foregroundColor: Colors.red.shade700,
-                                          backgroundColor: Colors.red.shade50,
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 12,
-                                            vertical: 8,
-                                          ),
-                                        ),
-                                      ),
-                                    TextButton.icon(
-                                      onPressed: () => _resolveMarker(item.id),
-                                      icon: const Icon(
-                                        Icons.check_circle_outline,
-                                        size: 16,
-                                      ),
-                                      label: const Text('Resolve'),
-                                      style: TextButton.styleFrom(
-                                        foregroundColor: Colors.green,
-                                      ),
-                                    ),
-                                    if (item.trustTier == 4 ||
-                                        item.trustTier == 3)
-                                      TextButton.icon(
-                                        onPressed: () =>
-                                            _blockSender(item.senderId),
-                                        icon: const Icon(Icons.block, size: 16),
-                                        label: const Text('Block'),
-                                        style: TextButton.styleFrom(
-                                          foregroundColor: Colors.red,
-                                        ),
-                                      ),
-                                    if (item.trustTier == 4 || (settings.isOfficialMode && item.trustTier == 3))
-                                      FilledButton.tonalIcon(
-                                        onPressed: () {
-                                          if (settings.isOfficialMode) {
-                                            _makeOfficialVolunteer(item.senderId);
-                                          } else {
-                                            _markAsTrusted(item.senderId);
-                                          }
-                                        },
-                                        icon: Icon(
-                                          settings.isOfficialMode ? Icons.admin_panel_settings : Icons.verified_user,
-                                          size: 16,
-                                        ),
-                                        label: Text(settings.isOfficialMode ? 'Make Volunteer' : 'Trust'),
-                                        style: FilledButton.styleFrom(
-                                          foregroundColor: settings.isOfficialMode ? Colors.purple.shade700 : Colors.green.shade700,
-                                          backgroundColor: settings.isOfficialMode ? Colors.purple.shade50 : Colors.green.shade50,
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 12,
-                                            vertical: 8,
-                                          ),
-                                        ),
-                                      ),
-                                  ],
-                                ),
-                              ],
+                        if (item is HazardMarkerEntity) {
+                          final color = getHazardColor(
+                            item.type,
+                            item.trustTier,
+                          );
+                          return Card(
+                            margin: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 8,
                             ),
-                          ),
-                        ),
-                      );
-                    } else if (item is NewsItemEntity) {
-                      return Card(
-                        margin: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 8,
-                        ),
-                        color: item.trustTier == 1
-                            ? const Color(0xFFFFF3E0)
-                            : null,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          side: BorderSide(
-                            color: getTierColor(item.trustTier).withValues(alpha: 0.3),
-                            width: item.trustTier == 1 ? 2 : 1,
-                          ),
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  CircleAvatar(
-                                    backgroundColor: item.trustTier == 1
-                                        ? Colors.blue.shade100
-                                        : item.trustTier == 2
-                                        ? Colors.purple.shade100
-                                        : item.trustTier == 3
-                                        ? Colors.green.shade100
-                                        : Colors.grey.shade200,
-                                    child: Icon(
-                                      Icons.campaign,
-                                      color: item.trustTier == 1
-                                          ? Colors.blue
-                                          : item.trustTier == 2
-                                          ? Colors.purple
-                                          : item.trustTier == 3
-                                          ? Colors.green
-                                          : Colors.grey.shade700,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              side: BorderSide(
+                                color: color.withValues(alpha: 0.3),
+                                width: item.trustTier == 1 ? 2 : 1,
+                              ),
+                            ),
+                            child: InkWell(
+                              onTap: () {
+                                setState(() => _currentIndex = 0);
+                                WidgetsBinding.instance.addPostFrameCallback((
+                                  _,
+                                ) {
+                                  try {
+                                    _mapController.move(
+                                      LatLng(item.latitude, item.longitude),
+                                      15.0,
+                                    );
+                                  } catch (e) {
+                                    debugPrint('Map not ready yet: $e');
+                                  }
+                                });
+                              },
+                              child: Padding(
+                                padding: const EdgeInsets.all(16.0),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
                                       children: [
-                                        Text(
-                                          item.title,
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 16,
+                                        CircleAvatar(
+                                          backgroundColor: color.withValues(
+                                            alpha: 0.2,
+                                          ),
+                                          child: Icon(
+                                            getHazardIcon(item.type),
+                                            color: color,
                                           ),
                                         ),
-                                        Text(
-                                          formatTimestamp(item.timestamp),
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            color: Colors.grey.shade600,
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                'Hazard: ${item.type}',
+                                                style: const TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 16,
+                                                ),
+                                              ),
+                                              Text(
+                                                formatTimestamp(item.timestamp),
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  color: Colors.grey.shade600,
+                                                ),
+                                              ),
+                                            ],
                                           ),
                                         ),
+                                        buildTrustBadge(item.trustTier),
                                       ],
                                     ),
-                                  ),
-                                  buildTrustBadge(item.trustTier),
-                                ],
-                              ),
-                              const SizedBox(height: 12),
-                              Text(
-                                item.content,
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  height: 1.4,
-                                ),
-                              ),
-                              if (item.imageId != null &&
-                                  item.imageId!.isNotEmpty)
-                                LocalImageDisplay(imageId: item.imageId!),
-                              Builder(
-                                builder: (context) {
-                                  final profile = getProfile(
-                                    item.senderId,
-                                    profiles,
-                                  );
-                                  if (profile != null) {
-                                    return Padding(
-                                      padding: const EdgeInsets.only(top: 8.0),
-                                      child: Text(
-                                        'By: ${profile.name}${profile.contactInfo.isNotEmpty ? ' (${profile.contactInfo})' : ''}',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: Colors.grey.shade700,
-                                          fontStyle: FontStyle.italic,
-                                        ),
-                                      ),
-                                    );
-                                  } else {
-                                    return Padding(
-                                      padding: const EdgeInsets.only(top: 8.0),
-                                      child: Text(
-                                        'By: Unknown User',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: Colors.grey.shade700,
-                                          fontStyle: FontStyle.italic,
-                                        ),
-                                      ),
-                                    );
-                                  }
-                                },
-                              ),
-                              const SizedBox(height: 12),
-                              Wrap(
-                                alignment: WrapAlignment.end,
-                                spacing: 8,
-                                runSpacing: 8,
-                                children: [
-                                  if (canEndorse)
-                                    FilledButton.tonalIcon(
-                                      onPressed: () => _endorseNews(item),
-                                      icon: const Icon(Icons.verified, size: 16),
-                                      label: const Text('Verify & Endorse'),
-                                      style: FilledButton.styleFrom(
-                                        foregroundColor: Colors.purple.shade700,
-                                        backgroundColor: Colors.purple.shade50,
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 12,
-                                          vertical: 8,
-                                        ),
+                                    const SizedBox(height: 12),
+                                    Text(
+                                      item.description,
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        height: 1.4,
                                       ),
                                     ),
-                                  if (canEndorse)
-                                    FilledButton.tonalIcon(
-                                      onPressed: () => _confirmDebunkReport(item.id, 'news'),
-                                      icon: const Icon(Icons.gavel, size: 16),
-                                      label: const Text('Debunk'),
-                                      style: FilledButton.styleFrom(
-                                        foregroundColor: Colors.red.shade700,
-                                        backgroundColor: Colors.red.shade50,
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 12,
-                                          vertical: 8,
-                                        ),
-                                      ),
-                                    ),
-                                  TextButton.icon(
-                                    onPressed: () => _dismissNews(item.id),
-                                    icon: const Icon(Icons.clear, size: 16),
-                                    label: const Text('Dismiss'),
-                                    style: TextButton.styleFrom(
-                                      foregroundColor: Colors.grey,
-                                    ),
-                                  ),
-                                  if (item.trustTier == 4 ||
-                                      item.trustTier == 3)
-                                    TextButton.icon(
-                                      onPressed: () =>
-                                          _blockSender(item.senderId),
-                                      icon: const Icon(Icons.block, size: 16),
-                                      label: const Text('Block'),
-                                      style: TextButton.styleFrom(
-                                        foregroundColor: Colors.red,
-                                      ),
-                                    ),
-                                  if (item.trustTier == 4 || (settings.isOfficialMode && item.trustTier == 3))
-                                    FilledButton.tonalIcon(
-                                      onPressed: () {
-                                        if (settings.isOfficialMode) {
-                                          _makeOfficialVolunteer(item.senderId);
+                                    if (item.imageId != null &&
+                                        item.imageId!.isNotEmpty)
+                                      LocalImageDisplay(imageId: item.imageId!),
+                                    Builder(
+                                      builder: (context) {
+                                        final profile = getProfile(
+                                          item.senderId,
+                                          profiles,
+                                        );
+                                        if (profile != null) {
+                                          return Padding(
+                                            padding: const EdgeInsets.only(
+                                              top: 8.0,
+                                            ),
+                                            child: Text(
+                                              'By: ${profile.name}${profile.contactInfo.isNotEmpty ? ' (${profile.contactInfo})' : ''}',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: Colors.grey.shade700,
+                                                fontStyle: FontStyle.italic,
+                                              ),
+                                            ),
+                                          );
                                         } else {
-                                          _markAsTrusted(item.senderId);
+                                          return Padding(
+                                            padding: const EdgeInsets.only(
+                                              top: 8.0,
+                                            ),
+                                            child: Text(
+                                              'By: Unknown User',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: Colors.grey.shade700,
+                                                fontStyle: FontStyle.italic,
+                                              ),
+                                            ),
+                                          );
                                         }
                                       },
-                                      icon: Icon(
-                                        settings.isOfficialMode ? Icons.admin_panel_settings : Icons.verified_user,
-                                        size: 16,
-                                      ),
-                                      label: Text(settings.isOfficialMode ? 'Make Volunteer' : 'Trust'),
-                                      style: FilledButton.styleFrom(
-                                        foregroundColor: settings.isOfficialMode ? Colors.purple.shade700 : Colors.green.shade700,
-                                        backgroundColor: settings.isOfficialMode ? Colors.purple.shade50 : Colors.green.shade50,
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 12,
-                                          vertical: 8,
+                                    ),
+                                    const SizedBox(height: 12),
+                                    Wrap(
+                                      alignment: WrapAlignment.end,
+                                      spacing: 8,
+                                      runSpacing: 8,
+                                      children: [
+                                        if (canEndorse)
+                                          FilledButton.tonalIcon(
+                                            onPressed: () =>
+                                                _endorseHazard(item),
+                                            icon: const Icon(
+                                              Icons.verified,
+                                              size: 16,
+                                            ),
+                                            label: const Text(
+                                              'Verify & Endorse',
+                                            ),
+                                            style: FilledButton.styleFrom(
+                                              foregroundColor:
+                                                  Colors.purple.shade700,
+                                              backgroundColor:
+                                                  Colors.purple.shade50,
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 12,
+                                                    vertical: 8,
+                                                  ),
+                                            ),
+                                          ),
+                                        if (canEndorse)
+                                          FilledButton.tonalIcon(
+                                            onPressed: () =>
+                                                _confirmDebunkReport(
+                                                  item.id,
+                                                  'marker',
+                                                ),
+                                            icon: const Icon(
+                                              Icons.gavel,
+                                              size: 16,
+                                            ),
+                                            label: const Text('Debunk'),
+                                            style: FilledButton.styleFrom(
+                                              foregroundColor:
+                                                  Colors.red.shade700,
+                                              backgroundColor:
+                                                  Colors.red.shade50,
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 12,
+                                                    vertical: 8,
+                                                  ),
+                                            ),
+                                          ),
+                                        TextButton.icon(
+                                          onPressed: () =>
+                                              _resolveMarker(item.id),
+                                          icon: const Icon(
+                                            Icons.check_circle_outline,
+                                            size: 16,
+                                          ),
+                                          label: const Text('Resolve'),
+                                          style: TextButton.styleFrom(
+                                            foregroundColor: Colors.green,
+                                          ),
+                                        ),
+                                        if (item.trustTier == 4 ||
+                                            item.trustTier == 3)
+                                          TextButton.icon(
+                                            onPressed: () =>
+                                                _blockSender(item.senderId),
+                                            icon: const Icon(
+                                              Icons.block,
+                                              size: 16,
+                                            ),
+                                            label: const Text('Block'),
+                                            style: TextButton.styleFrom(
+                                              foregroundColor: Colors.red,
+                                            ),
+                                          ),
+                                        if (item.trustTier == 4 ||
+                                            (settings.isOfficialMode &&
+                                                item.trustTier == 3))
+                                          FilledButton.tonalIcon(
+                                            onPressed: () {
+                                              if (settings.isOfficialMode) {
+                                                _makeOfficialVolunteer(
+                                                  item.senderId,
+                                                );
+                                              } else {
+                                                _markAsTrusted(item.senderId);
+                                              }
+                                            },
+                                            icon: Icon(
+                                              settings.isOfficialMode
+                                                  ? Icons.admin_panel_settings
+                                                  : Icons.verified_user,
+                                              size: 16,
+                                            ),
+                                            label: Text(
+                                              settings.isOfficialMode
+                                                  ? 'Make Volunteer'
+                                                  : 'Trust',
+                                            ),
+                                            style: FilledButton.styleFrom(
+                                              foregroundColor:
+                                                  settings.isOfficialMode
+                                                  ? Colors.purple.shade700
+                                                  : Colors.green.shade700,
+                                              backgroundColor:
+                                                  settings.isOfficialMode
+                                                  ? Colors.purple.shade50
+                                                  : Colors.green.shade50,
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 12,
+                                                    vertical: 8,
+                                                  ),
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          );
+                        } else if (item is NewsItemEntity) {
+                          return Card(
+                            margin: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 8,
+                            ),
+                            color: item.trustTier == 1
+                                ? const Color(0xFFFFF3E0)
+                                : null,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              side: BorderSide(
+                                color: getTierColor(
+                                  item.trustTier,
+                                ).withValues(alpha: 0.3),
+                                width: item.trustTier == 1 ? 2 : 1,
+                              ),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(16.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      CircleAvatar(
+                                        backgroundColor: item.trustTier == 1
+                                            ? Colors.blue.shade100
+                                            : item.trustTier == 2
+                                            ? Colors.purple.shade100
+                                            : item.trustTier == 3
+                                            ? Colors.green.shade100
+                                            : Colors.grey.shade200,
+                                        child: Icon(
+                                          Icons.campaign,
+                                          color: item.trustTier == 1
+                                              ? Colors.blue
+                                              : item.trustTier == 2
+                                              ? Colors.purple
+                                              : item.trustTier == 3
+                                              ? Colors.green
+                                              : Colors.grey.shade700,
                                         ),
                                       ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              item.title,
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 16,
+                                              ),
+                                            ),
+                                            Text(
+                                              formatTimestamp(item.timestamp),
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: Colors.grey.shade600,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      buildTrustBadge(item.trustTier),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    item.content,
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      height: 1.4,
                                     ),
+                                  ),
+                                  if (item.imageId != null &&
+                                      item.imageId!.isNotEmpty)
+                                    LocalImageDisplay(imageId: item.imageId!),
+                                  Builder(
+                                    builder: (context) {
+                                      final profile = getProfile(
+                                        item.senderId,
+                                        profiles,
+                                      );
+                                      if (profile != null) {
+                                        return Padding(
+                                          padding: const EdgeInsets.only(
+                                            top: 8.0,
+                                          ),
+                                          child: Text(
+                                            'By: ${profile.name}${profile.contactInfo.isNotEmpty ? ' (${profile.contactInfo})' : ''}',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: Colors.grey.shade700,
+                                              fontStyle: FontStyle.italic,
+                                            ),
+                                          ),
+                                        );
+                                      } else {
+                                        return Padding(
+                                          padding: const EdgeInsets.only(
+                                            top: 8.0,
+                                          ),
+                                          child: Text(
+                                            'By: Unknown User',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: Colors.grey.shade700,
+                                              fontStyle: FontStyle.italic,
+                                            ),
+                                          ),
+                                        );
+                                      }
+                                    },
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Wrap(
+                                    alignment: WrapAlignment.end,
+                                    spacing: 8,
+                                    runSpacing: 8,
+                                    children: [
+                                      if (canEndorse)
+                                        FilledButton.tonalIcon(
+                                          onPressed: () => _endorseNews(item),
+                                          icon: const Icon(
+                                            Icons.verified,
+                                            size: 16,
+                                          ),
+                                          label: const Text('Verify & Endorse'),
+                                          style: FilledButton.styleFrom(
+                                            foregroundColor:
+                                                Colors.purple.shade700,
+                                            backgroundColor:
+                                                Colors.purple.shade50,
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 12,
+                                              vertical: 8,
+                                            ),
+                                          ),
+                                        ),
+                                      if (canEndorse)
+                                        FilledButton.tonalIcon(
+                                          onPressed: () => _confirmDebunkReport(
+                                            item.id,
+                                            'news',
+                                          ),
+                                          icon: const Icon(
+                                            Icons.gavel,
+                                            size: 16,
+                                          ),
+                                          label: const Text('Debunk'),
+                                          style: FilledButton.styleFrom(
+                                            foregroundColor:
+                                                Colors.red.shade700,
+                                            backgroundColor: Colors.red.shade50,
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 12,
+                                              vertical: 8,
+                                            ),
+                                          ),
+                                        ),
+                                      TextButton.icon(
+                                        onPressed: () => _dismissNews(item.id),
+                                        icon: const Icon(Icons.clear, size: 16),
+                                        label: const Text('Dismiss'),
+                                        style: TextButton.styleFrom(
+                                          foregroundColor: Colors.grey,
+                                        ),
+                                      ),
+                                      if (item.trustTier == 4 ||
+                                          item.trustTier == 3)
+                                        TextButton.icon(
+                                          onPressed: () =>
+                                              _blockSender(item.senderId),
+                                          icon: const Icon(
+                                            Icons.block,
+                                            size: 16,
+                                          ),
+                                          label: const Text('Block'),
+                                          style: TextButton.styleFrom(
+                                            foregroundColor: Colors.red,
+                                          ),
+                                        ),
+                                      if (item.trustTier == 4 ||
+                                          (settings.isOfficialMode &&
+                                              item.trustTier == 3))
+                                        FilledButton.tonalIcon(
+                                          onPressed: () {
+                                            if (settings.isOfficialMode) {
+                                              _makeOfficialVolunteer(
+                                                item.senderId,
+                                              );
+                                            } else {
+                                              _markAsTrusted(item.senderId);
+                                            }
+                                          },
+                                          icon: Icon(
+                                            settings.isOfficialMode
+                                                ? Icons.admin_panel_settings
+                                                : Icons.verified_user,
+                                            size: 16,
+                                          ),
+                                          label: Text(
+                                            settings.isOfficialMode
+                                                ? 'Make Volunteer'
+                                                : 'Trust',
+                                          ),
+                                          style: FilledButton.styleFrom(
+                                            foregroundColor:
+                                                settings.isOfficialMode
+                                                ? Colors.purple.shade700
+                                                : Colors.green.shade700,
+                                            backgroundColor:
+                                                settings.isOfficialMode
+                                                ? Colors.purple.shade50
+                                                : Colors.green.shade50,
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 12,
+                                              vertical: 8,
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
                                 ],
                               ),
-                            ],
-                          ),
-                        ),
-                      );
-                    } else if (item is AreaEntity) {
-                      return Card(
-                        margin: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 8,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          side: BorderSide(
-                            color: getTierColor(
-                              item.trustTier,
-                            ).withValues(alpha: 0.3),
-                          ),
-                        ),
-                        clipBehavior: Clip.antiAlias,
-                        child: InkWell(
-                          onTap: () {
-                            setState(() => _currentIndex = 0);
-                            WidgetsBinding.instance.addPostFrameCallback((_) {
-                              try {
-                                if (item.coordinates.isNotEmpty) {
-                                  _mapController.move(
-                                    LatLng(
-                                      item.coordinates.first['lat']!,
-                                      item.coordinates.first['lng']!,
-                                    ),
-                                    14.0,
-                                  );
-                                }
-                              } catch (e) {
-                                debugPrint('Map not ready yet: $e');
-                              }
-                            });
-                          },
-                          child: Padding(
-                            padding: const EdgeInsets.all(16.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    CircleAvatar(
-                                      backgroundColor: item.trustTier == 1
-                                          ? Colors.blue.shade100
-                                          : item.trustTier == 2
-                                          ? Colors.purple.shade100
-                                          : item.trustTier == 3
-                                          ? Colors.green.shade100
-                                          : Colors.grey.shade200,
-                                      child: Icon(
-                                        Icons.format_shapes,
-                                        color: item.trustTier == 1
-                                            ? Colors.blue
-                                            : item.trustTier == 2
-                                            ? Colors.purple
-                                            : item.trustTier == 3
-                                            ? Colors.green
-                                            : Colors.grey.shade700,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            'Area: ${item.type}',
-                                            style: const TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 16,
-                                            ),
-                                          ),
-                                          Text(
-                                            formatTimestamp(item.timestamp),
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              color: Colors.grey.shade600,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    buildTrustBadge(item.trustTier),
-                                  ],
-                                ),
-                                const SizedBox(height: 12),
-                                Text(
-                                  item.description,
-                                  style: const TextStyle(
-                                    fontSize: 14,
-                                    height: 1.4,
-                                  ),
-                                ),
-                                Builder(
-                                  builder: (context) {
-                                    final profile = getProfile(
-                                      item.senderId,
-                                      profiles,
-                                    );
-                                    if (profile != null) {
-                                      return Padding(
-                                        padding: const EdgeInsets.only(
-                                          top: 8.0,
+                            ),
+                          );
+                        } else if (item is AreaEntity) {
+                          return Card(
+                            margin: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 8,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              side: BorderSide(
+                                color: getTierColor(
+                                  item.trustTier,
+                                ).withValues(alpha: 0.3),
+                              ),
+                            ),
+                            clipBehavior: Clip.antiAlias,
+                            child: InkWell(
+                              onTap: () {
+                                setState(() => _currentIndex = 0);
+                                WidgetsBinding.instance.addPostFrameCallback((
+                                  _,
+                                ) {
+                                  try {
+                                    if (item.coordinates.isNotEmpty) {
+                                      _mapController.move(
+                                        LatLng(
+                                          item.coordinates.first['lat']!,
+                                          item.coordinates.first['lng']!,
                                         ),
-                                        child: Text(
-                                          'By: ${profile.name}${profile.contactInfo.isNotEmpty ? ' (${profile.contactInfo})' : ''}',
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            color: Colors.grey.shade700,
-                                            fontStyle: FontStyle.italic,
-                                          ),
-                                        ),
-                                      );
-                                    } else {
-                                      return Padding(
-                                        padding: const EdgeInsets.only(
-                                          top: 8.0,
-                                        ),
-                                        child: Text(
-                                          'By: Unknown User',
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            color: Colors.grey.shade700,
-                                            fontStyle: FontStyle.italic,
-                                          ),
-                                        ),
+                                        14.0,
                                       );
                                     }
-                                  },
-                                ),
-                                const SizedBox(height: 12),
-                                Wrap(
-                                  alignment: WrapAlignment.end,
-                                  spacing: 8,
-                                  runSpacing: 8,
+                                  } catch (e) {
+                                    debugPrint('Map not ready yet: $e');
+                                  }
+                                });
+                              },
+                              child: Padding(
+                                padding: const EdgeInsets.all(16.0),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    if (canEndorse)
-                                      FilledButton.tonalIcon(
-                                        onPressed: () => _endorseArea(item),
-                                        icon: const Icon(Icons.verified, size: 16),
-                                        label: const Text('Verify & Endorse'),
-                                        style: FilledButton.styleFrom(
-                                          foregroundColor: Colors.purple.shade700,
-                                          backgroundColor: Colors.purple.shade50,
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 12,
-                                            vertical: 8,
+                                    Row(
+                                      children: [
+                                        CircleAvatar(
+                                          backgroundColor: item.trustTier == 1
+                                              ? Colors.blue.shade100
+                                              : item.trustTier == 2
+                                              ? Colors.purple.shade100
+                                              : item.trustTier == 3
+                                              ? Colors.green.shade100
+                                              : Colors.grey.shade200,
+                                          child: Icon(
+                                            Icons.format_shapes,
+                                            color: item.trustTier == 1
+                                                ? Colors.blue
+                                                : item.trustTier == 2
+                                                ? Colors.purple
+                                                : item.trustTier == 3
+                                                ? Colors.green
+                                                : Colors.grey.shade700,
                                           ),
                                         ),
-                                      ),
-                                    if (canEndorse)
-                                      FilledButton.tonalIcon(
-                                        onPressed: () => _confirmDebunkReport(item.id, 'area'),
-                                        icon: const Icon(Icons.gavel, size: 16),
-                                        label: const Text('Debunk'),
-                                        style: FilledButton.styleFrom(
-                                          foregroundColor: Colors.red.shade700,
-                                          backgroundColor: Colors.red.shade50,
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 12,
-                                            vertical: 8,
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                'Area: ${item.type}',
+                                                style: const TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 16,
+                                                ),
+                                              ),
+                                              Text(
+                                                formatTimestamp(item.timestamp),
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  color: Colors.grey.shade600,
+                                                ),
+                                              ),
+                                            ],
                                           ),
                                         ),
-                                      ),
-                                    TextButton.icon(
-                                      onPressed: () => _resolveArea(item.id),
-                                      icon: const Icon(
-                                        Icons.check_circle_outline,
-                                        size: 16,
-                                      ),
-                                      label: const Text('Resolve'),
-                                      style: TextButton.styleFrom(
-                                        foregroundColor: Colors.green,
+                                        buildTrustBadge(item.trustTier),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 12),
+                                    Text(
+                                      item.description,
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        height: 1.4,
                                       ),
                                     ),
-                                    if (item.trustTier == 4 ||
-                                        item.trustTier == 3)
-                                      TextButton.icon(
-                                        onPressed: () =>
-                                            _blockSender(item.senderId),
-                                        icon: const Icon(Icons.block, size: 16),
-                                        label: const Text('Block'),
-                                        style: TextButton.styleFrom(
-                                          foregroundColor: Colors.red,
-                                        ),
-                                      ),
-                                    if (item.trustTier == 4 || (settings.isOfficialMode && item.trustTier == 3))
-                                      FilledButton.tonalIcon(
-                                        onPressed: () {
-                                          if (settings.isOfficialMode) {
-                                            _makeOfficialVolunteer(item.senderId);
-                                          } else {
-                                            _markAsTrusted(item.senderId);
-                                          }
-                                        },
-                                        icon: Icon(
-                                          settings.isOfficialMode ? Icons.admin_panel_settings : Icons.verified_user,
-                                          size: 16,
-                                        ),
-                                        label: Text(settings.isOfficialMode ? 'Make Volunteer' : 'Trust'),
-                                        style: FilledButton.styleFrom(
-                                          foregroundColor: settings.isOfficialMode ? Colors.purple.shade700 : Colors.green.shade700,
-                                          backgroundColor: settings.isOfficialMode ? Colors.purple.shade50 : Colors.green.shade50,
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 12,
-                                            vertical: 8,
+                                    Builder(
+                                      builder: (context) {
+                                        final profile = getProfile(
+                                          item.senderId,
+                                          profiles,
+                                        );
+                                        if (profile != null) {
+                                          return Padding(
+                                            padding: const EdgeInsets.only(
+                                              top: 8.0,
+                                            ),
+                                            child: Text(
+                                              'By: ${profile.name}${profile.contactInfo.isNotEmpty ? ' (${profile.contactInfo})' : ''}',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: Colors.grey.shade700,
+                                                fontStyle: FontStyle.italic,
+                                              ),
+                                            ),
+                                          );
+                                        } else {
+                                          return Padding(
+                                            padding: const EdgeInsets.only(
+                                              top: 8.0,
+                                            ),
+                                            child: Text(
+                                              'By: Unknown User',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: Colors.grey.shade700,
+                                                fontStyle: FontStyle.italic,
+                                              ),
+                                            ),
+                                          );
+                                        }
+                                      },
+                                    ),
+                                    const SizedBox(height: 12),
+                                    Wrap(
+                                      alignment: WrapAlignment.end,
+                                      spacing: 8,
+                                      runSpacing: 8,
+                                      children: [
+                                        if (canEndorse)
+                                          FilledButton.tonalIcon(
+                                            onPressed: () => _endorseArea(item),
+                                            icon: const Icon(
+                                              Icons.verified,
+                                              size: 16,
+                                            ),
+                                            label: const Text(
+                                              'Verify & Endorse',
+                                            ),
+                                            style: FilledButton.styleFrom(
+                                              foregroundColor:
+                                                  Colors.purple.shade700,
+                                              backgroundColor:
+                                                  Colors.purple.shade50,
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 12,
+                                                    vertical: 8,
+                                                  ),
+                                            ),
+                                          ),
+                                        if (canEndorse)
+                                          FilledButton.tonalIcon(
+                                            onPressed: () =>
+                                                _confirmDebunkReport(
+                                                  item.id,
+                                                  'area',
+                                                ),
+                                            icon: const Icon(
+                                              Icons.gavel,
+                                              size: 16,
+                                            ),
+                                            label: const Text('Debunk'),
+                                            style: FilledButton.styleFrom(
+                                              foregroundColor:
+                                                  Colors.red.shade700,
+                                              backgroundColor:
+                                                  Colors.red.shade50,
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 12,
+                                                    vertical: 8,
+                                                  ),
+                                            ),
+                                          ),
+                                        TextButton.icon(
+                                          onPressed: () =>
+                                              _resolveArea(item.id),
+                                          icon: const Icon(
+                                            Icons.check_circle_outline,
+                                            size: 16,
+                                          ),
+                                          label: const Text('Resolve'),
+                                          style: TextButton.styleFrom(
+                                            foregroundColor: Colors.green,
                                           ),
                                         ),
-                                      ),
+                                        if (item.trustTier == 4 ||
+                                            item.trustTier == 3)
+                                          TextButton.icon(
+                                            onPressed: () =>
+                                                _blockSender(item.senderId),
+                                            icon: const Icon(
+                                              Icons.block,
+                                              size: 16,
+                                            ),
+                                            label: const Text('Block'),
+                                            style: TextButton.styleFrom(
+                                              foregroundColor: Colors.red,
+                                            ),
+                                          ),
+                                        if (item.trustTier == 4 ||
+                                            (settings.isOfficialMode &&
+                                                item.trustTier == 3))
+                                          FilledButton.tonalIcon(
+                                            onPressed: () {
+                                              if (settings.isOfficialMode) {
+                                                _makeOfficialVolunteer(
+                                                  item.senderId,
+                                                );
+                                              } else {
+                                                _markAsTrusted(item.senderId);
+                                              }
+                                            },
+                                            icon: Icon(
+                                              settings.isOfficialMode
+                                                  ? Icons.admin_panel_settings
+                                                  : Icons.verified_user,
+                                              size: 16,
+                                            ),
+                                            label: Text(
+                                              settings.isOfficialMode
+                                                  ? 'Make Volunteer'
+                                                  : 'Trust',
+                                            ),
+                                            style: FilledButton.styleFrom(
+                                              foregroundColor:
+                                                  settings.isOfficialMode
+                                                  ? Colors.purple.shade700
+                                                  : Colors.green.shade700,
+                                              backgroundColor:
+                                                  settings.isOfficialMode
+                                                  ? Colors.purple.shade50
+                                                  : Colors.green.shade50,
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 12,
+                                                    vertical: 8,
+                                                  ),
+                                            ),
+                                          ),
+                                      ],
+                                    ),
                                   ],
                                 ),
-                              ],
+                              ),
                             ),
-                          ),
-                        ),
-                      );
-                    } else if (item is PathEntity) {
-                      return Card(
-                        margin: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 8,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          side: BorderSide(
-                            color: getTierColor(
-                              item.trustTier,
-                            ).withValues(alpha: 0.3),
-                          ),
-                        ),
-                        clipBehavior: Clip.antiAlias,
-                        child: InkWell(
-                          onTap: () {
-                            setState(() => _currentIndex = 0);
-                            WidgetsBinding.instance.addPostFrameCallback((_) {
-                              try {
-                                if (item.coordinates.isNotEmpty) {
-                                  _mapController.move(
-                                    LatLng(
-                                      item.coordinates.first['lat']!,
-                                      item.coordinates.first['lng']!,
-                                    ),
-                                    14.0,
-                                  );
-                                }
-                              } catch (e) {
-                                debugPrint('Map not ready yet: $e');
-                              }
-                            });
-                          },
-                          child: Padding(
-                            padding: const EdgeInsets.all(16.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    CircleAvatar(
-                                      backgroundColor: item.trustTier == 1
-                                          ? Colors.blue.shade100
-                                          : item.trustTier == 2
-                                          ? Colors.purple.shade100
-                                          : item.trustTier == 3
-                                          ? Colors.green.shade100
-                                          : Colors.grey.shade200,
-                                      child: Icon(
-                                        Icons.route,
-                                        color: item.trustTier == 1
-                                            ? Colors.blue
-                                            : item.trustTier == 2
-                                            ? Colors.purple
-                                            : item.trustTier == 3
-                                            ? Colors.green
-                                            : Colors.grey.shade700,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            'Path: ${item.type}',
-                                            style: const TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 16,
-                                            ),
-                                          ),
-                                          Text(
-                                            formatTimestamp(item.timestamp),
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              color: Colors.grey.shade600,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    buildTrustBadge(item.trustTier),
-                                  ],
-                                ),
-                                const SizedBox(height: 12),
-                                Text(
-                                  item.description,
-                                  style: const TextStyle(
-                                    fontSize: 14,
-                                    height: 1.4,
-                                  ),
-                                ),
-                                Builder(
-                                  builder: (context) {
-                                    final profile = getProfile(
-                                      item.senderId,
-                                      profiles,
-                                    );
-                                    if (profile != null) {
-                                      return Padding(
-                                        padding: const EdgeInsets.only(
-                                          top: 8.0,
+                          );
+                        } else if (item is PathEntity) {
+                          return Card(
+                            margin: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 8,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              side: BorderSide(
+                                color: getTierColor(
+                                  item.trustTier,
+                                ).withValues(alpha: 0.3),
+                              ),
+                            ),
+                            clipBehavior: Clip.antiAlias,
+                            child: InkWell(
+                              onTap: () {
+                                setState(() => _currentIndex = 0);
+                                WidgetsBinding.instance.addPostFrameCallback((
+                                  _,
+                                ) {
+                                  try {
+                                    if (item.coordinates.isNotEmpty) {
+                                      _mapController.move(
+                                        LatLng(
+                                          item.coordinates.first['lat']!,
+                                          item.coordinates.first['lng']!,
                                         ),
-                                        child: Text(
-                                          'By: ${profile.name}${profile.contactInfo.isNotEmpty ? ' (${profile.contactInfo})' : ''}',
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            color: Colors.grey.shade700,
-                                            fontStyle: FontStyle.italic,
-                                          ),
-                                        ),
-                                      );
-                                    } else {
-                                      return Padding(
-                                        padding: const EdgeInsets.only(
-                                          top: 8.0,
-                                        ),
-                                        child: Text(
-                                          'By: Unknown User',
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            color: Colors.grey.shade700,
-                                            fontStyle: FontStyle.italic,
-                                          ),
-                                        ),
+                                        14.0,
                                       );
                                     }
-                                  },
-                                ),
-                                const SizedBox(height: 12),
-                                Wrap(
-                                  alignment: WrapAlignment.end,
-                                  spacing: 8,
-                                  runSpacing: 8,
+                                  } catch (e) {
+                                    debugPrint('Map not ready yet: $e');
+                                  }
+                                });
+                              },
+                              child: Padding(
+                                padding: const EdgeInsets.all(16.0),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    if (canEndorse)
-                                      FilledButton.tonalIcon(
-                                        onPressed: () => _endorsePath(item),
-                                        icon: const Icon(Icons.verified, size: 16),
-                                        label: const Text('Verify & Endorse'),
-                                        style: FilledButton.styleFrom(
-                                          foregroundColor: Colors.purple.shade700,
-                                          backgroundColor: Colors.purple.shade50,
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 12,
-                                            vertical: 8,
+                                    Row(
+                                      children: [
+                                        CircleAvatar(
+                                          backgroundColor: item.trustTier == 1
+                                              ? Colors.blue.shade100
+                                              : item.trustTier == 2
+                                              ? Colors.purple.shade100
+                                              : item.trustTier == 3
+                                              ? Colors.green.shade100
+                                              : Colors.grey.shade200,
+                                          child: Icon(
+                                            Icons.route,
+                                            color: item.trustTier == 1
+                                                ? Colors.blue
+                                                : item.trustTier == 2
+                                                ? Colors.purple
+                                                : item.trustTier == 3
+                                                ? Colors.green
+                                                : Colors.grey.shade700,
                                           ),
                                         ),
-                                      ),
-                                    if (canEndorse)
-                                      FilledButton.tonalIcon(
-                                        onPressed: () => _confirmDebunkReport(item.id, 'path'),
-                                        icon: const Icon(Icons.gavel, size: 16),
-                                        label: const Text('Debunk'),
-                                        style: FilledButton.styleFrom(
-                                          foregroundColor: Colors.red.shade700,
-                                          backgroundColor: Colors.red.shade50,
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 12,
-                                            vertical: 8,
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                'Path: ${item.type}',
+                                                style: const TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 16,
+                                                ),
+                                              ),
+                                              Text(
+                                                formatTimestamp(item.timestamp),
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  color: Colors.grey.shade600,
+                                                ),
+                                              ),
+                                            ],
                                           ),
                                         ),
-                                      ),
-                                    TextButton.icon(
-                                      onPressed: () => _resolvePath(item.id),
-                                      icon: const Icon(
-                                        Icons.check_circle_outline,
-                                        size: 16,
-                                      ),
-                                      label: const Text('Resolve'),
-                                      style: TextButton.styleFrom(
-                                        foregroundColor: Colors.green,
+                                        buildTrustBadge(item.trustTier),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 12),
+                                    Text(
+                                      item.description,
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        height: 1.4,
                                       ),
                                     ),
-                                    if (item.trustTier == 4 ||
-                                        item.trustTier == 3)
-                                      TextButton.icon(
-                                        onPressed: () =>
-                                            _blockSender(item.senderId),
-                                        icon: const Icon(Icons.block, size: 16),
-                                        label: const Text('Block'),
-                                        style: TextButton.styleFrom(
-                                          foregroundColor: Colors.red,
-                                        ),
-                                      ),
-                                    if (item.trustTier == 4 || (settings.isOfficialMode && item.trustTier == 3))
-                                      FilledButton.tonalIcon(
-                                        onPressed: () {
-                                          if (settings.isOfficialMode) {
-                                            _makeOfficialVolunteer(item.senderId);
-                                          } else {
-                                            _markAsTrusted(item.senderId);
-                                          }
-                                        },
-                                        icon: Icon(
-                                          settings.isOfficialMode ? Icons.admin_panel_settings : Icons.verified_user,
-                                          size: 16,
-                                        ),
-                                        label: Text(settings.isOfficialMode ? 'Make Volunteer' : 'Trust'),
-                                        style: FilledButton.styleFrom(
-                                          foregroundColor: settings.isOfficialMode ? Colors.purple.shade700 : Colors.green.shade700,
-                                          backgroundColor: settings.isOfficialMode ? Colors.purple.shade50 : Colors.green.shade50,
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 12,
-                                            vertical: 8,
+                                    Builder(
+                                      builder: (context) {
+                                        final profile = getProfile(
+                                          item.senderId,
+                                          profiles,
+                                        );
+                                        if (profile != null) {
+                                          return Padding(
+                                            padding: const EdgeInsets.only(
+                                              top: 8.0,
+                                            ),
+                                            child: Text(
+                                              'By: ${profile.name}${profile.contactInfo.isNotEmpty ? ' (${profile.contactInfo})' : ''}',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: Colors.grey.shade700,
+                                                fontStyle: FontStyle.italic,
+                                              ),
+                                            ),
+                                          );
+                                        } else {
+                                          return Padding(
+                                            padding: const EdgeInsets.only(
+                                              top: 8.0,
+                                            ),
+                                            child: Text(
+                                              'By: Unknown User',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: Colors.grey.shade700,
+                                                fontStyle: FontStyle.italic,
+                                              ),
+                                            ),
+                                          );
+                                        }
+                                      },
+                                    ),
+                                    const SizedBox(height: 12),
+                                    Wrap(
+                                      alignment: WrapAlignment.end,
+                                      spacing: 8,
+                                      runSpacing: 8,
+                                      children: [
+                                        if (canEndorse)
+                                          FilledButton.tonalIcon(
+                                            onPressed: () => _endorsePath(item),
+                                            icon: const Icon(
+                                              Icons.verified,
+                                              size: 16,
+                                            ),
+                                            label: const Text(
+                                              'Verify & Endorse',
+                                            ),
+                                            style: FilledButton.styleFrom(
+                                              foregroundColor:
+                                                  Colors.purple.shade700,
+                                              backgroundColor:
+                                                  Colors.purple.shade50,
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 12,
+                                                    vertical: 8,
+                                                  ),
+                                            ),
+                                          ),
+                                        if (canEndorse)
+                                          FilledButton.tonalIcon(
+                                            onPressed: () =>
+                                                _confirmDebunkReport(
+                                                  item.id,
+                                                  'path',
+                                                ),
+                                            icon: const Icon(
+                                              Icons.gavel,
+                                              size: 16,
+                                            ),
+                                            label: const Text('Debunk'),
+                                            style: FilledButton.styleFrom(
+                                              foregroundColor:
+                                                  Colors.red.shade700,
+                                              backgroundColor:
+                                                  Colors.red.shade50,
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 12,
+                                                    vertical: 8,
+                                                  ),
+                                            ),
+                                          ),
+                                        TextButton.icon(
+                                          onPressed: () =>
+                                              _resolvePath(item.id),
+                                          icon: const Icon(
+                                            Icons.check_circle_outline,
+                                            size: 16,
+                                          ),
+                                          label: const Text('Resolve'),
+                                          style: TextButton.styleFrom(
+                                            foregroundColor: Colors.green,
                                           ),
                                         ),
-                                      ),
+                                        if (item.trustTier == 4 ||
+                                            item.trustTier == 3)
+                                          TextButton.icon(
+                                            onPressed: () =>
+                                                _blockSender(item.senderId),
+                                            icon: const Icon(
+                                              Icons.block,
+                                              size: 16,
+                                            ),
+                                            label: const Text('Block'),
+                                            style: TextButton.styleFrom(
+                                              foregroundColor: Colors.red,
+                                            ),
+                                          ),
+                                        if (item.trustTier == 4 ||
+                                            (settings.isOfficialMode &&
+                                                item.trustTier == 3))
+                                          FilledButton.tonalIcon(
+                                            onPressed: () {
+                                              if (settings.isOfficialMode) {
+                                                _makeOfficialVolunteer(
+                                                  item.senderId,
+                                                );
+                                              } else {
+                                                _markAsTrusted(item.senderId);
+                                              }
+                                            },
+                                            icon: Icon(
+                                              settings.isOfficialMode
+                                                  ? Icons.admin_panel_settings
+                                                  : Icons.verified_user,
+                                              size: 16,
+                                            ),
+                                            label: Text(
+                                              settings.isOfficialMode
+                                                  ? 'Make Volunteer'
+                                                  : 'Trust',
+                                            ),
+                                            style: FilledButton.styleFrom(
+                                              foregroundColor:
+                                                  settings.isOfficialMode
+                                                  ? Colors.purple.shade700
+                                                  : Colors.green.shade700,
+                                              backgroundColor:
+                                                  settings.isOfficialMode
+                                                  ? Colors.purple.shade50
+                                                  : Colors.green.shade50,
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 12,
+                                                    vertical: 8,
+                                                  ),
+                                            ),
+                                          ),
+                                      ],
+                                    ),
                                   ],
                                 ),
-                              ],
+                              ),
                             ),
-                          ),
-                        ),
-                      );
-                    }
-                    return const SizedBox.shrink();
-                  },
-                ),
-        ),
-      ],
-    );
+                          );
+                        }
+                        return const SizedBox.shrink();
+                      },
+                    ),
+            ),
+          ],
+        );
       },
     );
   }
@@ -3282,7 +3586,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   void _makeOfficialVolunteer(String senderId) async {
-    await ref.read(mockGovApiServiceProvider.notifier).delegateAdminTrust(senderId);
+    await ref
+        .read(mockGovApiServiceProvider.notifier)
+        .delegateAdminTrust(senderId);
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('User upgraded to Official Volunteer!')),
@@ -3414,19 +3720,38 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 });
               },
             ),
-            if (settings.isOfficialMode)
-              const CommandTab(),
+            if (settings.isOfficialMode) const CommandTab(),
           ],
         ),
         bottomNavigationBar: NavigationBar(
-          selectedIndex: _currentIndex.clamp(0, settings.isOfficialMode ? 3 : 2),
-          onDestinationSelected: (index) => setState(() => _currentIndex = index),
+          selectedIndex: _currentIndex.clamp(
+            0,
+            settings.isOfficialMode ? 3 : 2,
+          ),
+          onDestinationSelected: (index) =>
+              setState(() => _currentIndex = index),
           destinations: [
-            const NavigationDestination(icon: Icon(Icons.map_outlined), selectedIcon: Icon(Icons.map), label: 'Map'),
-            const NavigationDestination(icon: Icon(Icons.view_list_outlined), selectedIcon: Icon(Icons.view_list), label: 'Feed'),
-            const NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Profile'),
+            const NavigationDestination(
+              icon: Icon(Icons.map_outlined),
+              selectedIcon: Icon(Icons.map),
+              label: 'Map',
+            ),
+            const NavigationDestination(
+              icon: Icon(Icons.view_list_outlined),
+              selectedIcon: Icon(Icons.view_list),
+              label: 'Feed',
+            ),
+            const NavigationDestination(
+              icon: Icon(Icons.person_outline),
+              selectedIcon: Icon(Icons.person),
+              label: 'Profile',
+            ),
             if (settings.isOfficialMode)
-              const NavigationDestination(icon: Icon(Icons.admin_panel_settings_outlined), selectedIcon: Icon(Icons.admin_panel_settings), label: 'Command'),
+              const NavigationDestination(
+                icon: Icon(Icons.admin_panel_settings_outlined),
+                selectedIcon: Icon(Icons.admin_panel_settings),
+                label: 'Command',
+              ),
           ],
         ),
         floatingActionButton: (_currentIndex == 2 || _currentIndex == 3)
@@ -3457,7 +3782,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           ),
                         ),
                         const SizedBox(width: 16),
-                        if ((_isDrawingArea && _currentAreaPoints.isNotEmpty) || (_isDrawingPath && _currentPathPoints.isNotEmpty))
+                        if ((_isDrawingArea && _currentAreaPoints.isNotEmpty) ||
+                            (_isDrawingPath && _currentPathPoints.isNotEmpty))
                           FloatingActionButton.extended(
                             heroTag: 'undo_draw',
                             onPressed: () {
@@ -3477,7 +3803,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             ),
                           ),
                         const SizedBox(width: 16),
-                        if ((_isDrawingArea && _currentAreaPoints.length >= 3) || (_isDrawingPath && _currentPathPoints.length >= 2))
+                        if ((_isDrawingArea &&
+                                _currentAreaPoints.length >= 3) ||
+                            (_isDrawingPath && _currentPathPoints.length >= 2))
                           FloatingActionButton.extended(
                             heroTag: 'done_draw',
                             onPressed: () async {
@@ -3559,7 +3887,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                 );
                               } else {
                                 if (mounted) {
-                                  ScaffoldMessenger.of(this.context).showSnackBar(
+                                  ScaffoldMessenger.of(
+                                    this.context,
+                                  ).showSnackBar(
                                     const SnackBar(
                                       content: Text('Location not available'),
                                     ),
