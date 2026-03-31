@@ -480,7 +480,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     final isCriticalStr = marker.isCritical ? "1" : "0";
     final payloadToSign = utf8.encode(
-      '${marker.id}${marker.type}$timestamp${marker.imageId ?? ""}${marker.expiresAt ?? ""}$isCriticalStr',
+      '${marker.id}${marker.latitude}${marker.longitude}${marker.type}${marker.description}$timestamp${marker.imageId ?? ""}${marker.expiresAt ?? ""}$isCriticalStr',
     );
 
     if (settings.isOfficialMode) {
@@ -578,8 +578,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     String signature;
 
     final isCriticalStr = area.isCritical ? "1" : "0";
+    final coordsStr = area.coordinates.map((c) => '${c['lat']},${c['lng']}').join('|');
     final payloadToSign = utf8.encode(
-      '${area.id}${area.type}$timestamp${area.expiresAt ?? ""}$isCriticalStr',
+      '${area.id}$coordsStr${area.type}${area.description}$timestamp${area.expiresAt ?? ""}$isCriticalStr',
     );
 
     if (settings.isOfficialMode) {
@@ -674,8 +675,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     String signature;
 
     final isCriticalStr = path.isCritical ? "1" : "0";
+    final coordsStr = path.coordinates.map((c) => '${c['lat']},${c['lng']}').join('|');
     final payloadToSign = utf8.encode(
-      '${path.id}${path.type}$timestamp${path.expiresAt ?? ""}$isCriticalStr',
+      '${path.id}$coordsStr${path.type}${path.description}$timestamp${path.expiresAt ?? ""}$isCriticalStr',
     );
 
     if (settings.isOfficialMode) {
@@ -771,7 +773,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     final isCriticalStr = news.isCritical ? "1" : "0";
     final payloadToSign = utf8.encode(
-      '${news.id}${news.title}$timestamp${news.imageId ?? ""}${news.expiresAt ?? ""}$isCriticalStr',
+      '${news.id}${news.title}${news.content}$timestamp${news.imageId ?? ""}${news.expiresAt ?? ""}$isCriticalStr',
     );
 
     if (settings.isOfficialMode) {
@@ -1268,7 +1270,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
                 final isCriticalStr = isCritical ? "1" : "0";
                 final payloadToSign = utf8.encode(
-                  '$id$type$timestamp${imageId ?? ""}${expiresAt ?? ""}$isCriticalStr',
+                  '$id${point.latitude}${point.longitude}$type$description$timestamp${imageId ?? ""}${expiresAt ?? ""}$isCriticalStr',
                 );
                 final signature = await cryptoService.signData(payloadToSign);
                 final untrustedSendersAsync = ref.read(
@@ -1479,8 +1481,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     await cryptoService.getPublicKeyString();
 
                 final isCriticalStr = isCritical ? "1" : "0";
+                final coordsStr = _currentAreaPoints.map((p) => '${p.latitude},${p.longitude}').join('|');
                 final payloadToSign = utf8.encode(
-                  '$id$type$timestamp${expiresAt ?? ""}$isCriticalStr',
+                  '$id$coordsStr$type$description$timestamp${expiresAt ?? ""}$isCriticalStr',
                 );
                 final signature = await cryptoService.signData(payloadToSign);
                 final untrustedSendersAsync = ref.read(
@@ -1692,8 +1695,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     await cryptoService.getPublicKeyString();
 
                 final isCriticalStr = isCritical ? "1" : "0";
+                final coordsStr = _currentPathPoints.map((p) => '${p.latitude},${p.longitude}').join('|');
                 final payloadToSign = utf8.encode(
-                  '$id$type$timestamp${expiresAt ?? ""}$isCriticalStr',
+                  '$id$coordsStr$type$description$timestamp${expiresAt ?? ""}$isCriticalStr',
                 );
                 final signature = await cryptoService.signData(payloadToSign);
                 final untrustedSendersAsync = ref.read(
@@ -1987,7 +1991,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
                 final isCriticalStr = isCritical ? "1" : "0";
                 final payloadToSign = utf8.encode(
-                  '$id$title$timestamp${imageId ?? ""}${expiresAt ?? ""}$isCriticalStr',
+                  '$id$title$content$timestamp${imageId ?? ""}${expiresAt ?? ""}$isCriticalStr',
                 );
 
                 final (senderId, signature) =

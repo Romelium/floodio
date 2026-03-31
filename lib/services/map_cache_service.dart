@@ -53,43 +53,45 @@ Future<String> _isolatePackMap(MapPackData data) async {
   await for (final entity in mapDir.list(recursive: true)) {
     if (entity is File && entity.path.endsWith('.png')) {
       final parts = entity.path.split(RegExp(r'[/\\]'));
-      final yStr = parts.last.replaceAll('.png', '');
-      final xStr = parts[parts.length - 2];
-      final zStr = parts[parts.length - 3];
-      
-      final z = int.tryParse(zStr);
-      final x = int.tryParse(xStr);
-      final y = int.tryParse(yStr);
-      
-      if (z != null && x != null && y != null) {
-        if (data.regionJson != null) {
-          final n = data.regionJson!['n'] as double;
-          final s = data.regionJson!['s'] as double;
-          final e = data.regionJson!['e'] as double;
-          final w = data.regionJson!['w'] as double;
-          final minZ = data.regionJson!['minZ'] as int;
-          final maxZ = data.regionJson!['maxZ'] as int;
-          
-          if (z < minZ || z > maxZ) continue;
-          final minX = _lon2tilex(w, z);
-          final maxX = _lon2tilex(e, z);
-          final minY = _lat2tiley(n, z);
-          final maxY = _lat2tiley(s, z);
-          if (x < min(minX, maxX) || x > max(minX, maxX) || y < min(minY, maxY) || y > max(minY, maxY)) {
-            continue;
+        if (parts.length >= 3) {
+          final yStr = parts.last.replaceAll('.png', '');
+          final xStr = parts[parts.length - 2];
+          final zStr = parts[parts.length - 3];
+  
+          final z = int.tryParse(zStr);
+          final x = int.tryParse(xStr);
+          final y = int.tryParse(yStr);
+  
+          if (z != null && x != null && y != null) {
+            if (data.regionJson != null) {
+              final n = data.regionJson!['n'] as double;
+              final s = data.regionJson!['s'] as double;
+              final e = data.regionJson!['e'] as double;
+              final w = data.regionJson!['w'] as double;
+              final minZ = data.regionJson!['minZ'] as int;
+              final maxZ = data.regionJson!['maxZ'] as int;
+  
+              if (z < minZ || z > maxZ) continue;
+              final minX = _lon2tilex(w, z);
+              final maxX = _lon2tilex(e, z);
+              final minY = _lat2tiley(n, z);
+              final maxY = _lat2tiley(s, z);
+              if (x < min(minX, maxX) || x > max(minX, maxX) || y < min(minY, maxY) || y > max(minY, maxY)) {
+                continue;
+              }
           }
-        }
 
-        final fileData = await entity.readAsBytes();
+          final fileData = await entity.readAsBytes();
         
-        final header = ByteData(13);
-        header.setUint8(0, z);
-        header.setUint32(1, x, Endian.big);
-        header.setUint32(5, y, Endian.big);
-        header.setUint32(9, fileData.length, Endian.big);
+          final header = ByteData(13);
+          header.setUint8(0, z);
+          header.setUint32(1, x, Endian.big);
+          header.setUint32(5, y, Endian.big);
+          header.setUint32(9, fileData.length, Endian.big);
         
-        sink.add(header.buffer.asUint8List());
-        sink.add(fileData);
+          sink.add(header.buffer.asUint8List());
+          sink.add(fileData);
+        }
       }
     }
   }
@@ -133,8 +135,12 @@ Future<int> _isolateUnpackMap(MapUnpackData data) async {
       if (fileData.length < length) break; // Unexpected EOF
       
       final tileFile = File('${mapDir.path}/$z/$x/$y.png');
-      await tileFile.parent.create(recursive: true);
-      await tileFile.writeAsBytes(fileData);
+      try {
+        await tileFile.parent.create(recursive: true);
+        await tileFile.writeAsBytes(fileData);
+      } catch (e) {
+        debugPrint('Failed to write unpacked tile: $e');
+      }
     }
     return timestamp; // Kept for backwards compatibility with older file headers
   } finally {

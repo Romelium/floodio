@@ -31,6 +31,7 @@ class AppDatabase extends _$AppDatabase {
     final imageIdsToDelete = [
       ...expiredMarkers.map((m) => m.imageId).where((id) => id != null && id.isNotEmpty),
       ...expiredNews.map((n) => n.imageId).where((id) => id != null && id.isNotEmpty),
+      // Future-proofing: If areas or paths ever get images, add them here
     ];
 
     await transaction(() async {

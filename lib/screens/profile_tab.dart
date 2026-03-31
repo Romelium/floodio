@@ -356,7 +356,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
 
                 final isCriticalStr = isCritical ? "1" : "0";
                 final payloadToSign = utf8.encode(
-                  '$newId$selectedType$timestamp${marker.imageId ?? ""}${expiresAt ?? ""}$isCriticalStr',
+                  '$newId${marker.latitude}${marker.longitude}$selectedType${descController.text}$timestamp${marker.imageId ?? ""}${expiresAt ?? ""}$isCriticalStr',
                 );
                 final signature = await cryptoService.signData(payloadToSign);
 
@@ -461,7 +461,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
 
                 final isCriticalStr = isCritical ? "1" : "0";
                 final payloadToSign = utf8.encode(
-                  '$newId${titleController.text}$timestamp${news.imageId ?? ""}${expiresAt ?? ""}$isCriticalStr',
+                  '$newId${titleController.text}${contentController.text}$timestamp${news.imageId ?? ""}${expiresAt ?? ""}$isCriticalStr',
                 );
                 final signature = await cryptoService.signData(payloadToSign);
 
@@ -590,8 +590,9 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                     : null;
 
                 final isCriticalStr = isCritical ? "1" : "0";
+                final coordsStr = area.coordinates.map((c) => '${c['lat']},${c['lng']}').join('|');
                 final payloadToSign = utf8.encode(
-                  '$newId$selectedType$timestamp${expiresAt ?? ""}$isCriticalStr',
+                  '$newId$coordsStr$selectedType${descController.text}$timestamp${expiresAt ?? ""}$isCriticalStr',
                 );
                 final signature = await cryptoService.signData(payloadToSign);
 
@@ -718,8 +719,9 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                     : null;
 
                 final isCriticalStr = isCritical ? "1" : "0";
+                final coordsStr = path.coordinates.map((c) => '${c['lat']},${c['lng']}').join('|');
                 final payloadToSign = utf8.encode(
-                  '$newId$selectedType$timestamp${expiresAt ?? ""}$isCriticalStr',
+                  '$newId$coordsStr$selectedType${descController.text}$timestamp${expiresAt ?? ""}$isCriticalStr',
                 );
                 final signature = await cryptoService.signData(payloadToSign);
 

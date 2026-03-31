@@ -45,7 +45,7 @@ class MockGovApiService extends _$MockGovApiService {
     final content = 'Automated alert from National Weather Service. Heavy rainfall expected in your area.';
     final expiresAt = timestamp + (24 * 3600000); // 24 hours TTL
     final isCriticalStr = "1";
-    final payloadToSignNews = utf8.encode('$id$title$timestamp$expiresAt$isCriticalStr'); // imageId is empty
+    final payloadToSignNews = utf8.encode('$id$title$content$timestamp$expiresAt$isCriticalStr'); // imageId is empty
     final (senderId, signatureNews) = await generateOfficialMarkerSignature(payloadToSignNews);
 
     final newNews = NewsItemEntity(
@@ -77,7 +77,7 @@ class MockGovApiService extends _$MockGovApiService {
 
     final type = 'Flood';
     final desc = 'Automated sensor detected rising water levels.';
-    final payloadToSignMarker = utf8.encode('${id}_m$type$timestamp$expiresAt' '1');
+    final payloadToSignMarker = utf8.encode('${id}_m$lat$lng$type$desc$timestamp$expiresAt' '1');
     final (_, signatureMarker) = await generateOfficialMarkerSignature(payloadToSignMarker);
 
     final newMarker = HazardMarkerEntity(
