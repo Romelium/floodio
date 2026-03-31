@@ -39,31 +39,38 @@ class FloodioApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final settings = ref.watch(appSettingsProvider);
+    final isOfficial = settings.isOfficialMode;
+
+    final seedColor = isOfficial ? const Color(0xFFB71C1C) : const Color(0xFF0D47A1);
+    final primaryColor = isOfficial ? const Color(0xFFB71C1C) : const Color(0xFF0D47A1);
+    final secondaryColor = isOfficial ? const Color(0xFFFFD54F) : const Color(0xFFFF6D00);
+
     return MaterialApp(
       title: 'Floodio Mesh',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF0D47A1), // Blue 900
-          primary: const Color(0xFF0D47A1),
-          secondary: const Color(0xFFFF6D00), // Orange A400
+          seedColor: seedColor,
+          primary: primaryColor,
+          secondary: secondaryColor,
           tertiary: const Color(0xFF00838F), // Cyan 800
           surface: const Color(0xFFF8F9FA),
           error: const Color(0xFFD32F2F),
         ),
-        textTheme: const TextTheme(
+        textTheme: TextTheme(
           headlineMedium: TextStyle(
             fontWeight: FontWeight.bold,
-            color: Color(0xFF0D47A1),
+            color: primaryColor,
           ),
-          titleLarge: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-          bodyMedium: TextStyle(fontSize: 15, height: 1.4),
+          titleLarge: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+          bodyMedium: const TextStyle(fontSize: 15, height: 1.4),
         ),
-        appBarTheme: const AppBarTheme(
+        appBarTheme: AppBarTheme(
           centerTitle: true,
           elevation: 0,
-          backgroundColor: Color(0xFF0D47A1),
+          backgroundColor: primaryColor,
           foregroundColor: Colors.white,
         ),
         chipTheme: ChipThemeData(

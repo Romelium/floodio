@@ -239,6 +239,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   );
                 },
               ),
+              ListTile(
+                leading: const Icon(Icons.security, color: Colors.orange),
+                title: const Text('Toggle Official Mode'),
+                onTap: () async {
+                  Navigator.pop(sheetContext);
+                  final current = ref.read(appSettingsProvider).isOfficialMode;
+                  await ref.read(appSettingsProvider.notifier).setOfficialMode(!current);
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Official Mode: ${!current ? "ON" : "OFF"}')),
+                  );
+                },
+              ),
             ],
           ),
         );
@@ -2654,6 +2667,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget build(BuildContext context) {
     final cryptoState = ref.watch(cryptoServiceProvider);
     final downloadProgress = ref.watch(mapDownloaderProvider);
+    final settings = ref.watch(appSettingsProvider);
+
+    if (!settings.isOfficialMode && _currentIndex == 3) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() => _currentIndex = 0);
+      });
+    }
 
     return Listener(
       behavior: HitTestBehavior.translucent,
@@ -2716,7 +2736,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ],
         ),
         body: IndexedStack(
-          index: _currentIndex,
+          index: _currentIndex.clamp(0, settings.isOfficialMode ? 3 : 2),
           children: [
             _buildMap(),
             _buildFeed(),
@@ -2766,18 +2786,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 });
               },
             ),
+            if (settings.isOfficialMode)
+              const Center(
+                child: Text(
+                  'Command Center',
+                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                ),
+              ),
           ],
         ),
         bottomNavigationBar: NavigationBar(
-          selectedIndex: _currentIndex,
+          selectedIndex: _currentIndex.clamp(0, settings.isOfficialMode ? 3 : 2),
           onDestinationSelected: (index) => setState(() => _currentIndex = index),
-          destinations: const [
-            NavigationDestination(icon: Icon(Icons.map_outlined), selectedIcon: Icon(Icons.map), label: 'Map'),
-            NavigationDestination(icon: Icon(Icons.view_list_outlined), selectedIcon: Icon(Icons.view_list), label: 'Feed'),
-            NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Profile'),
+          destinations: [
+            const NavigationDestination(icon: Icon(Icons.map_outlined), selectedIcon: Icon(Icons.map), label: 'Map'),
+            const NavigationDestination(icon: Icon(Icons.view_list_outlined), selectedIcon: Icon(Icons.view_list), label: 'Feed'),
+            const NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Profile'),
+            if (settings.isOfficialMode)
+              const NavigationDestination(icon: Icon(Icons.admin_panel_settings_outlined), selectedIcon: Icon(Icons.admin_panel_settings), label: 'Command'),
           ],
         ),
-        floatingActionButton: _currentIndex == 2
+        floatingActionButton: (_currentIndex == 2 || _currentIndex == 3)
             ? null
             : cryptoState.when(
                 data: (_) {
