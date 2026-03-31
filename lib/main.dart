@@ -23,6 +23,7 @@ import 'providers/admin_trusted_sender_provider.dart';
 import 'providers/area_provider.dart';
 import 'providers/cached_tile_provider.dart';
 import 'providers/database_provider.dart';
+import 'providers/feed_provider.dart';
 import 'providers/hazard_marker_provider.dart';
 import 'providers/location_provider.dart';
 import 'providers/map_downloader_provider.dart';
@@ -395,14 +396,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   final List<LatLng> _currentAreaPoints = [];
   bool _hasCenteredOnLocation = false;
 
-  String _searchQuery = '';
-  String _feedTypeFilter = 'All';
-  int? _feedTrustFilter;
+  final ScrollController _feedScrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
     _initPermissions();
+    _feedScrollController.addListener(() {
+      if (_feedScrollController.position.pixels >= _feedScrollController.position.maxScrollExtent - 200) {
+        ref.read(feedLimitProvider.notifier).loadMore();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _feedScrollController.dispose();
+    super.dispose();
   }
 
   Future<void> _initPermissions() async {
@@ -1595,15 +1605,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  Widget _buildEmptyFeedState(AsyncValue markersAsync, AsyncValue newsAsync) {
-    if (markersAsync.isLoading || newsAsync.isLoading) {
+  Widget _buildEmptyFeedState(bool isLoading) {
+    if (isLoading) {
       return const Center(child: CircularProgressIndicator());
-    }
-    if (markersAsync.hasError) {
-      return Center(child: Text('Error: ${markersAsync.error}'));
-    }
-    if (newsAsync.hasError) {
-      return Center(child: Text('Error: ${newsAsync.error}'));
     }
     return Center(
       child: Column(
@@ -1626,46 +1630,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   Widget _buildFeed(
-    AsyncValue<List<HazardMarkerEntity>> markersAsync,
-    AsyncValue<List<NewsItemEntity>> newsAsync,
-    AsyncValue<List<AreaEntity>> areasAsync,
     List<UserProfileEntity> profiles,
   ) {
-    final markers = markersAsync.value ?? [];
-    final news = newsAsync.value ?? [];
-    final areas = areasAsync.value ?? [];
+    final combined = ref.watch(combinedFeedProvider);
+    final filter = ref.watch(feedFilterControllerProvider);
+    final filterNotifier = ref.read(feedFilterControllerProvider.notifier);
 
-    var combined = <dynamic>[];
-    
-    if (_feedTypeFilter == 'All' || _feedTypeFilter == 'Hazards') {
-      combined.addAll(markers);
-    }
-    if (_feedTypeFilter == 'All' || _feedTypeFilter == 'News') {
-      combined.addAll(news);
-    }
-    if (_feedTypeFilter == 'All' || _feedTypeFilter == 'Areas') {
-      combined.addAll(areas);
-    }
-
-    if (_feedTrustFilter != null) {
-      combined = combined.where((item) => item.trustTier == _feedTrustFilter).toList();
-    }
-
-    if (_searchQuery.isNotEmpty) {
-      final query = _searchQuery.toLowerCase();
-      combined = combined.where((item) {
-        if (item is HazardMarkerEntity) {
-          return item.type.toLowerCase().contains(query) || item.description.toLowerCase().contains(query);
-        } else if (item is NewsItemEntity) {
-          return item.title.toLowerCase().contains(query) || item.content.toLowerCase().contains(query);
-        } else if (item is AreaEntity) {
-          return item.type.toLowerCase().contains(query) || item.description.toLowerCase().contains(query);
-        }
-        return false;
-      }).toList();
-    }
-
-    combined.sort((a, b) => (b.timestamp as int).compareTo(a.timestamp as int));
+    final isLoading = ref.watch(filteredHazardMarkersProvider).isLoading ||
+                      ref.watch(filteredNewsItemsProvider).isLoading ||
+                      ref.watch(filteredAreasProvider).isLoading;
 
     return Column(
       children: [
@@ -1680,7 +1653,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
               contentPadding: const EdgeInsets.symmetric(vertical: 0),
             ),
-            onChanged: (val) => setState(() => _searchQuery = val),
+            onChanged: (val) => filterNotifier.updateSearchQuery(val),
           ),
         ),
         SingleChildScrollView(
@@ -1694,9 +1667,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 padding: const EdgeInsets.only(right: 8.0),
                 child: ChoiceChip(
                   label: Text(type),
-                  selected: _feedTypeFilter == type,
+                  selected: filter.typeFilter == type,
                   onSelected: (selected) {
-                    if (selected) setState(() => _feedTypeFilter = type);
+                    if (selected) filterNotifier.updateTypeFilter(type);
                   },
                 ),
               )),
@@ -1712,9 +1685,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               const SizedBox(width: 8),
               ChoiceChip(
                 label: const Text('All'),
-                selected: _feedTrustFilter == null,
+                selected: filter.trustFilter == null,
                 onSelected: (selected) {
-                  if (selected) setState(() => _feedTrustFilter = null);
+                  if (selected) filterNotifier.updateTrustFilter(null);
                 },
               ),
               const SizedBox(width: 8),
@@ -1722,9 +1695,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 padding: const EdgeInsets.only(right: 8.0),
                 child: ChoiceChip(
                   label: Text(_getTrustTierName(tier)),
-                  selected: _feedTrustFilter == tier,
+                  selected: filter.trustFilter == tier,
                   onSelected: (selected) {
-                    setState(() => _feedTrustFilter = selected ? tier : null);
+                    filterNotifier.updateTrustFilter(selected ? tier : null);
                   },
                 ),
               )),
@@ -1734,11 +1707,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         const Divider(),
         Expanded(
           child: combined.isEmpty
-              ? _buildEmptyFeedState(markersAsync, newsAsync)
+              ? _buildEmptyFeedState(isLoading)
               : ListView.builder(
+                  controller: _feedScrollController,
                   padding: const EdgeInsets.only(top: 8, bottom: 80),
-                  itemCount: combined.length,
+                  itemCount: combined.length + (combined.length >= ref.watch(feedLimitProvider) ? 1 : 0),
                   itemBuilder: (context, index) {
+                    if (index == combined.length) {
+                      return const Padding(
+                        padding: EdgeInsets.all(16.0),
+                        child: Center(child: CircularProgressIndicator()),
+                      );
+                    }
                     final item = combined[index];
                     if (item is HazardMarkerEntity) {
           return Card(
@@ -2242,7 +2222,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final markersAsync = ref.watch(hazardMarkersControllerProvider);
-    final newsAsync = ref.watch(newsItemsControllerProvider);
     final areasAsync = ref.watch(areasControllerProvider);
     final profilesAsync = ref.watch(userProfilesControllerProvider);
     final cryptoState = ref.watch(cryptoServiceProvider);
@@ -2365,7 +2344,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           index: _currentIndex,
           children: [
             _buildMap(markersAsync, areasAsync, profiles, offlineRegions, currentPosition),
-            _buildFeed(markersAsync, newsAsync, areasAsync, profiles),
+            _buildFeed(profiles),
             const ProfileTab(),
           ],
         ),
