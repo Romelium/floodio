@@ -429,6 +429,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ),
       );
     } else if (granted) {
+      await requestBatteryOptimizationExemption();
       final service = FlutterBackgroundService();
       if (!(await service.isRunning())) {
         await service.startService();

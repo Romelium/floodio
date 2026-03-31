@@ -46,3 +46,10 @@ Future<bool> checkLocationServices() async {
   if (!Platform.isAndroid) return true;
   return await Permission.location.serviceStatus.isEnabled;
 }
+
+Future<void> requestBatteryOptimizationExemption() async {
+  if (!Platform.isAndroid) return;
+  if (!await Permission.ignoreBatteryOptimizations.isGranted) {
+    await Permission.ignoreBatteryOptimizations.request();
+  }
+}
