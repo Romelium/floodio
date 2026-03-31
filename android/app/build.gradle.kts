@@ -32,11 +32,26 @@ android {
         multiDexEnabled = true
     }
 
+    // 1. Create a new signing config that reads from the System Environment Variables
+    signingConfigs {
+        create("release") {
+            // The GitHub Action decodes the keystore to this exact path
+            storeFile = file("upload-keystore.jks")
+            storePassword = System.getenv("STORE_PASSWORD")
+            keyAlias = System.getenv("KEY_ALIAS")
+            keyPassword = System.getenv("KEY_PASSWORD")
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            // 2. Use the release config if the environment variables exist (in CI), 
+            // otherwise fallback to debug so local `flutter run --release` still works.
+            signingConfig = if (System.getenv("STORE_PASSWORD") != null) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
         }
     }
 }
