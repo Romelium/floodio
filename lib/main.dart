@@ -2306,7 +2306,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                   15.0,
                                 );
                               } else {
-                                if (mounted) {
+                                if (context.mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     const SnackBar(content: Text('Location not available')),
                                   );
@@ -2347,14 +2347,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             } catch (_) {}
                           }
 
-                          if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text(
-                                'Tap on the map to draw an area polygon.',
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Tap on the map to draw an area polygon.',
+                                ),
                               ),
-                            ),
-                          );
+                            );
                           }
                         },
                         backgroundColor: Colors.purple,
