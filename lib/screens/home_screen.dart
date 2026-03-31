@@ -94,7 +94,7 @@ class _SearchBarState extends ConsumerState<_SearchBar> {
               )
             : null,
         filled: true,
-        fillColor: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+        fillColor: Theme.of(context).colorScheme.surfaceContainerHighest,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(24),
           borderSide: BorderSide.none,
@@ -2666,25 +2666,25 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.all(32),
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3),
+                color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.5),
                 shape: BoxShape.circle,
               ),
-              child: Icon(Icons.inbox_outlined, size: 64, color: Theme.of(context).colorScheme.primary),
+              child: Icon(Icons.inbox_outlined, size: 72, color: Theme.of(context).colorScheme.primary),
             ),
             const SizedBox(height: 24),
             Text(
               'No reports found',
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.grey.shade800),
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface),
             ),
             const SizedBox(height: 12),
             Text(
               'Try adjusting your filters, or sync with nearby devices to receive the latest updates.',
               textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey.shade600, fontSize: 16, height: 1.4),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 16, height: 1.4),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 32),
             FilledButton.icon(
               onPressed: () {
                 showModalBottomSheet(
@@ -2697,7 +2697,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               icon: const Icon(Icons.sync),
               label: const Text('Open Sync Menu'),
               style: FilledButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
               ),
             )
           ],
@@ -3778,18 +3778,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   Widget _buildFilterBar(FeedFilter filter, dynamic filterNotifier) {
     return Container(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.only(bottom: 8, top: 4),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        border: Border(bottom: BorderSide(color: Theme.of(context).dividerColor.withValues(alpha: 0.1))),
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
@@ -3804,9 +3799,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         selected: filter.typeFilter == type,
                         onSelected: (selected) =>
                             filterNotifier.updateTypeFilter(type),
-                        selectedColor: Theme.of(
-                          context,
-                        ).colorScheme.primaryContainer,
+                        showCheckmark: false,
+                        selectedColor: Theme.of(context).colorScheme.primaryContainer,
+                        side: BorderSide(
+                          color: filter.typeFilter == type 
+                              ? Colors.transparent 
+                              : Theme.of(context).colorScheme.outlineVariant,
+                        ),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(20),
                         ),
@@ -3832,6 +3831,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         filterNotifier.updateTypeFilter('All');
                         filterNotifier.updateTrustFilter(null);
                       },
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                      ),
                     ),
                   ),
                 const Icon(
@@ -3845,6 +3847,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   selected: filter.trustFilter == null,
                   onSelected: (selected) =>
                       filterNotifier.updateTrustFilter(null),
+                  showCheckmark: false,
+                  selectedColor: Theme.of(context).colorScheme.primaryContainer,
+                  side: BorderSide(
+                    color: filter.trustFilter == null 
+                        ? Colors.transparent 
+                        : Theme.of(context).colorScheme.outlineVariant,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
                 ),
                 const SizedBox(width: 8),
                 ...[1, 2, 3, 4].map(
@@ -3855,16 +3867,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       selected: filter.trustFilter == tier,
                       onSelected: (selected) => filterNotifier
                           .updateTrustFilter(selected ? tier : null),
+                      showCheckmark: false,
                       selectedColor: getTierColor(tier).withValues(alpha: 0.2),
                       labelStyle: TextStyle(
                         color: filter.trustFilter == tier ? getTierColor(tier) : null,
                         fontWeight: filter.trustFilter == tier ? FontWeight.bold : null,
                       ),
+                      side: BorderSide(
+                        color: filter.trustFilter == tier ? getTierColor(tier) : Theme.of(context).colorScheme.outlineVariant,
+                      ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(20),
-                        side: BorderSide(
-                          color: filter.trustFilter == tier ? getTierColor(tier) : Colors.grey.shade300,
-                        ),
                       ),
                     ),
                   ),

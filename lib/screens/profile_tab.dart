@@ -758,11 +758,21 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                 // Profile Card
                 Card(
                   elevation: 0,
-                  color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                  clipBehavior: Clip.antiAlias,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(24),
                   ),
-                  child: Padding(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          Theme.of(context).colorScheme.primaryContainer,
+                          Theme.of(context).colorScheme.surfaceContainerHighest,
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                    ),
                     padding: const EdgeInsets.all(24),
                     child: Column(
                       children: [
@@ -781,9 +791,10 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                         const SizedBox(width: 16),
                         Text(
                           myName,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 24,
                             fontWeight: FontWeight.bold,
+                            color: Theme.of(context).colorScheme.onSurface,
                           ),
                         ),
                         if (myContact.isNotEmpty) ...[
@@ -791,11 +802,11 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(Icons.phone, size: 16, color: Colors.grey.shade700),
+                              Icon(Icons.phone, size: 16, color: Theme.of(context).colorScheme.onSurfaceVariant),
                               const SizedBox(width: 8),
                               Text(
                                 myContact,
-                                style: TextStyle(fontSize: 16, color: Colors.grey.shade700),
+                                style: TextStyle(fontSize: 16, color: Theme.of(context).colorScheme.onSurfaceVariant),
                               ),
                             ],
                           ),
@@ -817,7 +828,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                           child: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                             decoration: BoxDecoration(
-                              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                              color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.5),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Row(
@@ -843,13 +854,13 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            FilledButton.tonalIcon(
+                            FilledButton.icon(
                               onPressed: _editProfile,
                               icon: const Icon(Icons.edit, size: 18),
                               label: const Text('Edit Profile'),
                             ),
                             const SizedBox(width: 12),
-                            OutlinedButton.icon(
+                            FilledButton.tonalIcon(
                               onPressed: () => Navigator.push(
                                 context,
                                 MaterialPageRoute(builder: (_) => const SettingsScreen()),

@@ -37,7 +37,7 @@ class SyncBottomSheet extends ConsumerWidget {
                   child: Container(
                     width: 40,
                     height: 4,
-                    margin: const EdgeInsets.only(bottom: 16),
+                    margin: const EdgeInsets.only(bottom: 24),
                     decoration: BoxDecoration(
                       color: Colors.grey.shade300,
                       borderRadius: BorderRadius.circular(2),
@@ -66,10 +66,15 @@ class SyncBottomSheet extends ConsumerWidget {
                 Card(
                   color: (p2pState.isSyncing || p2pState.isConnecting)
                       ? Theme.of(context).colorScheme.primaryContainer
-                      : Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                      : Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
                   elevation: 0,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(20),
+                    side: BorderSide(
+                      color: (p2pState.isSyncing || p2pState.isConnecting)
+                          ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.3)
+                          : Colors.transparent,
+                    ),
                   ),
                   child: Padding(
                     padding: const EdgeInsets.all(20.0),

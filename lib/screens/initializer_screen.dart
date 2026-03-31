@@ -36,14 +36,16 @@ class _InitializerScreenState extends State<InitializerScreen> {
   @override
   Widget build(BuildContext context) {
     if (!_isInitialized) {
-      return const Scaffold(
+      return Scaffold(
         body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.hub, size: 80, color: Colors.blue),
-              SizedBox(height: 32),
-              CircularProgressIndicator(),
+              Icon(Icons.hub, size: 96, color: Theme.of(context).colorScheme.primary),
+              const SizedBox(height: 24),
+              Text('FLOODIO', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, letterSpacing: 4, color: Theme.of(context).colorScheme.primary)),
+              const SizedBox(height: 32),
+              const CircularProgressIndicator(),
             ],
           ),
         ),

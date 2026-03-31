@@ -236,25 +236,34 @@ class CommandTab extends ConsumerWidget {
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(
-        side: BorderSide(color: Colors.grey.shade300),
-        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
+        borderRadius: BorderRadius.circular(16),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(20.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                Icon(
-                  cloudState.hasInternet ? Icons.wifi : Icons.wifi_off,
-                  color: cloudState.hasInternet ? Colors.green : Colors.red,
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: cloudState.hasInternet ? Colors.green.withValues(alpha: 0.1) : Colors.red.withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    cloudState.hasInternet ? Icons.wifi : Icons.wifi_off,
+                    color: cloudState.hasInternet ? Colors.green : Colors.red,
+                    size: 20,
+                  ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 12),
                 Text(
                   cloudState.hasInternet ? 'Internet Connected' : 'No Internet Connection',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
+                    fontSize: 16,
                     color: cloudState.hasInternet ? Colors.green.shade700 : Colors.red.shade700,
                   ),
                 ),
@@ -267,30 +276,40 @@ class CommandTab extends ConsumerWidget {
                   ),
               ],
             ),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text('Pending Uploads:', style: TextStyle(color: Colors.grey)),
-                Text(
-                  '${cloudState.pendingUploads} items',
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-              ],
+            const SizedBox(height: 20),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('Pending Uploads:', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                      Text(
+                        '${cloudState.pendingUploads} items',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('Last Sync:', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                      Text(
+                        lastSyncText,
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text('Last Sync:', style: TextStyle(color: Colors.grey)),
-                Text(
-                  lastSyncText,
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-              ],
-            ),
             const SizedBox(height: 16),
-            const Divider(),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
               title: const Text('Sync Text Only', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
@@ -309,7 +328,7 @@ class CommandTab extends ConsumerWidget {
                 cloudNotifier.setOnlyTier1And2(val);
               },
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
             SizedBox(
               width: double.infinity,
               child: FilledButton.icon(
@@ -343,6 +362,9 @@ class CommandTab extends ConsumerWidget {
                       },
                 icon: const Icon(Icons.cloud_upload, size: 18),
                 label: const Text('Force Sync Now'),
+                style: FilledButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                ),
               ),
             ),
           ],

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../providers/ui_p2p_provider.dart';
 import 'sync_bottom_sheet.dart';
 
@@ -30,43 +31,42 @@ class MeshStatusChip extends ConsumerWidget {
               ? Colors.green.shade600
               : (p2pState.isAutoSyncing
                     ? Colors.orange.shade600
-                    : Colors.grey.shade600),
+                    : Theme.of(context).colorScheme.surfaceContainerHighest),
           borderRadius: BorderRadius.circular(24),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.1),
-              blurRadius: 4,
-              offset: const Offset(0, 2),
-            ),
-          ],
+          border: Border.all(
+            color: isConnected || p2pState.isAutoSyncing 
+                ? Colors.transparent 
+                : Theme.of(context).colorScheme.outline.withValues(alpha: 0.5),
+          ),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             if (isSyncing)
-              const SizedBox(
-                width: 12,
-                height: 12,
+              SizedBox(
+                width: 14,
+                height: 14,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
-                  color: Colors.white,
+                  color: isConnected || p2pState.isAutoSyncing ? Colors.white : Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
               )
             else
               Icon(
                 isConnected ? Icons.hub : Icons.hub_outlined,
-                size: 14,
-                color: Colors.white,
+                size: 16,
+                color: isConnected || p2pState.isAutoSyncing ? Colors.white : Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             const SizedBox(width: 6),
             Text(
               isConnected
                   ? 'MESH ACTIVE'
                   : (p2pState.isAutoSyncing ? 'SEARCHING' : 'OFFLINE'),
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 10,
+              style: TextStyle(
+                color: isConnected || p2pState.isAutoSyncing ? Colors.white : Theme.of(context).colorScheme.onSurfaceVariant,
+                fontSize: 11,
                 fontWeight: FontWeight.w900,
+                letterSpacing: 0.5,
               ),
             ),
           ],

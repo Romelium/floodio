@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -70,6 +71,7 @@ class FloodioApp extends ConsumerWidget {
           elevation: 0,
           backgroundColor: primaryColor,
           foregroundColor: Colors.white,
+          systemOverlayStyle: SystemUiOverlayStyle.light,
         ),
         chipTheme: ChipThemeData(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),

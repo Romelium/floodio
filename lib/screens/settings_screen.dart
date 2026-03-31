@@ -29,18 +29,21 @@ class SettingsScreen extends ConsumerWidget {
             leading: const Icon(Icons.layers),
             title: const Text('Map Style'),
             subtitle: Text('Current: ${settings.mapStyle.label}'),
-            trailing: DropdownButton<MapStyle>(
-              value: settings.mapStyle,
-              onChanged: (val) =>
-                  val != null ? notifier.setMapStyle(val) : null,
-              items: MapStyle.values
-                  .map(
-                    (style) => DropdownMenuItem(
-                      value: style,
-                      child: Text(style.label),
-                    ),
-                  )
-                  .toList(),
+            trailing: DropdownButtonHideUnderline(
+              child: DropdownButton<MapStyle>(
+                value: settings.mapStyle,
+                borderRadius: BorderRadius.circular(12),
+                onChanged: (val) =>
+                    val != null ? notifier.setMapStyle(val) : null,
+                items: MapStyle.values
+                    .map(
+                      (style) => DropdownMenuItem(
+                        value: style,
+                        child: Text(style.label),
+                      ),
+                    )
+                    .toList(),
+              ),
             ),
           ),
           const Divider(),

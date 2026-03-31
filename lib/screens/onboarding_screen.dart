@@ -94,8 +94,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             const SizedBox(height: 32),
             TextField(
               controller: _nameController,
+              textCapitalization: TextCapitalization.words,
               decoration: InputDecoration(
                 labelText: 'Full Name',
+                hintText: 'e.g. Jane Doe',
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -105,8 +107,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             const SizedBox(height: 16),
             TextField(
               controller: _contactController,
+              keyboardType: TextInputType.phone,
               decoration: InputDecoration(
                 labelText: 'Contact Number / Info (Optional)',
+                hintText: 'e.g. +1 234 567 8900',
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
