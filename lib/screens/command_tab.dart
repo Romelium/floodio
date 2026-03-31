@@ -255,6 +255,26 @@ class CommandTab extends ConsumerWidget {
               ],
             ),
             const SizedBox(height: 16),
+            const Divider(),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Sync Text Only', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+              subtitle: const Text('Skip uploading images to save bandwidth', style: TextStyle(fontSize: 12)),
+              value: cloudState.syncTextOnly,
+              onChanged: cloudState.isSyncing ? null : (val) {
+                cloudNotifier.setSyncTextOnly(val);
+              },
+            ),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Only Upload Tier 1 & 2', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+              subtitle: const Text('Filter out unverified crowdsourced reports', style: TextStyle(fontSize: 12)),
+              value: cloudState.onlyTier1And2,
+              onChanged: cloudState.isSyncing ? null : (val) {
+                cloudNotifier.setOnlyTier1And2(val);
+              },
+            ),
+            const SizedBox(height: 16),
             SizedBox(
               width: double.infinity,
               child: FilledButton.icon(

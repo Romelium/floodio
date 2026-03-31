@@ -15,12 +15,16 @@ class CloudSyncState {
   final DateTime? lastSyncTime;
   final bool hasInternet;
   final int pendingUploads;
+  final bool syncTextOnly;
+  final bool onlyTier1And2;
 
   CloudSyncState({
     this.isSyncing = false,
     this.lastSyncTime,
     this.hasInternet = false,
     this.pendingUploads = 0,
+    this.syncTextOnly = false,
+    this.onlyTier1And2 = false,
   });
 
   CloudSyncState copyWith({
@@ -28,12 +32,16 @@ class CloudSyncState {
     DateTime? lastSyncTime,
     bool? hasInternet,
     int? pendingUploads,
+    bool? syncTextOnly,
+    bool? onlyTier1And2,
   }) {
     return CloudSyncState(
       isSyncing: isSyncing ?? this.isSyncing,
       lastSyncTime: lastSyncTime ?? this.lastSyncTime,
       hasInternet: hasInternet ?? this.hasInternet,
       pendingUploads: pendingUploads ?? this.pendingUploads,
+      syncTextOnly: syncTextOnly ?? this.syncTextOnly,
+      onlyTier1And2: onlyTier1And2 ?? this.onlyTier1And2,
     );
   }
 }
@@ -57,11 +65,21 @@ class CloudSyncService extends _$CloudSyncService {
       syncWithCloud();
     });
     
-        _statusTimer = Timer.periodic(const Duration(seconds: 10), (_) {
-          _updateStatus();
-        });
+    _statusTimer = Timer.periodic(const Duration(seconds: 10), (_) {
+      _updateStatus();
+    });
     
     return CloudSyncState();
+  }
+
+  void setSyncTextOnly(bool value) {
+    state = state.copyWith(syncTextOnly: value);
+    _updateStatus();
+  }
+
+  void setOnlyTier1And2(bool value) {
+    state = state.copyWith(onlyTier1And2: value);
+    _updateStatus();
   }
 
   Future<void> _loadLastSyncTime() async {
@@ -84,10 +102,34 @@ class CloudSyncService extends _$CloudSyncService {
       final db = ref.read(databaseProvider);
       final lastSync = state.lastSyncTime?.millisecondsSinceEpoch ?? 0;
       
-      final markers = await (db.select(db.hazardMarkers)..where((t) => t.timestamp.isBiggerThanValue(lastSync))).get();
-      final news = await (db.select(db.newsItems)..where((t) => t.timestamp.isBiggerThanValue(lastSync))).get();
-      final areas = await (db.select(db.areas)..where((t) => t.timestamp.isBiggerThanValue(lastSync))).get();
-      final paths = await (db.select(db.paths)..where((t) => t.timestamp.isBiggerThanValue(lastSync))).get();
+      final markers = await (db.select(db.hazardMarkers)..where((t) {
+        var expr = t.timestamp.isBiggerThanValue(lastSync);
+        if (state.onlyTier1And2) {
+          expr = expr & t.trustTier.isSmallerOrEqualValue(2);
+        }
+        return expr;
+      })).get();
+      final news = await (db.select(db.newsItems)..where((t) {
+        var expr = t.timestamp.isBiggerThanValue(lastSync);
+        if (state.onlyTier1And2) {
+          expr = expr & t.trustTier.isSmallerOrEqualValue(2);
+        }
+        return expr;
+      })).get();
+      final areas = await (db.select(db.areas)..where((t) {
+        var expr = t.timestamp.isBiggerThanValue(lastSync);
+        if (state.onlyTier1And2) {
+          expr = expr & t.trustTier.isSmallerOrEqualValue(2);
+        }
+        return expr;
+      })).get();
+      final paths = await (db.select(db.paths)..where((t) {
+        var expr = t.timestamp.isBiggerThanValue(lastSync);
+        if (state.onlyTier1And2) {
+          expr = expr & t.trustTier.isSmallerOrEqualValue(2);
+        }
+        return expr;
+      })).get();
       
       pending = markers.length + news.length + areas.length + paths.length;
     } catch (_) {}
@@ -126,12 +168,39 @@ class CloudSyncService extends _$CloudSyncService {
       final db = ref.read(databaseProvider);
       final lastSync = state.lastSyncTime?.millisecondsSinceEpoch ?? 0;
       
-      final markers = await (db.select(db.hazardMarkers)..where((t) => t.timestamp.isBiggerThanValue(lastSync))).get();
-      final news = await (db.select(db.newsItems)..where((t) => t.timestamp.isBiggerThanValue(lastSync))).get();
-      final areas = await (db.select(db.areas)..where((t) => t.timestamp.isBiggerThanValue(lastSync))).get();
-      final paths = await (db.select(db.paths)..where((t) => t.timestamp.isBiggerThanValue(lastSync))).get();
+      final markers = await (db.select(db.hazardMarkers)..where((t) {
+        var expr = t.timestamp.isBiggerThanValue(lastSync);
+        if (state.onlyTier1And2) {
+          expr = expr & t.trustTier.isSmallerOrEqualValue(2);
+        }
+        return expr;
+      })).get();
+      final news = await (db.select(db.newsItems)..where((t) {
+        var expr = t.timestamp.isBiggerThanValue(lastSync);
+        if (state.onlyTier1And2) {
+          expr = expr & t.trustTier.isSmallerOrEqualValue(2);
+        }
+        return expr;
+      })).get();
+      final areas = await (db.select(db.areas)..where((t) {
+        var expr = t.timestamp.isBiggerThanValue(lastSync);
+        if (state.onlyTier1And2) {
+          expr = expr & t.trustTier.isSmallerOrEqualValue(2);
+        }
+        return expr;
+      })).get();
+      final paths = await (db.select(db.paths)..where((t) {
+        var expr = t.timestamp.isBiggerThanValue(lastSync);
+        if (state.onlyTier1And2) {
+          expr = expr & t.trustTier.isSmallerOrEqualValue(2);
+        }
+        return expr;
+      })).get();
       
       print('CloudSync: Uploaded ${markers.length} markers, ${news.length} news, ${areas.length} areas, ${paths.length} paths to the cloud.');
+      if (state.syncTextOnly) {
+        print('CloudSync: Skipped image uploads (Text Only mode).');
+      }
 
       // 2. "Download" new data from cloud
       // We trigger the MockGovApiService to generate some new data as if it came from the cloud
