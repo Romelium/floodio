@@ -276,7 +276,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
     showDialog(
       context: context,
       builder: (dialogContext) => StatefulBuilder(
-        builder: (innerContext, setState) => AlertDialog(
+        builder: (innerContext, setInnerState) => AlertDialog(
           title: const Text('Edit Hazard'),
           content: SingleChildScrollView(
             child: Column(
@@ -301,7 +301,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                       )
                       .toList(),
                   onChanged: (val) {
-                    if (val != null) setState(() => selectedType = val);
+                    if (val != null) setInnerState(() => selectedType = val);
                   },
                 ),
                 const SizedBox(height: 16),
@@ -324,7 +324,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                     DropdownMenuItem(value: 168, child: Text('7 Days')),
                     DropdownMenuItem(value: null, child: Text('No Expiration')),
                   ],
-                  onChanged: (val) => setState(() => selectedTtlHours = val),
+                  onChanged: (val) => setInnerState(() => selectedTtlHours = val),
                 ),
               ],
             ),
@@ -388,7 +388,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
     showDialog(
       context: context,
       builder: (dialogContext) => StatefulBuilder(
-        builder: (innerContext, setState) => AlertDialog(
+        builder: (innerContext, setInnerState) => AlertDialog(
           title: const Text('Edit News'),
           content: SingleChildScrollView(
             child: Column(
@@ -418,7 +418,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                     DropdownMenuItem(value: 168, child: Text('7 Days')),
                     DropdownMenuItem(value: null, child: Text('No Expiration')),
                   ],
-                  onChanged: (val) => setState(() => selectedTtlHours = val),
+                  onChanged: (val) => setInnerState(() => selectedTtlHours = val),
                 ),
               ],
             ),
@@ -480,7 +480,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
     showDialog(
       context: context,
       builder: (dialogContext) => StatefulBuilder(
-        builder: (innerContext, setState) => AlertDialog(
+        builder: (innerContext, setInnerState) => AlertDialog(
           title: const Text('Edit Area'),
           content: SingleChildScrollView(
             child: Column(
@@ -514,7 +514,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                           )
                           .toList(),
                   onChanged: (val) {
-                    if (val != null) setState(() => selectedType = val);
+                    if (val != null) setInnerState(() => selectedType = val);
                   },
                 ),
                 const SizedBox(height: 16),
@@ -537,7 +537,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                     DropdownMenuItem(value: 168, child: Text('7 Days')),
                     DropdownMenuItem(value: null, child: Text('No Expiration')),
                   ],
-                  onChanged: (val) => setState(() => selectedTtlHours = val),
+                  onChanged: (val) => setInnerState(() => selectedTtlHours = val),
                 ),
               ],
             ),
@@ -599,7 +599,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
     showDialog(
       context: context,
       builder: (dialogContext) => StatefulBuilder(
-        builder: (innerContext, setState) => AlertDialog(
+        builder: (innerContext, setInnerState) => AlertDialog(
           title: const Text('Edit Path'),
           content: SingleChildScrollView(
             child: Column(
@@ -631,7 +631,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                           )
                           .toList(),
                   onChanged: (val) {
-                    if (val != null) setState(() => selectedType = val);
+                    if (val != null) setInnerState(() => selectedType = val);
                   },
                 ),
                 const SizedBox(height: 16),
@@ -654,7 +654,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                     DropdownMenuItem(value: 168, child: Text('7 Days')),
                     DropdownMenuItem(value: null, child: Text('No Expiration')),
                   ],
-                  onChanged: (val) => setState(() => selectedTtlHours = val),
+                  onChanged: (val) => setInnerState(() => selectedTtlHours = val),
                 ),
               ],
             ),

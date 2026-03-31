@@ -965,8 +965,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     showDialog(
       context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (innerContext, setInnerState) => AlertDialog(
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
@@ -1000,7 +1000,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         .toList(),
                 onChanged: (val) {
                   if (val != null) {
-                    setState(() => selectedType = val);
+                    setInnerState(() => selectedType = val);
                   }
                 },
               ),
@@ -1040,18 +1040,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   DropdownMenuItem(value: 168, child: Text('7 Days')),
                   DropdownMenuItem(value: null, child: Text('No Expiration')),
                 ],
-                onChanged: (val) => setState(() => selectedTtlHours = val),
+                onChanged: (val) => setInnerState(() => selectedTtlHours = val),
               ),
             ],
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () => Navigator.pop(dialogContext),
               child: const Text('Cancel'),
             ),
             FilledButton.icon(
               onPressed: () async {
-                Navigator.pop(context);
+                Navigator.pop(dialogContext);
                 final cryptoService = ref.read(cryptoServiceProvider.notifier);
                 final trustedSendersAsync = ref.read(
                   trustedSendersControllerProvider,
@@ -2669,11 +2669,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
               const SizedBox(width: 12),
               if (downloadProgress.isDownloading)
-                Text(
-                  'Downloading map: ${(downloadProgress.percentage * 100).toStringAsFixed(1)}%',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.normal,
+                Flexible(
+                  child: Text(
+                    'Downloading map: ${(downloadProgress.percentage * 100).toStringAsFixed(1)}%',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.normal,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
             ],
