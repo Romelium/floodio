@@ -78,20 +78,20 @@ class _LocalImageDisplayState extends State<LocalImageDisplay> {
       padding: const EdgeInsets.only(top: 8.0),
       child: GestureDetector(
         onTap: () {
-          Navigator.of(context).push(MaterialPageRoute(
-            builder: (_) => Scaffold(
-              backgroundColor: Colors.black,
-              appBar: AppBar(
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => Scaffold(
                 backgroundColor: Colors.black,
-                iconTheme: const IconThemeData(color: Colors.white),
-              ),
-              body: Center(
-                child: InteractiveViewer(
-                  child: Image.file(_imageFile!),
+                appBar: AppBar(
+                  backgroundColor: Colors.black,
+                  iconTheme: const IconThemeData(color: Colors.white),
+                ),
+                body: Center(
+                  child: InteractiveViewer(child: Image.file(_imageFile!)),
                 ),
               ),
             ),
-          ));
+          );
         },
         child: ClipRRect(
           borderRadius: BorderRadius.circular(8),
@@ -111,7 +111,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final connection = await getSharedConnection();
   final db = AppDatabase(connection);
-  
+
   // Initialize settings before app start
   final container = ProviderContainer();
   await container.read(appSettingsProvider.notifier).init();
@@ -151,7 +151,10 @@ class FloodioApp extends ConsumerWidget {
           error: const Color(0xFFD32F2F),
         ),
         textTheme: const TextTheme(
-          headlineMedium: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF1A237E)),
+          headlineMedium: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF1A237E),
+          ),
           titleLarge: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
           bodyMedium: TextStyle(fontSize: 15, height: 1.4),
         ),
@@ -433,7 +436,9 @@ class MeshStatusChip extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final p2pState = ref.watch(uiP2pServiceProvider);
-    final isConnected = p2pState.hostState?.isActive == true || p2pState.clientState?.isActive == true;
+    final isConnected =
+        p2pState.hostState?.isActive == true ||
+        p2pState.clientState?.isActive == true;
     final isSyncing = p2pState.isSyncing || p2pState.isConnecting;
 
     return GestureDetector(
@@ -448,19 +453,42 @@ class MeshStatusChip extends ConsumerWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: isConnected ? Colors.green.shade700 : (p2pState.isAutoSyncing ? Colors.orange.shade800 : Colors.white24),
+          color: isConnected
+              ? Colors.green.shade700
+              : (p2pState.isAutoSyncing
+                    ? Colors.orange.shade800
+                    : Colors.white24),
           borderRadius: BorderRadius.circular(20),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             if (isSyncing)
-              const SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+              const SizedBox(
+                width: 12,
+                height: 12,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white,
+                ),
+              )
             else
-              Icon(isConnected ? Icons.hub : Icons.hub_outlined, size: 14, color: Colors.white),
+              Icon(
+                isConnected ? Icons.hub : Icons.hub_outlined,
+                size: 14,
+                color: Colors.white,
+              ),
             const SizedBox(width: 6),
-            Text(isConnected ? 'MESH ACTIVE' : (p2pState.isAutoSyncing ? 'SEARCHING' : 'OFFLINE'), 
-                 style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w900)),
+            Text(
+              isConnected
+                  ? 'MESH ACTIVE'
+                  : (p2pState.isAutoSyncing ? 'SEARCHING' : 'OFFLINE'),
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 10,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
           ],
         ),
       ),
@@ -486,7 +514,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     super.initState();
     _initPermissions();
     _feedScrollController.addListener(() {
-      if (_feedScrollController.position.pixels >= _feedScrollController.position.maxScrollExtent - 200) {
+      if (_feedScrollController.position.pixels >=
+          _feedScrollController.position.maxScrollExtent - 200) {
         ref.read(feedLimitProvider.notifier).loadMore();
       }
     });
@@ -603,7 +632,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 title: const Text('Fetch Mock Gov API Data'),
                 onTap: () async {
                   Navigator.pop(sheetContext);
-                  await ref.read(mockGovApiServiceProvider.notifier).fetchAndInjectMockData();
+                  await ref
+                      .read(mockGovApiServiceProvider.notifier)
+                      .fetchAndInjectMockData();
                   if (!mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('Mock Gov API data injected')),
@@ -611,15 +642,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 },
               ),
               ListTile(
-                leading: const Icon(Icons.admin_panel_settings, color: Colors.purple),
+                leading: const Icon(
+                  Icons.admin_panel_settings,
+                  color: Colors.purple,
+                ),
                 title: const Text('Make Me Admin-Trusted (Tier 2)'),
                 onTap: () async {
                   Navigator.pop(sheetContext);
-                  final myPubKey = await ref.read(cryptoServiceProvider.notifier).getPublicKeyString();
-                  await ref.read(mockGovApiServiceProvider.notifier).delegateAdminTrust(myPubKey);
+                  final myPubKey = await ref
+                      .read(cryptoServiceProvider.notifier)
+                      .getPublicKeyString();
+                  await ref
+                      .read(mockGovApiServiceProvider.notifier)
+                      .delegateAdminTrust(myPubKey);
                   if (!mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('You are now an Admin-Trusted Volunteer!')),
+                    const SnackBar(
+                      content: Text('You are now an Admin-Trusted Volunteer!'),
+                    ),
                   );
                 },
               ),
@@ -628,11 +668,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 title: const Text('Revoke My Admin Trust'),
                 onTap: () async {
                   Navigator.pop(sheetContext);
-                  final myPubKey = await ref.read(cryptoServiceProvider.notifier).getPublicKeyString();
-                  await ref.read(mockGovApiServiceProvider.notifier).revokeAdminTrust(myPubKey);
+                  final myPubKey = await ref
+                      .read(cryptoServiceProvider.notifier)
+                      .getPublicKeyString();
+                  await ref
+                      .read(mockGovApiServiceProvider.notifier)
+                      .revokeAdminTrust(myPubKey);
                   if (!mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Your Admin Trust has been revoked!')),
+                    const SnackBar(
+                      content: Text('Your Admin Trust has been revoked!'),
+                    ),
                   );
                 },
               ),
@@ -822,8 +868,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   ),
                   items: ['Flood', 'Fire', 'Roadblock', 'Medical', 'Other']
                       .map(
-                        (type) =>
-                            DropdownMenuItem(value: type, child: Text(type.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.bold))),
+                        (type) => DropdownMenuItem(
+                          value: type,
+                          child: Text(
+                            type.toUpperCase(),
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ),
                       )
                       .toList(),
                   onChanged: (val) {
@@ -926,7 +977,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 final type = selectedType;
                 final description = descController.text;
                 final timestamp = DateTime.now().millisecondsSinceEpoch;
-                final expiresAt = selectedTtlHours != null ? timestamp + (selectedTtlHours! * 3600000) : null;
+                final expiresAt = selectedTtlHours != null
+                    ? timestamp + (selectedTtlHours! * 3600000)
+                    : null;
                 final senderId = await cryptoService.getPublicKeyString();
 
                 String? imageId;
@@ -1013,9 +1066,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   void _showAddAreaDialog({AreaEntity? existingArea}) {
-    final validTypes = ['Flooded Area', 'Evacuation Zone', 'Safe Zone', 'Fire Zone', 'Other'];
-    String selectedType = validTypes.contains(existingArea?.type) ? existingArea!.type : 'Flooded Area';
-    final descController = TextEditingController(text: existingArea?.description ?? '');
+    final validTypes = [
+      'Flooded Area',
+      'Evacuation Zone',
+      'Safe Zone',
+      'Fire Zone',
+      'Other',
+    ];
+    String selectedType = validTypes.contains(existingArea?.type)
+        ? existingArea!.type
+        : 'Flooded Area';
+    final descController = TextEditingController(
+      text: existingArea?.description ?? '',
+    );
     int? selectedTtlHours = 24;
 
     showDialog(
@@ -1089,7 +1152,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 12,
+                  ),
                 ),
                 items: const [
                   DropdownMenuItem(value: 1, child: Text('1 Hour')),
@@ -1116,14 +1182,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   trustedSendersControllerProvider,
                 );
 
-                final id = existingArea?.id ?? DateTime.now().millisecondsSinceEpoch.toString();
+                final id =
+                    existingArea?.id ??
+                    DateTime.now().millisecondsSinceEpoch.toString();
                 final type = selectedType;
                 final description = descController.text;
                 final timestamp = DateTime.now().millisecondsSinceEpoch;
-                final expiresAt = selectedTtlHours != null ? timestamp + (selectedTtlHours! * 3600000) : null;
-                final senderId = existingArea?.senderId ?? await cryptoService.getPublicKeyString();
+                final expiresAt = selectedTtlHours != null
+                    ? timestamp + (selectedTtlHours! * 3600000)
+                    : null;
+                final senderId =
+                    existingArea?.senderId ??
+                    await cryptoService.getPublicKeyString();
 
-                final payloadToSign = utf8.encode('$id$type$timestamp${expiresAt ?? ""}');
+                final payloadToSign = utf8.encode(
+                  '$id$type$timestamp${expiresAt ?? ""}',
+                );
                 final signature = await cryptoService.signData(payloadToSign);
                 final untrustedSendersAsync = ref.read(
                   untrustedSendersControllerProvider,
@@ -1270,7 +1344,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           title: const Row(
             children: [
               Icon(Icons.campaign, color: Colors.blue),
@@ -1283,174 +1359,182 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 TextField(
-                controller: titleController,
-                decoration: InputDecoration(
-                  labelText: 'Title',
-                  border: OutlineInputBorder(
+                  controller: titleController,
+                  decoration: InputDecoration(
+                    labelText: 'Title',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: contentController,
+                  decoration: InputDecoration(
+                    labelText: 'Content',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  maxLines: 3,
+                ),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<int?>(
+                  initialValue: selectedTtlHours,
+                  decoration: InputDecoration(
+                    labelText: 'Expires In',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  items: const [
+                    DropdownMenuItem(value: 1, child: Text('1 Hour')),
+                    DropdownMenuItem(value: 12, child: Text('12 Hours')),
+                    DropdownMenuItem(value: 24, child: Text('24 Hours')),
+                    DropdownMenuItem(value: 72, child: Text('3 Days')),
+                    DropdownMenuItem(value: 168, child: Text('7 Days')),
+                    DropdownMenuItem(value: null, child: Text('No Expiration')),
+                  ],
+                  onChanged: (val) => setState(() => selectedTtlHours = val),
+                ),
+                const SizedBox(height: 16),
+                if (selectedImage != null) ...[
+                  ClipRRect(
                     borderRadius: BorderRadius.circular(8),
+                    child: Image.file(
+                      File(selectedImage!.path),
+                      height: 120,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                    ),
                   ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: contentController,
-                decoration: InputDecoration(
-                  labelText: 'Content',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
+                  TextButton.icon(
+                    onPressed: () => setState(() => selectedImage = null),
+                    icon: const Icon(Icons.delete, color: Colors.red),
+                    label: const Text(
+                      'Remove Image',
+                      style: TextStyle(color: Colors.red),
+                    ),
                   ),
-                ),
-                maxLines: 3,
-              ),
-              const SizedBox(height: 16),
-              DropdownButtonFormField<int?>(
-                initialValue: selectedTtlHours,
-                decoration: InputDecoration(
-                  labelText: 'Expires In',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                ),
-                items: const [
-                  DropdownMenuItem(value: 1, child: Text('1 Hour')),
-                  DropdownMenuItem(value: 12, child: Text('12 Hours')),
-                  DropdownMenuItem(value: 24, child: Text('24 Hours')),
-                  DropdownMenuItem(value: 72, child: Text('3 Days')),
-                  DropdownMenuItem(value: 168, child: Text('7 Days')),
-                  DropdownMenuItem(value: null, child: Text('No Expiration')),
-                ],
-                onChanged: (val) => setState(() => selectedTtlHours = val),
-              ),
-              const SizedBox(height: 16),
-              if (selectedImage != null) ...[
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: Image.file(
-                    File(selectedImage!.path),
-                    height: 120,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
+                ] else
+                  OutlinedButton.icon(
+                    onPressed: () async {
+                      final picker = ImagePicker();
+                      final image = await picker.pickImage(
+                        source: ImageSource.camera,
+                        imageQuality: 60,
+                        maxWidth: 1024,
+                        maxHeight: 1024,
+                      );
+                      if (image != null) {
+                        setState(() => selectedImage = image);
+                      }
+                    },
+                    icon: const Icon(Icons.camera_alt),
+                    label: const Text('Attach Photo'),
                   ),
-                ),
-                TextButton.icon(
-                  onPressed: () => setState(() => selectedImage = null),
-                  icon: const Icon(Icons.delete, color: Colors.red),
-                  label: const Text(
-                    'Remove Image',
-                    style: TextStyle(color: Colors.red),
-                  ),
-                ),
-              ] else
-                OutlinedButton.icon(
-                  onPressed: () async {
-                    final picker = ImagePicker();
-                    final image = await picker.pickImage(
-                      source: ImageSource.camera,
-                      imageQuality: 60,
-                      maxWidth: 1024,
-                      maxHeight: 1024,
-                    );
-                    if (image != null) {
-                      setState(() => selectedImage = image);
-                    }
-                  },
-                  icon: const Icon(Icons.camera_alt),
-                  label: const Text('Attach Photo'),
-                ),
-            ],
+              ],
+            ),
           ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            FilledButton.icon(
+              onPressed: () async {
+                Navigator.pop(context);
+                final id = DateTime.now().millisecondsSinceEpoch.toString();
+                final title = titleController.text;
+                final content = contentController.text;
+                final timestamp = DateTime.now().millisecondsSinceEpoch;
+                final expiresAt = selectedTtlHours != null
+                    ? timestamp + (selectedTtlHours! * 3600000)
+                    : null;
+
+                String? imageId;
+                if (selectedImage != null) {
+                  imageId = 'img_$id.jpg';
+                  final dir = await getApplicationDocumentsDirectory();
+                  final savedImage = File('${dir.path}/$imageId');
+                  await File(selectedImage!.path).copy(savedImage.path);
+
+                  ref
+                      .read(p2pServiceProvider.notifier)
+                      .broadcastFile(savedImage);
+                }
+
+                final payloadToSign = utf8.encode(
+                  '$id$title$timestamp${imageId ?? ""}${expiresAt ?? ""}',
+                );
+
+                final (senderId, signature) =
+                    await runGenerateOfficialMarkerSignature(payloadToSign);
+
+                final trustedSendersAsync = ref.read(
+                  trustedSendersControllerProvider,
+                );
+                final untrustedSendersAsync = ref.read(
+                  untrustedSendersControllerProvider,
+                );
+                final revokedSendersAsync = ref.read(
+                  revokedDelegationsControllerProvider,
+                );
+                final revokedKeys =
+                    revokedSendersAsync.value
+                        ?.map((e) => e.delegateePublicKey)
+                        .toList() ??
+                    [];
+                final adminTrustedSendersAsync = ref.read(
+                  adminTrustedSendersControllerProvider,
+                );
+                final adminTrustedKeys =
+                    adminTrustedSendersAsync.value
+                        ?.map((e) => e.publicKey)
+                        .toList() ??
+                    [];
+                final trustedKeys =
+                    trustedSendersAsync.value
+                        ?.map((e) => e.publicKey)
+                        .toList() ??
+                    [];
+                final untrustedKeys =
+                    untrustedSendersAsync.value
+                        ?.map((e) => e.publicKey)
+                        .toList() ??
+                    [];
+
+                final cryptoService = ref.read(cryptoServiceProvider.notifier);
+                final trustTier = await cryptoService.verifyAndGetTrustTier(
+                  data: payloadToSign,
+                  signatureStr: signature,
+                  senderPublicKeyStr: senderId,
+                  trustedPublicKeys: trustedKeys,
+                  adminTrustedPublicKeys: adminTrustedKeys,
+                  untrustedPublicKeys: untrustedKeys,
+                  revokedPublicKeys: revokedKeys,
+                );
+
+                final newNews = NewsItemEntity(
+                  id: id,
+                  title: title,
+                  content: content,
+                  timestamp: timestamp,
+                  senderId: senderId,
+                  signature: signature,
+                  trustTier: trustTier,
+                  expiresAt: expiresAt,
+                  imageId: imageId,
+                );
+                await ref
+                    .read(newsItemsControllerProvider.notifier)
+                    .addNewsItem(newNews);
+              },
+              icon: const Icon(Icons.broadcast_on_personal, size: 18),
+              label: const Text('Broadcast'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          FilledButton.icon(
-            onPressed: () async {
-              Navigator.pop(context);
-              final id = DateTime.now().millisecondsSinceEpoch.toString();
-              final title = titleController.text;
-              final content = contentController.text;
-              final timestamp = DateTime.now().millisecondsSinceEpoch;
-              final expiresAt = selectedTtlHours != null ? timestamp + (selectedTtlHours! * 3600000) : null;
-
-              String? imageId;
-              if (selectedImage != null) {
-                imageId = 'img_$id.jpg';
-                final dir = await getApplicationDocumentsDirectory();
-                final savedImage = File('${dir.path}/$imageId');
-                await File(selectedImage!.path).copy(savedImage.path);
-
-                ref
-                    .read(p2pServiceProvider.notifier)
-                    .broadcastFile(savedImage);
-              }
-
-              final payloadToSign = utf8.encode('$id$title$timestamp${imageId ?? ""}${expiresAt ?? ""}');
-
-              final (senderId, signature) =
-                  await runGenerateOfficialMarkerSignature(payloadToSign);
-
-              final trustedSendersAsync = ref.read(
-                trustedSendersControllerProvider,
-              );
-              final untrustedSendersAsync = ref.read(
-                untrustedSendersControllerProvider,
-              );
-              final revokedSendersAsync = ref.read(
-                revokedDelegationsControllerProvider,
-              );
-              final revokedKeys =
-                  revokedSendersAsync.value
-                      ?.map((e) => e.delegateePublicKey)
-                      .toList() ??
-                  [];
-              final adminTrustedSendersAsync = ref.read(
-                adminTrustedSendersControllerProvider,
-              );
-              final adminTrustedKeys =
-                  adminTrustedSendersAsync.value
-                      ?.map((e) => e.publicKey)
-                      .toList() ??
-                  [];
-              final trustedKeys =
-                  trustedSendersAsync.value?.map((e) => e.publicKey).toList() ??
-                  [];
-              final untrustedKeys =
-                  untrustedSendersAsync.value
-                      ?.map((e) => e.publicKey)
-                      .toList() ??
-                  [];
-
-              final cryptoService = ref.read(cryptoServiceProvider.notifier);
-              final trustTier = await cryptoService.verifyAndGetTrustTier(
-                data: payloadToSign,
-                signatureStr: signature,
-                senderPublicKeyStr: senderId,
-                trustedPublicKeys: trustedKeys,
-                adminTrustedPublicKeys: adminTrustedKeys,
-                untrustedPublicKeys: untrustedKeys,
-                revokedPublicKeys: revokedKeys,
-              );
-
-              final newNews = NewsItemEntity(
-                id: id,
-                title: title,
-                content: content,
-                timestamp: timestamp,
-                senderId: senderId,
-                signature: signature,
-                trustTier: trustTier,
-                expiresAt: expiresAt,
-                imageId: imageId,
-              );
-              await ref
-                  .read(newsItemsControllerProvider.notifier)
-                  .addNewsItem(newNews);
-            },
-            icon: const Icon(Icons.broadcast_on_personal, size: 18),
-            label: const Text('Broadcast'),
-          ),
-        ],
-      ),
       ),
     );
   }
@@ -1480,7 +1564,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return FlutterMap(
       mapController: _mapController,
       options: MapOptions(
-        initialCenter: currentPosition != null 
+        initialCenter: currentPosition != null
             ? LatLng(currentPosition.latitude, currentPosition.longitude)
             : const LatLng(37.7749, -122.4194),
         initialZoom: 13.0,
@@ -1549,7 +1633,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   point: LatLng(m.latitude, m.longitude),
                   radius: m.trustTier == 1 ? 500 : 300,
                   useRadiusInMeter: true,
-                  color: (m.trustTier == 1 ? Colors.blue : Colors.purple).withValues(alpha: 0.2),
+                  color: (m.trustTier == 1 ? Colors.blue : Colors.purple)
+                      .withValues(alpha: 0.2),
                   borderColor: m.trustTier == 1 ? Colors.blue : Colors.purple,
                   borderStrokeWidth: 2,
                 ),
@@ -1722,7 +1807,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           MarkerLayer(
             markers: [
               Marker(
-                point: LatLng(currentPosition.latitude, currentPosition.longitude),
+                point: LatLng(
+                  currentPosition.latitude,
+                  currentPosition.longitude,
+                ),
                 width: 24,
                 height: 24,
                 alignment: Alignment.center,
@@ -1736,7 +1824,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         color: Colors.blue.withValues(alpha: 0.5),
                         blurRadius: 10,
                         spreadRadius: 5,
-                      )
+                      ),
                     ],
                   ),
                 ),
@@ -1774,16 +1862,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  Widget _buildFeed(
-    List<UserProfileEntity> profiles,
-  ) {
+  Widget _buildFeed(List<UserProfileEntity> profiles) {
     final combined = ref.watch(combinedFeedProvider);
     final filter = ref.watch(feedFilterControllerProvider);
     final filterNotifier = ref.read(feedFilterControllerProvider.notifier);
 
-    final isLoading = ref.watch(filteredHazardMarkersProvider).isLoading ||
-                      ref.watch(filteredNewsItemsProvider).isLoading ||
-                      ref.watch(filteredAreasProvider).isLoading;
+    final isLoading =
+        ref.watch(filteredHazardMarkersProvider).isLoading ||
+        ref.watch(filteredNewsItemsProvider).isLoading ||
+        ref.watch(filteredAreasProvider).isLoading;
 
     return Column(
       children: [
@@ -1796,7 +1883,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               prefixIcon: const Icon(Icons.search),
               filled: true,
               fillColor: Colors.white,
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(30), borderSide: BorderSide.none),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(30),
+                borderSide: BorderSide.none,
+              ),
               contentPadding: EdgeInsets.zero,
             ),
             onChanged: (val) => filterNotifier.updateSearchQuery(val),
@@ -1809,7 +1899,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               : ListView.builder(
                   controller: _feedScrollController,
                   padding: const EdgeInsets.only(top: 8, bottom: 80),
-                  itemCount: combined.length + (combined.length >= ref.watch(feedLimitProvider) ? 1 : 0),
+                  itemCount:
+                      combined.length +
+                      (combined.length >= ref.watch(feedLimitProvider) ? 1 : 0),
                   itemBuilder: (context, index) {
                     if (index == combined.length) {
                       return const Padding(
@@ -1819,472 +1911,538 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     }
                     final item = combined[index];
                     if (item is HazardMarkerEntity) {
-          return Card(
-            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-              side: BorderSide(
-                color: _getTierColor(item.trustTier).withValues(alpha: 0.5),
-                width: item.trustTier == 1 ? 2 : 1,
-              ),
-            ),
-            child: InkWell(
-              onTap: () {
-                setState(() => _currentIndex = 0);
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  try {
-                    _mapController.move(
-                      LatLng(item.latitude, item.longitude),
-                      15.0,
-                    );
-                  } catch (e) {
-                    debugPrint('Map not ready yet: $e');
-                  }
-                });
-              },
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        CircleAvatar(
-                          backgroundColor: item.trustTier == 1
-                              ? Colors.blue.shade100
-                              : item.trustTier == 2
-                              ? Colors.purple.shade100
-                              : item.trustTier == 3
-                              ? Colors.green.shade100
-                              : Colors.grey.shade200,
-                          child: Icon(
-                            _getHazardIcon(item.type),
-                            color: item.trustTier == 1
-                                ? Colors.blue
-                                : item.trustTier == 2
-                                ? Colors.purple
-                                : item.trustTier == 3
-                                ? Colors.green
-                                : Colors.grey.shade700,
+                      return Card(
+                        margin: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          side: BorderSide(
+                            color: _getTierColor(
+                              item.trustTier,
+                            ).withValues(alpha: 0.5),
+                            width: item.trustTier == 1 ? 2 : 1,
                           ),
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
+                        child: InkWell(
+                          onTap: () {
+                            setState(() => _currentIndex = 0);
+                            WidgetsBinding.instance.addPostFrameCallback((_) {
+                              try {
+                                _mapController.move(
+                                  LatLng(item.latitude, item.longitude),
+                                  15.0,
+                                );
+                              } catch (e) {
+                                debugPrint('Map not ready yet: $e');
+                              }
+                            });
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    CircleAvatar(
+                                      backgroundColor: item.trustTier == 1
+                                          ? Colors.blue.shade100
+                                          : item.trustTier == 2
+                                          ? Colors.purple.shade100
+                                          : item.trustTier == 3
+                                          ? Colors.green.shade100
+                                          : Colors.grey.shade200,
+                                      child: Icon(
+                                        _getHazardIcon(item.type),
+                                        color: item.trustTier == 1
+                                            ? Colors.blue
+                                            : item.trustTier == 2
+                                            ? Colors.purple
+                                            : item.trustTier == 3
+                                            ? Colors.green
+                                            : Colors.grey.shade700,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'Hazard: ${item.type}',
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 16,
+                                            ),
+                                          ),
+                                          Text(
+                                            _formatTimestamp(item.timestamp),
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: Colors.grey.shade600,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    _buildTrustBadge(item.trustTier),
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                                Text(
+                                  item.description,
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    height: 1.4,
+                                  ),
+                                ),
+                                if (item.imageId != null &&
+                                    item.imageId!.isNotEmpty)
+                                  LocalImageDisplay(imageId: item.imageId!),
+                                Builder(
+                                  builder: (context) {
+                                    final profile = _getProfile(
+                                      item.senderId,
+                                      profiles,
+                                    );
+                                    if (profile != null) {
+                                      return Padding(
+                                        padding: const EdgeInsets.only(
+                                          top: 8.0,
+                                        ),
+                                        child: Text(
+                                          'By: ${profile.name}${profile.contactInfo.isNotEmpty ? ' (${profile.contactInfo})' : ''}',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.grey.shade700,
+                                            fontStyle: FontStyle.italic,
+                                          ),
+                                        ),
+                                      );
+                                    } else {
+                                      return Padding(
+                                        padding: const EdgeInsets.only(
+                                          top: 8.0,
+                                        ),
+                                        child: Text(
+                                          'By: Unknown User',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.grey.shade700,
+                                            fontStyle: FontStyle.italic,
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                  },
+                                ),
+                                const SizedBox(height: 12),
+                                Wrap(
+                                  alignment: WrapAlignment.end,
+                                  spacing: 8,
+                                  runSpacing: 8,
+                                  children: [
+                                    TextButton.icon(
+                                      onPressed: () => _resolveMarker(item.id),
+                                      icon: const Icon(
+                                        Icons.check_circle_outline,
+                                        size: 16,
+                                      ),
+                                      label: const Text('Resolve'),
+                                      style: TextButton.styleFrom(
+                                        foregroundColor: Colors.green,
+                                      ),
+                                    ),
+                                    if (item.trustTier == 4 ||
+                                        item.trustTier == 3)
+                                      TextButton.icon(
+                                        onPressed: () =>
+                                            _blockSender(item.senderId),
+                                        icon: const Icon(Icons.block, size: 16),
+                                        label: const Text('Block'),
+                                        style: TextButton.styleFrom(
+                                          foregroundColor: Colors.red,
+                                        ),
+                                      ),
+                                    if (item.trustTier == 4)
+                                      FilledButton.tonalIcon(
+                                        onPressed: () =>
+                                            _markAsTrusted(item.senderId),
+                                        icon: const Icon(
+                                          Icons.verified_user,
+                                          size: 16,
+                                        ),
+                                        label: const Text('Trust'),
+                                        style: FilledButton.styleFrom(
+                                          foregroundColor:
+                                              Colors.green.shade700,
+                                          backgroundColor: Colors.green.shade50,
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 12,
+                                            vertical: 8,
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    } else if (item is NewsItemEntity) {
+                      return Card(
+                        margin: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
+                        color: item.trustTier == 1
+                            ? const Color(0xFFFFF3E0)
+                            : null,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          side: BorderSide(
+                            color: _getTierColor(item.trustTier),
+                            width: item.trustTier == 1 ? 2 : 1,
+                          ),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16.0),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
+                              Row(
+                                children: [
+                                  CircleAvatar(
+                                    backgroundColor: item.trustTier == 1
+                                        ? Colors.blue.shade100
+                                        : item.trustTier == 2
+                                        ? Colors.purple.shade100
+                                        : item.trustTier == 3
+                                        ? Colors.green.shade100
+                                        : Colors.grey.shade200,
+                                    child: Icon(
+                                      Icons.campaign,
+                                      color: item.trustTier == 1
+                                          ? Colors.blue
+                                          : item.trustTier == 2
+                                          ? Colors.purple
+                                          : item.trustTier == 3
+                                          ? Colors.green
+                                          : Colors.grey.shade700,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          item.title,
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 16,
+                                          ),
+                                        ),
+                                        Text(
+                                          _formatTimestamp(item.timestamp),
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.grey.shade600,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  _buildTrustBadge(item.trustTier),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
                               Text(
-                                'Hazard: ${item.type}',
+                                item.content,
                                 style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
+                                  fontSize: 14,
+                                  height: 1.4,
                                 ),
                               ),
-                              Text(
-                                _formatTimestamp(item.timestamp),
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey.shade600,
-                                ),
+                              if (item.imageId != null &&
+                                  item.imageId!.isNotEmpty)
+                                LocalImageDisplay(imageId: item.imageId!),
+                              Builder(
+                                builder: (context) {
+                                  final profile = _getProfile(
+                                    item.senderId,
+                                    profiles,
+                                  );
+                                  if (profile != null) {
+                                    return Padding(
+                                      padding: const EdgeInsets.only(top: 8.0),
+                                      child: Text(
+                                        'By: ${profile.name}${profile.contactInfo.isNotEmpty ? ' (${profile.contactInfo})' : ''}',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.grey.shade700,
+                                          fontStyle: FontStyle.italic,
+                                        ),
+                                      ),
+                                    );
+                                  } else {
+                                    return Padding(
+                                      padding: const EdgeInsets.only(top: 8.0),
+                                      child: Text(
+                                        'By: Unknown User',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.grey.shade700,
+                                          fontStyle: FontStyle.italic,
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                },
+                              ),
+                              const SizedBox(height: 12),
+                              Wrap(
+                                alignment: WrapAlignment.end,
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: [
+                                  TextButton.icon(
+                                    onPressed: () => _dismissNews(item.id),
+                                    icon: const Icon(Icons.clear, size: 16),
+                                    label: const Text('Dismiss'),
+                                    style: TextButton.styleFrom(
+                                      foregroundColor: Colors.grey,
+                                    ),
+                                  ),
+                                  if (item.trustTier == 4 ||
+                                      item.trustTier == 3)
+                                    TextButton.icon(
+                                      onPressed: () =>
+                                          _blockSender(item.senderId),
+                                      icon: const Icon(Icons.block, size: 16),
+                                      label: const Text('Block'),
+                                      style: TextButton.styleFrom(
+                                        foregroundColor: Colors.red,
+                                      ),
+                                    ),
+                                  if (item.trustTier == 4)
+                                    FilledButton.tonalIcon(
+                                      onPressed: () =>
+                                          _markAsTrusted(item.senderId),
+                                      icon: const Icon(
+                                        Icons.verified_user,
+                                        size: 16,
+                                      ),
+                                      label: const Text('Trust'),
+                                      style: FilledButton.styleFrom(
+                                        foregroundColor: Colors.green.shade700,
+                                        backgroundColor: Colors.green.shade50,
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 12,
+                                          vertical: 8,
+                                        ),
+                                      ),
+                                    ),
+                                ],
                               ),
                             ],
                           ),
                         ),
-                        _buildTrustBadge(item.trustTier),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      item.description,
-                      style: const TextStyle(fontSize: 14, height: 1.4),
-                    ),
-                    if (item.imageId != null && item.imageId!.isNotEmpty)
-                      LocalImageDisplay(imageId: item.imageId!),
-                    Builder(
-                      builder: (context) {
-                        final profile = _getProfile(item.senderId, profiles);
-                        if (profile != null) {
-                          return Padding(
-                            padding: const EdgeInsets.only(top: 8.0),
-                            child: Text(
-                              'By: ${profile.name}${profile.contactInfo.isNotEmpty ? ' (${profile.contactInfo})' : ''}',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey.shade700,
-                                fontStyle: FontStyle.italic,
-                              ),
-                            ),
-                          );
-                        } else {
-                          return Padding(
-                            padding: const EdgeInsets.only(top: 8.0),
-                            child: Text(
-                              'By: Unknown User',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey.shade700,
-                                fontStyle: FontStyle.italic,
-                              ),
-                            ),
-                          );
-                        }
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    Wrap(
-                      alignment: WrapAlignment.end,
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        TextButton.icon(
-                          onPressed: () => _resolveMarker(item.id),
-                          icon: const Icon(
-                            Icons.check_circle_outline,
-                            size: 16,
-                          ),
-                          label: const Text('Resolve'),
-                          style: TextButton.styleFrom(
-                            foregroundColor: Colors.green,
+                      );
+                    } else if (item is AreaEntity) {
+                      return Card(
+                        margin: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          side: BorderSide(
+                            color: _getTierColor(
+                              item.trustTier,
+                            ).withValues(alpha: 0.5),
                           ),
                         ),
-                        if (item.trustTier == 4 || item.trustTier == 3)
-                          TextButton.icon(
-                            onPressed: () => _blockSender(item.senderId),
-                            icon: const Icon(Icons.block, size: 16),
-                            label: const Text('Block'),
-                            style: TextButton.styleFrom(
-                              foregroundColor: Colors.red,
-                            ),
-                          ),
-                        if (item.trustTier == 4)
-                          FilledButton.tonalIcon(
-                            onPressed: () => _markAsTrusted(item.senderId),
-                            icon: const Icon(Icons.verified_user, size: 16),
-                            label: const Text('Trust'),
-                            style: FilledButton.styleFrom(
-                              foregroundColor: Colors.green.shade700,
-                              backgroundColor: Colors.green.shade50,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 8,
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          );
-        } else if (item is NewsItemEntity) {
-          return Card(
-            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            color: item.trustTier == 1 ? const Color(0xFFFFF3E0) : null,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-              side: BorderSide(
-                color: _getTierColor(item.trustTier),
-                width: item.trustTier == 1 ? 2 : 1,
-              ),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      CircleAvatar(
-                        backgroundColor: item.trustTier == 1
-                            ? Colors.blue.shade100
-                            : item.trustTier == 2
-                            ? Colors.purple.shade100
-                            : item.trustTier == 3
-                            ? Colors.green.shade100
-                            : Colors.grey.shade200,
-                        child: Icon(
-                          Icons.campaign,
-                          color: item.trustTier == 1
-                              ? Colors.blue
-                              : item.trustTier == 2
-                              ? Colors.purple
-                              : item.trustTier == 3
-                              ? Colors.green
-                              : Colors.grey.shade700,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              item.title,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                              ),
-                            ),
-                            Text(
-                              _formatTimestamp(item.timestamp),
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey.shade600,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      _buildTrustBadge(item.trustTier),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    item.content,
-                    style: const TextStyle(fontSize: 14, height: 1.4),
-                  ),
-                  if (item.imageId != null && item.imageId!.isNotEmpty)
-                    LocalImageDisplay(imageId: item.imageId!),
-                  Builder(
-                    builder: (context) {
-                      final profile = _getProfile(item.senderId, profiles);
-                      if (profile != null) {
-                        return Padding(
-                          padding: const EdgeInsets.only(top: 8.0),
-                          child: Text(
-                            'By: ${profile.name}${profile.contactInfo.isNotEmpty ? ' (${profile.contactInfo})' : ''}',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey.shade700,
-                              fontStyle: FontStyle.italic,
-                            ),
-                          ),
-                        );
-                      } else {
-                        return Padding(
-                          padding: const EdgeInsets.only(top: 8.0),
-                          child: Text(
-                            'By: Unknown User',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey.shade700,
-                              fontStyle: FontStyle.italic,
-                            ),
-                          ),
-                        );
-                      }
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  Wrap(
-                    alignment: WrapAlignment.end,
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      TextButton.icon(
-                        onPressed: () => _dismissNews(item.id),
-                        icon: const Icon(Icons.clear, size: 16),
-                        label: const Text('Dismiss'),
-                        style: TextButton.styleFrom(
-                          foregroundColor: Colors.grey,
-                        ),
-                      ),
-                      if (item.trustTier == 4 || item.trustTier == 3)
-                        TextButton.icon(
-                          onPressed: () => _blockSender(item.senderId),
-                          icon: const Icon(Icons.block, size: 16),
-                          label: const Text('Block'),
-                          style: TextButton.styleFrom(
-                            foregroundColor: Colors.red,
-                          ),
-                        ),
-                      if (item.trustTier == 4)
-                        FilledButton.tonalIcon(
-                          onPressed: () => _markAsTrusted(item.senderId),
-                          icon: const Icon(Icons.verified_user, size: 16),
-                          label: const Text('Trust'),
-                          style: FilledButton.styleFrom(
-                            foregroundColor: Colors.green.shade700,
-                            backgroundColor: Colors.green.shade50,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 8,
+                        clipBehavior: Clip.antiAlias,
+                        child: InkWell(
+                          onTap: () {
+                            setState(() => _currentIndex = 0);
+                            WidgetsBinding.instance.addPostFrameCallback((_) {
+                              try {
+                                if (item.coordinates.isNotEmpty) {
+                                  _mapController.move(
+                                    LatLng(
+                                      item.coordinates.first['lat']!,
+                                      item.coordinates.first['lng']!,
+                                    ),
+                                    14.0,
+                                  );
+                                }
+                              } catch (e) {
+                                debugPrint('Map not ready yet: $e');
+                              }
+                            });
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    CircleAvatar(
+                                      backgroundColor: item.trustTier == 1
+                                          ? Colors.blue.shade100
+                                          : item.trustTier == 2
+                                          ? Colors.purple.shade100
+                                          : item.trustTier == 3
+                                          ? Colors.green.shade100
+                                          : Colors.grey.shade200,
+                                      child: Icon(
+                                        Icons.format_shapes,
+                                        color: item.trustTier == 1
+                                            ? Colors.blue
+                                            : item.trustTier == 2
+                                            ? Colors.purple
+                                            : item.trustTier == 3
+                                            ? Colors.green
+                                            : Colors.grey.shade700,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'Area: ${item.type}',
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 16,
+                                            ),
+                                          ),
+                                          Text(
+                                            _formatTimestamp(item.timestamp),
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: Colors.grey.shade600,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    _buildTrustBadge(item.trustTier),
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                                Text(
+                                  item.description,
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    height: 1.4,
+                                  ),
+                                ),
+                                Builder(
+                                  builder: (context) {
+                                    final profile = _getProfile(
+                                      item.senderId,
+                                      profiles,
+                                    );
+                                    if (profile != null) {
+                                      return Padding(
+                                        padding: const EdgeInsets.only(
+                                          top: 8.0,
+                                        ),
+                                        child: Text(
+                                          'By: ${profile.name}${profile.contactInfo.isNotEmpty ? ' (${profile.contactInfo})' : ''}',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.grey.shade700,
+                                            fontStyle: FontStyle.italic,
+                                          ),
+                                        ),
+                                      );
+                                    } else {
+                                      return Padding(
+                                        padding: const EdgeInsets.only(
+                                          top: 8.0,
+                                        ),
+                                        child: Text(
+                                          'By: Unknown User',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.grey.shade700,
+                                            fontStyle: FontStyle.italic,
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                  },
+                                ),
+                                const SizedBox(height: 12),
+                                Wrap(
+                                  alignment: WrapAlignment.end,
+                                  spacing: 8,
+                                  runSpacing: 8,
+                                  children: [
+                                    TextButton.icon(
+                                      onPressed: () => _resolveArea(item.id),
+                                      icon: const Icon(
+                                        Icons.check_circle_outline,
+                                        size: 16,
+                                      ),
+                                      label: const Text('Resolve'),
+                                      style: TextButton.styleFrom(
+                                        foregroundColor: Colors.green,
+                                      ),
+                                    ),
+                                    if (item.trustTier == 4 ||
+                                        item.trustTier == 3)
+                                      TextButton.icon(
+                                        onPressed: () =>
+                                            _blockSender(item.senderId),
+                                        icon: const Icon(Icons.block, size: 16),
+                                        label: const Text('Block'),
+                                        style: TextButton.styleFrom(
+                                          foregroundColor: Colors.red,
+                                        ),
+                                      ),
+                                    if (item.trustTier == 4)
+                                      FilledButton.tonalIcon(
+                                        onPressed: () =>
+                                            _markAsTrusted(item.senderId),
+                                        icon: const Icon(
+                                          Icons.verified_user,
+                                          size: 16,
+                                        ),
+                                        label: const Text('Trust'),
+                                        style: FilledButton.styleFrom(
+                                          foregroundColor:
+                                              Colors.green.shade700,
+                                          backgroundColor: Colors.green.shade50,
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 12,
+                                            vertical: 8,
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ],
                             ),
                           ),
                         ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          );
-        } else if (item is AreaEntity) {
-          return Card(
-            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-              side: BorderSide(
-                color: _getTierColor(item.trustTier).withValues(alpha: 0.5),
-              ),
-            ),
-            clipBehavior: Clip.antiAlias,
-            child: InkWell(
-              onTap: () {
-                setState(() => _currentIndex = 0);
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  try {
-                    if (item.coordinates.isNotEmpty) {
-                      _mapController.move(
-                        LatLng(
-                          item.coordinates.first['lat']!,
-                          item.coordinates.first['lng']!,
-                        ),
-                        14.0,
                       );
                     }
-                  } catch (e) {
-                    debugPrint('Map not ready yet: $e');
-                  }
-                });
-              },
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        CircleAvatar(
-                          backgroundColor: item.trustTier == 1
-                              ? Colors.blue.shade100
-                              : item.trustTier == 2
-                              ? Colors.purple.shade100
-                              : item.trustTier == 3
-                              ? Colors.green.shade100
-                              : Colors.grey.shade200,
-                          child: Icon(
-                            Icons.format_shapes,
-                            color: item.trustTier == 1
-                                ? Colors.blue
-                                : item.trustTier == 2
-                                ? Colors.purple
-                                : item.trustTier == 3
-                                ? Colors.green
-                                : Colors.grey.shade700,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Area: ${item.type}',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
-                                ),
-                              ),
-                              Text(
-                                _formatTimestamp(item.timestamp),
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey.shade600,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        _buildTrustBadge(item.trustTier),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      item.description,
-                      style: const TextStyle(fontSize: 14, height: 1.4),
-                    ),
-                    Builder(
-                      builder: (context) {
-                        final profile = _getProfile(item.senderId, profiles);
-                        if (profile != null) {
-                          return Padding(
-                            padding: const EdgeInsets.only(top: 8.0),
-                            child: Text(
-                              'By: ${profile.name}${profile.contactInfo.isNotEmpty ? ' (${profile.contactInfo})' : ''}',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey.shade700,
-                                fontStyle: FontStyle.italic,
-                              ),
-                            ),
-                          );
-                        } else {
-                          return Padding(
-                            padding: const EdgeInsets.only(top: 8.0),
-                            child: Text(
-                              'By: Unknown User',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey.shade700,
-                                fontStyle: FontStyle.italic,
-                              ),
-                            ),
-                          );
-                        }
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    Wrap(
-                      alignment: WrapAlignment.end,
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        TextButton.icon(
-                          onPressed: () => _resolveArea(item.id),
-                          icon: const Icon(
-                            Icons.check_circle_outline,
-                            size: 16,
-                          ),
-                          label: const Text('Resolve'),
-                          style: TextButton.styleFrom(
-                            foregroundColor: Colors.green,
-                          ),
-                        ),
-                        if (item.trustTier == 4 || item.trustTier == 3)
-                          TextButton.icon(
-                            onPressed: () => _blockSender(item.senderId),
-                            icon: const Icon(Icons.block, size: 16),
-                            label: const Text('Block'),
-                            style: TextButton.styleFrom(
-                              foregroundColor: Colors.red,
-                            ),
-                          ),
-                        if (item.trustTier == 4)
-                          FilledButton.tonalIcon(
-                            onPressed: () => _markAsTrusted(item.senderId),
-                            icon: const Icon(Icons.verified_user, size: 16),
-                            label: const Text('Trust'),
-                            style: FilledButton.styleFrom(
-                              foregroundColor: Colors.green.shade700,
-                              backgroundColor: Colors.green.shade50,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 8,
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ],
+                    return const SizedBox.shrink();
+                  },
                 ),
-              ),
-            ),
-          );
-        }
-        return const SizedBox.shrink();
-      },
-    ),
         ),
       ],
     );
@@ -2295,7 +2453,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       padding: const EdgeInsets.symmetric(vertical: 8),
       decoration: BoxDecoration(
         color: Colors.white,
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4, offset: const Offset(0, 2))],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         children: [
@@ -2303,15 +2467,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
             child: Row(
-              children: ['All', 'News', 'Hazards', 'Areas'].map((type) => Padding(
-                padding: const EdgeInsets.only(right: 8.0),
-                child: FilterChip(
-                  label: Text(type),
-                  selected: filter.typeFilter == type,
-                  onSelected: (selected) => filterNotifier.updateTypeFilter(type),
-                  selectedColor: Theme.of(context).colorScheme.primaryContainer,
-                ),
-              )).toList(),
+              children: ['All', 'News', 'Hazards', 'Areas']
+                  .map(
+                    (type) => Padding(
+                      padding: const EdgeInsets.only(right: 8.0),
+                      child: FilterChip(
+                        label: Text(type),
+                        selected: filter.typeFilter == type,
+                        onSelected: (selected) =>
+                            filterNotifier.updateTypeFilter(type),
+                        selectedColor: Theme.of(
+                          context,
+                        ).colorScheme.primaryContainer,
+                      ),
+                    ),
+                  )
+                  .toList(),
             ),
           ),
           const SizedBox(height: 4),
@@ -2320,23 +2491,31 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
             child: Row(
               children: [
-                const Icon(Icons.verified_user_outlined, size: 16, color: Colors.grey),
+                const Icon(
+                  Icons.verified_user_outlined,
+                  size: 16,
+                  color: Colors.grey,
+                ),
                 const SizedBox(width: 8),
                 ChoiceChip(
                   label: const Text('All Trust Levels'),
                   selected: filter.trustFilter == null,
-                  onSelected: (selected) => filterNotifier.updateTrustFilter(null),
+                  onSelected: (selected) =>
+                      filterNotifier.updateTrustFilter(null),
                 ),
                 const SizedBox(width: 8),
-                ...[1, 2, 3, 4].map((tier) => Padding(
-                  padding: const EdgeInsets.only(right: 8.0),
-                  child: ChoiceChip(
-                    label: Text(_getTrustTierName(tier)),
-                    selected: filter.trustFilter == tier,
-                    onSelected: (selected) => filterNotifier.updateTrustFilter(selected ? tier : null),
-                    selectedColor: _getTierColor(tier).withValues(alpha: 0.2),
+                ...[1, 2, 3, 4].map(
+                  (tier) => Padding(
+                    padding: const EdgeInsets.only(right: 8.0),
+                    child: ChoiceChip(
+                      label: Text(_getTrustTierName(tier)),
+                      selected: filter.trustFilter == tier,
+                      onSelected: (selected) => filterNotifier
+                          .updateTrustFilter(selected ? tier : null),
+                      selectedColor: _getTierColor(tier).withValues(alpha: 0.2),
+                    ),
                   ),
-                )),
+                ),
               ],
             ),
           ),
@@ -2347,20 +2526,36 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   Color _getTierColor(int tier) {
     switch (tier) {
-      case 1: return Colors.blue.shade800;
-      case 2: return Colors.purple.shade700;
-      case 3: return Colors.green.shade700;
-      default: return Colors.grey.shade600;
+      case 1:
+        return Colors.blue.shade800;
+      case 2:
+        return Colors.purple.shade700;
+      case 3:
+        return Colors.green.shade700;
+      default:
+        return Colors.grey.shade600;
     }
   }
 
   Widget _buildTrustBadge(int tier) {
     final color = _getTierColor(tier);
-    final icon = tier == 1 ? Icons.verified : tier == 2 ? Icons.admin_panel_settings : tier == 3 ? Icons.thumb_up : Icons.people;
+    final icon = tier == 1
+        ? Icons.verified
+        : tier == 2
+        ? Icons.admin_panel_settings
+        : tier == 3
+        ? Icons.thumb_up
+        : Icons.people;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12), border: Border.all(color: color.withValues(alpha: 0.3))),
-      child: Row(mainAxisSize: MainAxisSize.min, children: [
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
           Icon(icon, size: 14, color: color),
           const SizedBox(width: 4),
           Text(
@@ -2394,7 +2589,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final offlineRegionsAsync = ref.watch(offlineRegionsProvider);
     final downloadProgress = ref.watch(mapDownloaderProvider);
     final locationAsync = ref.watch(locationControllerProvider);
-    
+
     final profiles = profilesAsync.value ?? [];
     final offlineRegions = offlineRegionsAsync.value ?? [];
     final currentPosition = locationAsync.value;
@@ -2421,7 +2616,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           title: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Text('FLOODIO', style: TextStyle(letterSpacing: 2, fontWeight: FontWeight.w900)),
+              const Text(
+                'FLOODIO',
+                style: TextStyle(letterSpacing: 2, fontWeight: FontWeight.w900),
+              ),
               const SizedBox(width: 12),
               if (downloadProgress.isDownloading)
                 Text(
@@ -2461,13 +2659,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 tooltip: 'Download Offline Map',
                 onPressed: _showDownloadMapDialog,
               ),
-            const Padding(padding: EdgeInsets.only(right: 8), child: MeshStatusChip()),
+            const Padding(
+              padding: EdgeInsets.only(right: 8),
+              child: MeshStatusChip(),
+            ),
           ],
         ),
         body: IndexedStack(
           index: _currentIndex,
           children: [
-            _buildMap(markersAsync, areasAsync, profiles, offlineRegions, currentPosition),
+            _buildMap(
+              markersAsync,
+              areasAsync,
+              profiles,
+              offlineRegions,
+              currentPosition,
+            ),
             _buildFeed(profiles),
             ProfileTab(
               onEditAreaShape: (area) {
@@ -2475,11 +2682,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   _isDrawingArea = true;
                   _editingAreaId = area.id;
                   _currentAreaPoints.clear();
-                  _currentAreaPoints.addAll(area.coordinates.map((c) => LatLng(c['lat']!, c['lng']!)));
+                  _currentAreaPoints.addAll(
+                    area.coordinates.map((c) => LatLng(c['lat']!, c['lng']!)),
+                  );
                   _currentIndex = 0;
                 });
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Edit the area shape on the map.')),
+                  const SnackBar(
+                    content: Text('Edit the area shape on the map.'),
+                  ),
                 );
               },
             ),
@@ -2541,9 +2752,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             onPressed: () async {
                               AreaEntity? existingArea;
                               if (_editingAreaId != null) {
-                                final areas = ref.read(areasControllerProvider).value ?? [];
+                                final areas =
+                                    ref.read(areasControllerProvider).value ??
+                                    [];
                                 try {
-                                  existingArea = areas.firstWhere((a) => a.id == _editingAreaId);
+                                  existingArea = areas.firstWhere(
+                                    (a) => a.id == _editingAreaId,
+                                  );
                                 } catch (_) {}
                               }
                               _showAddAreaDialog(existingArea: existingArea);
@@ -2572,7 +2787,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               _showOfflineRegions = !_showOfflineRegions;
                             });
                             ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text(_showOfflineRegions ? 'Showing offline regions' : 'Hiding offline regions')),
+                              SnackBar(
+                                content: Text(
+                                  _showOfflineRegions
+                                      ? 'Showing offline regions'
+                                      : 'Hiding offline regions',
+                                ),
+                              ),
                             );
                           },
                           child: const Icon(Icons.layers),
@@ -2582,7 +2803,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           heroTag: 'center_map',
                           onPressed: () async {
                             try {
-                              final pos = await ref.read(locationControllerProvider.notifier).getCurrentPosition();
+                              final pos = await ref
+                                  .read(locationControllerProvider.notifier)
+                                  .getCurrentPosition();
                               if (pos != null) {
                                 _mapController.move(
                                   LatLng(pos.latitude, pos.longitude),
@@ -2591,7 +2814,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               } else {
                                 if (context.mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(content: Text('Location not available')),
+                                    const SnackBar(
+                                      content: Text('Location not available'),
+                                    ),
                                   );
                                 }
                               }
@@ -2623,11 +2848,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             _currentAreaPoints.clear();
                             _currentIndex = 0; // Switch to map tab
                           });
-                          
-                          final pos = await ref.read(locationControllerProvider.notifier).getCurrentPosition();
+
+                          final pos = await ref
+                              .read(locationControllerProvider.notifier)
+                              .getCurrentPosition();
                           if (pos != null) {
                             try {
-                              _mapController.move(LatLng(pos.latitude, pos.longitude), 15.0);
+                              _mapController.move(
+                                LatLng(pos.latitude, pos.longitude),
+                                15.0,
+                              );
                             } catch (_) {}
                           }
 
@@ -2656,7 +2886,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         heroTag: 'user',
                         onPressed: () async {
                           LatLng point;
-                          final pos = await ref.read(locationControllerProvider.notifier).getCurrentPosition();
+                          final pos = await ref
+                              .read(locationControllerProvider.notifier)
+                              .getCurrentPosition();
                           if (pos != null) {
                             point = LatLng(pos.latitude, pos.longitude);
                           } else {
@@ -2702,7 +2934,10 @@ class SettingsScreen extends ConsumerWidget {
         children: [
           const Padding(
             padding: EdgeInsets.all(16.0),
-            child: Text('Map Preferences', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue)),
+            child: Text(
+              'Map Preferences',
+              style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue),
+            ),
           ),
           ListTile(
             leading: const Icon(Icons.layers),
@@ -2710,22 +2945,32 @@ class SettingsScreen extends ConsumerWidget {
             subtitle: Text('Current: ${settings.mapStyle.label}'),
             trailing: DropdownButton<MapStyle>(
               value: settings.mapStyle,
-              onChanged: (val) => val != null ? notifier.setMapStyle(val) : null,
-              items: MapStyle.values.map((style) => DropdownMenuItem(
-                value: style,
-                child: Text(style.label),
-              )).toList(),
+              onChanged: (val) =>
+                  val != null ? notifier.setMapStyle(val) : null,
+              items: MapStyle.values
+                  .map(
+                    (style) => DropdownMenuItem(
+                      value: style,
+                      child: Text(style.label),
+                    ),
+                  )
+                  .toList(),
             ),
           ),
           const Divider(),
           const Padding(
             padding: EdgeInsets.all(16.0),
-            child: Text('Sync Preferences', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue)),
+            child: Text(
+              'Sync Preferences',
+              style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue),
+            ),
           ),
           ListTile(
             leading: const Icon(Icons.sync),
             title: const Text('Mesh Auto-Sync Frequency'),
-            subtitle: const Text('How often the device searches for peers in the background.'),
+            subtitle: const Text(
+              'How often the device searches for peers in the background.',
+            ),
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -2743,8 +2988,10 @@ class SettingsScreen extends ConsumerWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     const Text('15s', style: TextStyle(fontSize: 12)),
-                    Text('Current: ${_formatInterval(settings.syncIntervalSeconds)}', 
-                         style: const TextStyle(fontWeight: FontWeight.bold)),
+                    Text(
+                      'Current: ${_formatInterval(settings.syncIntervalSeconds)}',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
                     const Text('5m', style: TextStyle(fontSize: 12)),
                   ],
                 ),
@@ -2755,7 +3002,11 @@ class SettingsScreen extends ConsumerWidget {
             padding: EdgeInsets.all(16.0),
             child: Text(
               'Note: Faster sync intervals consume more battery. 30s-60s is recommended during active emergencies.',
-              style: TextStyle(fontSize: 12, color: Colors.grey, fontStyle: FontStyle.italic),
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey,
+                fontStyle: FontStyle.italic,
+              ),
             ),
           ),
           const Divider(),
@@ -3043,7 +3294,9 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                 const SizedBox(height: 16),
                 DropdownButtonFormField<int?>(
                   initialValue: selectedTtlHours,
-                  decoration: const InputDecoration(labelText: 'Extend Expiration By'),
+                  decoration: const InputDecoration(
+                    labelText: 'Extend Expiration By',
+                  ),
                   items: const [
                     DropdownMenuItem(value: 1, child: Text('1 Hour')),
                     DropdownMenuItem(value: 12, child: Text('12 Hours')),
@@ -3068,7 +3321,9 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                 final cryptoService = ref.read(cryptoServiceProvider.notifier);
                 final timestamp = DateTime.now().millisecondsSinceEpoch;
                 final newId = marker.id; // Keep same ID for LWW CRDT
-                final expiresAt = selectedTtlHours != null ? timestamp + (selectedTtlHours! * 3600000) : null;
+                final expiresAt = selectedTtlHours != null
+                    ? timestamp + (selectedTtlHours! * 3600000)
+                    : null;
 
                 final payloadToSign = utf8.encode(
                   '$newId$selectedType$timestamp${marker.imageId ?? ""}${expiresAt ?? ""}',
@@ -3133,7 +3388,9 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                 const SizedBox(height: 16),
                 DropdownButtonFormField<int?>(
                   initialValue: selectedTtlHours,
-                  decoration: const InputDecoration(labelText: 'Extend Expiration By'),
+                  decoration: const InputDecoration(
+                    labelText: 'Extend Expiration By',
+                  ),
                   items: const [
                     DropdownMenuItem(value: 1, child: Text('1 Hour')),
                     DropdownMenuItem(value: 12, child: Text('12 Hours')),
@@ -3155,41 +3412,43 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
             FilledButton(
               onPressed: () async {
                 Navigator.pop(innerContext);
-              final cryptoService = ref.read(cryptoServiceProvider.notifier);
-              final timestamp = DateTime.now().millisecondsSinceEpoch;
-              final newId = news.id; // Keep same ID for LWW CRDT
-              final expiresAt = selectedTtlHours != null ? timestamp + (selectedTtlHours! * 3600000) : null;
+                final cryptoService = ref.read(cryptoServiceProvider.notifier);
+                final timestamp = DateTime.now().millisecondsSinceEpoch;
+                final newId = news.id; // Keep same ID for LWW CRDT
+                final expiresAt = selectedTtlHours != null
+                    ? timestamp + (selectedTtlHours! * 3600000)
+                    : null;
 
-              final payloadToSign = utf8.encode(
-                '$newId${titleController.text}$timestamp${news.imageId ?? ""}${expiresAt ?? ""}',
-              );
-              final signature = await cryptoService.signData(payloadToSign);
+                final payloadToSign = utf8.encode(
+                  '$newId${titleController.text}$timestamp${news.imageId ?? ""}${expiresAt ?? ""}',
+                );
+                final signature = await cryptoService.signData(payloadToSign);
 
-              final updatedNews = NewsItemEntity(
-                id: newId,
-                title: titleController.text,
-                content: contentController.text,
-                timestamp: timestamp,
-                senderId: news.senderId,
-                signature: signature,
-                trustTier: news.trustTier,
-                expiresAt: expiresAt,
-                imageId: news.imageId,
-              );
+                final updatedNews = NewsItemEntity(
+                  id: newId,
+                  title: titleController.text,
+                  content: contentController.text,
+                  timestamp: timestamp,
+                  senderId: news.senderId,
+                  signature: signature,
+                  trustTier: news.trustTier,
+                  expiresAt: expiresAt,
+                  imageId: news.imageId,
+                );
 
-              await ref
-                  .read(newsItemsControllerProvider.notifier)
-                  .addNewsItem(updatedNews);
-              if (mounted) {
-                ScaffoldMessenger.of(
-                  context,
-                ).showSnackBar(const SnackBar(content: Text('News updated')));
-              }
-            },
-            child: const Text('Save'),
-          ),
-        ],
-      ),
+                await ref
+                    .read(newsItemsControllerProvider.notifier)
+                    .addNewsItem(updatedNews);
+                if (mounted) {
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(const SnackBar(content: Text('News updated')));
+                }
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -3248,7 +3507,9 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                 const SizedBox(height: 16),
                 DropdownButtonFormField<int?>(
                   initialValue: selectedTtlHours,
-                  decoration: const InputDecoration(labelText: 'Extend Expiration By'),
+                  decoration: const InputDecoration(
+                    labelText: 'Extend Expiration By',
+                  ),
                   items: const [
                     DropdownMenuItem(value: 1, child: Text('1 Hour')),
                     DropdownMenuItem(value: 12, child: Text('12 Hours')),
@@ -3273,7 +3534,9 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                 final cryptoService = ref.read(cryptoServiceProvider.notifier);
                 final timestamp = DateTime.now().millisecondsSinceEpoch;
                 final newId = area.id; // Keep same ID for LWW CRDT
-                final expiresAt = selectedTtlHours != null ? timestamp + (selectedTtlHours! * 3600000) : null;
+                final expiresAt = selectedTtlHours != null
+                    ? timestamp + (selectedTtlHours! * 3600000)
+                    : null;
 
                 final payloadToSign = utf8.encode(
                   '$newId$selectedType$timestamp${expiresAt ?? ""}',
@@ -3396,7 +3659,9 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                                     icon: const Icon(Icons.settings, size: 20),
                                     onPressed: () => Navigator.push(
                                       context,
-                                      MaterialPageRoute(builder: (_) => const SettingsScreen()),
+                                      MaterialPageRoute(
+                                        builder: (_) => const SettingsScreen(),
+                                      ),
                                     ),
                                     tooltip: 'Settings',
                                   ),
@@ -3708,7 +3973,10 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                         title: const Text('Storage Used'),
                         subtitle: Text(_formatBytes(_mapCacheSize)),
                         trailing: IconButton(
-                          icon: const Icon(Icons.delete_outline, color: Colors.red),
+                          icon: const Icon(
+                            Icons.delete_outline,
+                            color: Colors.red,
+                          ),
                           tooltip: 'Clear All Offline Maps',
                           onPressed: () {
                             showDialog(
@@ -3720,7 +3988,8 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                                 ),
                                 actions: [
                                   TextButton(
-                                    onPressed: () => Navigator.pop(dialogContext),
+                                    onPressed: () =>
+                                        Navigator.pop(dialogContext),
                                     child: const Text('Cancel'),
                                   ),
                                   FilledButton(
@@ -3737,7 +4006,9 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                                           .clearRegions();
                                       _loadMapCacheSize();
                                       if (!context.mounted) return;
-                                      ScaffoldMessenger.of(context).showSnackBar(
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
                                         const SnackBar(
                                           content: Text('Offline maps cleared'),
                                         ),
@@ -3757,40 +4028,65 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                           shrinkWrap: true,
                           physics: const NeverScrollableScrollPhysics(),
                           itemCount: offlineRegions.length,
-                          separatorBuilder: (context, index) => const Divider(height: 1),
+                          separatorBuilder: (context, index) =>
+                              const Divider(height: 1),
                           itemBuilder: (context, index) {
                             final region = offlineRegions[index];
                             return ListTile(
-                              leading: const Icon(Icons.map_outlined, color: Colors.orange),
-                              title: Text('Region ${index + 1} (Zoom ${region.minZoom}-${region.maxZoom})'),
+                              leading: const Icon(
+                                Icons.map_outlined,
+                                color: Colors.orange,
+                              ),
+                              title: Text(
+                                'Region ${index + 1} (Zoom ${region.minZoom}-${region.maxZoom})',
+                              ),
                               subtitle: Text(
                                 'Bounds: ${region.bounds.north.toStringAsFixed(2)}, ${region.bounds.west.toStringAsFixed(2)} to ${region.bounds.south.toStringAsFixed(2)}, ${region.bounds.east.toStringAsFixed(2)}',
                                 style: const TextStyle(fontSize: 12),
                               ),
                               trailing: IconButton(
-                                icon: const Icon(Icons.remove_circle_outline, color: Colors.red),
+                                icon: const Icon(
+                                  Icons.remove_circle_outline,
+                                  color: Colors.red,
+                                ),
                                 tooltip: 'Delete Region',
                                 onPressed: () {
                                   showDialog(
                                     context: context,
                                     builder: (dialogContext) => AlertDialog(
                                       title: const Text('Delete Region?'),
-                                      content: const Text('This will delete the map tiles for this region. Overlapping regions may lose some tiles.'),
+                                      content: const Text(
+                                        'This will delete the map tiles for this region. Overlapping regions may lose some tiles.',
+                                      ),
                                       actions: [
                                         TextButton(
-                                          onPressed: () => Navigator.pop(dialogContext),
+                                          onPressed: () =>
+                                              Navigator.pop(dialogContext),
                                           child: const Text('Cancel'),
                                         ),
                                         FilledButton(
-                                          style: FilledButton.styleFrom(backgroundColor: Colors.red),
+                                          style: FilledButton.styleFrom(
+                                            backgroundColor: Colors.red,
+                                          ),
                                           onPressed: () async {
                                             Navigator.pop(dialogContext);
-                                            await ref.read(offlineRegionsProvider.notifier).removeRegion(region);
-                                            await ref.read(mapCacheServiceProvider).deleteRegionTiles(region);
+                                            await ref
+                                                .read(
+                                                  offlineRegionsProvider
+                                                      .notifier,
+                                                )
+                                                .removeRegion(region);
+                                            await ref
+                                                .read(mapCacheServiceProvider)
+                                                .deleteRegionTiles(region);
                                             _loadMapCacheSize();
                                             if (!context.mounted) return;
-                                            ScaffoldMessenger.of(context).showSnackBar(
-                                              const SnackBar(content: Text('Region deleted')),
+                                            ScaffoldMessenger.of(
+                                              context,
+                                            ).showSnackBar(
+                                              const SnackBar(
+                                                content: Text('Region deleted'),
+                                              ),
                                             );
                                           },
                                           child: const Text('Delete'),
@@ -4158,7 +4454,9 @@ class SyncBottomSheet extends ConsumerWidget {
 
                 // Status Card
                 Card(
-                  color: (p2pState.isSyncing || p2pState.isConnecting) ? const Color(0xFFE8EAF6) : Colors.white,
+                  color: (p2pState.isSyncing || p2pState.isConnecting)
+                      ? const Color(0xFFE8EAF6)
+                      : Colors.white,
                   elevation: 0,
                   shape: RoundedRectangleBorder(
                     side: BorderSide(
@@ -4274,12 +4572,15 @@ class SyncBottomSheet extends ConsumerWidget {
                 Consumer(
                   builder: (context, ref, child) {
                     final cloudSyncState = ref.watch(cloudSyncServiceProvider);
-                    final cloudSyncNotifier = ref.read(cloudSyncServiceProvider.notifier);
-                    
+                    final cloudSyncNotifier = ref.read(
+                      cloudSyncServiceProvider.notifier,
+                    );
+
                     String lastSyncText = 'Never';
                     if (cloudSyncState.lastSyncTime != null) {
                       final dt = cloudSyncState.lastSyncTime!.toLocal();
-                      lastSyncText = '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+                      lastSyncText =
+                          '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
                     }
 
                     return Container(
@@ -4290,25 +4591,58 @@ class SyncBottomSheet extends ConsumerWidget {
                       child: Column(
                         children: [
                           ListTile(
-                            leading: const Icon(Icons.cloud_sync, color: Colors.blue),
-                            title: const Text('Cloud Gateway Sync', style: TextStyle(fontWeight: FontWeight.bold)),
-                            subtitle: Text('Last synced: $lastSyncText\nSyncs local data with the cloud when internet is available.'),
+                            leading: const Icon(
+                              Icons.cloud_sync,
+                              color: Colors.blue,
+                            ),
+                            title: const Text(
+                              'Cloud Gateway Sync',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            subtitle: Text(
+                              'Last synced: $lastSyncText\nSyncs local data with the cloud when internet is available.',
+                            ),
                             trailing: cloudSyncState.isSyncing
-                                ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))
+                                ? const SizedBox(
+                                    width: 24,
+                                    height: 24,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  )
                                 : FilledButton.tonal(
                                     onPressed: () async {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        const SnackBar(content: Text('Checking internet and syncing with cloud...')),
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                            'Checking internet and syncing with cloud...',
+                                          ),
+                                        ),
                                       );
-                                      final success = await cloudSyncNotifier.syncWithCloud();
+                                      final success = await cloudSyncNotifier
+                                          .syncWithCloud();
                                       if (context.mounted) {
                                         if (success) {
-                                          ScaffoldMessenger.of(context).showSnackBar(
-                                            const SnackBar(content: Text('Cloud sync complete.')),
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(
+                                            const SnackBar(
+                                              content: Text(
+                                                'Cloud sync complete.',
+                                              ),
+                                            ),
                                           );
                                         } else {
-                                          ScaffoldMessenger.of(context).showSnackBar(
-                                            const SnackBar(content: Text('Cloud sync failed. No internet?')),
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(
+                                            const SnackBar(
+                                              content: Text(
+                                                'Cloud sync failed. No internet?',
+                                              ),
+                                            ),
                                           );
                                         }
                                       }
@@ -4341,35 +4675,55 @@ class SyncBottomSheet extends ConsumerWidget {
                     ),
                     child: Column(
                       children: p2pState.peerOfflineRegions.map((region) {
-                        final alreadyHave = myRegions.any((r) => 
-                          (r.bounds.north - region.bounds.north).abs() < 0.0001 &&
-                          (r.bounds.south - region.bounds.south).abs() < 0.0001 &&
-                          (r.bounds.east - region.bounds.east).abs() < 0.0001 &&
-                          (r.bounds.west - region.bounds.west).abs() < 0.0001 &&
-                          r.minZoom == region.minZoom &&
-                          r.maxZoom == region.maxZoom
+                        final alreadyHave = myRegions.any(
+                          (r) =>
+                              (r.bounds.north - region.bounds.north).abs() <
+                                  0.0001 &&
+                              (r.bounds.south - region.bounds.south).abs() <
+                                  0.0001 &&
+                              (r.bounds.east - region.bounds.east).abs() <
+                                  0.0001 &&
+                              (r.bounds.west - region.bounds.west).abs() <
+                                  0.0001 &&
+                              r.minZoom == region.minZoom &&
+                              r.maxZoom == region.maxZoom,
                         );
 
                         return ListTile(
                           leading: const Icon(Icons.map, color: Colors.orange),
-                          title: Text('Map Region (Zoom ${region.minZoom}-${region.maxZoom})'),
-                          subtitle: Text('Bounds: ${region.bounds.north.toStringAsFixed(2)}, ${region.bounds.west.toStringAsFixed(2)} to ${region.bounds.south.toStringAsFixed(2)}, ${region.bounds.east.toStringAsFixed(2)}'),
-                          trailing: alreadyHave 
-                            ? const Tooltip(
-                                message: 'Already downloaded',
-                                child: Icon(Icons.check_circle, color: Colors.green),
-                              )
-                            : IconButton(
-                                icon: const Icon(Icons.download),
-                                tooltip: 'Request from peer',
-                                onPressed: p2pState.isSyncing ? null : () {
-                                  p2pNotifier.requestMapRegion(region);
-                                  Navigator.pop(context);
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(content: Text('Requested map region from peer...')),
-                                  );
-                                },
+                          title: Text(
+                            'Map Region (Zoom ${region.minZoom}-${region.maxZoom})',
                           ),
+                          subtitle: Text(
+                            'Bounds: ${region.bounds.north.toStringAsFixed(2)}, ${region.bounds.west.toStringAsFixed(2)} to ${region.bounds.south.toStringAsFixed(2)}, ${region.bounds.east.toStringAsFixed(2)}',
+                          ),
+                          trailing: alreadyHave
+                              ? const Tooltip(
+                                  message: 'Already downloaded',
+                                  child: Icon(
+                                    Icons.check_circle,
+                                    color: Colors.green,
+                                  ),
+                                )
+                              : IconButton(
+                                  icon: const Icon(Icons.download),
+                                  tooltip: 'Request from peer',
+                                  onPressed: p2pState.isSyncing
+                                      ? null
+                                      : () {
+                                          p2pNotifier.requestMapRegion(region);
+                                          Navigator.pop(context);
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(
+                                            const SnackBar(
+                                              content: Text(
+                                                'Requested map region from peer...',
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                ),
                         );
                       }).toList(),
                     ),
