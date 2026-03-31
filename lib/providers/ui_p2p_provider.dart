@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -10,6 +11,8 @@ part 'ui_p2p_provider.g.dart';
 
 @Riverpod(keepAlive: true)
 class UiP2pService extends _$UiP2pService {
+  Timer? _timer;
+
   @override
   P2pState build() {
     final service = FlutterBackgroundService();
@@ -21,6 +24,16 @@ class UiP2pService extends _$UiP2pService {
     });
 
     service.invoke('requestState');
+
+    _timer = Timer.periodic(const Duration(seconds: 3), (timer) async {
+      if (await service.isRunning()) {
+        service.invoke('requestState');
+      }
+    });
+
+    ref.onDispose(() {
+      _timer?.cancel();
+    });
 
     return const P2pState();
   }

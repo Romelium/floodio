@@ -137,6 +137,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       if (!(await service.isRunning())) {
         await service.startService();
       }
+      ref.invalidate(locationControllerProvider);
     }
 
     final locationEnabled = await checkLocationServices();
@@ -281,6 +282,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   await ref
                       .read(appSettingsProvider.notifier)
                       .setOfficialMode(!current);
+                  
+                  if (current && ref.read(navigationIndexProvider) == 3) {
+                    ref.read(navigationIndexProvider.notifier).setIndex(2);
+                  }
+
                   if (!mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
@@ -3750,6 +3756,45 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 )
               : null,
           actions: [
+            Consumer(
+              builder: (context, ref, child) {
+                final hasInternet = ref.watch(cloudSyncServiceProvider.select((s) => s.hasInternet));
+                final isSyncing = ref.watch(cloudSyncServiceProvider.select((s) => s.isSyncing));
+                
+                if (isSyncing) {
+                  return const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 12.0),
+                    child: Center(
+                      child: SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                      ),
+                    ),
+                  );
+                }
+                
+                return IconButton(
+                  icon: Icon(
+                    hasInternet ? Icons.cloud_done : Icons.cloud_off,
+                    color: hasInternet ? Colors.white : Colors.white54,
+                  ),
+                  tooltip: hasInternet ? 'Cloud Connected' : 'Cloud Offline',
+                  onPressed: () {
+                    if (hasInternet) {
+                      ref.read(cloudSyncServiceProvider.notifier).syncWithCloud();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Syncing with cloud...')),
+                      );
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('No internet connection available.')),
+                      );
+                    }
+                  },
+                );
+              },
+            ),
             IconButton(
               icon: const Icon(Icons.share),
               tooltip: 'Share App (APK)',

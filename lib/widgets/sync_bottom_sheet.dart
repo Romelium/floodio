@@ -190,16 +190,16 @@ class SyncBottomSheet extends ConsumerWidget {
                       child: Column(
                         children: [
                           ListTile(
-                            leading: const Icon(
-                              Icons.cloud_sync,
-                              color: Colors.blue,
+                            leading: Icon(
+                              cloudSyncState.hasInternet ? Icons.cloud_sync : Icons.cloud_off,
+                              color: cloudSyncState.hasInternet ? Colors.blue : Colors.red,
                             ),
                             title: const Text(
                               'Cloud Gateway Sync',
                               style: TextStyle(fontWeight: FontWeight.bold),
                             ),
                             subtitle: Text(
-                              'Last synced: $lastSyncText\nSyncs local data with the cloud when internet is available.',
+                              'Last synced: $lastSyncText\n${cloudSyncState.hasInternet ? 'Internet connected.' : 'No internet connection.'}',
                             ),
                             trailing: cloudSyncState.isSyncing
                                 ? const SizedBox(
@@ -210,13 +210,13 @@ class SyncBottomSheet extends ConsumerWidget {
                                     ),
                                   )
                                 : FilledButton.tonal(
-                                    onPressed: () async {
+                                    onPressed: cloudSyncState.hasInternet ? () async {
                                       ScaffoldMessenger.of(
                                         context,
                                       ).showSnackBar(
                                         const SnackBar(
                                           content: Text(
-                                            'Checking internet and syncing with cloud...',
+                                            'Syncing with cloud...',
                                           ),
                                         ),
                                       );
@@ -239,13 +239,13 @@ class SyncBottomSheet extends ConsumerWidget {
                                           ).showSnackBar(
                                             const SnackBar(
                                               content: Text(
-                                                'Cloud sync failed. No internet?',
+                                                'Cloud sync failed.',
                                               ),
                                             ),
                                           );
                                         }
                                       }
-                                    },
+                                    } : null,
                                     child: const Text('Sync Now'),
                                   ),
                           ),
