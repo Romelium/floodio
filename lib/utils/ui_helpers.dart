@@ -29,6 +29,15 @@ Color getTierColor(int tier) {
   }
 }
 
+Color getHazardColor(String type, int tier) {
+  final lowerType = type.toLowerCase();
+  if (lowerType == 'supply') return Colors.indigo;
+  if (lowerType == 'medical triage') return Colors.pink;
+  if (lowerType == 'custom') return Colors.deepOrange;
+  
+  return getTierColor(tier);
+}
+
 IconData getHazardIcon(String type) {
   switch (type.toLowerCase()) {
     case 'flood':
@@ -40,11 +49,16 @@ IconData getHazardIcon(String type) {
     case 'roadblock':
       return Icons.remove_road;
     case 'medical':
+    case 'medical triage':
       return Icons.medical_services;
     case 'evacuation zone':
       return Icons.directions_run;
     case 'safe zone':
       return Icons.health_and_safety;
+    case 'supply':
+      return Icons.local_shipping;
+    case 'custom':
+      return Icons.star;
     default:
       return Icons.warning;
   }

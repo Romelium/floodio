@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:math';
 
+import 'package:floodio/providers/settings_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -269,6 +270,15 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
   }
 
   void _editMarker(HazardMarkerEntity marker) {
+    final isOfficial = ref.read(appSettingsProvider).isOfficialMode;
+    List<String> types = ['Flood', 'Fire', 'Roadblock', 'Medical', 'Other'];
+    if (isOfficial) {
+      types.addAll(['Supply', 'Medical Triage', 'Custom']);
+    }
+    if (!types.contains(marker.type)) {
+      types.add(marker.type);
+    }
+
     String selectedType = marker.type;
     final descController = TextEditingController(text: marker.description);
     int? selectedTtlHours = 24; // Default to extending by 24h
@@ -283,18 +293,9 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 DropdownButtonFormField<String>(
-                  initialValue:
-                      [
-                        'Flood',
-                        'Fire',
-                        'Roadblock',
-                        'Medical',
-                        'Other',
-                      ].contains(selectedType)
-                      ? selectedType
-                      : 'Other',
+                  initialValue: selectedType,
                   decoration: const InputDecoration(labelText: 'Hazard Type'),
-                  items: ['Flood', 'Fire', 'Roadblock', 'Medical', 'Other']
+                  items: types
                       .map(
                         (type) =>
                             DropdownMenuItem(value: type, child: Text(type)),

@@ -772,25 +772,42 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
   }
 
+  Future<LatLng> _getPointForReport() async {
+    final pos = await ref.read(locationControllerProvider.notifier).getCurrentPosition();
+    if (pos != null) {
+      return LatLng(pos.latitude, pos.longitude);
+    } else {
+      try {
+        return _mapController.camera.center;
+      } catch (_) {
+        return const LatLng(37.7749, -122.4194);
+      }
+    }
+  }
+
   void _showReportOptions() {
+    final isOfficial = ref.read(appSettingsProvider).isOfficialMode;
+
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (context) => SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 16.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Padding(
-                padding: EdgeInsets.only(bottom: 16.0),
-                child: Text(
-                  'Create Report',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Padding(
+                  padding: EdgeInsets.only(bottom: 16.0),
+                  child: Text(
+                    'Create Report',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
                 ),
-              ),
               ListTile(
                 leading: const CircleAvatar(
                   backgroundColor: Colors.blue,
@@ -800,17 +817,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 subtitle: const Text('Mark a specific point on the map'),
                 onTap: () async {
                   Navigator.pop(context);
-                  LatLng point;
-                  final pos = await ref.read(locationControllerProvider.notifier).getCurrentPosition();
-                  if (pos != null) {
-                    point = LatLng(pos.latitude, pos.longitude);
-                  } else {
-                    try {
-                      point = _mapController.camera.center;
-                    } catch (_) {
-                      point = const LatLng(37.7749, -122.4194);
-                    }
-                  }
+                  LatLng point = await _getPointForReport();
                   if (!mounted) return;
                   _showAddHazardDialog(point);
                 },
@@ -885,16 +892,86 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   _showAddNewsDialog();
                 },
               ),
+              if (isOfficial) ...[
+                const Divider(),
+                const Padding(
+                  padding: EdgeInsets.only(bottom: 8.0, top: 8.0),
+                  child: Text(
+                    'Official Reports',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.purple),
+                  ),
+                ),
+                ListTile(
+                  leading: const CircleAvatar(
+                    backgroundColor: Colors.indigo,
+                    child: Icon(Icons.local_shipping, color: Colors.white),
+                  ),
+                  title: const Text('Report Supply'),
+                  subtitle: const Text('Mark a supply distribution point'),
+                  onTap: () async {
+                    Navigator.pop(context);
+                    LatLng point = await _getPointForReport();
+                    if (!mounted) return;
+                    _showAddHazardDialog(point, initialType: 'Supply');
+                  },
+                ),
+                ListTile(
+                  leading: const CircleAvatar(
+                    backgroundColor: Colors.pink,
+                    child: Icon(Icons.medical_services, color: Colors.white),
+                  ),
+                  title: const Text('Medical Triage'),
+                  subtitle: const Text('Mark a medical triage area'),
+                  onTap: () async {
+                    Navigator.pop(context);
+                    LatLng point = await _getPointForReport();
+                    if (!mounted) return;
+                    _showAddHazardDialog(point, initialType: 'Medical Triage');
+                  },
+                ),
+                ListTile(
+                  leading: const CircleAvatar(
+                    backgroundColor: Colors.deepOrange,
+                    child: Icon(Icons.star, color: Colors.white),
+                  ),
+                  title: const Text('Custom Official Marker'),
+                  subtitle: const Text('Mark a custom official point'),
+                  onTap: () async {
+                    Navigator.pop(context);
+                    LatLng point = await _getPointForReport();
+                    if (!mounted) return;
+                    _showAddHazardDialog(point, initialType: 'Custom');
+                  },
+                ),
+              ],
             ],
           ),
         ),
       ),
+      ),
     );
   }
 
-  void _showAddHazardDialog(LatLng point) {
-    String selectedType = 'Flood';
-    final descController = TextEditingController(text: 'Water level rising');
+  void _showAddHazardDialog(LatLng point, {String? initialType}) {
+    final isOfficial = ref.read(appSettingsProvider).isOfficialMode;
+    List<String> types = ['Flood', 'Fire', 'Roadblock', 'Medical', 'Other'];
+    if (isOfficial) {
+      types.addAll(['Supply', 'Medical Triage', 'Custom']);
+    }
+    if (initialType != null && !types.contains(initialType)) {
+      types.add(initialType);
+    }
+
+    String selectedType = initialType ?? 'Flood';
+    final descController = TextEditingController(
+      text: initialType == 'Supply' 
+          ? 'Water and food distribution' 
+          : initialType == 'Medical Triage' 
+              ? 'First aid and triage' 
+              : initialType == 'Custom'
+                  ? 'Official custom marker'
+                  : 'Water level rising'
+    );
     XFile? selectedImage;
     int? selectedTtlHours = 24;
 
@@ -905,11 +982,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          title: const Row(
+          title: Row(
             children: [
-              Icon(Icons.warning_amber_rounded, color: Colors.orange),
-              SizedBox(width: 8),
-              Text('Report Hazard'),
+              Icon(getHazardIcon(selectedType), color: getHazardColor(selectedType, isOfficial ? 1 : 4)),
+              const SizedBox(width: 8),
+              const Text('Report Hazard'),
             ],
           ),
           content: SingleChildScrollView(
@@ -928,7 +1005,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       vertical: 12,
                     ),
                   ),
-                  items: ['Flood', 'Fire', 'Roadblock', 'Medical', 'Other']
+                  items: types
                       .map(
                         (type) => DropdownMenuItem(
                           value: type,
@@ -1959,53 +2036,51 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           circles: markers
               .where((m) => m.trustTier == 1 || m.trustTier == 2)
               .map(
-                (m) => CircleMarker(
-                  point: LatLng(m.latitude, m.longitude),
-                  radius: m.trustTier == 1 ? 500 : 300,
-                  useRadiusInMeter: true,
-                  color: (m.trustTier == 1 ? Colors.blue : Colors.purple)
-                      .withValues(alpha: 0.2),
-                  borderColor: m.trustTier == 1 ? Colors.blue : Colors.purple,
-                  borderStrokeWidth: 2,
-                ),
+                (m) {
+                  final color = getHazardColor(m.type, m.trustTier);
+                  return CircleMarker(
+                    point: LatLng(m.latitude, m.longitude),
+                    radius: m.trustTier == 1 ? 500 : 300,
+                    useRadiusInMeter: true,
+                    color: color.withValues(alpha: 0.2),
+                    borderColor: color,
+                    borderStrokeWidth: 2,
+                  );
+                }
               )
               .toList(),
         ),
         MarkerLayer(
           markers: markers
               .map(
-                (m) => Marker(
-                  point: LatLng(m.latitude, m.longitude),
-                  width: 40,
-                  height: 40,
-                  alignment: Alignment.topCenter,
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: () {
-                      final canEndorse = isAdmin && (m.trustTier == 3 || m.trustTier == 4);
+                (m) {
+                  final color = getHazardColor(m.type, m.trustTier);
+                  return Marker(
+                    point: LatLng(m.latitude, m.longitude),
+                    width: 40,
+                    height: 40,
+                    alignment: Alignment.topCenter,
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () {
+                        final canEndorse = isAdmin && (m.trustTier == 3 || m.trustTier == 4);
 
-                      showDialog(
-                        context: context,
-                        builder: (dialogContext) => AlertDialog(
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          title: Row(
-                            children: [
-                              Icon(
-                                getHazardIcon(m.type),
-                                color: m.trustTier == 1
-                                    ? Colors.blue
-                                    : m.trustTier == 2
-                                    ? Colors.purple
-                                    : m.trustTier == 3
-                                    ? Colors.green
-                                    : Colors.grey.shade700,
-                              ),
-                              const SizedBox(width: 8),
-                              Text(m.type),
-                            ],
-                          ),
+                        showDialog(
+                          context: context,
+                          builder: (dialogContext) => AlertDialog(
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            title: Row(
+                              children: [
+                                Icon(
+                                  getHazardIcon(m.type),
+                                  color: color,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(m.type),
+                              ],
+                            ),
                           content: Column(
                             mainAxisSize: MainAxisSize.min,
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -2138,13 +2213,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       children: [
                         Icon(
                           Icons.location_on,
-                          color: m.trustTier == 1
-                              ? Colors.blue
-                              : m.trustTier == 2
-                              ? Colors.purple
-                              : m.trustTier == 3
-                              ? Colors.green
-                              : Colors.grey.shade700,
+                          color: color,
                           size: 40,
                         ),
                         Positioned(
@@ -2158,7 +2227,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       ],
                     ),
                   ),
-                ),
+                );
+                }
               )
               .toList(),
         ),
@@ -2286,6 +2356,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     final canEndorse = isAdmin && (item.trustTier == 3 || item.trustTier == 4);
 
                     if (item is HazardMarkerEntity) {
+                      final color = getHazardColor(item.type, item.trustTier);
                       return Card(
                         margin: const EdgeInsets.symmetric(
                           horizontal: 16,
@@ -2294,9 +2365,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                           side: BorderSide(
-                            color: getTierColor(
-                              item.trustTier,
-                            ).withValues(alpha: 0.3),
+                            color: color.withValues(alpha: 0.3),
                             width: item.trustTier == 1 ? 2 : 1,
                           ),
                         ),
@@ -2322,22 +2391,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                 Row(
                                   children: [
                                     CircleAvatar(
-                                      backgroundColor: item.trustTier == 1
-                                          ? Colors.blue.shade100
-                                          : item.trustTier == 2
-                                          ? Colors.purple.shade100
-                                          : item.trustTier == 3
-                                          ? Colors.green.shade100
-                                          : Colors.grey.shade200,
+                                      backgroundColor: color.withValues(alpha: 0.2),
                                       child: Icon(
                                         getHazardIcon(item.type),
-                                        color: item.trustTier == 1
-                                            ? Colors.blue
-                                            : item.trustTier == 2
-                                            ? Colors.purple
-                                            : item.trustTier == 3
-                                            ? Colors.green
-                                            : Colors.grey.shade700,
+                                        color: color,
                                       ),
                                     ),
                                     const SizedBox(width: 12),
