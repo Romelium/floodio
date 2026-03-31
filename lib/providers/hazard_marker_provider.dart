@@ -30,6 +30,7 @@ class HazardMarkersController extends _$HazardMarkersController {
           signature: Value(marker.signature),
           trustTier: marker.trustTier,
           imageId: Value(marker.imageId),
+          expiresAt: Value(marker.expiresAt),
         ),
         mode: InsertMode.insertOrReplace,
       );

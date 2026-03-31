@@ -7,8 +7,8 @@ import '../crypto/crypto_service.dart';
 import '../database/tables.dart';
 import '../providers/admin_trusted_sender_provider.dart';
 import '../providers/hazard_marker_provider.dart';
-import '../providers/news_item_provider.dart';
 import '../providers/location_provider.dart';
+import '../providers/news_item_provider.dart';
 
 part 'mock_gov_api_service.g.dart';
 
@@ -42,7 +42,8 @@ class MockGovApiService extends _$MockGovApiService {
     
     final title = 'Gov API: Severe Weather Warning';
     final content = 'Automated alert from National Weather Service. Heavy rainfall expected in your area.';
-    final payloadToSignNews = utf8.encode('$id$title$timestamp');
+    final expiresAt = timestamp + (24 * 3600000); // 24 hours TTL
+    final payloadToSignNews = utf8.encode('$id$title$timestamp$expiresAt');
     final (senderId, signatureNews) = await runGenerateOfficialMarkerSignature(payloadToSignNews);
 
     final newNews = NewsItemEntity(
@@ -53,6 +54,7 @@ class MockGovApiService extends _$MockGovApiService {
       senderId: senderId,
       signature: signatureNews,
       trustTier: 1,
+      expiresAt: expiresAt,
     );
     await ref.read(newsItemsControllerProvider.notifier).addNewsItem(newNews);
 
@@ -72,7 +74,7 @@ class MockGovApiService extends _$MockGovApiService {
 
     final type = 'Flood';
     final desc = 'Automated sensor detected rising water levels.';
-    final payloadToSignMarker = utf8.encode('${id}_m$type$timestamp');
+    final payloadToSignMarker = utf8.encode('${id}_m$type$timestamp$expiresAt');
     final (_, signatureMarker) = await runGenerateOfficialMarkerSignature(payloadToSignMarker);
 
     final newMarker = HazardMarkerEntity(
@@ -85,6 +87,7 @@ class MockGovApiService extends _$MockGovApiService {
       senderId: senderId,
       signature: signatureMarker,
       trustTier: 1,
+      expiresAt: expiresAt,
     );
     await ref.read(hazardMarkersControllerProvider.notifier).addMarker(newMarker);
   }

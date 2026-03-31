@@ -672,6 +672,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     String selectedType = 'Flood';
     final descController = TextEditingController(text: 'Water level rising');
     XFile? selectedImage;
+    int? selectedTtlHours = 24;
 
     showDialog(
       context: context,
@@ -731,6 +732,29 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   maxLines: 2,
                 ),
                 const SizedBox(height: 16),
+                DropdownButtonFormField<int?>(
+                  initialValue: selectedTtlHours,
+                  decoration: InputDecoration(
+                    labelText: 'Expires In',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 12,
+                    ),
+                  ),
+                  items: const [
+                    DropdownMenuItem(value: 1, child: Text('1 Hour')),
+                    DropdownMenuItem(value: 12, child: Text('12 Hours')),
+                    DropdownMenuItem(value: 24, child: Text('24 Hours')),
+                    DropdownMenuItem(value: 72, child: Text('3 Days')),
+                    DropdownMenuItem(value: 168, child: Text('7 Days')),
+                    DropdownMenuItem(value: null, child: Text('No Expiration')),
+                  ],
+                  onChanged: (val) => setState(() => selectedTtlHours = val),
+                ),
+                const SizedBox(height: 16),
                 if (selectedImage != null) ...[
                   ClipRRect(
                     borderRadius: BorderRadius.circular(8),
@@ -755,7 +779,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       final picker = ImagePicker();
                       final image = await picker.pickImage(
                         source: ImageSource.camera,
-                        imageQuality: 70,
+                        imageQuality: 60,
+                        maxWidth: 1024,
+                        maxHeight: 1024,
                       );
                       if (image != null) {
                         setState(() => selectedImage = image);
@@ -784,6 +810,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 final type = selectedType;
                 final description = descController.text;
                 final timestamp = DateTime.now().millisecondsSinceEpoch;
+                final expiresAt = selectedTtlHours != null ? timestamp + (selectedTtlHours! * 3600000) : null;
                 final senderId = await cryptoService.getPublicKeyString();
 
                 String? imageId;
@@ -799,7 +826,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 }
 
                 final payloadToSign = utf8.encode(
-                  '$id$type$timestamp${imageId ?? ""}',
+                  '$id$type$timestamp${imageId ?? ""}${expiresAt ?? ""}',
                 );
                 final signature = await cryptoService.signData(payloadToSign);
                 final untrustedSendersAsync = ref.read(
@@ -845,6 +872,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   signature: signature,
                   trustTier: trustTier,
                   imageId: imageId,
+                  expiresAt: expiresAt,
                 );
                 await ref
                     .read(hazardMarkersControllerProvider.notifier)
@@ -862,6 +890,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   void _showAddAreaDialog() {
     String selectedType = 'Flooded Area';
     final descController = TextEditingController();
+    int? selectedTtlHours = 24;
 
     showDialog(
       context: context,
@@ -926,6 +955,26 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ),
                 maxLines: 2,
               ),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<int?>(
+                initialValue: selectedTtlHours,
+                decoration: InputDecoration(
+                  labelText: 'Expires In',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                ),
+                items: const [
+                  DropdownMenuItem(value: 1, child: Text('1 Hour')),
+                  DropdownMenuItem(value: 12, child: Text('12 Hours')),
+                  DropdownMenuItem(value: 24, child: Text('24 Hours')),
+                  DropdownMenuItem(value: 72, child: Text('3 Days')),
+                  DropdownMenuItem(value: 168, child: Text('7 Days')),
+                  DropdownMenuItem(value: null, child: Text('No Expiration')),
+                ],
+                onChanged: (val) => setState(() => selectedTtlHours = val),
+              ),
             ],
           ),
           actions: [
@@ -945,9 +994,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 final type = selectedType;
                 final description = descController.text;
                 final timestamp = DateTime.now().millisecondsSinceEpoch;
+                final expiresAt = selectedTtlHours != null ? timestamp + (selectedTtlHours! * 3600000) : null;
                 final senderId = await cryptoService.getPublicKeyString();
 
-                final payloadToSign = utf8.encode('$id$type$timestamp');
+                final payloadToSign = utf8.encode('$id$type$timestamp${expiresAt ?? ""}');
                 final signature = await cryptoService.signData(payloadToSign);
                 final untrustedSendersAsync = ref.read(
                   untrustedSendersControllerProvider,
@@ -994,6 +1044,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   senderId: senderId,
                   signature: signature,
                   trustTier: trustTier,
+                  expiresAt: expiresAt,
                 );
                 await ref
                     .read(areasControllerProvider.notifier)
@@ -1076,6 +1127,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final contentController = TextEditingController(
       text: 'Move to higher ground immediately. Flood waters rising.',
     );
+    int? selectedTtlHours = 24;
 
     showDialog(
       context: context,
@@ -1111,6 +1163,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
               maxLines: 3,
             ),
+            const SizedBox(height: 16),
+            DropdownButtonFormField<int?>(
+              initialValue: selectedTtlHours,
+              decoration: InputDecoration(
+                labelText: 'Expires In',
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              items: const [
+                DropdownMenuItem(value: 1, child: Text('1 Hour')),
+                DropdownMenuItem(value: 12, child: Text('12 Hours')),
+                DropdownMenuItem(value: 24, child: Text('24 Hours')),
+                DropdownMenuItem(value: 72, child: Text('3 Days')),
+                DropdownMenuItem(value: 168, child: Text('7 Days')),
+                DropdownMenuItem(value: null, child: Text('No Expiration')),
+              ],
+              onChanged: (val) => selectedTtlHours = val,
+            ),
           ],
         ),
         actions: [
@@ -1125,8 +1194,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               final title = titleController.text;
               final content = contentController.text;
               final timestamp = DateTime.now().millisecondsSinceEpoch;
+              final expiresAt = selectedTtlHours != null ? timestamp + (selectedTtlHours! * 3600000) : null;
 
-              final payloadToSign = utf8.encode('$id$title$timestamp');
+              final payloadToSign = utf8.encode('$id$title$timestamp${expiresAt ?? ""}');
 
               final (senderId, signature) =
                   await runGenerateOfficialMarkerSignature(payloadToSign);
@@ -1172,6 +1242,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 senderId: senderId,
                 signature: signature,
                 trustTier: trustTier,
+                expiresAt: expiresAt,
               );
               await ref
                   .read(newsItemsControllerProvider.notifier)
@@ -2555,6 +2626,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
   void _editMarker(HazardMarkerEntity marker) {
     String selectedType = marker.type;
     final descController = TextEditingController(text: marker.description);
+    int? selectedTtlHours = 24; // Default to extending by 24h
 
     showDialog(
       context: context,
@@ -2593,6 +2665,20 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                   decoration: const InputDecoration(labelText: 'Description'),
                   maxLines: 2,
                 ),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<int?>(
+                  initialValue: selectedTtlHours,
+                  decoration: const InputDecoration(labelText: 'Extend Expiration By'),
+                  items: const [
+                    DropdownMenuItem(value: 1, child: Text('1 Hour')),
+                    DropdownMenuItem(value: 12, child: Text('12 Hours')),
+                    DropdownMenuItem(value: 24, child: Text('24 Hours')),
+                    DropdownMenuItem(value: 72, child: Text('3 Days')),
+                    DropdownMenuItem(value: 168, child: Text('7 Days')),
+                    DropdownMenuItem(value: null, child: Text('No Expiration')),
+                  ],
+                  onChanged: (val) => setState(() => selectedTtlHours = val),
+                ),
               ],
             ),
           ),
@@ -2606,10 +2692,11 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                 Navigator.pop(innerContext);
                 final cryptoService = ref.read(cryptoServiceProvider.notifier);
                 final timestamp = DateTime.now().millisecondsSinceEpoch;
-                final newId = timestamp.toString();
+                final newId = marker.id; // Keep same ID for LWW CRDT
+                final expiresAt = selectedTtlHours != null ? timestamp + (selectedTtlHours! * 3600000) : null;
 
                 final payloadToSign = utf8.encode(
-                  '$newId$selectedType$timestamp${marker.imageId ?? ""}',
+                  '$newId$selectedType$timestamp${marker.imageId ?? ""}${expiresAt ?? ""}',
                 );
                 final signature = await cryptoService.signData(payloadToSign);
 
@@ -2624,11 +2711,9 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                   signature: signature,
                   trustTier: marker.trustTier,
                   imageId: marker.imageId,
+                  expiresAt: expiresAt,
                 );
 
-                ref
-                    .read(hazardMarkersControllerProvider.notifier)
-                    .deleteMarker(marker.id);
                 await ref
                     .read(hazardMarkersControllerProvider.notifier)
                     .addMarker(updatedMarker);
@@ -2649,6 +2734,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
   void _editNews(NewsItemEntity news) {
     final titleController = TextEditingController(text: news.title);
     final contentController = TextEditingController(text: news.content);
+    int? selectedTtlHours = 24;
 
     showDialog(
       context: context,
@@ -2668,6 +2754,20 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                 decoration: const InputDecoration(labelText: 'Content'),
                 maxLines: 3,
               ),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<int?>(
+                initialValue: selectedTtlHours,
+                decoration: const InputDecoration(labelText: 'Extend Expiration By'),
+                items: const [
+                  DropdownMenuItem(value: 1, child: Text('1 Hour')),
+                  DropdownMenuItem(value: 12, child: Text('12 Hours')),
+                  DropdownMenuItem(value: 24, child: Text('24 Hours')),
+                  DropdownMenuItem(value: 72, child: Text('3 Days')),
+                  DropdownMenuItem(value: 168, child: Text('7 Days')),
+                  DropdownMenuItem(value: null, child: Text('No Expiration')),
+                ],
+                onChanged: (val) => selectedTtlHours = val,
+              ),
             ],
           ),
         ),
@@ -2681,10 +2781,11 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
               Navigator.pop(dialogContext);
               final cryptoService = ref.read(cryptoServiceProvider.notifier);
               final timestamp = DateTime.now().millisecondsSinceEpoch;
-              final newId = timestamp.toString();
+              final newId = news.id; // Keep same ID for LWW CRDT
+              final expiresAt = selectedTtlHours != null ? timestamp + (selectedTtlHours! * 3600000) : null;
 
               final payloadToSign = utf8.encode(
-                '$newId${titleController.text}$timestamp',
+                '$newId${titleController.text}$timestamp${expiresAt ?? ""}',
               );
               final signature = await cryptoService.signData(payloadToSign);
 
@@ -2696,11 +2797,9 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                 senderId: news.senderId,
                 signature: signature,
                 trustTier: news.trustTier,
+                expiresAt: expiresAt,
               );
 
-              ref
-                  .read(newsItemsControllerProvider.notifier)
-                  .deleteNewsItem(news.id);
               await ref
                   .read(newsItemsControllerProvider.notifier)
                   .addNewsItem(updatedNews);
@@ -2720,6 +2819,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
   void _editArea(AreaEntity area) {
     String selectedType = area.type;
     final descController = TextEditingController(text: area.description);
+    int? selectedTtlHours = 24;
 
     showDialog(
       context: context,
@@ -2767,6 +2867,20 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                   decoration: const InputDecoration(labelText: 'Description'),
                   maxLines: 2,
                 ),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<int?>(
+                  initialValue: selectedTtlHours,
+                  decoration: const InputDecoration(labelText: 'Extend Expiration By'),
+                  items: const [
+                    DropdownMenuItem(value: 1, child: Text('1 Hour')),
+                    DropdownMenuItem(value: 12, child: Text('12 Hours')),
+                    DropdownMenuItem(value: 24, child: Text('24 Hours')),
+                    DropdownMenuItem(value: 72, child: Text('3 Days')),
+                    DropdownMenuItem(value: 168, child: Text('7 Days')),
+                    DropdownMenuItem(value: null, child: Text('No Expiration')),
+                  ],
+                  onChanged: (val) => setState(() => selectedTtlHours = val),
+                ),
               ],
             ),
           ),
@@ -2780,10 +2894,11 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                 Navigator.pop(innerContext);
                 final cryptoService = ref.read(cryptoServiceProvider.notifier);
                 final timestamp = DateTime.now().millisecondsSinceEpoch;
-                final newId = timestamp.toString();
+                final newId = area.id; // Keep same ID for LWW CRDT
+                final expiresAt = selectedTtlHours != null ? timestamp + (selectedTtlHours! * 3600000) : null;
 
                 final payloadToSign = utf8.encode(
-                  '$newId$selectedType$timestamp',
+                  '$newId$selectedType$timestamp${expiresAt ?? ""}',
                 );
                 final signature = await cryptoService.signData(payloadToSign);
 
@@ -2796,9 +2911,9 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                   senderId: area.senderId,
                   signature: signature,
                   trustTier: area.trustTier,
+                  expiresAt: expiresAt,
                 );
 
-                ref.read(areasControllerProvider.notifier).deleteArea(area.id);
                 await ref
                     .read(areasControllerProvider.notifier)
                     .addArea(updatedArea);

@@ -684,6 +684,7 @@ class P2pService extends _$P2pService {
           signature: h.signature ?? '',
           trustTier: h.trustTier,
           imageId: h.imageId ?? '',
+          expiresAt: Int64(h.expiresAt ?? 0),
         ));
       }
 
@@ -696,6 +697,7 @@ class P2pService extends _$P2pService {
           senderId: n.senderId,
           signature: n.signature ?? '',
           trustTier: n.trustTier,
+          expiresAt: Int64(n.expiresAt ?? 0),
         ));
       }
 
@@ -725,6 +727,7 @@ class P2pService extends _$P2pService {
           senderId: a.senderId,
           signature: a.signature ?? '',
           trustTier: a.trustTier,
+          expiresAt: Int64(a.expiresAt ?? 0),
         );
         for (final coord in a.coordinates) {
           areaMarker.coordinates.add(pb.Coordinate(
@@ -812,6 +815,22 @@ class P2pService extends _$P2pService {
       final deletedItems = await db.select(db.deletedItems).get();
       final deletedIds = deletedItems.map((e) => e.id).toSet();
 
+      // Fetch existing timestamps for LWW CRDT resolution
+      final existingMarkers = await db.select(db.hazardMarkers).get();
+      final markerTimestamps = {for (var m in existingMarkers) m.id: m.timestamp};
+
+      final existingNews = await db.select(db.newsItems).get();
+      final newsTimestamps = {for (var n in existingNews) n.id: n.timestamp};
+
+      final existingProfiles = await db.select(db.userProfiles).get();
+      final profileTimestamps = {for (var p in existingProfiles) p.publicKey: p.timestamp};
+
+      final existingAreas = await db.select(db.areas).get();
+      final areaTimestamps = {for (var a in existingAreas) a.id: a.timestamp};
+
+      final existingDelegations = await db.select(db.adminTrustedSenders).get();
+      final delegationTimestamps = {for (var d in existingDelegations) d.publicKey: d.timestamp};
+
       for (final d in payload.deletedItems) {
         deletedIds.add(d.id);
       }
@@ -819,6 +838,9 @@ class P2pService extends _$P2pService {
       final seenIds = <SeenMessageIdsCompanion>[];
       final validDelegations = <AdminTrustedSendersCompanion>[];
       for (final d in payload.delegations) {
+        final existingTs = delegationTimestamps[d.delegateePublicKey] ?? 0;
+        if (d.timestamp.toInt() <= existingTs) continue; // LWW CRDT
+
         final isValid = await crypto.verifyDelegation(
           delegateePublicKeyStr: d.delegateePublicKey,
           timestamp: d.timestamp.toInt(),
@@ -845,7 +867,12 @@ class P2pService extends _$P2pService {
       final validMarkers = <HazardMarkersCompanion>[];
       for (final m in payload.markers) {
         if (deletedIds.contains(m.id)) continue;
-        final payloadToSign = utf8.encode('${m.id}${m.type}${m.timestamp}${m.imageId}');
+        final existingTs = markerTimestamps[m.id] ?? 0;
+        if (m.timestamp.toInt() <= existingTs) continue; // LWW CRDT
+
+        final imageIdStr = m.imageId;
+        final expiresAtStr = m.expiresAt == 0 ? "" : m.expiresAt.toString();
+        final payloadToSign = utf8.encode('${m.id}${m.type}${m.timestamp}$imageIdStr$expiresAtStr');
         final trustTier = await crypto.verifyAndGetTrustTier(
           data: payloadToSign,
           signatureStr: m.signature,
@@ -867,6 +894,7 @@ class P2pService extends _$P2pService {
             signature: Value(m.signature),
             trustTier: trustTier,
             imageId: Value(m.imageId.isEmpty ? null : m.imageId),
+            expiresAt: Value(m.expiresAt == 0 ? null : m.expiresAt.toInt()),
           ));
           seenIds.add(SeenMessageIdsCompanion.insert(
             messageId: m.id,
@@ -880,7 +908,11 @@ class P2pService extends _$P2pService {
       final validNews = <NewsItemsCompanion>[];
       for (final n in payload.news) {
         if (deletedIds.contains(n.id)) continue;
-        final payloadToSign = utf8.encode('${n.id}${n.title}${n.timestamp}');
+        final existingTs = newsTimestamps[n.id] ?? 0;
+        if (n.timestamp.toInt() <= existingTs) continue; // LWW CRDT
+
+        final expiresAtStr = n.expiresAt == 0 ? "" : n.expiresAt.toString();
+        final payloadToSign = utf8.encode('${n.id}${n.title}${n.timestamp}$expiresAtStr');
         final trustTier = await crypto.verifyAndGetTrustTier(
           data: payloadToSign,
           signatureStr: n.signature,
@@ -899,6 +931,7 @@ class P2pService extends _$P2pService {
             senderId: n.senderId,
             signature: Value(n.signature),
             trustTier: trustTier,
+            expiresAt: Value(n.expiresAt == 0 ? null : n.expiresAt.toInt()),
           ));
           seenIds.add(SeenMessageIdsCompanion.insert(
             messageId: n.id,
@@ -911,6 +944,9 @@ class P2pService extends _$P2pService {
 
       final validProfiles = <UserProfilesCompanion>[];
       for (final p in payload.profiles) {
+        final existingTs = profileTimestamps[p.publicKey] ?? 0;
+        if (p.timestamp.toInt() <= existingTs) continue; // LWW CRDT
+
         final payloadToSign = utf8.encode('${p.publicKey}${p.name}${p.contactInfo}${p.timestamp}');
         final trustTier = await crypto.verifyAndGetTrustTier(
           data: payloadToSign,
@@ -941,7 +977,11 @@ class P2pService extends _$P2pService {
       final validAreas = <AreasCompanion>[];
       for (final a in payload.areas) {
         if (deletedIds.contains(a.id)) continue;
-        final payloadToSign = utf8.encode('${a.id}${a.type}${a.timestamp}');
+        final existingTs = areaTimestamps[a.id] ?? 0;
+        if (a.timestamp.toInt() <= existingTs) continue; // LWW CRDT
+
+        final expiresAtStr = a.expiresAt == 0 ? "" : a.expiresAt.toString();
+        final payloadToSign = utf8.encode('${a.id}${a.type}${a.timestamp}$expiresAtStr');
         final trustTier = await crypto.verifyAndGetTrustTier(
           data: payloadToSign,
           signatureStr: a.signature,
@@ -962,6 +1002,7 @@ class P2pService extends _$P2pService {
             senderId: a.senderId,
             signature: Value(a.signature),
             trustTier: trustTier,
+            expiresAt: Value(a.expiresAt == 0 ? null : a.expiresAt.toInt()),
           ));
           seenIds.add(SeenMessageIdsCompanion.insert(
             messageId: a.id,

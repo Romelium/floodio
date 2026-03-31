@@ -28,6 +28,7 @@ class AreasController extends _$AreasController {
           senderId: area.senderId,
           signature: Value(area.signature),
           trustTier: area.trustTier,
+          expiresAt: Value(area.expiresAt),
         ),
         mode: InsertMode.insertOrReplace,
       );

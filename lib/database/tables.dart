@@ -12,6 +12,7 @@ class HazardMarkerEntity {
   final String? signature;
   final int trustTier;
   final String? imageId;
+  final int? expiresAt;
 
   HazardMarkerEntity({
     required this.id,
@@ -24,6 +25,7 @@ class HazardMarkerEntity {
     this.signature,
     required this.trustTier,
     this.imageId,
+    this.expiresAt,
   });
 }
 
@@ -39,6 +41,7 @@ class HazardMarkers extends Table {
   TextColumn get signature => text().nullable()();
   IntColumn get trustTier => integer()();
   TextColumn get imageId => text().nullable()();
+  IntColumn get expiresAt => integer().nullable()();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -52,6 +55,7 @@ class NewsItemEntity {
   final String senderId;
   final String? signature;
   final int trustTier;
+  final int? expiresAt;
 
   NewsItemEntity({
     required this.id,
@@ -61,6 +65,7 @@ class NewsItemEntity {
     required this.senderId,
     this.signature,
     required this.trustTier,
+    this.expiresAt,
   });
 }
 
@@ -73,6 +78,7 @@ class NewsItems extends Table {
   TextColumn get senderId => text()();
   TextColumn get signature => text().nullable()();
   IntColumn get trustTier => integer()();
+  IntColumn get expiresAt => integer().nullable()();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -228,6 +234,7 @@ class AreaEntity {
   final String senderId;
   final String? signature;
   final int trustTier;
+  final int? expiresAt;
 
   AreaEntity({
     required this.id,
@@ -238,6 +245,7 @@ class AreaEntity {
     required this.senderId,
     this.signature,
     required this.trustTier,
+    this.expiresAt,
   });
 }
 
@@ -251,6 +259,7 @@ class Areas extends Table {
   TextColumn get senderId => text()();
   TextColumn get signature => text().nullable()();
   IntColumn get trustTier => integer()();
+  IntColumn get expiresAt => integer().nullable()();
 
   @override
   Set<Column> get primaryKey => {id};

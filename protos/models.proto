@@ -16,6 +16,7 @@ message AreaMarker {
   string sender_id = 6;
   string signature = 7;
   int32 trust_tier = 8;
+  int64 expires_at = 9;
 }
 
 message HazardMarker {
@@ -29,6 +30,7 @@ message HazardMarker {
   string signature = 8;
   int32 trust_tier = 9;
   string image_id = 10;
+  int64 expires_at = 11;
 }
 
 message NewsItem {
@@ -39,6 +41,7 @@ message NewsItem {
   string sender_id = 5;
   string signature = 6;
   int32 trust_tier = 7;
+  int64 expires_at = 8;
 }
 
 message UserProfile {
