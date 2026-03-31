@@ -40,6 +40,7 @@ import '../utils/ui_helpers.dart';
 import '../widgets/download_map_dialog.dart';
 import '../widgets/local_image_display.dart';
 import '../widgets/mesh_status_chip.dart';
+import 'command_tab.dart';
 import 'initializer_screen.dart';
 import 'profile_tab.dart';
 
@@ -1692,16 +1693,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                   foregroundColor: Colors.red,
                                 ),
                               ),
-                            if (m.trustTier == 4)
+                            if (m.trustTier == 4 || (settings.isOfficialMode && m.trustTier == 3))
                               TextButton.icon(
                                 onPressed: () {
                                   Navigator.pop(dialogContext);
-                                  _markAsTrusted(m.senderId);
+                                  if (settings.isOfficialMode) {
+                                    _makeOfficialVolunteer(m.senderId);
+                                  } else {
+                                    _markAsTrusted(m.senderId);
+                                  }
                                 },
-                                icon: const Icon(Icons.verified_user, size: 18),
-                                label: const Text('Trust'),
+                                icon: Icon(
+                                  settings.isOfficialMode ? Icons.admin_panel_settings : Icons.verified_user,
+                                  size: 18,
+                                ),
+                                label: Text(settings.isOfficialMode ? 'Make Volunteer' : 'Trust'),
                                 style: TextButton.styleFrom(
-                                  foregroundColor: Colors.green,
+                                  foregroundColor: settings.isOfficialMode ? Colors.purple : Colors.green,
                                 ),
                               ),
                             TextButton(
@@ -1809,6 +1817,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         final filter = ref.watch(feedFilterControllerProvider);
         final filterNotifier = ref.read(feedFilterControllerProvider.notifier);
         final profiles = ref.watch(userProfilesControllerProvider).value ?? [];
+        final settings = ref.watch(appSettingsProvider);
 
         final isLoading =
             ref.watch(filteredHazardMarkersProvider).isLoading ||
@@ -2010,19 +2019,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                           foregroundColor: Colors.red,
                                         ),
                                       ),
-                                    if (item.trustTier == 4)
+                                    if (item.trustTier == 4 || (settings.isOfficialMode && item.trustTier == 3))
                                       FilledButton.tonalIcon(
-                                        onPressed: () =>
-                                            _markAsTrusted(item.senderId),
-                                        icon: const Icon(
-                                          Icons.verified_user,
+                                        onPressed: () {
+                                          if (settings.isOfficialMode) {
+                                            _makeOfficialVolunteer(item.senderId);
+                                          } else {
+                                            _markAsTrusted(item.senderId);
+                                          }
+                                        },
+                                        icon: Icon(
+                                          settings.isOfficialMode ? Icons.admin_panel_settings : Icons.verified_user,
                                           size: 16,
                                         ),
-                                        label: const Text('Trust'),
+                                        label: Text(settings.isOfficialMode ? 'Make Volunteer' : 'Trust'),
                                         style: FilledButton.styleFrom(
-                                          foregroundColor:
-                                              Colors.green.shade700,
-                                          backgroundColor: Colors.green.shade50,
+                                          foregroundColor: settings.isOfficialMode ? Colors.purple.shade700 : Colors.green.shade700,
+                                          backgroundColor: settings.isOfficialMode ? Colors.purple.shade50 : Colors.green.shade50,
                                           padding: const EdgeInsets.symmetric(
                                             horizontal: 12,
                                             vertical: 8,
@@ -2173,18 +2186,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                         foregroundColor: Colors.red,
                                       ),
                                     ),
-                                  if (item.trustTier == 4)
+                                  if (item.trustTier == 4 || (settings.isOfficialMode && item.trustTier == 3))
                                     FilledButton.tonalIcon(
-                                      onPressed: () =>
-                                          _markAsTrusted(item.senderId),
-                                      icon: const Icon(
-                                        Icons.verified_user,
+                                      onPressed: () {
+                                        if (settings.isOfficialMode) {
+                                          _makeOfficialVolunteer(item.senderId);
+                                        } else {
+                                          _markAsTrusted(item.senderId);
+                                        }
+                                      },
+                                      icon: Icon(
+                                        settings.isOfficialMode ? Icons.admin_panel_settings : Icons.verified_user,
                                         size: 16,
                                       ),
-                                      label: const Text('Trust'),
+                                      label: Text(settings.isOfficialMode ? 'Make Volunteer' : 'Trust'),
                                       style: FilledButton.styleFrom(
-                                        foregroundColor: Colors.green.shade700,
-                                        backgroundColor: Colors.green.shade50,
+                                        foregroundColor: settings.isOfficialMode ? Colors.purple.shade700 : Colors.green.shade700,
+                                        backgroundColor: settings.isOfficialMode ? Colors.purple.shade50 : Colors.green.shade50,
                                         padding: const EdgeInsets.symmetric(
                                           horizontal: 12,
                                           vertical: 8,
@@ -2356,19 +2374,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                           foregroundColor: Colors.red,
                                         ),
                                       ),
-                                    if (item.trustTier == 4)
+                                    if (item.trustTier == 4 || (settings.isOfficialMode && item.trustTier == 3))
                                       FilledButton.tonalIcon(
-                                        onPressed: () =>
-                                            _markAsTrusted(item.senderId),
-                                        icon: const Icon(
-                                          Icons.verified_user,
+                                        onPressed: () {
+                                          if (settings.isOfficialMode) {
+                                            _makeOfficialVolunteer(item.senderId);
+                                          } else {
+                                            _markAsTrusted(item.senderId);
+                                          }
+                                        },
+                                        icon: Icon(
+                                          settings.isOfficialMode ? Icons.admin_panel_settings : Icons.verified_user,
                                           size: 16,
                                         ),
-                                        label: const Text('Trust'),
+                                        label: Text(settings.isOfficialMode ? 'Make Volunteer' : 'Trust'),
                                         style: FilledButton.styleFrom(
-                                          foregroundColor:
-                                              Colors.green.shade700,
-                                          backgroundColor: Colors.green.shade50,
+                                          foregroundColor: settings.isOfficialMode ? Colors.purple.shade700 : Colors.green.shade700,
+                                          backgroundColor: settings.isOfficialMode ? Colors.purple.shade50 : Colors.green.shade50,
                                           padding: const EdgeInsets.symmetric(
                                             horizontal: 12,
                                             vertical: 8,
@@ -2541,19 +2563,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                           foregroundColor: Colors.red,
                                         ),
                                       ),
-                                    if (item.trustTier == 4)
+                                    if (item.trustTier == 4 || (settings.isOfficialMode && item.trustTier == 3))
                                       FilledButton.tonalIcon(
-                                        onPressed: () =>
-                                            _markAsTrusted(item.senderId),
-                                        icon: const Icon(
-                                          Icons.verified_user,
+                                        onPressed: () {
+                                          if (settings.isOfficialMode) {
+                                            _makeOfficialVolunteer(item.senderId);
+                                          } else {
+                                            _markAsTrusted(item.senderId);
+                                          }
+                                        },
+                                        icon: Icon(
+                                          settings.isOfficialMode ? Icons.admin_panel_settings : Icons.verified_user,
                                           size: 16,
                                         ),
-                                        label: const Text('Trust'),
+                                        label: Text(settings.isOfficialMode ? 'Make Volunteer' : 'Trust'),
                                         style: FilledButton.styleFrom(
-                                          foregroundColor:
-                                              Colors.green.shade700,
-                                          backgroundColor: Colors.green.shade50,
+                                          foregroundColor: settings.isOfficialMode ? Colors.purple.shade700 : Colors.green.shade700,
+                                          backgroundColor: settings.isOfficialMode ? Colors.purple.shade50 : Colors.green.shade50,
                                           padding: const EdgeInsets.symmetric(
                                             horizontal: 12,
                                             vertical: 8,
@@ -2661,6 +2687,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(const SnackBar(content: Text('Sender marked as trusted!')));
+  }
+
+  void _makeOfficialVolunteer(String senderId) async {
+    await ref.read(mockGovApiServiceProvider.notifier).delegateAdminTrust(senderId);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('User upgraded to Official Volunteer!')),
+      );
+    }
+    ref.read(p2pServiceProvider.notifier).triggerSync();
   }
 
   @override
@@ -2787,12 +2823,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               },
             ),
             if (settings.isOfficialMode)
-              const Center(
-                child: Text(
-                  'Command Center',
-                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                ),
-              ),
+              const CommandTab(),
           ],
         ),
         bottomNavigationBar: NavigationBar(
