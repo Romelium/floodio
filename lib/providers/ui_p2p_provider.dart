@@ -55,4 +55,8 @@ class UiP2pService extends _$UiP2pService {
   void requestMapRegion(OfflineRegion region) {
     FlutterBackgroundService().invoke('requestMapRegion', region.toJson());
   }
+
+  void broadcastMapRegion(OfflineRegion? region) {
+    FlutterBackgroundService().invoke('broadcastMapRegion', {'region': region?.toJson()});
+  }
 }

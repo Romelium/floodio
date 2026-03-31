@@ -137,6 +137,14 @@ void onStart(ServiceInstance service) async {
     }
   });
 
+  service.on('broadcastMapRegion').listen((event) {
+    OfflineRegion? region;
+    if (event != null && event['region'] != null) {
+      region = OfflineRegion.fromJson(Map<String, dynamic>.from(event['region']));
+    }
+    p2pNotifier.broadcastMapRegion(region);
+  });
+
   service.on('requestState').listen((event) {
     final state = container.read(p2pServiceProvider);
     service.invoke('p2pStateUpdate', state.toMap());

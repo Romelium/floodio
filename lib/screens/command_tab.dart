@@ -8,6 +8,8 @@ import '../providers/user_profile_provider.dart';
 import '../services/cloud_sync_service.dart';
 import '../services/mock_gov_api_service.dart';
 import '../utils/ui_helpers.dart';
+import '../providers/offline_regions_provider.dart';
+import '../providers/ui_p2p_provider.dart';
 
 class CommandTab extends ConsumerWidget {
   const CommandTab({super.key});
@@ -63,6 +65,24 @@ class CommandTab extends ConsumerWidget {
                 
                 const SizedBox(height: 32),
                 
+                Row(
+                  children: [
+                    const Icon(Icons.hub, color: Colors.orange),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'Mesh Network Actions',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                _buildMeshActionsCard(context, ref),
+
+                const SizedBox(height: 32),
+
                 Row(
                   children: [
                     const Icon(Icons.admin_panel_settings, color: Colors.purple),
@@ -303,6 +323,101 @@ class CommandTab extends ConsumerWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildMeshActionsCard(BuildContext context, WidgetRef ref) {
+    final offlineRegionsAsync = ref.watch(offlineRegionsProvider);
+    final offlineRegions = offlineRegionsAsync.value ?? [];
+
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        side: BorderSide(color: Colors.grey.shade300),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Broadcast Offline Map',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Send a downloaded map region to all currently connected devices in the mesh network.',
+              style: TextStyle(color: Colors.grey, fontSize: 13),
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: offlineRegions.isEmpty
+                    ? null
+                    : () {
+                        _showBroadcastMapDialog(context, ref, offlineRegions);
+                      },
+                icon: const Icon(Icons.map, size: 18),
+                label: const Text('Select Map to Broadcast'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: Colors.orange.shade700,
+                ),
+              ),
+            ),
+            if (offlineRegions.isEmpty)
+              const Padding(
+                padding: EdgeInsets.only(top: 8.0),
+                child: Text(
+                  'No offline maps available. Download a map first.',
+                  style: TextStyle(color: Colors.red, fontSize: 12),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showBroadcastMapDialog(BuildContext context, WidgetRef ref, List<OfflineRegion> regions) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Broadcast Map'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView.separated(
+            shrinkWrap: true,
+            itemCount: regions.length,
+            separatorBuilder: (context, index) => const Divider(),
+            itemBuilder: (context, index) {
+              final region = regions[index];
+              return ListTile(
+                leading: const Icon(Icons.map_outlined, color: Colors.orange),
+                title: Text('Region ${index + 1} (Zoom ${region.minZoom}-${region.maxZoom})'),
+                subtitle: Text(
+                  'Bounds: ${region.bounds.north.toStringAsFixed(2)}, ${region.bounds.west.toStringAsFixed(2)} to ${region.bounds.south.toStringAsFixed(2)}, ${region.bounds.east.toStringAsFixed(2)}',
+                  style: const TextStyle(fontSize: 12),
+                ),
+                onTap: () {
+                  Navigator.pop(dialogContext);
+                  ref.read(uiP2pServiceProvider.notifier).broadcastMapRegion(region);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Packing and broadcasting map...')),
+                  );
+                },
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+        ],
       ),
     );
   }

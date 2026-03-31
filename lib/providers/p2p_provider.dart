@@ -811,15 +811,19 @@ class P2pService extends _$P2pService {
   }
 
   Future<void> _handleRequestMap(Map<String, dynamic> json) async {
+    OfflineRegion? region;
+    if (json['region'] != null) {
+      region = OfflineRegion.fromJson(Map<String, dynamic>.from(json['region']));
+    }
+    await broadcastMapRegion(region);
+  }
+
+  Future<void> broadcastMapRegion(OfflineRegion? region) async {
     state = state.copyWith(isSyncing: true, syncMessage: 'Packing offline map for transfer...');
     try {
-      OfflineRegion? region;
-      if (json['region'] != null) {
-        region = OfflineRegion.fromJson(Map<String, dynamic>.from(json['region']));
-      }
       final mapCache = ref.read(mapCacheServiceProvider);
       final packFile = await mapCache.packMap(region: region);
-      
+
       if (_host != null && state.hostState?.isActive == true) {
         await _host!.broadcastFile(packFile);
       } else if (_client != null && state.clientState?.isActive == true) {
