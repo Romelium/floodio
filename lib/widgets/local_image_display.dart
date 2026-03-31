@@ -60,6 +60,7 @@ class _LocalImageDisplayState extends State<LocalImageDisplay> {
             height: 150,
             width: double.infinity,
             fit: BoxFit.cover,
+            cacheWidth: 800,
           ),
         ),
       ),

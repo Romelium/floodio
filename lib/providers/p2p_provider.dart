@@ -858,31 +858,35 @@ class P2pService extends _$P2pService {
 
       final adminTrustedSenders = await db.select(db.adminTrustedSenders).get();
       final adminTrustedKeys = adminTrustedSenders.map((e) => e.publicKey).toList();
+      final delegationTimestamps = {for (var d in adminTrustedSenders) d.publicKey: d.timestamp};
 
       final deletedItems = await db.select(db.deletedItems).get();
       final deletedIds = deletedItems.map((e) => e.id).toSet();
 
-      // Fetch existing timestamps for LWW CRDT resolution
-      final existingMarkers = await db.select(db.hazardMarkers).get();
+      final allRevocations = await db.select(db.revokedDelegations).get();
+      final revocationTimestamps = {for (var r in allRevocations) r.delegateePublicKey: r.timestamp};
+      final revokedKeys = allRevocations.map((e) => e.delegateePublicKey).toList();
+
+      // Fetch existing timestamps for LWW CRDT resolution (optimized with isIn)
+      final payloadMarkerIds = payload.markers.map((m) => m.id).toList();
+      final existingMarkers = payloadMarkerIds.isEmpty ? [] : await (db.select(db.hazardMarkers)..where((t) => t.id.isIn(payloadMarkerIds))).get();
       final markerTimestamps = {for (var m in existingMarkers) m.id: m.timestamp};
 
-      final existingNews = await db.select(db.newsItems).get();
+      final payloadNewsIds = payload.news.map((n) => n.id).toList();
+      final existingNews = payloadNewsIds.isEmpty ? [] : await (db.select(db.newsItems)..where((t) => t.id.isIn(payloadNewsIds))).get();
       final newsTimestamps = {for (var n in existingNews) n.id: n.timestamp};
 
-      final existingProfiles = await db.select(db.userProfiles).get();
+      final payloadProfileKeys = payload.profiles.map((p) => p.publicKey).toList();
+      final existingProfiles = payloadProfileKeys.isEmpty ? [] : await (db.select(db.userProfiles)..where((t) => t.publicKey.isIn(payloadProfileKeys))).get();
       final profileTimestamps = {for (var p in existingProfiles) p.publicKey: p.timestamp};
 
-      final existingAreas = await db.select(db.areas).get();
+      final payloadAreaIds = payload.areas.map((a) => a.id).toList();
+      final existingAreas = payloadAreaIds.isEmpty ? [] : await (db.select(db.areas)..where((t) => t.id.isIn(payloadAreaIds))).get();
       final areaTimestamps = {for (var a in existingAreas) a.id: a.timestamp};
 
-      final existingPaths = await db.select(db.paths).get();
+      final payloadPathIds = payload.paths.map((p) => p.id).toList();
+      final existingPaths = payloadPathIds.isEmpty ? [] : await (db.select(db.paths)..where((t) => t.id.isIn(payloadPathIds))).get();
       final pathTimestamps = {for (var p in existingPaths) p.id: p.timestamp};
-
-      final existingDelegations = await db.select(db.adminTrustedSenders).get();
-      final delegationTimestamps = {for (var d in existingDelegations) d.publicKey: d.timestamp};
-
-      final existingRevocations = await db.select(db.revokedDelegations).get();
-      final revocationTimestamps = {for (var r in existingRevocations) r.delegateePublicKey: r.timestamp};
 
       for (final d in payload.deletedItems) {
         deletedIds.add(d.id);
@@ -944,7 +948,6 @@ class P2pService extends _$P2pService {
         }
       }
 
-      final revokedKeys = existingRevocations.map((e) => e.delegateePublicKey).toList();
       for (final r in validRevocations) {
         revokedKeys.add(r.delegateePublicKey.value);
       }

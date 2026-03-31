@@ -6,7 +6,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:path_provider/path_provider.dart';
@@ -372,6 +371,126 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             child: const Text('Dismiss'),
           ),
         ],
+      ),
+    );
+  }
+
+  void _showReportOptions() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Padding(
+                padding: EdgeInsets.only(bottom: 16.0),
+                child: Text(
+                  'Create Report',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+              ),
+              ListTile(
+                leading: const CircleAvatar(
+                  backgroundColor: Colors.blue,
+                  child: Icon(Icons.add_location_alt, color: Colors.white),
+                ),
+                title: const Text('Report Hazard'),
+                subtitle: const Text('Mark a specific point on the map'),
+                onTap: () async {
+                  Navigator.pop(context);
+                  LatLng point;
+                  final pos = await ref.read(locationControllerProvider.notifier).getCurrentPosition();
+                  if (pos != null) {
+                    point = LatLng(pos.latitude, pos.longitude);
+                  } else {
+                    try {
+                      point = _mapController.camera.center;
+                    } catch (_) {
+                      point = const LatLng(37.7749, -122.4194);
+                    }
+                  }
+                  if (!mounted) return;
+                  _showAddHazardDialog(point);
+                },
+              ),
+              ListTile(
+                leading: const CircleAvatar(
+                  backgroundColor: Colors.purple,
+                  child: Icon(Icons.format_shapes, color: Colors.white),
+                ),
+                title: const Text('Report Area'),
+                subtitle: const Text('Draw a polygon on the map'),
+                onTap: () async {
+                  Navigator.pop(context);
+                  setState(() {
+                    _isDrawingArea = true;
+                    _isDrawingPath = false;
+                    _editingAreaId = null;
+                    _currentAreaPoints.clear();
+                    _currentIndex = 0;
+                  });
+                  final pos = await ref.read(locationControllerProvider.notifier).getCurrentPosition();
+                  if (pos != null) {
+                    try {
+                      _mapController.move(LatLng(pos.latitude, pos.longitude), 15.0);
+                    } catch (_) {}
+                  }
+                  if (mounted) {
+                    ScaffoldMessenger.of(this.context).showSnackBar(
+                      const SnackBar(content: Text('Tap on the map to draw an area polygon.')),
+                    );
+                  }
+                },
+              ),
+              ListTile(
+                leading: const CircleAvatar(
+                  backgroundColor: Colors.teal,
+                  child: Icon(Icons.route, color: Colors.white),
+                ),
+                title: const Text('Report Path'),
+                subtitle: const Text('Draw a line on the map'),
+                onTap: () async {
+                  Navigator.pop(context);
+                  setState(() {
+                    _isDrawingPath = true;
+                    _isDrawingArea = false;
+                    _editingPathId = null;
+                    _currentPathPoints.clear();
+                    _currentIndex = 0;
+                  });
+                  final pos = await ref.read(locationControllerProvider.notifier).getCurrentPosition();
+                  if (pos != null) {
+                    try {
+                      _mapController.move(LatLng(pos.latitude, pos.longitude), 15.0);
+                    } catch (_) {}
+                  }
+                  if (mounted) {
+                    ScaffoldMessenger.of(this.context).showSnackBar(
+                      const SnackBar(content: Text('Tap on the map to draw a path.')),
+                    );
+                  }
+                },
+              ),
+              ListTile(
+                leading: const CircleAvatar(
+                  backgroundColor: Colors.orange,
+                  child: Icon(Icons.campaign, color: Colors.white),
+                ),
+                title: const Text('Official Alert'),
+                subtitle: const Text('Broadcast a general news or alert'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showAddNewsDialog();
+                },
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -1304,18 +1423,37 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  Widget _buildMap(
-    AsyncValue<List<HazardMarkerEntity>> markersAsync,
-    AsyncValue<List<AreaEntity>> areasAsync,
-    List<UserProfileEntity> profiles,
-    List<OfflineRegion> offlineRegions,
-    Position? currentPosition,
-  ) {
-    final markers = markersAsync.value ?? [];
-    final areas = areasAsync.value ?? [];
-    final pathsAsync = ref.watch(pathsControllerProvider);
-    final paths = pathsAsync.value ?? [];
-    final settings = ref.watch(appSettingsProvider);
+  Widget _buildMap() {
+    return Consumer(
+      builder: (context, ref, child) {
+        final markersAsync = ref.watch(hazardMarkersControllerProvider);
+        final areasAsync = ref.watch(areasControllerProvider);
+        final pathsAsync = ref.watch(pathsControllerProvider);
+        final profilesAsync = ref.watch(userProfilesControllerProvider);
+        final offlineRegionsAsync = ref.watch(offlineRegionsProvider);
+        final locationAsync = ref.watch(locationControllerProvider);
+        final settings = ref.watch(appSettingsProvider);
+
+        final markers = markersAsync.value ?? [];
+        final areas = areasAsync.value ?? [];
+        final paths = pathsAsync.value ?? [];
+        final profiles = profilesAsync.value ?? [];
+        final offlineRegions = offlineRegionsAsync.value ?? [];
+        final currentPosition = locationAsync.value;
+
+        if (currentPosition != null && !_hasCenteredOnLocation) {
+          _hasCenteredOnLocation = true;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            try {
+              _mapController.move(
+                LatLng(currentPosition.latitude, currentPosition.longitude),
+                15.0,
+              );
+            } catch (e) {
+              debugPrint('Map not ready yet: $e');
+            }
+          });
+        }
 
     return FlutterMap(
       mapController: _mapController,
@@ -1623,6 +1761,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ),
       ],
     );
+      },
+    );
   }
 
   Widget _buildEmptyFeedState(bool isLoading) {
@@ -1649,32 +1789,35 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  Widget _buildFeed(List<UserProfileEntity> profiles) {
-    final combined = ref.watch(combinedFeedProvider);
-    final filter = ref.watch(feedFilterControllerProvider);
-    final filterNotifier = ref.read(feedFilterControllerProvider.notifier);
+  Widget _buildFeed() {
+    return Consumer(
+      builder: (context, ref, child) {
+        final combined = ref.watch(combinedFeedProvider);
+        final filter = ref.watch(feedFilterControllerProvider);
+        final filterNotifier = ref.read(feedFilterControllerProvider.notifier);
+        final profiles = ref.watch(userProfilesControllerProvider).value ?? [];
 
-    final isLoading =
-        ref.watch(filteredHazardMarkersProvider).isLoading ||
-        ref.watch(filteredNewsItemsProvider).isLoading ||
-        ref.watch(filteredAreasProvider).isLoading;
+        final isLoading =
+            ref.watch(filteredHazardMarkersProvider).isLoading ||
+            ref.watch(filteredNewsItemsProvider).isLoading ||
+            ref.watch(filteredAreasProvider).isLoading;
 
     return Column(
       children: [
         Container(
-          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.05),
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+          color: Theme.of(context).colorScheme.surface,
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
           child: TextField(
             decoration: InputDecoration(
               hintText: 'Search reports...',
               prefixIcon: const Icon(Icons.search),
               filled: true,
-              fillColor: Colors.white,
+              fillColor: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(30),
+                borderRadius: BorderRadius.circular(16),
                 borderSide: BorderSide.none,
               ),
-              contentPadding: EdgeInsets.zero,
+              contentPadding: const EdgeInsets.symmetric(vertical: 0),
             ),
             onChanged: (val) => filterNotifier.updateSearchQuery(val),
           ),
@@ -1708,7 +1851,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           side: BorderSide(
                             color: getTierColor(
                               item.trustTier,
-                            ).withValues(alpha: 0.5),
+                            ).withValues(alpha: 0.3),
                             width: item.trustTier == 1 ? 2 : 1,
                           ),
                         ),
@@ -1892,7 +2035,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                           side: BorderSide(
-                            color: getTierColor(item.trustTier),
+                            color: getTierColor(item.trustTier).withValues(alpha: 0.3),
                             width: item.trustTier == 1 ? 2 : 1,
                           ),
                         ),
@@ -2052,7 +2195,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           side: BorderSide(
                             color: getTierColor(
                               item.trustTier,
-                            ).withValues(alpha: 0.5),
+                            ).withValues(alpha: 0.3),
                           ),
                         ),
                         clipBehavior: Clip.antiAlias,
@@ -2237,7 +2380,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           side: BorderSide(
                             color: getTierColor(
                               item.trustTier,
-                            ).withValues(alpha: 0.5),
+                            ).withValues(alpha: 0.3),
                           ),
                         ),
                         clipBehavior: Clip.antiAlias,
@@ -2418,13 +2561,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ),
       ],
     );
+      },
+    );
   }
 
   Widget _buildFilterBar(FeedFilter filter, dynamic filterNotifier) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.05),
@@ -2507,31 +2652,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final markersAsync = ref.watch(hazardMarkersControllerProvider);
-    final areasAsync = ref.watch(areasControllerProvider);
-    final profilesAsync = ref.watch(userProfilesControllerProvider);
     final cryptoState = ref.watch(cryptoServiceProvider);
-    final offlineRegionsAsync = ref.watch(offlineRegionsProvider);
     final downloadProgress = ref.watch(mapDownloaderProvider);
-    final locationAsync = ref.watch(locationControllerProvider);
-
-    final profiles = profilesAsync.value ?? [];
-    final offlineRegions = offlineRegionsAsync.value ?? [];
-    final currentPosition = locationAsync.value;
-
-    if (currentPosition != null && !_hasCenteredOnLocation) {
-      _hasCenteredOnLocation = true;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        try {
-          _mapController.move(
-            LatLng(currentPosition.latitude, currentPosition.longitude),
-            15.0,
-          );
-        } catch (e) {
-          debugPrint('Map not ready yet: $e');
-        }
-      });
-    }
 
     return Listener(
       behavior: HitTestBehavior.translucent,
@@ -2593,14 +2715,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         body: IndexedStack(
           index: _currentIndex,
           children: [
-            _buildMap(
-              markersAsync,
-              areasAsync,
-              profiles,
-              offlineRegions,
-              currentPosition,
-            ),
-            _buildFeed(profiles),
+            _buildMap(),
+            _buildFeed(),
             ProfileTab(
               onEditAreaShape: (area) {
                 setState(() {
@@ -2649,13 +2765,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
           ],
         ),
-        bottomNavigationBar: BottomNavigationBar(
-          currentIndex: _currentIndex,
-          onTap: (index) => setState(() => _currentIndex = index),
-          items: const [
-            BottomNavigationBarItem(icon: Icon(Icons.map), label: 'Map'),
-            BottomNavigationBarItem(icon: Icon(Icons.list), label: 'Feed'),
-            BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
+        bottomNavigationBar: NavigationBar(
+          selectedIndex: _currentIndex,
+          onDestinationSelected: (index) => setState(() => _currentIndex = index),
+          destinations: const [
+            NavigationDestination(icon: Icon(Icons.map_outlined), selectedIcon: Icon(Icons.map), label: 'Map'),
+            NavigationDestination(icon: Icon(Icons.view_list_outlined), selectedIcon: Icon(Icons.view_list), label: 'Feed'),
+            NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Profile'),
           ],
         ),
         floatingActionButton: _currentIndex == 2
@@ -2804,125 +2920,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         const SizedBox(height: 16),
                       ],
                       FloatingActionButton.extended(
-                        heroTag: 'official',
-                        onPressed: _showAddNewsDialog,
-                        backgroundColor: Colors.blue,
-                        icon: const Icon(Icons.campaign, color: Colors.white),
-                        label: const Text(
-                          'Official Alert',
-                          style: TextStyle(color: Colors.white),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      FloatingActionButton.extended(
-                        heroTag: 'area',
-                        onPressed: () async {
-                          setState(() {
-                            _isDrawingArea = true;
-                            _isDrawingPath = false;
-                            _editingAreaId = null;
-                            _currentAreaPoints.clear();
-                            _currentIndex = 0; // Switch to map tab
-                          });
-
-                          final pos = await ref
-                              .read(locationControllerProvider.notifier)
-                              .getCurrentPosition();
-                          if (pos != null) {
-                            try {
-                              _mapController.move(
-                                LatLng(pos.latitude, pos.longitude),
-                                15.0,
-                              );
-                            } catch (_) {}
-                          }
-
-                          if (mounted) {
-                            ScaffoldMessenger.of(this.context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  'Tap on the map to draw an area polygon.',
-                                ),
-                              ),
-                            );
-                          }
-                        },
-                        backgroundColor: Colors.purple,
-                        icon: const Icon(
-                          Icons.format_shapes,
-                          color: Colors.white,
-                        ),
-                        label: const Text(
-                          'Report Area',
-                          style: TextStyle(color: Colors.white),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      FloatingActionButton.extended(
-                        heroTag: 'path',
-                        onPressed: () async {
-                          setState(() {
-                            _isDrawingPath = true;
-                            _isDrawingArea = false;
-                            _editingPathId = null;
-                            _currentPathPoints.clear();
-                            _currentIndex = 0; // Switch to map tab
-                          });
-
-                          final pos = await ref
-                              .read(locationControllerProvider.notifier)
-                              .getCurrentPosition();
-                          if (pos != null) {
-                            try {
-                              _mapController.move(
-                                LatLng(pos.latitude, pos.longitude),
-                                15.0,
-                              );
-                            } catch (_) {}
-                          }
-
-                          if (mounted) {
-                            ScaffoldMessenger.of(this.context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  'Tap on the map to draw a path.',
-                                ),
-                              ),
-                            );
-                          }
-                        },
-                        backgroundColor: Colors.teal,
-                        icon: const Icon(
-                          Icons.route,
-                          color: Colors.white,
-                        ),
-                        label: const Text(
-                          'Report Path',
-                          style: TextStyle(color: Colors.white),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      FloatingActionButton.extended(
-                        heroTag: 'user',
-                        onPressed: () async {
-                          LatLng point;
-                          final pos = await ref
-                              .read(locationControllerProvider.notifier)
-                              .getCurrentPosition();
-                          if (pos != null) {
-                            point = LatLng(pos.latitude, pos.longitude);
-                          } else {
-                            try {
-                              point = _mapController.camera.center;
-                            } catch (_) {
-                              point = const LatLng(37.7749, -122.4194);
-                            }
-                          }
-                          if (!mounted) return;
-                          _showAddHazardDialog(point);
-                        },
-                        icon: const Icon(Icons.add_location_alt),
-                        label: const Text('Report Hazard'),
+                        heroTag: 'create_report',
+                        onPressed: _showReportOptions,
+                        icon: const Icon(Icons.add),
+                        label: const Text('Create Report'),
                       ),
                     ],
                   );

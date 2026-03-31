@@ -36,7 +36,18 @@ class _InitializerScreenState extends State<InitializerScreen> {
   @override
   Widget build(BuildContext context) {
     if (!_isInitialized) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.hub, size: 64, color: Colors.blue),
+              SizedBox(height: 24),
+              CircularProgressIndicator(),
+            ],
+          ),
+        ),
+      );
     }
     if (_needsOnboarding) {
       return const OnboardingScreen();

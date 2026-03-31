@@ -148,6 +148,9 @@ MapCacheService mapCacheService(Ref ref) {
 }
 
 class MapCacheService {
+  final _memoryCache = <String, Uint8List>{};
+  final int _maxMemoryCacheSize = 200; // Cache up to 200 tiles in memory
+
   Future<File> getTileFile(int z, int x, int y) async {
     final dir = await getApplicationDocumentsDirectory();
     final path = '${dir.path}/map_tiles/$z/$x/$y.png';
@@ -155,9 +158,18 @@ class MapCacheService {
   }
 
   Future<Uint8List?> getTile(int z, int x, int y, String urlTemplate) async {
+    final key = '$z/$x/$y';
+    if (_memoryCache.containsKey(key)) {
+      final bytes = _memoryCache.remove(key)!;
+      _memoryCache[key] = bytes; // Move to end (most recently used)
+      return bytes;
+    }
+
     final file = await getTileFile(z, x, y);
     if (await file.exists()) {
-      return await file.readAsBytes();
+      final bytes = await file.readAsBytes();
+      _addToMemoryCache(key, bytes);
+      return bytes;
     }
     
     final url = urlTemplate
@@ -177,12 +189,20 @@ class MapCacheService {
         try {
           await file.writeAsBytes(bytes);
         } catch (_) {} // Ignore concurrent write collisions
+        _addToMemoryCache(key, bytes);
         return bytes;
       }
     } catch (e) {
       debugPrint('Error downloading tile: $e');
     }
     return null;
+  }
+
+  void _addToMemoryCache(String key, Uint8List bytes) {
+    _memoryCache[key] = bytes;
+    if (_memoryCache.length > _maxMemoryCacheSize) {
+      _memoryCache.remove(_memoryCache.keys.first);
+    }
   }
 
   Future<File> packMap({OfflineRegion? region}) async {

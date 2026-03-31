@@ -45,16 +45,17 @@ class FloodioApp extends ConsumerWidget {
       theme: ThemeData(
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF1A237E), // Deep Rescue Blue
-          primary: const Color(0xFF1A237E),
-          secondary: const Color(0xFFFF6D00), // Safety Orange
-          surface: Colors.white,
+          seedColor: const Color(0xFF0D47A1), // Blue 900
+          primary: const Color(0xFF0D47A1),
+          secondary: const Color(0xFFFF6D00), // Orange A400
+          tertiary: const Color(0xFF00838F), // Cyan 800
+          surface: const Color(0xFFF8F9FA),
           error: const Color(0xFFD32F2F),
         ),
         textTheme: const TextTheme(
           headlineMedium: TextStyle(
             fontWeight: FontWeight.bold,
-            color: Color(0xFF1A237E),
+            color: Color(0xFF0D47A1),
           ),
           titleLarge: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
           bodyMedium: TextStyle(fontSize: 15, height: 1.4),
@@ -62,7 +63,7 @@ class FloodioApp extends ConsumerWidget {
         appBarTheme: const AppBarTheme(
           centerTitle: true,
           elevation: 0,
-          backgroundColor: Color(0xFF1A237E),
+          backgroundColor: Color(0xFF0D47A1),
           foregroundColor: Colors.white,
         ),
         chipTheme: ChipThemeData(

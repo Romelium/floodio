@@ -750,7 +750,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                 // Profile Card
                 Card(
                   elevation: 0,
-                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
                   ),

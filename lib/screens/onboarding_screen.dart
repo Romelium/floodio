@@ -65,12 +65,15 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Welcome to Floodio')),
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            const SizedBox(height: 32),
+            const Icon(Icons.hub, size: 64, color: Colors.blue),
+            const SizedBox(height: 24),
             const Text(
               'Personal Information',
               style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
@@ -80,27 +83,40 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             const Text(
               'This information will be shared with nearby devices to help coordinate relief efforts.',
               textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 16, color: Colors.grey),
             ),
             const SizedBox(height: 32),
             TextField(
               controller: _nameController,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Full Name',
-                border: OutlineInputBorder(),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                prefixIcon: const Icon(Icons.person),
               ),
             ),
             const SizedBox(height: 16),
             TextField(
               controller: _contactController,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Contact Number / Info (Optional)',
-                border: OutlineInputBorder(),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                prefixIcon: const Icon(Icons.phone),
               ),
             ),
             const SizedBox(height: 32),
             FilledButton(
+              style: FilledButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
               onPressed: _saveProfile,
-              child: const Text('Continue'),
+              child: const Text('Continue', style: TextStyle(fontSize: 16)),
             ),
           ],
         ),

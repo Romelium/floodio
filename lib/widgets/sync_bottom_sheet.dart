@@ -54,14 +54,14 @@ class SyncBottomSheet extends ConsumerWidget {
                 // Status Card
                 Card(
                   color: (p2pState.isSyncing || p2pState.isConnecting)
-                      ? const Color(0xFFE8EAF6)
-                      : Colors.white,
+                      ? Theme.of(context).colorScheme.primaryContainer
+                      : Theme.of(context).colorScheme.surface,
                   elevation: 0,
                   shape: RoundedRectangleBorder(
                     side: BorderSide(
                       color: (p2pState.isSyncing || p2pState.isConnecting)
-                          ? Colors.blue.shade200
-                          : Colors.grey.shade200,
+                          ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.3)
+                          : Theme.of(context).colorScheme.outlineVariant,
                     ),
                     borderRadius: BorderRadius.circular(16),
                   ),
@@ -78,7 +78,7 @@ class SyncBottomSheet extends ConsumerWidget {
                         else
                           Icon(
                             Icons.radar,
-                            color: Colors.blue.shade700,
+                            color: Theme.of(context).colorScheme.primary,
                             size: 28,
                           ),
                         const SizedBox(width: 16),
@@ -104,7 +104,7 @@ class SyncBottomSheet extends ConsumerWidget {
                                   color:
                                       (p2pState.isSyncing ||
                                           p2pState.isConnecting)
-                                      ? Colors.blue.shade900
+                                      ? Theme.of(context).colorScheme.primary
                                       : Colors.black87,
                                 ),
                               ),
@@ -114,8 +114,8 @@ class SyncBottomSheet extends ConsumerWidget {
                                 ClipRRect(
                                   borderRadius: BorderRadius.circular(4),
                                   child: LinearProgressIndicator(
-                                    backgroundColor: Colors.blue.shade100,
-                                    color: Colors.blue.shade600,
+                                    backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                                    color: Theme.of(context).colorScheme.primary,
                                     minHeight: 6,
                                   ),
                                 ),

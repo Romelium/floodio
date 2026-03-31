@@ -80,7 +80,7 @@ class MapDownloader extends _$MapDownloader {
     state = DownloadProgress(total: tilesToDownload.length, downloaded: 0, isDownloading: true);
     
     int downloaded = 0;
-    const batchSize = 5;
+    const batchSize = 20;
     for (int i = 0; i < tilesToDownload.length; i += batchSize) {
       if (_isCancelled) break;
       
