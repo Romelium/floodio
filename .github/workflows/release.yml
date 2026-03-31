@@ -15,7 +15,6 @@ jobs:
     environment: Keystore
 
     env:
-      # Hardcoding the fallback to 'floodio' instead of 'app'
       APP_FILENAME: ${{ vars.APP_NAME || 'floodio' }}
 
     steps:
@@ -35,18 +34,39 @@ jobs:
           channel: 'stable'
           cache: true
 
-      - name: Install Protoc
-        run: sudo apt-get update && sudo apt-get install -y protobuf-compiler
+      - name: Cache Pub Dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.pub-cache
+            ~/.local/share/pub-cache
+          key: ${{ runner.os }}-pub-${{ hashFiles('**/pubspec.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pub-
+
+      - name: Cache build_runner
+        uses: actions/cache@v4
+        with:
+          path: .dart_tool/build
+          key: ${{ runner.os }}-build_runner-${{ hashFiles('**/pubspec.lock') }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-build_runner-${{ hashFiles('**/pubspec.lock') }}-
+            ${{ runner.os }}-build_runner-
+
+      - name: Setup Protoc
+        uses: arduino/setup-protoc@v3
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install protoc_plugin for Dart
         run: |
           flutter pub global activate protoc_plugin
           echo "$HOME/.pub-cache/bin" >> $GITHUB_PATH
+          echo "$HOME/.local/share/pub-cache/bin" >> $GITHUB_PATH
 
       - name: Install dependencies
         run: flutter pub get
 
-      # NEW STEP: Run your code generators (Drift, Riverpod, Protobuf)
       - name: Generate Code
         run: make generate
 
