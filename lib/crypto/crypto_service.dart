@@ -92,6 +92,25 @@ Future<bool> _isolateVerifyDelegation(String delegateePublicKeyStr, int timestam
   }
 }
 
+Future<bool> _isolateVerifyRevocation(String delegateePublicKeyStr, int timestamp, String signatureStr, String delegatorPublicKeyStr, List<int> serverPubKeyBytes) async {
+  try {
+    if (delegatorPublicKeyStr != base64Encode(serverPubKeyBytes)) {
+      return false;
+    }
+    final data = utf8.encode('revoke_$delegateePublicKeyStr$timestamp');
+    final signatureBytes = base64Decode(signatureStr);
+    final senderPubKeyBytes = base64Decode(delegatorPublicKeyStr);
+    final algorithm = Ed25519();
+    final senderPubKey = SimplePublicKey(senderPubKeyBytes, type: KeyPairType.ed25519);
+    return await algorithm.verify(
+      data,
+      signature: Signature(signatureBytes, publicKey: senderPubKey),
+    );
+  } catch (e) {
+    return false;
+  }
+}
+
 Future<(SimpleKeyPairData, SimplePublicKey, String?)> _runInitKeys(String? privateKeyStr) {
   return Isolate.run(() => _isolateInitKeys(privateKeyStr));
 }
@@ -106,6 +125,10 @@ Future<int> _runVerifyData(List<int> data, String signatureStr, String senderPub
 
 Future<bool> _runVerifyDelegation(String delegateePublicKeyStr, int timestamp, String signatureStr, String delegatorPublicKeyStr, List<int> serverPubKeyBytes) {
   return Isolate.run(() => _isolateVerifyDelegation(delegateePublicKeyStr, timestamp, signatureStr, delegatorPublicKeyStr, serverPubKeyBytes));
+}
+
+Future<bool> _runVerifyRevocation(String delegateePublicKeyStr, int timestamp, String signatureStr, String delegatorPublicKeyStr, List<int> serverPubKeyBytes) {
+  return Isolate.run(() => _isolateVerifyRevocation(delegateePublicKeyStr, timestamp, signatureStr, delegatorPublicKeyStr, serverPubKeyBytes));
 }
 
 Future<(String, String)> _generateOfficialMarkerSignature(List<int> payloadToSign) async {
@@ -167,6 +190,16 @@ class CryptoService extends _$CryptoService {
     return _runVerifyDelegation(delegateePublicKeyStr, timestamp, signatureStr, delegatorPublicKeyStr, serverPubKeyBytes);
   }
 
+  Future<bool> verifyRevocation({
+    required String delegateePublicKeyStr,
+    required int timestamp,
+    required String signatureStr,
+    required String delegatorPublicKeyStr,
+  }) async {
+    final serverPubKeyBytes = _serverPublicKey.bytes;
+    return _runVerifyRevocation(delegateePublicKeyStr, timestamp, signatureStr, delegatorPublicKeyStr, serverPubKeyBytes);
+  }
+
   Future<int> verifyAndGetTrustTier({
     required List<int> data,
     required String signatureStr,
@@ -174,13 +207,15 @@ class CryptoService extends _$CryptoService {
     required List<String> trustedPublicKeys,
     required List<String> adminTrustedPublicKeys,
     required List<String> untrustedPublicKeys,
+    required List<String> revokedPublicKeys,
   }) async {
     final serverPubKeyBytes = _serverPublicKey.bytes;
     final myPubKey = await _userKeyPair.extractPublicKey();
     final myPubKeyStr = base64Encode(myPubKey.bytes);
 
     final effectiveTrustedKeys = [...trustedPublicKeys, myPubKeyStr];
+    final effectiveAdminKeys = adminTrustedPublicKeys.where((k) => !revokedPublicKeys.contains(k)).toList();
 
-    return _runVerifyData(data, signatureStr, senderPublicKeyStr, serverPubKeyBytes, effectiveTrustedKeys, adminTrustedPublicKeys, untrustedPublicKeys);
+    return _runVerifyData(data, signatureStr, senderPublicKeyStr, serverPubKeyBytes, effectiveTrustedKeys, effectiveAdminKeys, untrustedPublicKeys);
   }
 }

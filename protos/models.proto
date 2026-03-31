@@ -65,6 +65,13 @@ message TrustDelegation {
   string signature = 5;
 }
 
+message RevokedDelegation {
+  string delegatee_public_key = 1;
+  string delegator_public_key = 2;
+  int64 timestamp = 3;
+  string signature = 4;
+}
+
 message SyncPayload {
   repeated HazardMarker markers = 1;
   repeated NewsItem news = 2;
@@ -72,4 +79,5 @@ message SyncPayload {
   repeated DeletedItem deleted_items = 4;
   repeated AreaMarker areas = 5;
   repeated TrustDelegation delegations = 6;
+  repeated RevokedDelegation revoked_delegations = 7;
 }

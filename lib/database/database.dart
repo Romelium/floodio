@@ -4,12 +4,12 @@ import 'tables.dart';
 
 part 'database.g.dart';
 
-@DriftDatabase(tables: [HazardMarkers, NewsItems, DeletedItems, SeenMessageIds, TrustedSenders, UntrustedSenders, UserProfiles, Areas, AdminTrustedSenders])
+@DriftDatabase(tables: [HazardMarkers, NewsItems, DeletedItems, SeenMessageIds, TrustedSenders, UntrustedSenders, UserProfiles, Areas, AdminTrustedSenders, RevokedDelegations])
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 9;
 
   Future<void> cleanupOldData() async {
     final now = DateTime.now().millisecondsSinceEpoch;
@@ -63,6 +63,9 @@ class AppDatabase extends _$AppDatabase {
           await m.addColumn(hazardMarkers, hazardMarkers.expiresAt);
           await m.addColumn(newsItems, newsItems.expiresAt);
           await m.addColumn(areas, areas.expiresAt);
+        }
+        if (from < 9) {
+          await m.createTable(revokedDelegations);
         }
       },
     );

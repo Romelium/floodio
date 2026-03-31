@@ -9,6 +9,7 @@ import '../providers/admin_trusted_sender_provider.dart';
 import '../providers/hazard_marker_provider.dart';
 import '../providers/location_provider.dart';
 import '../providers/news_item_provider.dart';
+import '../providers/revoked_delegation_provider.dart';
 
 part 'mock_gov_api_service.g.dart';
 
@@ -105,5 +106,20 @@ class MockGovApiService extends _$MockGovApiService {
     );
     
     await ref.read(adminTrustedSendersControllerProvider.notifier).addAdminTrustedSender(entity);
+  }
+
+  Future<void> revokeAdminTrust(String delegateePublicKey) async {
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+    final payloadToSign = utf8.encode('revoke_$delegateePublicKey$timestamp');
+    final (delegatorId, signature) = await runGenerateOfficialMarkerSignature(payloadToSign);
+
+    final entity = RevokedDelegationEntity(
+      delegateePublicKey: delegateePublicKey,
+      delegatorPublicKey: delegatorId,
+      timestamp: timestamp,
+      signature: signature,
+    );
+
+    await ref.read(revokedDelegationsControllerProvider.notifier).addRevokedDelegation(entity);
   }
 }

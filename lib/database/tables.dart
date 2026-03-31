@@ -182,6 +182,31 @@ class AdminTrustedSenders extends Table {
   Set<Column> get primaryKey => {publicKey};
 }
 
+class RevokedDelegationEntity {
+  final String delegateePublicKey;
+  final String delegatorPublicKey;
+  final int timestamp;
+  final String signature;
+
+  RevokedDelegationEntity({
+    required this.delegateePublicKey,
+    required this.delegatorPublicKey,
+    required this.timestamp,
+    required this.signature,
+  });
+}
+
+@UseRowClass(RevokedDelegationEntity)
+class RevokedDelegations extends Table {
+  TextColumn get delegateePublicKey => text()();
+  TextColumn get delegatorPublicKey => text()();
+  IntColumn get timestamp => integer()();
+  TextColumn get signature => text()();
+
+  @override
+  Set<Column> get primaryKey => {delegateePublicKey};
+}
+
 class UserProfileEntity {
   final String publicKey;
   final String name;

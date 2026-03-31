@@ -32,6 +32,7 @@ import 'providers/p2p_provider.dart';
 import 'providers/trusted_sender_provider.dart';
 import 'providers/ui_p2p_provider.dart';
 import 'providers/untrusted_sender_provider.dart';
+import 'providers/revoked_delegation_provider.dart';
 import 'providers/user_profile_provider.dart';
 import 'services/background_service.dart';
 import 'services/map_cache_service.dart';
@@ -479,6 +480,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     await db.delete(db.userProfiles).go();
                     await db.delete(db.areas).go();
                     await db.delete(db.adminTrustedSenders).go();
+                    await db.delete(db.revokedDelegations).go();
                   });
                   final prefs = await SharedPreferences.getInstance();
                   await prefs.remove('user_name');
@@ -517,6 +519,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   if (!mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('You are now an Admin-Trusted Volunteer!')),
+                  );
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.remove_moderator, color: Colors.red),
+                title: const Text('Revoke My Admin Trust'),
+                onTap: () async {
+                  Navigator.pop(sheetContext);
+                  final myPubKey = await ref.read(cryptoServiceProvider.notifier).getPublicKeyString();
+                  await ref.read(mockGovApiServiceProvider.notifier).revokeAdminTrust(myPubKey);
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Your Admin Trust has been revoked!')),
                   );
                 },
               ),
@@ -832,6 +847,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 final untrustedSendersAsync = ref.read(
                   untrustedSendersControllerProvider,
                 );
+                final revokedSendersAsync = ref.read(
+                  revokedDelegationsControllerProvider,
+                );
+                final revokedKeys =
+                    revokedSendersAsync.value
+                        ?.map((e) => e.delegateePublicKey)
+                        .toList() ??
+                    [];
                 final adminTrustedSendersAsync = ref.read(
                   adminTrustedSendersControllerProvider,
                 );
@@ -859,6 +882,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   trustedPublicKeys: trustedKeys,
                   adminTrustedPublicKeys: adminTrustedKeys,
                   untrustedPublicKeys: untrustedKeys,
+                  revokedPublicKeys: revokedKeys,
                 );
 
                 final newMarker = HazardMarkerEntity(
@@ -1002,6 +1026,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 final untrustedSendersAsync = ref.read(
                   untrustedSendersControllerProvider,
                 );
+                final revokedSendersAsync = ref.read(
+                  revokedDelegationsControllerProvider,
+                );
+                final revokedKeys =
+                    revokedSendersAsync.value
+                        ?.map((e) => e.delegateePublicKey)
+                        .toList() ??
+                    [];
                 final adminTrustedSendersAsync = ref.read(
                   adminTrustedSendersControllerProvider,
                 );
@@ -1029,6 +1061,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   trustedPublicKeys: trustedKeys,
                   adminTrustedPublicKeys: adminTrustedKeys,
                   untrustedPublicKeys: untrustedKeys,
+                  revokedPublicKeys: revokedKeys,
                 );
 
                 final coords = _currentAreaPoints
@@ -1207,6 +1240,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               final untrustedSendersAsync = ref.read(
                 untrustedSendersControllerProvider,
               );
+              final revokedSendersAsync = ref.read(
+                revokedDelegationsControllerProvider,
+              );
+              final revokedKeys =
+                  revokedSendersAsync.value
+                      ?.map((e) => e.delegateePublicKey)
+                      .toList() ??
+                  [];
               final adminTrustedSendersAsync = ref.read(
                 adminTrustedSendersControllerProvider,
               );
@@ -1232,6 +1273,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 trustedPublicKeys: trustedKeys,
                 adminTrustedPublicKeys: adminTrustedKeys,
                 untrustedPublicKeys: untrustedKeys,
+                revokedPublicKeys: revokedKeys,
               );
 
               final newNews = NewsItemEntity(

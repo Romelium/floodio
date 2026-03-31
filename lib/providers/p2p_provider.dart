@@ -600,6 +600,11 @@ class P2pService extends _$P2pService {
           bloomFilter.add('delg_${a.publicKey}');
         }
 
+        final revoked = await db.select(db.revokedDelegations).get();
+        for (final r in revoked) {
+          bloomFilter.add('rev_${r.delegateePublicKey}');
+        }
+
         await db.close();
         return (bloomFilter.bits, size);
       });
@@ -643,6 +648,7 @@ class P2pService extends _$P2pService {
         final allDeleted = await db.select(db.deletedItems).get();
         final allAreas = await db.select(db.areas).get();
         final allAdminTrusted = await db.select(db.adminTrustedSenders).get();
+        final allRevoked = await db.select(db.revokedDelegations).get();
 
         final newHazards = allHazards.where((h) => !peerBloomFilter.mightContain(h.id)).take(200).toList();
         final newNews = allNews.where((n) => !peerBloomFilter.mightContain(n.id)).take(200).toList();
@@ -650,10 +656,11 @@ class P2pService extends _$P2pService {
         final newDeleted = allDeleted.where((d) => !peerBloomFilter.mightContain('del_${d.id}')).take(200).toList();
         final newAreas = allAreas.where((a) => !peerBloomFilter.mightContain(a.id)).take(200).toList();
         final newDelegations = allAdminTrusted.where((a) => !peerBloomFilter.mightContain('delg_${a.publicKey}')).take(200).toList();
+        final newRevocations = allRevoked.where((r) => !peerBloomFilter.mightContain('rev_${r.delegateePublicKey}')).take(200).toList();
 
         await db.close();
 
-        return (newHazards, newNews, newProfiles, newDeleted, newAreas, newDelegations);
+        return (newHazards, newNews, newProfiles, newDeleted, newAreas, newDelegations, newRevocations);
       });
 
       final newHazards = filterResult.$1;
@@ -662,13 +669,14 @@ class P2pService extends _$P2pService {
       final newDeleted = filterResult.$4;
       final newAreas = filterResult.$5;
       final newDelegations = filterResult.$6;
+      final newRevocations = filterResult.$7;
 
-      if (newHazards.isEmpty && newNews.isEmpty && newProfiles.isEmpty && newDeleted.isEmpty && newAreas.isEmpty && newDelegations.isEmpty) {
+      if (newHazards.isEmpty && newNews.isEmpty && newProfiles.isEmpty && newDeleted.isEmpty && newAreas.isEmpty && newDelegations.isEmpty && newRevocations.isEmpty) {
         state = state.copyWith(isSyncing: false, syncMessage: 'Up to date.');
         return;
       }
 
-      state = state.copyWith(syncMessage: 'Sending ${newHazards.length} markers, ${newNews.length} news, ${newProfiles.length} profiles, ${newAreas.length} areas, ${newDeleted.length} deletions, ${newDelegations.length} delegations...');
+      state = state.copyWith(syncMessage: 'Sending ${newHazards.length} markers, ${newNews.length} news, ${newProfiles.length} profiles, ${newAreas.length} areas, ${newDeleted.length} deletions, ${newDelegations.length} delegations, ${newRevocations.length} revocations...');
 
       final payload = pb.SyncPayload();
 
@@ -748,6 +756,15 @@ class P2pService extends _$P2pService {
         ));
       }
 
+      for (final r in newRevocations) {
+        payload.revokedDelegations.add(pb.RevokedDelegation(
+          delegateePublicKey: r.delegateePublicKey,
+          delegatorPublicKey: r.delegatorPublicKey,
+          timestamp: Int64(r.timestamp),
+          signature: r.signature,
+        ));
+      }
+
       final encoded = base64Encode(payload.writeToBuffer());
       await broadcastText(jsonEncode({'type': 'payload', 'data': encoded}));
       state = state.copyWith(syncMessage: 'Data sent successfully.');
@@ -792,7 +809,7 @@ class P2pService extends _$P2pService {
       final data = base64Decode(json['data']);
       final payload = pb.SyncPayload.fromBuffer(data);
 
-      if (payload.markers.isEmpty && payload.news.isEmpty && payload.profiles.isEmpty && payload.deletedItems.isEmpty && payload.areas.isEmpty && payload.delegations.isEmpty) {
+      if (payload.markers.isEmpty && payload.news.isEmpty && payload.profiles.isEmpty && payload.deletedItems.isEmpty && payload.areas.isEmpty && payload.delegations.isEmpty && payload.revokedDelegations.isEmpty) {
         state = state.copyWith(syncMessage: 'Empty payload received.');
         return;
       }
@@ -831,6 +848,9 @@ class P2pService extends _$P2pService {
       final existingDelegations = await db.select(db.adminTrustedSenders).get();
       final delegationTimestamps = {for (var d in existingDelegations) d.publicKey: d.timestamp};
 
+      final existingRevocations = await db.select(db.revokedDelegations).get();
+      final revocationTimestamps = {for (var r in existingRevocations) r.delegateePublicKey: r.timestamp};
+
       for (final d in payload.deletedItems) {
         deletedIds.add(d.id);
       }
@@ -864,6 +884,38 @@ class P2pService extends _$P2pService {
         }
       }
 
+      final validRevocations = <RevokedDelegationsCompanion>[];
+      for (final r in payload.revokedDelegations) {
+        final existingTs = revocationTimestamps[r.delegateePublicKey] ?? 0;
+        if (r.timestamp.toInt() <= existingTs) continue;
+
+        final isValid = await crypto.verifyRevocation(
+          delegateePublicKeyStr: r.delegateePublicKey,
+          timestamp: r.timestamp.toInt(),
+          signatureStr: r.signature,
+          delegatorPublicKeyStr: r.delegatorPublicKey,
+        );
+        if (isValid) {
+          validRevocations.add(RevokedDelegationsCompanion.insert(
+            delegateePublicKey: r.delegateePublicKey,
+            delegatorPublicKey: r.delegatorPublicKey,
+            timestamp: r.timestamp.toInt(),
+            signature: r.signature,
+          ));
+          seenIds.add(SeenMessageIdsCompanion.insert(
+            messageId: 'rev_${r.delegateePublicKey}',
+            timestamp: DateTime.now().millisecondsSinceEpoch,
+          ));
+        } else {
+          print("Invalid signature for revocation ${r.delegateePublicKey}, dropping.");
+        }
+      }
+
+      final revokedKeys = existingRevocations.map((e) => e.delegateePublicKey).toList();
+      for (final r in validRevocations) {
+        revokedKeys.add(r.delegateePublicKey.value);
+      }
+
       final validMarkers = <HazardMarkersCompanion>[];
       for (final m in payload.markers) {
         if (deletedIds.contains(m.id)) continue;
@@ -880,6 +932,7 @@ class P2pService extends _$P2pService {
           trustedPublicKeys: trustedKeys,
           adminTrustedPublicKeys: adminTrustedKeys,
           untrustedPublicKeys: untrustedKeys,
+          revokedPublicKeys: revokedKeys,
         );
 
         if (trustTier != 5) {
@@ -920,6 +973,7 @@ class P2pService extends _$P2pService {
           trustedPublicKeys: trustedKeys,
           adminTrustedPublicKeys: adminTrustedKeys,
           untrustedPublicKeys: untrustedKeys,
+          revokedPublicKeys: revokedKeys,
         );
 
         if (trustTier != 5) {
@@ -955,6 +1009,7 @@ class P2pService extends _$P2pService {
           trustedPublicKeys: trustedKeys,
           adminTrustedPublicKeys: adminTrustedKeys,
           untrustedPublicKeys: untrustedKeys,
+          revokedPublicKeys: revokedKeys,
         );
 
         if (trustTier != 5) {
@@ -989,6 +1044,7 @@ class P2pService extends _$P2pService {
           trustedPublicKeys: trustedKeys,
           adminTrustedPublicKeys: adminTrustedKeys,
           untrustedPublicKeys: untrustedKeys,
+          revokedPublicKeys: revokedKeys,
         );
 
         if (trustTier != 5) {
@@ -1031,6 +1087,7 @@ class P2pService extends _$P2pService {
         batch.insertAll(db.seenMessageIds, seenIds, mode: InsertMode.insertOrReplace);
         batch.insertAll(db.deletedItems, validDeleted, mode: InsertMode.insertOrReplace);
         batch.insertAll(db.adminTrustedSenders, validDelegations, mode: InsertMode.insertOrReplace);
+        batch.insertAll(db.revokedDelegations, validRevocations, mode: InsertMode.insertOrReplace);
       });
 
       await db.transaction(() async {
@@ -1046,6 +1103,15 @@ class P2pService extends _$P2pService {
               .write(const NewsItemsCompanion(trustTier: Value(2)));
           await (db.update(db.areas)..where((t) => t.senderId.equals(d.publicKey.value) & t.trustTier.isBiggerThanValue(2)))
               .write(const AreasCompanion(trustTier: Value(2)));
+        }
+        for (final r in validRevocations) {
+          await (db.update(db.hazardMarkers)..where((t) => t.senderId.equals(r.delegateePublicKey.value) & t.trustTier.equals(2)))
+              .write(const HazardMarkersCompanion(trustTier: Value(4)));
+          await (db.update(db.newsItems)..where((t) => t.senderId.equals(r.delegateePublicKey.value) & t.trustTier.equals(2)))
+              .write(const NewsItemsCompanion(trustTier: Value(4)));
+          await (db.update(db.areas)..where((t) => t.senderId.equals(r.delegateePublicKey.value) & t.trustTier.equals(2)))
+              .write(const AreasCompanion(trustTier: Value(4)));
+          await (db.delete(db.adminTrustedSenders)..where((t) => t.publicKey.equals(r.delegateePublicKey.value))).go();
         }
       });
 
@@ -1063,9 +1129,9 @@ class P2pService extends _$P2pService {
 
       state = state.copyWith(
         isSyncing: false,
-        syncMessage: 'Successfully synced ${validMarkers.length} markers, ${validNews.length} news, ${validProfiles.length} profiles, ${validAreas.length} areas, ${validDeleted.length} deletions.'
+        syncMessage: 'Successfully synced ${validMarkers.length} markers, ${validNews.length} news, ${validProfiles.length} profiles, ${validAreas.length} areas, ${validDeleted.length} deletions, ${validDelegations.length} delegations, ${validRevocations.length} revocations.'
       );
-      print("Successfully synced ${payload.markers.length} markers, ${payload.news.length} news, ${payload.profiles.length} profiles, ${payload.areas.length} areas, ${payload.deletedItems.length} deletions.");
+      print("Successfully synced ${payload.markers.length} markers, ${payload.news.length} news, ${payload.profiles.length} profiles, ${payload.areas.length} areas, ${payload.deletedItems.length} deletions, ${payload.delegations.length} delegations, ${payload.revokedDelegations.length} revocations.");
     } catch (e) {
       print("Error handling payload: $e");
       state = state.copyWith(syncMessage: 'Error syncing data.');
