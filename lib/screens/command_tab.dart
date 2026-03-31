@@ -5,6 +5,7 @@ import '../providers/admin_trusted_sender_provider.dart';
 import '../providers/p2p_provider.dart';
 import '../providers/revoked_delegation_provider.dart';
 import '../providers/user_profile_provider.dart';
+import '../services/cloud_sync_service.dart';
 import '../services/mock_gov_api_service.dart';
 import '../utils/ui_helpers.dart';
 
@@ -42,6 +43,26 @@ class CommandTab extends ConsumerWidget {
                   style: TextStyle(color: Colors.grey),
                 ),
                 const SizedBox(height: 24),
+                
+                // Cloud Gateway Section
+                const Row(
+                  children: [
+                    Icon(Icons.cloud_sync, color: Colors.blue),
+                    SizedBox(width: 8),
+                    Text(
+                      'Cloud Gateway',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                _buildCloudGatewayCard(context, ref),
+                
+                const SizedBox(height: 32),
+                
                 Row(
                   children: [
                     const Icon(Icons.admin_panel_settings, color: Colors.purple),
@@ -164,6 +185,105 @@ class CommandTab extends ConsumerWidget {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildCloudGatewayCard(BuildContext context, WidgetRef ref) {
+    final cloudState = ref.watch(cloudSyncServiceProvider);
+    final cloudNotifier = ref.read(cloudSyncServiceProvider.notifier);
+
+    String lastSyncText = 'Never';
+    if (cloudState.lastSyncTime != null) {
+      final dt = cloudState.lastSyncTime!.toLocal();
+      lastSyncText = '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+    }
+
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        side: BorderSide(color: Colors.grey.shade300),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  cloudState.hasInternet ? Icons.wifi : Icons.wifi_off,
+                  color: cloudState.hasInternet ? Colors.green : Colors.red,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  cloudState.hasInternet ? 'Internet Connected' : 'No Internet Connection',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: cloudState.hasInternet ? Colors.green.shade700 : Colors.red.shade700,
+                  ),
+                ),
+                const Spacer(),
+                if (cloudState.isSyncing)
+                  const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Pending Uploads:', style: TextStyle(color: Colors.grey)),
+                Text(
+                  '${cloudState.pendingUploads} items',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Last Sync:', style: TextStyle(color: Colors.grey)),
+                Text(
+                  lastSyncText,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: cloudState.isSyncing
+                    ? null
+                    : () async {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Initiating cloud sync...')),
+                        );
+                        final success = await cloudNotifier.syncWithCloud();
+                        if (context.mounted) {
+                          if (success) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Cloud sync complete.')),
+                            );
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Cloud sync failed. Check connection.')),
+                            );
+                          }
+                        }
+                      },
+                icon: const Icon(Icons.cloud_upload, size: 18),
+                label: const Text('Force Sync Now'),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

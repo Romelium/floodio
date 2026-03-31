@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:drift/drift.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -12,26 +13,53 @@ part 'cloud_sync_service.g.dart';
 class CloudSyncState {
   final bool isSyncing;
   final DateTime? lastSyncTime;
+  final bool hasInternet;
+  final int pendingUploads;
 
-  CloudSyncState({this.isSyncing = false, this.lastSyncTime});
+  CloudSyncState({
+    this.isSyncing = false,
+    this.lastSyncTime,
+    this.hasInternet = false,
+    this.pendingUploads = 0,
+  });
+
+  CloudSyncState copyWith({
+    bool? isSyncing,
+    DateTime? lastSyncTime,
+    bool? hasInternet,
+    int? pendingUploads,
+  }) {
+    return CloudSyncState(
+      isSyncing: isSyncing ?? this.isSyncing,
+      lastSyncTime: lastSyncTime ?? this.lastSyncTime,
+      hasInternet: hasInternet ?? this.hasInternet,
+      pendingUploads: pendingUploads ?? this.pendingUploads,
+    );
+  }
 }
 
 @Riverpod(keepAlive: true)
 class CloudSyncService extends _$CloudSyncService {
   Timer? _timer;
+  Timer? _statusTimer;
 
   @override
   CloudSyncState build() {
     ref.onDispose(() {
       _timer?.cancel();
+      _statusTimer?.cancel();
     });
     
-    _loadLastSyncTime();
+    _loadLastSyncTime().then((_) => _updateStatus());
 
     // Start periodic check (e.g., every 5 minutes)
     _timer = Timer.periodic(const Duration(minutes: 5), (_) {
       syncWithCloud();
     });
+    
+        _statusTimer = Timer.periodic(const Duration(seconds: 10), (_) {
+          _updateStatus();
+        });
     
     return CloudSyncState();
   }
@@ -40,11 +68,31 @@ class CloudSyncService extends _$CloudSyncService {
     final prefs = await SharedPreferences.getInstance();
     final timestamp = prefs.getInt('last_cloud_sync_time');
     if (timestamp != null) {
-      state = CloudSyncState(
-        isSyncing: state.isSyncing,
+      state = state.copyWith(
         lastSyncTime: DateTime.fromMillisecondsSinceEpoch(timestamp),
       );
     }
+  }
+
+  Future<void> _updateStatus() async {
+    if (state.isSyncing) return;
+    
+    final internet = await _hasInternet();
+    
+    int pending = 0;
+    try {
+      final db = ref.read(databaseProvider);
+      final lastSync = state.lastSyncTime?.millisecondsSinceEpoch ?? 0;
+      
+      final markers = await (db.select(db.hazardMarkers)..where((t) => t.timestamp.isBiggerThanValue(lastSync))).get();
+      final news = await (db.select(db.newsItems)..where((t) => t.timestamp.isBiggerThanValue(lastSync))).get();
+      final areas = await (db.select(db.areas)..where((t) => t.timestamp.isBiggerThanValue(lastSync))).get();
+      final paths = await (db.select(db.paths)..where((t) => t.timestamp.isBiggerThanValue(lastSync))).get();
+      
+      pending = markers.length + news.length + areas.length + paths.length;
+    } catch (_) {}
+    
+    state = state.copyWith(hasInternet: internet, pendingUploads: pending);
   }
 
   Future<bool> _hasInternet() async {
@@ -63,9 +111,12 @@ class CloudSyncService extends _$CloudSyncService {
     if (state.isSyncing) return false;
     
     final hasInternet = await _hasInternet();
-    if (!hasInternet) return false;
+    if (!hasInternet) {
+      state = state.copyWith(hasInternet: false);
+      return false;
+    }
 
-    state = CloudSyncState(isSyncing: true, lastSyncTime: state.lastSyncTime);
+    state = state.copyWith(isSyncing: true, hasInternet: true);
     
     try {
       // Simulate network delay for upload/download
@@ -73,10 +124,12 @@ class CloudSyncService extends _$CloudSyncService {
 
       // 1. "Upload" local data
       final db = ref.read(databaseProvider);
-      final markers = await db.select(db.hazardMarkers).get();
-      final news = await db.select(db.newsItems).get();
-      final areas = await db.select(db.areas).get();
-      final paths = await db.select(db.paths).get();
+      final lastSync = state.lastSyncTime?.millisecondsSinceEpoch ?? 0;
+      
+      final markers = await (db.select(db.hazardMarkers)..where((t) => t.timestamp.isBiggerThanValue(lastSync))).get();
+      final news = await (db.select(db.newsItems)..where((t) => t.timestamp.isBiggerThanValue(lastSync))).get();
+      final areas = await (db.select(db.areas)..where((t) => t.timestamp.isBiggerThanValue(lastSync))).get();
+      final paths = await (db.select(db.paths)..where((t) => t.timestamp.isBiggerThanValue(lastSync))).get();
       
       print('CloudSync: Uploaded ${markers.length} markers, ${news.length} news, ${areas.length} areas, ${paths.length} paths to the cloud.');
 
@@ -90,11 +143,11 @@ class CloudSyncService extends _$CloudSyncService {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setInt('last_cloud_sync_time', now.millisecondsSinceEpoch);
 
-      state = CloudSyncState(isSyncing: false, lastSyncTime: now);
+      state = state.copyWith(isSyncing: false, lastSyncTime: now, pendingUploads: 0);
       return true;
     } catch (e) {
       print('CloudSync: Error syncing with cloud: $e');
-      state = CloudSyncState(isSyncing: false, lastSyncTime: state.lastSyncTime);
+      state = state.copyWith(isSyncing: false);
       return false;
     }
   }
