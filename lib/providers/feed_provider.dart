@@ -71,7 +71,7 @@ class FeedFilterController extends _$FeedFilterController {
   }
 }
 
-@riverpod
+@Riverpod(dependencies: [database, FeedLimit, FeedFilterController])
 Stream<List<HazardMarkerEntity>> filteredHazardMarkers(Ref ref) {
   final db = ref.watch(databaseProvider);
   final limit = ref.watch(feedLimitProvider);
@@ -94,7 +94,7 @@ Stream<List<HazardMarkerEntity>> filteredHazardMarkers(Ref ref) {
   return query.watch();
 }
 
-@riverpod
+@Riverpod(dependencies: [database, FeedLimit, FeedFilterController])
 Stream<List<NewsItemEntity>> filteredNewsItems(Ref ref) {
   final db = ref.watch(databaseProvider);
   final limit = ref.watch(feedLimitProvider);
@@ -117,7 +117,7 @@ Stream<List<NewsItemEntity>> filteredNewsItems(Ref ref) {
   return query.watch();
 }
 
-@riverpod
+@Riverpod(dependencies: [database, FeedLimit, FeedFilterController])
 Stream<List<AreaEntity>> filteredAreas(Ref ref) {
   final db = ref.watch(databaseProvider);
   final limit = ref.watch(feedLimitProvider);
@@ -140,7 +140,7 @@ Stream<List<AreaEntity>> filteredAreas(Ref ref) {
   return query.watch();
 }
 
-@riverpod
+@Riverpod(dependencies: [database, FeedLimit, FeedFilterController])
 Stream<List<PathEntity>> filteredPaths(Ref ref) {
   final db = ref.watch(databaseProvider);
   final limit = ref.watch(feedLimitProvider);
@@ -163,7 +163,14 @@ Stream<List<PathEntity>> filteredPaths(Ref ref) {
   return query.watch();
 }
 
-@riverpod
+@Riverpod(dependencies: [
+  FeedFilterController,
+  filteredHazardMarkers,
+  filteredNewsItems,
+  filteredAreas,
+  filteredPaths,
+  FeedLimit
+])
 List<dynamic> combinedFeed(Ref ref) {
   final filter = ref.watch(feedFilterControllerProvider);
   

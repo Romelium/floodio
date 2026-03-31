@@ -7,7 +7,7 @@ import 'database_provider.dart';
 
 part 'area_provider.g.dart';
 
-@riverpod
+@Riverpod(dependencies: [database])
 class AreasController extends _$AreasController {
   @override
   Stream<List<AreaEntity>> build() {

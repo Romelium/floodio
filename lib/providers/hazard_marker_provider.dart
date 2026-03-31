@@ -10,7 +10,7 @@ import 'database_provider.dart';
 
 part 'hazard_marker_provider.g.dart';
 
-@riverpod
+@Riverpod(dependencies: [database])
 class HazardMarkersController extends _$HazardMarkersController {
   @override
   Stream<List<HazardMarkerEntity>> build() {

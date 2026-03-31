@@ -85,7 +85,7 @@ void onStart(ServiceInstance service) async {
         ref.onDispose(db.close);
         return db;
       }),
-      sharedPreferencesProvider.overrideWithValue(prefs),
+      sharedPreferencesProvider.overrideWith((ref) => prefs),
     ],
   );
   final p2pNotifier = container.read(p2pServiceProvider.notifier);

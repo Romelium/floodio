@@ -53,7 +53,7 @@ SharedPreferences sharedPreferences(Ref ref) {
   throw UnimplementedError();
 }
 
-@Riverpod(keepAlive: true)
+@Riverpod(keepAlive: true, dependencies: [sharedPreferences])
 class AppSettings extends _$AppSettings {
   static const _keyMapStyle = 'settings_map_style';
   static const _keySyncInterval = 'settings_sync_interval';

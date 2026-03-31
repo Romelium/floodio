@@ -7,7 +7,7 @@ import 'database_provider.dart';
 
 part 'path_provider.g.dart';
 
-@riverpod
+@Riverpod(dependencies: [database])
 class PathsController extends _$PathsController {
   @override
   Stream<List<PathEntity>> build() {

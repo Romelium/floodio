@@ -6,14 +6,12 @@ import 'dart:math';
 
 import 'package:drift/drift.dart';
 import 'package:fixnum/fixnum.dart';
-import 'package:floodio/providers/offline_regions_provider.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_p2p_connection/flutter_p2p_connection.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:flutter/foundation.dart';
 
 import '../crypto/crypto_service.dart';
 import '../database/connection.dart';
@@ -23,6 +21,8 @@ import '../protos/models.pb.dart' as pb;
 import '../services/map_cache_service.dart';
 import '../utils/bloom_filter.dart';
 import 'database_provider.dart';
+import 'offline_regions_provider.dart';
+import 'settings_provider.dart';
 
 part 'p2p_provider.g.dart';
 
@@ -166,7 +166,7 @@ class P2pState {
   }
 }
 
-@Riverpod(keepAlive: true)
+@Riverpod(keepAlive: true, dependencies: [database, OfflineRegions, CryptoService, mapCacheService, sharedPreferences])
 class P2pService extends _$P2pService {
   FlutterP2pHost? _host;
   FlutterP2pClient? _client;
@@ -271,8 +271,7 @@ class P2pService extends _$P2pService {
 
     if (state.isAutoSyncing && !_disposed) {
       // Read the latest interval from preferences
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.reload();
+      final prefs = ref.read(sharedPreferencesProvider);
       final baseInterval = prefs.getInt('settings_sync_interval') ?? 30;
       
       // Add a small jitter (0-5s) to prevent perfect sync loops between two devices

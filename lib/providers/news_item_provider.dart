@@ -10,7 +10,7 @@ import 'database_provider.dart';
 
 part 'news_item_provider.g.dart';
 
-@riverpod
+@Riverpod(dependencies: [database])
 class NewsItemsController extends _$NewsItemsController {
   @override
   Stream<List<NewsItemEntity>> build() {
