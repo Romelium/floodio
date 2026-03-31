@@ -64,12 +64,12 @@ Future<String> _isolatePackMap(MapPackData data) async {
   
           if (z != null && x != null && y != null) {
             if (data.regionJson != null) {
-              final n = data.regionJson!['n'] as double;
-              final s = data.regionJson!['s'] as double;
-              final e = data.regionJson!['e'] as double;
-              final w = data.regionJson!['w'] as double;
-              final minZ = data.regionJson!['minZ'] as int;
-              final maxZ = data.regionJson!['maxZ'] as int;
+              final n = (data.regionJson!['n'] as num).toDouble();
+              final s = (data.regionJson!['s'] as num).toDouble();
+              final e = (data.regionJson!['e'] as num).toDouble();
+              final w = (data.regionJson!['w'] as num).toDouble();
+              final minZ = (data.regionJson!['minZ'] as num).toInt();
+              final maxZ = (data.regionJson!['maxZ'] as num).toInt();
   
               if (z < minZ || z > maxZ) continue;
               final minX = _lon2tilex(w, z);

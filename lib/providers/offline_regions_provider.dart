@@ -25,11 +25,11 @@ class OfflineRegion {
 
   factory OfflineRegion.fromJson(Map<String, dynamic> json) => OfflineRegion(
         bounds: LatLngBounds(
-          LatLng(json['s'], json['w']),
-          LatLng(json['n'], json['e']),
+          LatLng((json['s'] as num).toDouble(), (json['w'] as num).toDouble()),
+          LatLng((json['n'] as num).toDouble(), (json['e'] as num).toDouble()),
         ),
-        minZoom: json['minZ'],
-        maxZoom: json['maxZ'],
+        minZoom: (json['minZ'] as num).toInt(),
+        maxZoom: (json['maxZ'] as num).toInt(),
       );
 
   @override
