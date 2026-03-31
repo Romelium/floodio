@@ -14,6 +14,19 @@ class AppHostState {
       hostIpAddress: map['hostIpAddress'],
     );
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is AppHostState &&
+          runtimeType == other.runtimeType &&
+          isActive == other.isActive &&
+          ssid == other.ssid &&
+          preSharedKey == other.preSharedKey &&
+          hostIpAddress == other.hostIpAddress;
+
+  @override
+  int get hashCode => Object.hash(isActive, ssid, preSharedKey, hostIpAddress);
 }
 
 class AppClientState {
@@ -32,6 +45,19 @@ class AppClientState {
       hostIpAddress: map['hostIpAddress'],
     );
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is AppClientState &&
+          runtimeType == other.runtimeType &&
+          isActive == other.isActive &&
+          hostSsid == other.hostSsid &&
+          hostGatewayIpAddress == other.hostGatewayIpAddress &&
+          hostIpAddress == other.hostIpAddress;
+
+  @override
+  int get hashCode => Object.hash(isActive, hostSsid, hostGatewayIpAddress, hostIpAddress);
 }
 
 class AppDiscoveredDevice {
@@ -46,6 +72,17 @@ class AppDiscoveredDevice {
       deviceName: map['deviceName'] ?? '',
     );
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is AppDiscoveredDevice &&
+          runtimeType == other.runtimeType &&
+          deviceAddress == other.deviceAddress &&
+          deviceName == other.deviceName;
+
+  @override
+  int get hashCode => Object.hash(deviceAddress, deviceName);
 }
 
 class AppClientInfo {
@@ -62,4 +99,16 @@ class AppClientInfo {
       isHost: map['isHost'] ?? false,
     );
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is AppClientInfo &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          username == other.username &&
+          isHost == other.isHost;
+
+  @override
+  int get hashCode => Object.hash(id, username, isHost);
 }

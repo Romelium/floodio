@@ -17,6 +17,18 @@ class DownloadProgress {
   DownloadProgress({this.total = 0, this.downloaded = 0, this.isDownloading = false});
   
   double get percentage => total == 0 ? 0 : downloaded / total;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is DownloadProgress &&
+          runtimeType == other.runtimeType &&
+          total == other.total &&
+          downloaded == other.downloaded &&
+          isDownloading == other.isDownloading;
+
+  @override
+  int get hashCode => Object.hash(total, downloaded, isDownloading);
 }
 
 class MapTile {

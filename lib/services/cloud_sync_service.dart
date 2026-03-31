@@ -44,6 +44,21 @@ class CloudSyncState {
       onlyTier1And2: onlyTier1And2 ?? this.onlyTier1And2,
     );
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is CloudSyncState &&
+          runtimeType == other.runtimeType &&
+          isSyncing == other.isSyncing &&
+          lastSyncTime == other.lastSyncTime &&
+          hasInternet == other.hasInternet &&
+          pendingUploads == other.pendingUploads &&
+          syncTextOnly == other.syncTextOnly &&
+          onlyTier1And2 == other.onlyTier1And2;
+
+  @override
+  int get hashCode => Object.hash(isSyncing, lastSyncTime, hasInternet, pendingUploads, syncTextOnly, onlyTier1And2);
 }
 
 @Riverpod(keepAlive: true)

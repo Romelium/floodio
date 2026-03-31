@@ -13,6 +13,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/foundation.dart';
 
 import '../crypto/crypto_service.dart';
 import '../database/connection.dart';
@@ -132,6 +133,35 @@ class P2pState {
       discoveredDevices: (map['discoveredDevices'] as List?)?.map((d) => AppDiscoveredDevice.fromMap(Map<String, dynamic>.from(d))).toList() ?? [],
       connectedClients: (map['connectedClients'] as List?)?.map((c) => AppClientInfo.fromMap(Map<String, dynamic>.from(c))).toList() ?? [],
       peerOfflineRegions: (map['peerOfflineRegions'] as List?)?.map((r) => OfflineRegion.fromJson(Map<String, dynamic>.from(r))).toList() ?? [],
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+  
+    return other is P2pState &&
+      other.isHosting == isHosting &&
+      other.isScanning == isScanning &&
+      other.isSyncing == isSyncing &&
+      other.isConnecting == isConnecting &&
+      other.isAutoSyncing == isAutoSyncing &&
+      other.syncMessage == syncMessage &&
+      other.hostState == hostState &&
+      other.clientState == clientState &&
+      listEquals(other.discoveredDevices, discoveredDevices) &&
+      listEquals(other.connectedClients, connectedClients) &&
+      listEquals(other.receivedTexts, receivedTexts) &&
+      listEquals(other.peerOfflineRegions, peerOfflineRegions);
+  }
+
+  @override
+  int get hashCode {
+    return Object.hash(
+      isHosting, isScanning, isSyncing, isConnecting, isAutoSyncing,
+      syncMessage, hostState, clientState,
+      Object.hashAll(discoveredDevices), Object.hashAll(connectedClients),
+      Object.hashAll(receivedTexts), Object.hashAll(peerOfflineRegions),
     );
   }
 }

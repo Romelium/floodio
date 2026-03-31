@@ -2537,48 +2537,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   Widget _buildFeed() {
-    return Consumer(
-      builder: (context, ref, child) {
-        final combined = ref.watch(combinedFeedProvider);
-        final filter = ref.watch(feedFilterControllerProvider);
-        final filterNotifier = ref.read(feedFilterControllerProvider.notifier);
-        final profiles = ref.watch(userProfilesControllerProvider).value ?? [];
-        final settings = ref.watch(appSettingsProvider);
-
-        final isLoading =
-            ref.watch(filteredHazardMarkersProvider).isLoading ||
-            ref.watch(filteredNewsItemsProvider).isLoading ||
-            ref.watch(filteredAreasProvider).isLoading;
-
-        final adminTrustedAsync = ref.watch(
-          adminTrustedSendersControllerProvider,
-        );
-        final revokedAsync = ref.watch(revokedDelegationsControllerProvider);
-        final adminTrusted = adminTrustedAsync.value ?? [];
-        final revoked = revokedAsync.value ?? [];
-        final revokedKeys = revoked.map((e) => e.delegateePublicKey).toSet();
-        final isTier2 =
-            _myPublicKey != null &&
-            adminTrusted.any(
-              (a) =>
-                  a.publicKey == _myPublicKey &&
-                  !revokedKeys.contains(a.publicKey),
-            );
-        final isAdmin = settings.isOfficialMode || isTier2;
-
-        return Column(
-          children: [
-            Container(
-              color: Theme.of(context).colorScheme.surface,
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-              child: TextField(
+    return Column(
+      children: [
+        Container(
+          color: Theme.of(context).colorScheme.surface,
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+          child: Consumer(
+            builder: (context, ref, child) {
+              final filterNotifier = ref.read(feedFilterControllerProvider.notifier);
+              return TextField(
                 decoration: InputDecoration(
                   hintText: 'Search reports...',
                   prefixIcon: const Icon(Icons.search),
                   filled: true,
-                  fillColor: Theme.of(
-                    context,
-                  ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                  fillColor: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(16),
                     borderSide: BorderSide.none,
@@ -2586,31 +2558,68 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   contentPadding: const EdgeInsets.symmetric(vertical: 0),
                 ),
                 onChanged: (val) => filterNotifier.updateSearchQuery(val),
-              ),
-            ),
-            _buildFilterBar(filter, filterNotifier),
-            Expanded(
-              child: combined.isEmpty
-                  ? _buildEmptyFeedState(isLoading)
-                  : ListView.builder(
-                      controller: _feedScrollController,
-                      padding: const EdgeInsets.only(top: 8, bottom: 80),
-                      itemCount:
-                          combined.length +
-                          (combined.length >= ref.watch(feedLimitProvider)
-                              ? 1
-                              : 0),
-                      itemBuilder: (context, index) {
-                        if (index == combined.length) {
-                          return const Padding(
-                            padding: EdgeInsets.all(16.0),
-                            child: Center(child: CircularProgressIndicator()),
-                          );
-                        }
-                        final item = combined[index];
-                        final canEndorse =
-                            isAdmin &&
-                            (item.trustTier == 3 || item.trustTier == 4);
+              );
+            },
+          ),
+        ),
+        Consumer(
+          builder: (context, ref, child) {
+            final filter = ref.watch(feedFilterControllerProvider);
+            final filterNotifier = ref.read(feedFilterControllerProvider.notifier);
+            return _buildFilterBar(filter, filterNotifier);
+          },
+        ),
+        Expanded(
+          child: Consumer(
+            builder: (context, ref, child) {
+              final combined = ref.watch(combinedFeedProvider);
+              final profiles = ref.watch(userProfilesControllerProvider).value ?? [];
+              final settings = ref.watch(appSettingsProvider);
+
+              final isLoading =
+                  ref.watch(filteredHazardMarkersProvider).isLoading ||
+                  ref.watch(filteredNewsItemsProvider).isLoading ||
+                  ref.watch(filteredAreasProvider).isLoading;
+
+              final adminTrustedAsync = ref.watch(
+                adminTrustedSendersControllerProvider,
+              );
+              final revokedAsync = ref.watch(revokedDelegationsControllerProvider);
+              final adminTrusted = adminTrustedAsync.value ?? [];
+              final revoked = revokedAsync.value ?? [];
+              final revokedKeys = revoked.map((e) => e.delegateePublicKey).toSet();
+              final isTier2 =
+                  _myPublicKey != null &&
+                  adminTrusted.any(
+                    (a) =>
+                        a.publicKey == _myPublicKey &&
+                        !revokedKeys.contains(a.publicKey),
+                  );
+              final isAdmin = settings.isOfficialMode || isTier2;
+
+              if (combined.isEmpty) {
+                return _buildEmptyFeedState(isLoading);
+              }
+
+              return ListView.builder(
+                controller: _feedScrollController,
+                padding: const EdgeInsets.only(top: 8, bottom: 80),
+                itemCount:
+                    combined.length +
+                    (combined.length >= ref.watch(feedLimitProvider)
+                        ? 1
+                        : 0),
+                itemBuilder: (context, index) {
+                  if (index == combined.length) {
+                    return const Padding(
+                      padding: EdgeInsets.all(16.0),
+                      child: Center(child: CircularProgressIndicator()),
+                    );
+                  }
+                  final item = combined[index];
+                  final canEndorse =
+                      isAdmin &&
+                      (item.trustTier == 3 || item.trustTier == 4);
 
                         if (item is HazardMarkerEntity) {
                           final color = getHazardColor(
@@ -3615,11 +3624,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         }
                         return const SizedBox.shrink();
                       },
-                    ),
-            ),
-          ],
-        );
-      },
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 

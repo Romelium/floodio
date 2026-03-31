@@ -34,6 +34,18 @@ class AppSettingsData {
       isOfficialMode: isOfficialMode ?? this.isOfficialMode,
     );
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is AppSettingsData &&
+          runtimeType == other.runtimeType &&
+          mapStyle == other.mapStyle &&
+          syncIntervalSeconds == other.syncIntervalSeconds &&
+          isOfficialMode == other.isOfficialMode;
+
+  @override
+  int get hashCode => Object.hash(mapStyle, syncIntervalSeconds, isOfficialMode);
 }
 
 @Riverpod(keepAlive: true)

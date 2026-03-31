@@ -31,6 +31,21 @@ class OfflineRegion {
         minZoom: json['minZ'],
         maxZoom: json['maxZ'],
       );
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is OfflineRegion &&
+          runtimeType == other.runtimeType &&
+          bounds.north == other.bounds.north &&
+          bounds.south == other.bounds.south &&
+          bounds.east == other.bounds.east &&
+          bounds.west == other.bounds.west &&
+          minZoom == other.minZoom &&
+          maxZoom == other.maxZoom;
+
+  @override
+  int get hashCode => Object.hash(bounds.north, bounds.south, bounds.east, bounds.west, minZoom, maxZoom);
 }
 
 @riverpod

@@ -39,6 +39,18 @@ class FeedFilter {
       trustFilter: clearTrustFilter ? null : (trustFilter ?? this.trustFilter),
     );
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is FeedFilter &&
+          runtimeType == other.runtimeType &&
+          searchQuery == other.searchQuery &&
+          typeFilter == other.typeFilter &&
+          trustFilter == other.trustFilter;
+
+  @override
+  int get hashCode => Object.hash(searchQuery, typeFilter, trustFilter);
 }
 
 @riverpod
@@ -66,13 +78,17 @@ Stream<List<HazardMarkerEntity>> filteredHazardMarkers(Ref ref) {
   final filter = ref.watch(feedFilterControllerProvider);
 
   var query = db.select(db.hazardMarkers);
-  if (filter.trustFilter != null) {
-    query.where((t) => t.trustTier.equals(filter.trustFilter!));
-  }
-  if (filter.searchQuery.isNotEmpty) {
-    final q = '%${filter.searchQuery}%';
-    query.where((t) => t.type.like(q) | t.description.like(q));
-  }
+  query.where((t) {
+    Expression<bool> expr = const Constant(true);
+    if (filter.trustFilter != null) {
+      expr = expr & t.trustTier.equals(filter.trustFilter!);
+    }
+    if (filter.searchQuery.isNotEmpty) {
+      final q = '%${filter.searchQuery}%';
+      expr = expr & (t.type.like(q) | t.description.like(q));
+    }
+    return expr;
+  });
   query.orderBy([(t) => OrderingTerm.desc(t.timestamp)]);
   query.limit(limit);
   return query.watch();
@@ -85,13 +101,17 @@ Stream<List<NewsItemEntity>> filteredNewsItems(Ref ref) {
   final filter = ref.watch(feedFilterControllerProvider);
 
   var query = db.select(db.newsItems);
-  if (filter.trustFilter != null) {
-    query.where((t) => t.trustTier.equals(filter.trustFilter!));
-  }
-  if (filter.searchQuery.isNotEmpty) {
-    final q = '%${filter.searchQuery}%';
-    query.where((t) => t.title.like(q) | t.content.like(q));
-  }
+  query.where((t) {
+    Expression<bool> expr = const Constant(true);
+    if (filter.trustFilter != null) {
+      expr = expr & t.trustTier.equals(filter.trustFilter!);
+    }
+    if (filter.searchQuery.isNotEmpty) {
+      final q = '%${filter.searchQuery}%';
+      expr = expr & (t.title.like(q) | t.content.like(q));
+    }
+    return expr;
+  });
   query.orderBy([(t) => OrderingTerm.desc(t.timestamp)]);
   query.limit(limit);
   return query.watch();
@@ -104,13 +124,17 @@ Stream<List<AreaEntity>> filteredAreas(Ref ref) {
   final filter = ref.watch(feedFilterControllerProvider);
 
   var query = db.select(db.areas);
-  if (filter.trustFilter != null) {
-    query.where((t) => t.trustTier.equals(filter.trustFilter!));
-  }
-  if (filter.searchQuery.isNotEmpty) {
-    final q = '%${filter.searchQuery}%';
-    query.where((t) => t.type.like(q) | t.description.like(q));
-  }
+  query.where((t) {
+    Expression<bool> expr = const Constant(true);
+    if (filter.trustFilter != null) {
+      expr = expr & t.trustTier.equals(filter.trustFilter!);
+    }
+    if (filter.searchQuery.isNotEmpty) {
+      final q = '%${filter.searchQuery}%';
+      expr = expr & (t.type.like(q) | t.description.like(q));
+    }
+    return expr;
+  });
   query.orderBy([(t) => OrderingTerm.desc(t.timestamp)]);
   query.limit(limit);
   return query.watch();
@@ -123,13 +147,17 @@ Stream<List<PathEntity>> filteredPaths(Ref ref) {
   final filter = ref.watch(feedFilterControllerProvider);
 
   var query = db.select(db.paths);
-  if (filter.trustFilter != null) {
-    query.where((t) => t.trustTier.equals(filter.trustFilter!));
-  }
-  if (filter.searchQuery.isNotEmpty) {
-    final q = '%${filter.searchQuery}%';
-    query.where((t) => t.type.like(q) | t.description.like(q));
-  }
+  query.where((t) {
+    Expression<bool> expr = const Constant(true);
+    if (filter.trustFilter != null) {
+      expr = expr & t.trustTier.equals(filter.trustFilter!);
+    }
+    if (filter.searchQuery.isNotEmpty) {
+      final q = '%${filter.searchQuery}%';
+      expr = expr & (t.type.like(q) | t.description.like(q));
+    }
+    return expr;
+  });
   query.orderBy([(t) => OrderingTerm.desc(t.timestamp)]);
   query.limit(limit);
   return query.watch();
