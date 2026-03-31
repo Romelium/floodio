@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'database/connection.dart';
 import 'database/database.dart';
@@ -13,10 +14,7 @@ void main() async {
   final connection = await getSharedConnection();
   final db = AppDatabase(connection);
 
-  // Initialize settings before app start
-  final container = ProviderContainer();
-  await container.read(appSettingsProvider.notifier).init();
-  final initialSettings = container.read(appSettingsProvider);
+  final prefs = await SharedPreferences.getInstance();
 
   await db.cleanupOldData();
   await initializeBackgroundService();
@@ -27,7 +25,7 @@ void main() async {
           ref.onDispose(db.close);
           return db;
         }),
-        appSettingsProvider.overrideWithValue(initialSettings),
+        sharedPreferencesProvider.overrideWithValue(prefs),
       ],
       child: const FloodioApp(),
     ),

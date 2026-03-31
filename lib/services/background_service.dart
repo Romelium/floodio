@@ -6,12 +6,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../database/connection.dart';
 import '../database/database.dart';
 import '../providers/database_provider.dart';
 import '../providers/p2p_provider.dart';
 import '../providers/offline_regions_provider.dart';
+import '../providers/settings_provider.dart';
 import '../services/cloud_sync_service.dart';
 
 Future<void> initializeBackgroundService() async {
@@ -75,6 +77,7 @@ void onStart(ServiceInstance service) async {
 
   final connection = await getSharedConnection();
   final db = AppDatabase(connection);
+  final prefs = await SharedPreferences.getInstance();
 
   final container = ProviderContainer(
     overrides: [
@@ -82,6 +85,7 @@ void onStart(ServiceInstance service) async {
         ref.onDispose(db.close);
         return db;
       }),
+      sharedPreferencesProvider.overrideWithValue(prefs),
     ],
   );
   final p2pNotifier = container.read(p2pServiceProvider.notifier);

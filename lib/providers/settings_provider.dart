@@ -49,6 +49,11 @@ class AppSettingsData {
 }
 
 @Riverpod(keepAlive: true)
+SharedPreferences sharedPreferences(Ref ref) {
+  throw UnimplementedError();
+}
+
+@Riverpod(keepAlive: true)
 class AppSettings extends _$AppSettings {
   static const _keyMapStyle = 'settings_map_style';
   static const _keySyncInterval = 'settings_sync_interval';
@@ -56,21 +61,12 @@ class AppSettings extends _$AppSettings {
 
   @override
   AppSettingsData build() {
-    // Default values
-    return AppSettingsData(
-      mapStyle: MapStyle.street,
-      syncIntervalSeconds: 30,
-      isOfficialMode: false,
-    );
-  }
-
-  Future<void> init() async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = ref.watch(sharedPreferencesProvider);
     final styleIndex = prefs.getInt(_keyMapStyle) ?? 0;
     final interval = prefs.getInt(_keySyncInterval) ?? 30;
     final isOfficial = prefs.getBool(_keyIsOfficialMode) ?? false;
 
-    state = AppSettingsData(
+    return AppSettingsData(
       mapStyle: MapStyle.values[styleIndex.clamp(0, MapStyle.values.length - 1)],
       syncIntervalSeconds: interval,
       isOfficialMode: isOfficial,
@@ -79,19 +75,19 @@ class AppSettings extends _$AppSettings {
 
   Future<void> setMapStyle(MapStyle style) async {
     state = state.copyWith(mapStyle: style);
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = ref.read(sharedPreferencesProvider);
     await prefs.setInt(_keyMapStyle, style.index);
   }
 
   Future<void> setSyncInterval(int seconds) async {
     state = state.copyWith(syncIntervalSeconds: seconds);
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = ref.read(sharedPreferencesProvider);
     await prefs.setInt(_keySyncInterval, seconds);
   }
 
   Future<void> setOfficialMode(bool isOfficial) async {
     state = state.copyWith(isOfficialMode: isOfficial);
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = ref.read(sharedPreferencesProvider);
     await prefs.setBool(_keyIsOfficialMode, isOfficial);
   }
 }
