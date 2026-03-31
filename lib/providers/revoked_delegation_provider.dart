@@ -28,16 +28,17 @@ class RevokedDelegationsController extends _$RevokedDelegationsController {
         mode: InsertMode.insertOrReplace,
       );
 
+      final trusted = await (db.select(db.trustedSenders)..where((t) => t.publicKey.equals(entity.delegateePublicKey))).getSingleOrNull();
+      final fallbackTier = trusted != null ? 3 : 4;
+
       await (db.update(db.hazardMarkers)..where((t) => t.senderId.equals(entity.delegateePublicKey) & t.trustTier.equals(2)))
-          .write(const HazardMarkersCompanion(trustTier: Value(4)));
+          .write(HazardMarkersCompanion(trustTier: Value(fallbackTier)));
 
       await (db.update(db.newsItems)..where((t) => t.senderId.equals(entity.delegateePublicKey) & t.trustTier.equals(2)))
-          .write(const NewsItemsCompanion(trustTier: Value(4)));
+          .write(NewsItemsCompanion(trustTier: Value(fallbackTier)));
 
       await (db.update(db.areas)..where((t) => t.senderId.equals(entity.delegateePublicKey) & t.trustTier.equals(2)))
-          .write(const AreasCompanion(trustTier: Value(4)));
-          
-      await (db.delete(db.adminTrustedSenders)..where((t) => t.publicKey.equals(entity.delegateePublicKey))).go();
+          .write(AreasCompanion(trustTier: Value(fallbackTier)));
     });
   }
 }

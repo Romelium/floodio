@@ -1097,6 +1097,7 @@ class P2pService extends _$P2pService {
           await (db.delete(db.areas)..where((t) => t.id.equals(d.id.value))).go();
         }
         for (final d in validDelegations) {
+          if (revokedKeys.contains(d.publicKey.value)) continue;
           await (db.update(db.hazardMarkers)..where((t) => t.senderId.equals(d.publicKey.value) & t.trustTier.isBiggerThanValue(2)))
               .write(const HazardMarkersCompanion(trustTier: Value(2)));
           await (db.update(db.newsItems)..where((t) => t.senderId.equals(d.publicKey.value) & t.trustTier.isBiggerThanValue(2)))
@@ -1105,13 +1106,13 @@ class P2pService extends _$P2pService {
               .write(const AreasCompanion(trustTier: Value(2)));
         }
         for (final r in validRevocations) {
+          final fallbackTier = trustedKeys.contains(r.delegateePublicKey.value) ? 3 : 4;
           await (db.update(db.hazardMarkers)..where((t) => t.senderId.equals(r.delegateePublicKey.value) & t.trustTier.equals(2)))
-              .write(const HazardMarkersCompanion(trustTier: Value(4)));
+              .write(HazardMarkersCompanion(trustTier: Value(fallbackTier)));
           await (db.update(db.newsItems)..where((t) => t.senderId.equals(r.delegateePublicKey.value) & t.trustTier.equals(2)))
-              .write(const NewsItemsCompanion(trustTier: Value(4)));
+              .write(NewsItemsCompanion(trustTier: Value(fallbackTier)));
           await (db.update(db.areas)..where((t) => t.senderId.equals(r.delegateePublicKey.value) & t.trustTier.equals(2)))
-              .write(const AreasCompanion(trustTier: Value(4)));
-          await (db.delete(db.adminTrustedSenders)..where((t) => t.publicKey.equals(r.delegateePublicKey.value))).go();
+              .write(AreasCompanion(trustTier: Value(fallbackTier)));
         }
       });
 
