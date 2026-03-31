@@ -1,4 +1,7 @@
+import 'dart:io';
+
 import 'package:drift/drift.dart';
+import 'package:path_provider/path_provider.dart';
 
 import 'tables.dart';
 
@@ -14,6 +17,22 @@ class AppDatabase extends _$AppDatabase {
   Future<void> cleanupOldData() async {
     final now = DateTime.now().millisecondsSinceEpoch;
     final cutoff = DateTime.now().subtract(const Duration(days: 7)).millisecondsSinceEpoch;
+    
+    final expiredMarkers = await (select(hazardMarkers)..where((t) =>
+        (t.expiresAt.isNotNull() & t.expiresAt.isSmallerThanValue(now)) |
+        (t.expiresAt.isNull() & t.timestamp.isSmallerThanValue(cutoff))
+    )).get();
+    
+    final expiredNews = await (select(newsItems)..where((t) =>
+        (t.expiresAt.isNotNull() & t.expiresAt.isSmallerThanValue(now)) |
+        (t.expiresAt.isNull() & t.timestamp.isSmallerThanValue(cutoff))
+    )).get();
+
+    final imageIdsToDelete = [
+      ...expiredMarkers.map((m) => m.imageId).where((id) => id != null && id.isNotEmpty),
+      ...expiredNews.map((n) => n.imageId).where((id) => id != null && id.isNotEmpty),
+    ];
+
     await transaction(() async {
       await (delete(hazardMarkers)..where((t) => 
           (t.expiresAt.isNotNull() & t.expiresAt.isSmallerThanValue(now)) |
@@ -30,6 +49,18 @@ class AppDatabase extends _$AppDatabase {
       await (delete(deletedItems)..where((t) => t.timestamp.isSmallerThanValue(cutoff))).go();
       await (delete(seenMessageIds)..where((t) => t.timestamp.isSmallerThanValue(cutoff))).go();
     });
+
+    if (imageIdsToDelete.isNotEmpty) {
+      try {
+        final dir = await getApplicationDocumentsDirectory();
+        for (final imageId in imageIdsToDelete) {
+          final file = File('${dir.path}/$imageId');
+          if (await file.exists()) {
+            await file.delete();
+          }
+        }
+      } catch (_) {}
+    }
   }
 
   @override

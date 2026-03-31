@@ -951,7 +951,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         maxHeight: 1024,
                       );
                       if (image != null) {
-                        setState(() => selectedImage = image);
+                        final size = await File(image.path).length();
+                        if (size > 1024 * 1024) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Image is too large (limit 1MB). Please try again.')),
+                            );
+                          }
+                        } else {
+                          setState(() => selectedImage = image);
+                        }
                       }
                     },
                     icon: const Icon(Icons.camera_alt),
@@ -1427,7 +1436,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         maxHeight: 1024,
                       );
                       if (image != null) {
-                        setState(() => selectedImage = image);
+                        final size = await File(image.path).length();
+                        if (size > 1024 * 1024) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Image is too large (limit 1MB). Please try again.')),
+                            );
+                          }
+                        } else {
+                          setState(() => selectedImage = image);
+                        }
                       }
                     },
                     icon: const Icon(Icons.camera_alt),

@@ -1,4 +1,7 @@
+import 'dart:io';
+
 import 'package:drift/drift.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../database/database.dart';
@@ -46,6 +49,9 @@ class HazardMarkersController extends _$HazardMarkersController {
 
   Future<void> deleteMarker(String id) async {
     final db = ref.read(databaseProvider);
+    
+    final marker = await (db.select(db.hazardMarkers)..where((t) => t.id.equals(id))).getSingleOrNull();
+    
     await db.transaction(() async {
       await (db.delete(db.hazardMarkers)..where((t) => t.id.equals(id))).go();
       await db.into(db.deletedItems).insert(
@@ -56,6 +62,16 @@ class HazardMarkersController extends _$HazardMarkersController {
         mode: InsertMode.insertOrReplace,
       );
     });
+
+    if (marker?.imageId != null && marker!.imageId!.isNotEmpty) {
+      try {
+        final dir = await getApplicationDocumentsDirectory();
+        final file = File('${dir.path}/${marker.imageId}');
+        if (await file.exists()) {
+          await file.delete();
+        }
+      } catch (_) {}
+    }
   }
 }
 

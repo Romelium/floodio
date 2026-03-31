@@ -1099,8 +1099,21 @@ class P2pService extends _$P2pService {
         batch.insertAll(db.revokedDelegations, validRevocations, mode: InsertMode.insertOrReplace);
       });
 
+      final dir = await getApplicationDocumentsDirectory();
       await db.transaction(() async {
         for (final d in validDeleted) {
+          final marker = await (db.select(db.hazardMarkers)..where((t) => t.id.equals(d.id.value))).getSingleOrNull();
+          if (marker?.imageId != null && marker!.imageId!.isNotEmpty) {
+            final file = File('${dir.path}/${marker.imageId}');
+            if (await file.exists()) await file.delete();
+          }
+          
+          final news = await (db.select(db.newsItems)..where((t) => t.id.equals(d.id.value))).getSingleOrNull();
+          if (news?.imageId != null && news!.imageId!.isNotEmpty) {
+            final file = File('${dir.path}/${news.imageId}');
+            if (await file.exists()) await file.delete();
+          }
+
           await (db.delete(db.hazardMarkers)..where((t) => t.id.equals(d.id.value))).go();
           await (db.delete(db.newsItems)..where((t) => t.id.equals(d.id.value))).go();
           await (db.delete(db.areas)..where((t) => t.id.equals(d.id.value))).go();
@@ -1126,7 +1139,6 @@ class P2pService extends _$P2pService {
       });
 
       // Request missing images
-      final dir = await getApplicationDocumentsDirectory();
       for (final m in validMarkers) {
         final imageId = m.imageId.value;
         if (imageId != null && imageId.isNotEmpty) {

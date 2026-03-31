@@ -1,4 +1,7 @@
+import 'dart:io';
+
 import 'package:drift/drift.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../database/database.dart';
@@ -44,6 +47,9 @@ class NewsItemsController extends _$NewsItemsController {
 
   Future<void> deleteNewsItem(String id) async {
     final db = ref.read(databaseProvider);
+    
+    final newsItem = await (db.select(db.newsItems)..where((t) => t.id.equals(id))).getSingleOrNull();
+
     await db.transaction(() async {
       await (db.delete(db.newsItems)..where((t) => t.id.equals(id))).go();
       await db.into(db.deletedItems).insert(
@@ -54,6 +60,16 @@ class NewsItemsController extends _$NewsItemsController {
         mode: InsertMode.insertOrReplace,
       );
     });
+
+    if (newsItem?.imageId != null && newsItem!.imageId!.isNotEmpty) {
+      try {
+        final dir = await getApplicationDocumentsDirectory();
+        final file = File('${dir.path}/${newsItem.imageId}');
+        if (await file.exists()) {
+          await file.delete();
+        }
+      } catch (_) {}
+    }
   }
 }
 
