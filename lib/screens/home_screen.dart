@@ -374,6 +374,59 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
+  Future<void> _debunkReport(String id, String type) async {
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+    
+    if (type == 'marker') {
+      await ref.read(hazardMarkersControllerProvider.notifier).deleteMarker(id);
+    } else if (type == 'news') {
+      await ref.read(newsItemsControllerProvider.notifier).deleteNewsItem(id);
+    } else if (type == 'area') {
+      await ref.read(areasControllerProvider.notifier).deleteArea(id);
+    } else if (type == 'path') {
+      await ref.read(pathsControllerProvider.notifier).deletePath(id);
+    }
+
+    final payload = pb.SyncPayload();
+    payload.deletedItems.add(pb.DeletedItem(
+      id: id,
+      timestamp: Int64(timestamp),
+    ));
+
+    final encoded = base64Encode(payload.writeToBuffer());
+    await ref.read(p2pServiceProvider.notifier).broadcastText(jsonEncode({'type': 'payload', 'data': encoded}));
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Report debunked and removal broadcasted.')));
+    }
+  }
+
+  void _confirmDebunkReport(String id, String type) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Debunk Report?'),
+        content: const Text(
+          'Marking this report as false will actively delete it from the mesh network and broadcast the removal to all nearby devices.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () {
+              Navigator.pop(context);
+              _debunkReport(id, type);
+            },
+            child: const Text('Debunk'),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _dismissNews(String id) {
     showDialog(
       context: context,
@@ -2017,6 +2070,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                 label: const Text('Verify & Endorse'),
                                 style: TextButton.styleFrom(foregroundColor: Colors.purple),
                               ),
+                            if (canEndorse)
+                              TextButton.icon(
+                                onPressed: () {
+                                  Navigator.pop(dialogContext);
+                                  _confirmDebunkReport(m.id, 'marker');
+                                },
+                                icon: const Icon(Icons.gavel, size: 18),
+                                label: const Text('Debunk'),
+                                style: TextButton.styleFrom(foregroundColor: Colors.red),
+                              ),
                             TextButton.icon(
                               onPressed: () {
                                 Navigator.pop(dialogContext);
@@ -2371,6 +2434,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                           ),
                                         ),
                                       ),
+                                    if (canEndorse)
+                                      FilledButton.tonalIcon(
+                                        onPressed: () => _confirmDebunkReport(item.id, 'marker'),
+                                        icon: const Icon(Icons.gavel, size: 16),
+                                        label: const Text('Debunk'),
+                                        style: FilledButton.styleFrom(
+                                          foregroundColor: Colors.red.shade700,
+                                          backgroundColor: Colors.red.shade50,
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 12,
+                                            vertical: 8,
+                                          ),
+                                        ),
+                                      ),
                                     TextButton.icon(
                                       onPressed: () => _resolveMarker(item.id),
                                       icon: const Icon(
@@ -2549,6 +2626,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                       style: FilledButton.styleFrom(
                                         foregroundColor: Colors.purple.shade700,
                                         backgroundColor: Colors.purple.shade50,
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 12,
+                                          vertical: 8,
+                                        ),
+                                      ),
+                                    ),
+                                  if (canEndorse)
+                                    FilledButton.tonalIcon(
+                                      onPressed: () => _confirmDebunkReport(item.id, 'news'),
+                                      icon: const Icon(Icons.gavel, size: 16),
+                                      label: const Text('Debunk'),
+                                      style: FilledButton.styleFrom(
+                                        foregroundColor: Colors.red.shade700,
+                                        backgroundColor: Colors.red.shade50,
                                         padding: const EdgeInsets.symmetric(
                                           horizontal: 12,
                                           vertical: 8,
@@ -2754,6 +2845,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                           ),
                                         ),
                                       ),
+                                    if (canEndorse)
+                                      FilledButton.tonalIcon(
+                                        onPressed: () => _confirmDebunkReport(item.id, 'area'),
+                                        icon: const Icon(Icons.gavel, size: 16),
+                                        label: const Text('Debunk'),
+                                        style: FilledButton.styleFrom(
+                                          foregroundColor: Colors.red.shade700,
+                                          backgroundColor: Colors.red.shade50,
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 12,
+                                            vertical: 8,
+                                          ),
+                                        ),
+                                      ),
                                     TextButton.icon(
                                       onPressed: () => _resolveArea(item.id),
                                       icon: const Icon(
@@ -2951,6 +3056,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                         style: FilledButton.styleFrom(
                                           foregroundColor: Colors.purple.shade700,
                                           backgroundColor: Colors.purple.shade50,
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 12,
+                                            vertical: 8,
+                                          ),
+                                        ),
+                                      ),
+                                    if (canEndorse)
+                                      FilledButton.tonalIcon(
+                                        onPressed: () => _confirmDebunkReport(item.id, 'path'),
+                                        icon: const Icon(Icons.gavel, size: 16),
+                                        label: const Text('Debunk'),
+                                        style: FilledButton.styleFrom(
+                                          foregroundColor: Colors.red.shade700,
+                                          backgroundColor: Colors.red.shade50,
                                           padding: const EdgeInsets.symmetric(
                                             horizontal: 12,
                                             vertical: 8,
