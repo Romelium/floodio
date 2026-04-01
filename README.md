@@ -4,6 +4,10 @@ An Android application that is essentially an offline resilient disaster informa
 
 **Note on P2P Syncing:** The terms "Host" and "Client" in the app only refer to how the Wi-Fi Direct connection is established. Once connected, data synchronization is fully **bidirectional**—both devices share and receive missing reports, maps, and files equally.
 
+**Note on Local vs Global Actions:** 
+*   **Global Actions:** Creating reports, resolving hazards, debunking, and promoting users to "Official Volunteer" (Tier 2) are **global** actions. They will propagate to all other devices in the mesh network during sync.
+*   **Local Actions:** "Trusting" a sender (Tier 3), "Blocking" a sender, and "Clearing All Data" in settings are **local** actions. They only affect your personal device and will not alter the data on other users' devices.
+
 ## 1. Prerequisites tools and libraries installed on your system:
 *   **Flutter SDK** (Version 3.38.4 or higher, as specified in your `pubspec.yaml`).
 *   **Protocol Buffers Compiler (`protoc`)**: This is used to compile your `.proto` files. 

@@ -360,7 +360,7 @@ class CommandTab extends ConsumerWidget {
                         }
                       },
                 icon: const Icon(Icons.cloud_upload, size: 18),
-                label: const Text('Force Sync Now'),
+                label: const Text('Force Cloud Sync Now'),
                 style: FilledButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
                 ),

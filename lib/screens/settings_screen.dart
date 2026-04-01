@@ -58,7 +58,7 @@ class SettingsScreen extends ConsumerWidget {
             leading: const Icon(Icons.sync),
             title: const Text('Mesh Auto-Sync Frequency'),
             subtitle: const Text(
-              'How often the device searches for peers in the background.',
+              'How often the device wakes up to search and sync with nearby peers.',
             ),
           ),
           Padding(
@@ -115,7 +115,7 @@ class SettingsScreen extends ConsumerWidget {
                 context: context,
                 builder: (dialogContext) => AlertDialog(
                   title: const Text('Clear All Data?'),
-                  content: const Text('This action cannot be undone. All your reports, trusted senders, and offline maps will be deleted.'),
+                  content: const Text('This action cannot be undone. All your reports, trusted senders, and offline maps will be deleted from THIS DEVICE ONLY. It will not remove your previously synced reports from the mesh network.'),
                   actions: [
                     TextButton(
                       onPressed: () => Navigator.pop(dialogContext),

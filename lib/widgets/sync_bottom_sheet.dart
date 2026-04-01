@@ -329,7 +329,7 @@ class SyncBottomSheet extends ConsumerWidget {
                                     );
                                   }
                                 } : null,
-                                child: const Text('Sync'),
+                                child: const Text('Cloud Sync'),
                               ),
                       ),
                     );

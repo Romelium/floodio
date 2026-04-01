@@ -439,7 +439,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Block Sender?'),
-        content: const Text('Are you sure you want to block this sender? All their reports will be hidden and deleted from your device.'),
+        content: const Text('Are you sure you want to block this sender? All their reports will be hidden and deleted from your device only.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
@@ -470,7 +470,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
       builder: (dialogContext) => AlertDialog(
         title: const Text('Resolve Hazard?'),
         content: const Text(
-          'Marking this hazard as resolved will remove it from the map for you and nearby users upon sync.',
+          'Marking this hazard as resolved will remove it from the map for everyone in the mesh network upon sync.',
         ),
         actions: [
           TextButton(
@@ -509,7 +509,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
       builder: (dialogContext) => AlertDialog(
         title: const Text('Resolve Area?'),
         content: const Text(
-          'Marking this area as resolved will remove it from the map for you and nearby users upon sync.',
+          'Marking this area as resolved will remove it from the map for everyone in the mesh network upon sync.',
         ),
         actions: [
           TextButton(
@@ -546,7 +546,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
       builder: (dialogContext) => AlertDialog(
         title: const Text('Resolve Path?'),
         content: const Text(
-          'Marking this path as resolved will remove it from the map for you and nearby users upon sync.',
+          'Marking this path as resolved will remove it from the map for everyone in the mesh network upon sync.',
         ),
         actions: [
           TextButton(
@@ -616,7 +616,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
       builder: (dialogContext) => AlertDialog(
         title: const Text('Debunk Report?'),
         content: const Text(
-          'Marking this report as false will actively delete it from the mesh network and broadcast the removal to all nearby devices.',
+          'Marking this report as false will actively delete it from the entire mesh network for everyone.',
         ),
         actions: [
           TextButton(
@@ -640,9 +640,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Dismiss News?'),
+        title: const Text('Delete News Globally?'),
         content: const Text(
-          'This will remove the news item from your feed and for nearby users upon sync.',
+          'This will permanently delete this news item for everyone in the mesh network upon sync.',
         ),
         actions: [
           TextButton(
@@ -662,11 +662,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
               ScaffoldMessenger.of(
                 context,
               ).showSnackBar(const SnackBar(
-                content: Text('News dismissed.'),
+                content: Text('News deleted globally.'),
                 behavior: SnackBarBehavior.floating,
               ));
             },
-            child: const Text('Dismiss'),
+            child: const Text('Delete'),
           ),
         ],
       ),
@@ -3509,10 +3509,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                                         ),
                                       TextButton.icon(
                                         onPressed: () => _dismissNews(item.id),
-                                        icon: const Icon(Icons.clear, size: 16),
-                                        label: const Text('Dismiss'),
+                                        icon: const Icon(Icons.delete_forever, size: 16),
+                                        label: const Text('Delete (Global)'),
                                         style: TextButton.styleFrom(
-                                          foregroundColor: Colors.grey,
+                                          foregroundColor: Colors.red,
                                         ),
                                       ),
                                       if (item.trustTier == 4 ||
@@ -4202,7 +4202,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Trust Sender?'),
-        content: const Text('Are you sure you want to trust this sender? Their reports will be prioritized and marked as Trusted.'),
+        content: const Text('Are you sure you want to trust this sender? Their reports will be prioritized and marked as Trusted on your device only.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
@@ -4232,7 +4232,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Make Official Volunteer?'),
-        content: const Text('Are you sure you want to promote this user to an Official Volunteer? Their reports will be marked as Verified.'),
+        content: const Text('Are you sure you want to promote this user to an Official Volunteer? Their reports will be marked as Verified for everyone in the mesh network.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
