@@ -608,6 +608,10 @@ class P2pService extends _$P2pService {
       final device = _rawDiscoveredDevices.firstWhere((d) => d.deviceAddress == address);
       state = state.copyWith(isConnecting: true, syncMessage: 'Connecting to ${device.deviceName}...', clearSyncProgress: true);
       await stopScanning();
+      
+      // Allow the Android BLE stack a brief moment to settle after stopping the scan 
+      // before initiating a new GATT connection, preventing dropped connection requests.
+      await Future.delayed(const Duration(milliseconds: 500));
 
       if (_disposed) {
         state = state.copyWith(isConnecting: false);

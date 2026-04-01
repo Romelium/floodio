@@ -58,9 +58,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         .read(userProfilesControllerProvider.notifier)
         .saveProfile(profile);
         
-    ref.invalidate(localUserControllerProvider);
-
     if (mounted) {
+      ref.invalidate(localUserControllerProvider);
+
       Navigator.of(
         context,
       ).pushReplacement(MaterialPageRoute(builder: (_) => const HomeScreen()));
