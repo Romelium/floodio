@@ -71,11 +71,12 @@ class GuideTab extends ConsumerWidget {
                     context,
                     icon: Icons.campaign,
                     title: 'Broadcasting Critical Alerts',
-                    content: 'As an Official, your alerts override all other reports and are highlighted in blue.\n\n'
+                    content: 'As an Official, your alerts override all other reports and are highlighted in blue (Tier 1).\n\n'
                              '• Tap the "+" button and select "Official Alert".\n'
-                             '• Use the quick templates for standard alerts (e.g., Evacuation Order, Boil Water Advisory).\n'
-                             '• Check "Mark as Critical Emergency" for immediate life-threatening situations. This ensures the alert is prominently displayed.\n'
-                             '• Set an appropriate expiration time so the alert automatically clears when the danger has passed.',
+                             '• Use the quick templates for standard alerts (e.g., Evacuation Order, Boil Water Advisory) to save time.\n'
+                             '• Check "Mark as Critical Emergency" for immediate life-threatening situations. This ensures the alert is prominently displayed with a red warning.\n'
+                             '• Set an appropriate expiration time so the alert automatically clears when the danger has passed.\n'
+                             '• You can also create Official Map Markers (Supply, Medical Triage) from the "+" menu.',
                   ),
                   _buildGuideExpansionTile(
                     context,
@@ -84,7 +85,8 @@ class GuideTab extends ConsumerWidget {
                     content: 'You can delegate trust to reliable community members, empowering them to verify crowdsourced data.\n\n'
                              '• In the Feed or Map, tap on a report from a reliable user.\n'
                              '• Tap "Make Volunteer". This cryptographically signs a delegation certificate, upgrading them to Tier 2 (Verified).\n'
-                             '• To manage or revoke volunteers, go to the "Command" tab. Revoking a volunteer immediately downgrades their future and past unverified reports.',
+                             '• To manage or revoke volunteers, go to the "Command" tab.\n'
+                             '• Revoking a volunteer immediately downgrades their future and past unverified reports across the entire network.',
                   ),
                   _buildGuideExpansionTile(
                     context,
@@ -93,7 +95,35 @@ class GuideTab extends ConsumerWidget {
                     content: 'The Cloud Gateway bridges the offline mesh network with the central government database.\n\n'
                              '• When you have an active internet connection (e.g., via Starlink or a restored cell tower), go to the "Command" tab.\n'
                              '• Tap "Force Cloud Sync Now".\n'
-                             '• This uploads all mesh data collected from citizens to the cloud and downloads the latest global official alerts to your device, which you can then carry back into the offline mesh.',
+                             '• This uploads all mesh data collected from citizens to the cloud and downloads the latest global official alerts to your device.\n'
+                             '• You can then carry this updated data back into the offline mesh to distribute it to citizens.',
+                  ),
+                  _buildGuideExpansionTile(
+                    context,
+                    icon: Icons.map,
+                    title: 'Coordinating with Offline Maps',
+                    content: 'Ensure your teams and citizens have access to maps even when cell towers are down.\n\n'
+                             '• Download maps of high-risk areas while you have internet access.\n'
+                             '• Use the "Command" tab to broadcast these maps to all connected devices in your local mesh.\n'
+                             '• Encourage volunteers to request maps from you via their Sync Menu.',
+                  ),
+                  _buildGuideExpansionTile(
+                    context,
+                    icon: Icons.directions_walk,
+                    title: 'Acting as a Data Relay (Mule)',
+                    content: 'You are the bridge between disconnected neighborhoods.\n\n'
+                             '• Keep "Mesh Auto-Sync" enabled when moving between different areas or shelters.\n'
+                             '• Your device will automatically pick up reports from one group and deliver them to the next.\n'
+                             '• If you encounter an Official, sync with them to receive the latest critical alerts and pass them on to citizens.',
+                  ),
+                  _buildGuideExpansionTile(
+                    context,
+                    icon: Icons.handshake,
+                    title: 'Assisting Citizens',
+                    content: 'Help others get connected and stay informed.\n\n'
+                             '• Share the Floodio app via Bluetooth/Wi-Fi Direct using the Share icon in the top right.\n'
+                             '• Broadcast your downloaded offline maps to citizens who need them via the Sync Menu.\n'
+                             '• Teach them how to trust reliable neighbors to build their local web of trust.',
                   ),
                   const SizedBox(height: 24),
                 ] else if (isTier2) ...[
@@ -106,7 +136,8 @@ class GuideTab extends ConsumerWidget {
                     content: 'Your primary role is to filter noise and elevate accurate information.\n\n'
                              '• When you physically confirm a crowdsourced (Grey) report, tap on it and select "Verify & Endorse".\n'
                              '• This cryptographically signs the report with your Tier 2 key, upgrading it to Purple (Verified) for the entire network.\n'
-                             '• Only endorse reports you have personally verified to maintain the integrity of the network.',
+                             '• Only endorse reports you have personally verified to maintain the integrity of the network.\n'
+                             '• Your endorsements help citizens know which hazards are real and which safe zones are actually safe.',
                   ),
                   _buildGuideExpansionTile(
                     context,
@@ -138,7 +169,26 @@ class GuideTab extends ConsumerWidget {
                     content: 'You can build your own localized web of trust.\n\n'
                              '• If you see a report from someone you know is reliable, tap "Trust" on their report.\n'
                              '• Their future reports will appear as Trusted (Green) for YOU ONLY.\n'
-                             '• If someone posts spam, tap "Block" to hide their reports from your device.',
+                             '• If someone posts spam or false info, tap "Block" to hide their reports from your device.',
+                  ),
+                  _buildGuideExpansionTile(
+                    context,
+                    icon: Icons.battery_saver,
+                    title: 'Conserving Battery',
+                    content: 'During a disaster, battery life is critical.\n\n'
+                             '• Mesh Auto-Sync uses Bluetooth Low Energy (BLE) to find peers, which is efficient, but frequent Wi-Fi Direct transfers use more power.\n'
+                             '• You can adjust the "Sync Interval" in Settings (e.g., change from 30s to 5m) to save power.\n'
+                             '• If you are stationary in a safe place, you can turn off Auto-Sync and only sync manually when needed.',
+                  ),
+                  _buildGuideExpansionTile(
+                    context,
+                    icon: Icons.share,
+                    title: 'Sharing the App Offline',
+                    content: 'If someone needs Floodio but has no internet, you can share the app directly:\n\n'
+                             '• Tap the "Share" icon in the top right of the app bar.\n'
+                             '• This extracts the Floodio APK from your device.\n'
+                             '• Send it to them via Bluetooth, Nearby Share, or Wi-Fi Direct.\n'
+                             '• Once they install it, they can immediately join the mesh network.',
                   ),
                   const SizedBox(height: 24),
                 ],
@@ -152,8 +202,8 @@ class GuideTab extends ConsumerWidget {
                   content: 'Floodio uses a "Store and Forward" mesh network to keep you connected without internet or cell towers.\n\n'
                            '• When Auto-Sync is ON, your phone uses Bluetooth Low Energy (BLE) to silently find nearby Floodio users.\n'
                            '• Once a peer is found, the phones automatically negotiate a high-speed, secure Wi-Fi Direct connection.\n'
-                           '• They compare their databases and exchange any missing reports, news, or map files.\n'
-                           '• After syncing, they disconnect. As you move around, your phone carries this data and passes it to the next person you meet, spreading critical information across the city.',
+                           '• They compare their databases using a highly efficient "Bloom Filter" and exchange only the missing reports, news, or map files.\n'
+                           '• After syncing, they disconnect. As you move around, your phone carries this data and passes it to the next person you meet, spreading critical information across the city like a digital whisper.',
                 ),
                 _buildGuideExpansionTile(
                   context,
@@ -166,31 +216,22 @@ class GuideTab extends ConsumerWidget {
                 ),
                 _buildGuideExpansionTile(
                   context,
-                  icon: Icons.share,
-                  title: 'Sharing the App Without Internet',
-                  content: 'If someone needs Floodio but has no internet, you can share the app directly:\n\n'
-                           '• Tap the "Share" icon in the top right of the app bar.\n'
-                           '• This extracts the Floodio APK from your device.\n'
-                           '• Send it to them via Bluetooth, Nearby Share, or Wi-Fi Direct.\n'
-                           '• Once they install it, they can immediately join the mesh network.',
-                ),
-                _buildGuideExpansionTile(
-                  context,
                   icon: Icons.cleaning_services,
                   title: 'Resolving vs. Debunking vs. Blocking',
-                  content: '• Resolve (Green Check): The hazard existed but is now cleared (e.g., water receded). Removes it from the map for everyone.\n'
-                           '• Debunk (Red Hammer - Officials/Volunteers only): The report was fake or malicious. Deletes it globally.\n'
-                           '• Block (Red Circle): You don\'t trust this user. Hides their reports on YOUR device only.',
+                  content: 'It is important to use the right tool to manage reports:\n\n'
+                           '• Resolve (Green Check): The hazard existed but is now cleared (e.g., water receded, tree removed). This removes it from the map for everyone globally.\n'
+                           '• Debunk (Red Hammer - Officials/Volunteers only): The report was fake, malicious, or a duplicate. This deletes it globally and prevents it from spreading further.\n'
+                           '• Block (Red Circle): You don\'t trust this user. This hides their reports on YOUR device only. It does not affect other users.',
                 ),
                 _buildGuideExpansionTile(
                   context,
                   icon: Icons.security,
                   title: 'Understanding Cryptographic Signatures',
-                  content: 'To prevent malicious actors from spoofing official alerts, Floodio uses Ed25519 cryptographic signatures.\n\n'
+                  content: 'To prevent malicious actors from spoofing official alerts or impersonating others, Floodio uses Ed25519 cryptographic signatures.\n\n'
                            '• Every user has a unique private key generated on their device.\n'
                            '• Every report you create is signed with this key.\n'
                            '• When an Official promotes a user to a Volunteer, they sign a "Trust Delegation" certificate.\n'
-                           '• When your phone receives a report, it mathematically verifies the signature against the sender\'s public key and the known Official keys to determine its Trust Tier. Fake official reports are instantly rejected.',
+                           '• When your phone receives a report, it verifies the signature against the sender\'s public key and the known Official keys to determine its Trust Tier. Fake official reports are instantly rejected by the network.',
                 ),
 
                 const SizedBox(height: 32),
@@ -218,27 +259,27 @@ class GuideTab extends ConsumerWidget {
                 const SizedBox(height: 16),
                 _buildFAQ(
                   'How do I draw an Area or Path?',
-                  'Tap the "+" button and select "Report Area" or "Report Path". The map will enter drawing mode. Tap on the map to add points. When finished, tap the green "Done" button in the bottom right to add details and submit.',
+                  'Tap the "+" button and select "Report Area" or "Report Path". The map will enter drawing mode. Tap on the map to add points to your polygon or line. If you make a mistake, tap "Undo". When finished, tap the green "Done" button in the bottom right to add details and submit.',
                 ),
                 _buildFAQ(
                   'What happens when a report expires?',
-                  'When creating a report, you can set an expiration time (e.g., 24 hours). Once that time passes, the report is automatically hidden and eventually deleted from the database to keep the map clean. You can extend the expiration by editing the report.',
+                  'When creating a report, you can set an expiration time (e.g., 24 hours). Once that time passes, the report is automatically hidden from the map and feed. It will eventually be deleted from the database to keep the app fast and the map clean. You can extend the expiration by editing the report before it expires.',
                 ),
                 _buildFAQ(
                   'Does this drain my battery?',
-                  'Mesh syncing uses Bluetooth Low Energy (BLE) to find peers, which is very efficient. However, frequent Wi-Fi Direct transfers can impact battery. You can adjust the "Sync Interval" in Settings (e.g., change from 30s to 5m to save power).',
+                  'Mesh syncing uses Bluetooth Low Energy (BLE) to find peers, which is very efficient. However, frequent Wi-Fi Direct transfers can impact battery life. You can adjust the "Sync Interval" in Settings (e.g., change from 30s to 5m to save power). The app also respects Android\'s battery optimization settings.',
                 ),
                 _buildFAQ(
                   'What is a "Global Action"?',
-                  'When an Official or Volunteer Resolves a hazard or Debunks a report, that "deletion" is broadcast to the whole network. Once you sync with someone, they will also see that hazard as removed. Local actions (like Blocking a user) only affect your device.',
+                  'When an Official or Volunteer Resolves a hazard or Debunks a report, that "deletion" is broadcast to the whole network. Once you sync with someone, they will also see that hazard as removed. Local actions (like Blocking a user or Trusting a neighbor) only affect your personal device.',
                 ),
                 _buildFAQ(
                   'Is my data private?',
-                  'Your reports are signed with a unique cryptographic key stored only on your device. While your name is shared with reports so others can verify authenticity, your exact location is only shared when you explicitly create a marker.',
+                  'Your reports are signed with a unique cryptographic key stored only on your device. While your name is shared with reports so others can verify authenticity, your exact location is only shared when you explicitly create a marker. The app does not track your background location for analytics or advertising.',
                 ),
                 _buildFAQ(
                   'Why do I need so many permissions?',
-                  'Android requires Location and Nearby Devices permissions to use Bluetooth and Wi-Fi Direct. Floodio does not track you for advertising; it strictly uses these APIs to find other mesh nodes during emergencies.',
+                  'Android requires Location and Nearby Devices permissions to use Bluetooth and Wi-Fi Direct. Floodio does not track you for advertising; it strictly uses these APIs to find other mesh nodes during emergencies. Background execution permissions are needed so the app can sync while in your pocket.',
                 ),
                 
                 const SizedBox(height: 32),
@@ -249,11 +290,15 @@ class GuideTab extends ConsumerWidget {
                 const SizedBox(height: 16),
                 _buildFAQ(
                   'My status says "OFFLINE" even with Auto-Sync on?',
-                  'Ensure Bluetooth and Location are enabled. Android requires Location services to be ON for Bluetooth scanning to work. Also, check if you have granted the "Nearby Devices" permission in your phone\'s settings.',
+                  'Ensure Bluetooth and Location are enabled. Android requires Location services to be ON for Bluetooth scanning to work. Also, check if you have granted the "Nearby Devices" permission in your phone\'s settings. Try toggling Auto-Sync off and on again.',
                 ),
                 _buildFAQ(
                   'Syncing is taking a long time or failing?',
-                  'Wi-Fi Direct can sometimes be slow to negotiate depending on the Android device manufacturer. Try moving closer to the other device. If it consistently fails, try toggling Auto-Sync off and on again, or restart your phone\'s Wi-Fi.',
+                  'Wi-Fi Direct can sometimes be slow to negotiate depending on the Android device manufacturer. Try moving closer to the other device. If it consistently fails, try toggling Auto-Sync off and on again, or restart your phone\'s Wi-Fi. Ensure neither device is currently connected to a standard Wi-Fi network that requires a captive portal login.',
+                ),
+                _buildFAQ(
+                  'I can\'t see offline maps?',
+                  'Make sure you have downloaded a map region while connected to the internet, or received one from a peer. Check the "Map Storage" section in your Profile tab to see your downloaded regions. Ensure the "Layers" button on the map has offline regions toggled ON.',
                 ),
                 const SizedBox(height: 40),
               ],
