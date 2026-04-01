@@ -376,7 +376,7 @@ class CommandTab extends ConsumerWidget {
     final offlineRegionsAsync = ref.watch(offlineRegionsProvider);
     final offlineRegions = offlineRegionsAsync.value ?? [];
     final p2pState = ref.watch(uiP2pServiceProvider);
-    final isConnected = p2pState.hostState?.isActive == true || p2pState.clientState?.isActive == true;
+    final isConnected = (p2pState.isHosting && p2pState.hostState?.isActive == true) || p2pState.clientState?.isActive == true;
 
     return Card(
       elevation: 0,

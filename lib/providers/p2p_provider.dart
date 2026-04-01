@@ -6,6 +6,7 @@ import 'dart:math';
 
 import 'package:drift/drift.dart';
 import 'package:fixnum/fixnum.dart';
+import 'package:floodio/services/background_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
@@ -392,16 +393,8 @@ class P2pService extends _$P2pService {
         await stopHosting();
         if (!state.isAutoSyncing || _disposed) return;
   
-              try {
-                await _systemChannel.invokeMethod('toggleWifi', {'enable': true});
-              } catch (_) {}
-  
-        // Wait for Wi-Fi to turn back on after hotspot is disabled
-        int waitCount = 0;
-        while (!(await _client.checkWifiEnabled()) && waitCount < 10) {
-          await Future.delayed(const Duration(seconds: 1));
-          waitCount++;
-        }
+        // Give OS time to reset network state
+        await Future.delayed(const Duration(seconds: 2));
   
         if (!state.isAutoSyncing || _disposed) return;
         await startScanning();
@@ -411,11 +404,7 @@ class P2pService extends _$P2pService {
         await disconnect(); // stops scanning
         if (!state.isAutoSyncing || _disposed) return;
   
-              try {
-                await _systemChannel.invokeMethod('toggleWifi', {'enable': false});
-              } catch (_) {}
-  
-        await Future.delayed(const Duration(seconds: 3)); // Give OS time to reset Wi-Fi state
+        await Future.delayed(const Duration(seconds: 2)); // Give OS time to reset network state
         if (!state.isAutoSyncing || _disposed) return;
         await startHosting();
       }
@@ -459,36 +448,41 @@ class P2pService extends _$P2pService {
 
     // 2. Hardware Services Redundancy Checks
     bool locEnabled = await _host.checkLocationEnabled();
-    bool wifiEnabled = await _host.checkWifiEnabled();
     bool btEnabled = await _host.checkBluetoothEnabled();
 
     // 3. Short Polling Loop (Wait up to 3 seconds for OS to reflect state)
     int retries = 3;
-    while ((!locEnabled || !wifiEnabled || !btEnabled) && retries > 0) {
+    while ((!locEnabled || !btEnabled) && retries > 0) {
       if (_disposed) return;
       state = state.copyWith(syncMessage: 'Waiting for services to enable ($retries)...', clearSyncProgress: true);
       await Future.delayed(const Duration(seconds: 1));
       locEnabled = await _host.checkLocationEnabled();
-      wifiEnabled = await _host.checkWifiEnabled();
       btEnabled = await _host.checkBluetoothEnabled();
       retries--;
     }
 
-    if (!locEnabled || !wifiEnabled || !btEnabled) {
+    if (!locEnabled || !btEnabled) {
       state = state.copyWith(isHosting: false, isAutoSyncing: false, syncMessage: 'Services disabled. Cannot host.', clearSyncProgress: true);
       await stopHosting();
       return;
     }
 
     try {
-      _originalBluetoothName ??= await _systemChannel.invokeMethod('getBluetoothName');
-      await _systemChannel.invokeMethod('setBluetoothName', {'name': 'FLD'});
+      if (!isBackgroundIsolate) {
+        _originalBluetoothName ??= await _systemChannel.invokeMethod('getBluetoothName');
+        await _systemChannel.invokeMethod('setBluetoothName', {'name': 'FLD'});
+      }
     } catch (e) {
       print("Failed to set BT name: $e");
     }
 
     try {
       state = state.copyWith(syncMessage: 'Starting Hotspot...', clearSyncProgress: true);
+      try {
+        await _host.removeGroup();
+        await Future.delayed(const Duration(milliseconds: 500));
+      } catch (_) {}
+      
       await _host.createGroup(advertise: true);
       if (!state.isHosting || _disposed) {
         await _host.removeGroup();
@@ -514,7 +508,7 @@ class P2pService extends _$P2pService {
     );
 
     try {
-      if (_originalBluetoothName != null) {
+      if (!isBackgroundIsolate && _originalBluetoothName != null) {
         await _systemChannel.invokeMethod('setBluetoothName', {'name': _originalBluetoothName});
       }
     } catch (e) {
@@ -610,12 +604,12 @@ class P2pService extends _$P2pService {
     if (!_isInitialized || state.isConnecting) return;
     try {
       final device = _rawDiscoveredDevices.firstWhere((d) => d.deviceAddress == address);
-      state = state.copyWith(isConnecting: true, syncMessage: 'Connecting to ${device.deviceName}...', clearSyncProgress: true);
+      state = state.copyWith(isConnecting: true, syncMessage: 'Connecting... Please ACCEPT the system Wi-Fi prompt!', clearSyncProgress: true);
       await stopScanning();
       
       // Allow the Android BLE stack a brief moment to settle after stopping the scan 
-      // before initiating a new GATT connection, preventing dropped connection requests.
-      await Future.delayed(const Duration(milliseconds: 500));
+      // before initiating a new GATT connection, preventing dropped connection requests (GATT 133).
+      await Future.delayed(const Duration(milliseconds: 1500));
 
       if (_disposed) {
         state = state.copyWith(isConnecting: false);
@@ -624,7 +618,7 @@ class P2pService extends _$P2pService {
 
       // Ensure Wi-Fi is enabled before attempting to connect
       bool wifiEnabled = await _client.checkWifiEnabled();
-      int wifiRetries = 10;
+      int wifiRetries = 5;
       while (!wifiEnabled && wifiRetries > 0) {
         state = state.copyWith(syncMessage: 'Waiting for Wi-Fi to enable ($wifiRetries)...');
         await Future.delayed(const Duration(seconds: 1));
@@ -636,7 +630,10 @@ class P2pService extends _$P2pService {
         throw Exception("Wi-Fi is disabled. Cannot connect to hotspot.");
       }
 
+      // The plugin's connectWithDevice handles BLE read + Wi-Fi connect.
+      // It will throw a TimeoutException if the user doesn't accept the prompt within 60s.
       await _client.connectWithDevice(device, timeout: const Duration(seconds: 25));
+      
       if (!state.isConnecting || _disposed) {
         await _client.disconnect();
         return;

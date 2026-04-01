@@ -87,4 +87,8 @@ class UiP2pService extends _$UiP2pService {
   void broadcastFile(File file) {
     FlutterBackgroundService().invoke('broadcastFile', {'filePath': file.path});
   }
+
+  void processPayload(String base64Data) {
+    FlutterBackgroundService().invoke('processPayload', {'data': base64Data});
+  }
 }

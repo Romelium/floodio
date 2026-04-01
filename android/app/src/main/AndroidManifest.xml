@@ -16,7 +16,7 @@
     <uses-permission android:maxSdkVersion="30" android:name="android.permission.BLUETOOTH_ADMIN" />
 
     <!-- Wi-Fi Direct - Android 13+ -->
-    <uses-permission android:name="android.permission.NEARBY_WIFI_DEVICES" android:usesPermissionFlags="neverForLocation" tools:targetApi="tiramisu" />
+    <uses-permission android:name="android.permission.NEARBY_WIFI_DEVICES" tools:targetApi="tiramisu" />
 
     <!-- Wi-Fi Direct - Android 12 and older -->
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />

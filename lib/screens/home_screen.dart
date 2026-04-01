@@ -4374,31 +4374,30 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
         onComplete: () => setState(() => _showTutorial = false),
         child: Scaffold(
         appBar: AppBar(
-          title: Row(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Flexible(
-                child: Text(
+          title: downloadProgress.isDownloading
+              ? Row(
+                  children: [
+                    const Text(
+                      'FLOODIO',
+                      style: TextStyle(letterSpacing: 2, fontWeight: FontWeight.w900),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Downloading map: ${(downloadProgress.percentage * 100).toStringAsFixed(1)}%',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.normal,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                )
+              : const Text(
                   'FLOODIO',
                   style: TextStyle(letterSpacing: 2, fontWeight: FontWeight.w900),
-                  overflow: TextOverflow.ellipsis,
                 ),
-              ),
-              const SizedBox(width: 12),
-              if (downloadProgress.isDownloading)
-                Flexible(
-                  child: Text(
-                    'Downloading map: ${(downloadProgress.percentage * 100).toStringAsFixed(1)}%',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.normal,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-            ],
-          ),
           bottom: downloadProgress.isDownloading
               ? PreferredSize(
                   preferredSize: const Size.fromHeight(4.0),

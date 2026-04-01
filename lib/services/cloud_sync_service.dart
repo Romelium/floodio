@@ -11,7 +11,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../protos/models.pb.dart' as pb;
 import '../providers/database_provider.dart';
-import '../providers/p2p_provider.dart';
+import '../providers/ui_p2p_provider.dart';
 
 part 'cloud_sync_service.g.dart';
 
@@ -361,7 +361,7 @@ class CloudSyncService extends _$CloudSyncService {
 
       for (final row in response) {
         final encoded = row['payload_base64'] as String;
-        await ref.read(p2pServiceProvider.notifier).processPayload(encoded);
+        ref.read(uiP2pServiceProvider.notifier).processPayload(encoded);
       }
       
       print('CloudSync: Downloaded new data from the cloud.');

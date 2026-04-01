@@ -94,7 +94,7 @@ Future<void> requestBatteryOptimizationExemption() async {
   }
 }
 
-Future<bool> ensureServicesEnabled() async {
+Future<bool> ensureServicesEnabled({bool isHosting = false}) async {
   if (!Platform.isAndroid) return true;
   final dummy = FlutterP2pHost();
   bool loc = await dummy.checkLocationEnabled();
@@ -102,10 +102,14 @@ Future<bool> ensureServicesEnabled() async {
     try { await dummy.enableLocationServices(); } catch (_) {}
     loc = await dummy.checkLocationEnabled();
   }
-  bool wifi = await dummy.checkWifiEnabled();
-  if (!wifi) {
-    try { await dummy.enableWifiServices(); } catch (_) {}
+  
+  bool wifi = true;
+  if (!isHosting) {
     wifi = await dummy.checkWifiEnabled();
+    if (!wifi) {
+      try { await dummy.enableWifiServices(); } catch (_) {}
+      wifi = await dummy.checkWifiEnabled();
+    }
   }
   bool bt = await dummy.checkBluetoothEnabled();
   if (!bt) {

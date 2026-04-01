@@ -168,6 +168,12 @@ void onStart(ServiceInstance service) async {
     }
   });
 
+  service.on('processPayload').listen((event) {
+    if (event != null && event['data'] != null) {
+      p2pNotifier.processPayload(event['data']);
+    }
+  });
+
   service.on('reloadSettings').listen((_) async {
     await prefs.reload();
     container.invalidate(appSettingsProvider);

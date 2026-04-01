@@ -35,7 +35,7 @@ class _MeshStatusChipState extends ConsumerState<MeshStatusChip> with SingleTick
   Widget build(BuildContext context) {
     final p2pState = ref.watch(uiP2pServiceProvider);
     final isConnected =
-        p2pState.hostState?.isActive == true ||
+        (p2pState.isHosting && p2pState.hostState?.isActive == true) ||
         p2pState.clientState?.isActive == true;
     final isSyncing = p2pState.isSyncing || p2pState.isConnecting;
 

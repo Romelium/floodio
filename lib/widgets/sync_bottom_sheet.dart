@@ -23,7 +23,7 @@ class SyncBottomSheet extends ConsumerWidget {
     final myRegionsAsync = ref.watch(offlineRegionsProvider);
     final myRegions = myRegionsAsync.value ?? [];
 
-    final isConnected = p2pState.hostState?.isActive == true || p2pState.clientState?.isActive == true;
+    final isConnected = (p2pState.isHosting && p2pState.hostState?.isActive == true) || p2pState.clientState?.isActive == true;
     final isBusy = p2pState.isSyncing || p2pState.isConnecting || p2pState.isScanning;
 
     return Container(
@@ -534,7 +534,7 @@ class SyncBottomSheet extends ConsumerWidget {
                                   ? null
                                   : (val) async {
                                       if (val) {
-                                        final enabled = await ensureServicesEnabled();
+                                        final enabled = await ensureServicesEnabled(isHosting: true);
                                         if (enabled) p2pNotifier.startHosting();
                                       } else {
                                         p2pNotifier.stopHosting();
