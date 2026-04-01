@@ -59,9 +59,11 @@ class MeshStatusChip extends ConsumerWidget {
               ),
             const SizedBox(width: 6),
             Text(
-              isConnected
-                  ? (p2pState.hostState?.isActive == true ? 'HOSTING (${p2pState.connectedClients.length})' : 'CONNECTED')
-                  : (p2pState.isAutoSyncing ? 'SEARCHING' : 'OFFLINE'),
+              isSyncing
+                  ? 'SYNCING'
+                  : isConnected
+                      ? (p2pState.hostState?.isActive == true ? 'HOST (${p2pState.connectedClients.length})' : 'CONNECTED')
+                      : (p2pState.isAutoSyncing ? 'SEARCHING' : 'OFFLINE'),
               style: TextStyle(
                 color: isConnected || p2pState.isAutoSyncing ? Colors.white : Theme.of(context).colorScheme.onSurfaceVariant,
                 fontSize: 11,

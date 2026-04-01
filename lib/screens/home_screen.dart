@@ -164,6 +164,52 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
   }
 
   Future<void> _initPermissions() async {
+    final alreadyGranted = await checkAppPermissions();
+    if (!alreadyGranted) {
+      if (!mounted) return;
+      await showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => AlertDialog(
+          title: const Row(
+            children: [
+              Icon(Icons.security, color: Colors.blue),
+              SizedBox(width: 8),
+              Text('Permissions Required'),
+            ],
+          ),
+          content: const SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ListTile(
+                  leading: Icon(Icons.bluetooth),
+                  title: Text('Bluetooth & Nearby Devices'),
+                  subtitle: Text('Used to discover and connect to nearby devices without internet.'),
+                ),
+                ListTile(
+                  leading: Icon(Icons.location_on),
+                  title: Text('Location'),
+                  subtitle: Text('Required by Android to scan for Bluetooth and Wi-Fi Direct devices.'),
+                ),
+                ListTile(
+                  leading: Icon(Icons.notifications),
+                  title: Text('Notifications'),
+                  subtitle: Text('Keeps the background sync service alive so you can receive alerts.'),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            FilledButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Grant Permissions'),
+            ),
+          ],
+        ),
+      );
+    }
+
     final granted = await requestAppPermissions();
     if (!granted && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -173,12 +219,37 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
             label: 'Settings',
             onPressed: () => openAppSettings(),
           ),
-          duration: const Duration(seconds: 5),
+          duration: const Duration(seconds: 8),
           behavior: SnackBarBehavior.floating,
         ),
       );
     } else if (granted) {
-      await requestBatteryOptimizationExemption();
+      if (mounted) {
+        final batteryExempt = await Permission.ignoreBatteryOptimizations.isGranted;
+        if (!batteryExempt) {
+          await showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('Background Sync'),
+              content: const Text('To keep syncing while the app is closed, please allow Floodio to run in the background (ignore battery optimizations).'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Skip'),
+                ),
+                FilledButton(
+                  onPressed: () async {
+                    Navigator.pop(context);
+                    await requestBatteryOptimizationExemption();
+                  },
+                  child: const Text('Allow'),
+                ),
+              ],
+            ),
+          );
+        }
+      }
+
       final service = FlutterBackgroundService();
       if (!(await service.isRunning())) {
         await service.startService();
@@ -189,11 +260,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
     final locationEnabled = await checkLocationServices();
     if (!locationEnabled && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
+        SnackBar(
+          content: const Text(
             'Please enable Location Services (GPS) for Bluetooth discovery.',
           ),
-          duration: Duration(seconds: 5),
+          action: SnackBarAction(
+            label: 'Enable',
+            onPressed: () => Geolocator.openLocationSettings(),
+          ),
+          duration: const Duration(seconds: 8),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -2707,8 +2782,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
             if (ref.watch(uiP2pServiceProvider.select((s) => s.isSyncing)))
               Positioned(
                 top: 16,
-                left: 0,
-                right: 0,
+                left: 16,
+                right: 16,
                 child: Center(
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -2735,12 +2810,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                           ),
                         ),
                         const SizedBox(width: 8),
-                        Text(
-                          'Syncing data...',
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.bold,
-                            color: Theme.of(context).colorScheme.onPrimaryContainer,
+                        Flexible(
+                          child: Text(
+                            ref.watch(uiP2pServiceProvider.select((s) => s.syncMessage)) ?? 'Syncing data...',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                              color: Theme.of(context).colorScheme.onPrimaryContainer,
+                            ),
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ],
@@ -2824,25 +2902,28 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
           Container(
             width: double.infinity,
             color: Theme.of(context).colorScheme.primaryContainer,
-            padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 16),
+            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 SizedBox(
-                  width: 12,
-                  height: 12,
+                  width: 14,
+                  height: 14,
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
                     color: Theme.of(context).colorScheme.onPrimaryContainer,
                   ),
                 ),
                 const SizedBox(width: 8),
-                Text(
-                  'Syncing data...',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: Theme.of(context).colorScheme.onPrimaryContainer,
+                Flexible(
+                  child: Text(
+                    ref.watch(uiP2pServiceProvider.select((s) => s.syncMessage)) ?? 'Syncing data...',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).colorScheme.onPrimaryContainer,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],
