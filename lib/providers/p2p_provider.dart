@@ -21,10 +21,14 @@ import '../protos/models.pb.dart' as pb;
 import '../services/map_cache_service.dart';
 import '../utils/bloom_filter.dart';
 import 'database_provider.dart';
+import 'local_user_provider.dart'; // <-- Added import
 import 'offline_regions_provider.dart';
 import 'settings_provider.dart';
 
 part 'p2p_provider.g.dart';
+
+// A unique UUID specifically for the Floodio app's BLE discovery
+const String _floodioServiceUuid = "0f0540bd-4a04-46d0-b90d-b0447453ec3a";
 
 class P2pState {
   final bool isHosting;
@@ -166,7 +170,7 @@ class P2pState {
   }
 }
 
-@Riverpod(keepAlive: true, dependencies: [database, OfflineRegions, CryptoService, mapCacheService, sharedPreferences])
+@Riverpod(keepAlive: true, dependencies: [database, OfflineRegions, CryptoService, mapCacheService, sharedPreferences, LocalUserController])
 class P2pService extends _$P2pService {
   FlutterP2pHost? _host;
   FlutterP2pClient? _client;
@@ -286,12 +290,20 @@ class P2pService extends _$P2pService {
 
     state = state.copyWith(isHosting: true, syncMessage: 'Initializing host...');
 
-    _host = FlutterP2pHost();
+    // Fetch the user's name to broadcast to peers
+    final localUser = await ref.read(localUserControllerProvider.future);
+    final username = localUser.name.isNotEmpty ? localUser.name : "Floodio User";
+
+    // Initialize with custom UUID and Username
+    _host = FlutterP2pHost(
+      serviceUuid: _floodioServiceUuid,
+      username: username,
+    );
     await _host!.initialize();
 
     bool p2pGranted = await _host!.checkP2pPermissions();
     if (!p2pGranted) p2pGranted = await _host!.askP2pPermissions();
-    
+
     bool btGranted = await _host!.checkBluetoothPermissions();
     if (!btGranted) btGranted = await _host!.askBluetoothPermissions();
 
@@ -392,12 +404,20 @@ class P2pService extends _$P2pService {
 
     state = state.copyWith(isScanning: true, discoveredDevices: [], syncMessage: 'Initializing scanner...');
 
-    _client = FlutterP2pClient();
+    // Fetch the user's name to broadcast to peers
+    final localUser = await ref.read(localUserControllerProvider.future);
+    final username = localUser.name.isNotEmpty ? localUser.name : "Floodio User";
+
+    // Initialize with custom UUID and Username
+    _client = FlutterP2pClient(
+      serviceUuid: _floodioServiceUuid,
+      username: username,
+    );
     await _client!.initialize();
 
     bool p2pGranted = await _client!.checkP2pPermissions();
     if (!p2pGranted) p2pGranted = await _client!.askP2pPermissions();
-    
+
     bool btGranted = await _client!.checkBluetoothPermissions();
     if (!btGranted) btGranted = await _client!.askBluetoothPermissions();
 
