@@ -2918,6 +2918,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                             width: 14,
                             height: 14,
                             child: CircularProgressIndicator(
+                              value: ref.watch(uiP2pServiceProvider.select((s) => s.syncProgress)),
                               strokeWidth: 2,
                               color: Theme.of(context).colorScheme.onPrimaryContainer,
                             ),
@@ -3049,6 +3050,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                         width: 14,
                         height: 14,
                         child: CircularProgressIndicator(
+                          value: ref.watch(uiP2pServiceProvider.select((s) => s.syncProgress)),
                           strokeWidth: 2,
                           color: Theme.of(context).colorScheme.onPrimaryContainer,
                         ),

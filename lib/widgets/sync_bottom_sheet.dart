@@ -176,10 +176,13 @@ class SyncBottomSheet extends ConsumerWidget {
                         Row(
                           children: [
                             if (isBusy)
-                              const SizedBox(
+                              SizedBox(
                                 width: 24,
                                 height: 24,
-                                child: CircularProgressIndicator(strokeWidth: 3),
+                                child: CircularProgressIndicator(
+                                  value: p2pState.syncProgress,
+                                  strokeWidth: 3
+                                ),
                               )
                             else
                               Icon(
@@ -202,6 +205,14 @@ class SyncBottomSheet extends ConsumerWidget {
                           ],
                         ),
                         const SizedBox(height: 12),
+                        if (isBusy && p2pState.syncProgress != null) ...[
+                          LinearProgressIndicator(
+                            value: p2pState.syncProgress,
+                            borderRadius: BorderRadius.circular(4),
+                            minHeight: 6,
+                          ),
+                          const SizedBox(height: 12),
+                        ],
                         Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(

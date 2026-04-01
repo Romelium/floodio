@@ -62,6 +62,7 @@ class _MeshStatusChipState extends ConsumerState<MeshStatusChip> with SingleTick
               width: 14,
               height: 14,
               child: CircularProgressIndicator(
+                value: p2pState.syncProgress,
                 strokeWidth: 2,
                 color: isConnected || p2pState.isAutoSyncing ? Colors.white : Theme.of(context).colorScheme.onSurfaceVariant,
               ),
@@ -75,7 +76,7 @@ class _MeshStatusChipState extends ConsumerState<MeshStatusChip> with SingleTick
           const SizedBox(width: 6),
           Text(
             isSyncing
-                ? 'SYNCING'
+                ? (p2pState.syncProgress != null ? 'SYNCING (${(p2pState.syncProgress! * 100).toInt()}%)' : 'SYNCING')
                 : isConnected
                     ? (p2pState.hostState?.isActive == true ? 'HOST (${p2pState.connectedClients.length})' : 'CONNECTED')
                     : (p2pState.isAutoSyncing ? 'SEARCHING' : 'OFFLINE'),

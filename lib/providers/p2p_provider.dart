@@ -37,6 +37,7 @@ class P2pState {
   final bool isConnecting;
   final bool isAutoSyncing;
   final String? syncMessage;
+  final double? syncProgress;
   final DateTime? lastSyncTime;
   final AppHostState? hostState;
   final AppClientState? clientState;
@@ -52,6 +53,7 @@ class P2pState {
     this.isConnecting = false,
     this.isAutoSyncing = false,
     this.syncMessage,
+    this.syncProgress,
     this.lastSyncTime,
     this.hostState,
     this.clientState,
@@ -68,6 +70,8 @@ class P2pState {
     bool? isConnecting,
     bool? isAutoSyncing,
     String? syncMessage,
+    double? syncProgress,
+    bool clearSyncProgress = false,
     DateTime? lastSyncTime,
     AppHostState? hostState,
     bool clearHostState = false,
@@ -85,6 +89,7 @@ class P2pState {
       isConnecting: isConnecting ?? this.isConnecting,
       isAutoSyncing: isAutoSyncing ?? this.isAutoSyncing,
       syncMessage: syncMessage ?? this.syncMessage,
+      syncProgress: clearSyncProgress ? null : (syncProgress ?? this.syncProgress),
       lastSyncTime: lastSyncTime ?? this.lastSyncTime,
       hostState: clearHostState ? null : (hostState ?? this.hostState),
       clientState: clearClientState ? null : (clientState ?? this.clientState),
@@ -103,6 +108,7 @@ class P2pState {
       'isConnecting': isConnecting,
       'isAutoSyncing': isAutoSyncing,
       'syncMessage': syncMessage,
+      'syncProgress': syncProgress,
       'lastSyncTime': lastSyncTime?.millisecondsSinceEpoch,
       'hostState': hostState != null ? {
         'isActive': hostState!.isActive,
@@ -137,6 +143,7 @@ class P2pState {
       isConnecting: map['isConnecting'] ?? false,
       isAutoSyncing: map['isAutoSyncing'] ?? false,
       syncMessage: map['syncMessage'],
+      syncProgress: map['syncProgress']?.toDouble(),
       lastSyncTime: map['lastSyncTime'] != null ? DateTime.fromMillisecondsSinceEpoch(map['lastSyncTime']) : null,
       hostState: map['hostState'] != null ? AppHostState.fromMap(Map<String, dynamic>.from(map['hostState'])) : null,
       clientState: map['clientState'] != null ? AppClientState.fromMap(Map<String, dynamic>.from(map['clientState'])) : null,
@@ -157,6 +164,7 @@ class P2pState {
       other.isConnecting == isConnecting &&
       other.isAutoSyncing == isAutoSyncing &&
       other.syncMessage == syncMessage &&
+      other.syncProgress == syncProgress &&
       other.lastSyncTime == lastSyncTime &&
       other.hostState == hostState &&
       other.clientState == clientState &&
@@ -170,7 +178,7 @@ class P2pState {
   int get hashCode {
     return Object.hash(
       isHosting, isScanning, isSyncing, isConnecting, isAutoSyncing,
-      syncMessage, lastSyncTime, hostState, clientState,
+      syncMessage, syncProgress, lastSyncTime, hostState, clientState,
       Object.hashAll(discoveredDevices), Object.hashAll(connectedClients),
       Object.hashAll(receivedTexts), Object.hashAll(peerOfflineRegions),
     );
@@ -223,11 +231,11 @@ class P2pService extends _$P2pService {
   Future<void> toggleAutoSync() async {
     _autoSyncTimer?.cancel();
     if (state.isAutoSyncing) {
-      state = state.copyWith(isAutoSyncing: false, syncMessage: 'Auto-sync disabled.');
+      state = state.copyWith(isAutoSyncing: false, syncMessage: 'Auto-sync disabled.', clearSyncProgress: true);
       await stopHosting();
       await disconnect();
     } else {
-      state = state.copyWith(isAutoSyncing: true, syncMessage: 'Auto-sync enabled. Starting...');
+      state = state.copyWith(isAutoSyncing: true, syncMessage: 'Auto-sync enabled. Starting...', clearSyncProgress: true);
       _idleTicks = 0;
       _runAutoSyncCycle();
     }
@@ -266,7 +274,7 @@ class P2pService extends _$P2pService {
     // Alternate role
     if (_lastRoleWasHost) {
       _lastRoleWasHost = false;
-      state = state.copyWith(syncMessage: 'Switching to Scanner...');
+      state = state.copyWith(syncMessage: 'Switching to Scanner...', clearSyncProgress: true);
       await stopHosting();
       if (!state.isAutoSyncing || _disposed) return;
       await Future.delayed(const Duration(seconds: 2)); // Give OS time to turn off hotspot and turn on Wi-Fi
@@ -274,7 +282,7 @@ class P2pService extends _$P2pService {
       await startScanning();
     } else {
       _lastRoleWasHost = true;
-      state = state.copyWith(syncMessage: 'Switching to Host...');
+      state = state.copyWith(syncMessage: 'Switching to Host...', clearSyncProgress: true);
       await disconnect(); // stops scanning
       if (!state.isAutoSyncing || _disposed) return;
       await Future.delayed(const Duration(seconds: 2)); // Give OS time to reset Wi-Fi state
@@ -297,7 +305,7 @@ class P2pService extends _$P2pService {
     if (_host != null) return;
     await disconnect(); // Ensure client is fully stopped before hosting
 
-    state = state.copyWith(isHosting: true, syncMessage: 'Initializing host...');
+    state = state.copyWith(isHosting: true, syncMessage: 'Initializing host...', clearSyncProgress: true);
 
     // Fetch the user's name to broadcast to peers
     final localUser = await ref.read(localUserControllerProvider.future);
@@ -315,7 +323,7 @@ class P2pService extends _$P2pService {
     bool storageGranted = await _host!.checkStoragePermission();
 
     if (!p2pGranted || !btGranted || !storageGranted) {
-      state = state.copyWith(syncMessage: 'Permissions not granted.');
+      state = state.copyWith(syncMessage: 'Permissions not granted.', clearSyncProgress: true);
       await stopHosting();
       return;
     }
@@ -329,14 +337,14 @@ class P2pService extends _$P2pService {
     if (!btEnabled) _host!.enableBluetoothServices();
 
     if (!locEnabled || !wifiEnabled || !btEnabled) {
-      state = state.copyWith(syncMessage: 'Waiting for services to enable...');
+      state = state.copyWith(syncMessage: 'Waiting for services to enable...', clearSyncProgress: true);
       await Future.delayed(const Duration(seconds: 2));
       locEnabled = await _host!.checkLocationEnabled();
       wifiEnabled = await _host!.checkWifiEnabled();
       btEnabled = await _host!.checkBluetoothEnabled();
       
       if (!locEnabled || !wifiEnabled || !btEnabled) {
-        state = state.copyWith(syncMessage: 'Services (Wi-Fi/BT/Loc) not enabled.');
+        state = state.copyWith(syncMessage: 'Services (Wi-Fi/BT/Loc) not enabled.', clearSyncProgress: true);
         await stopHosting();
         return;
       }
@@ -350,7 +358,7 @@ class P2pService extends _$P2pService {
         hostIpAddress: hotspotState.hostIpAddress,
       ));
       if (hotspotState.isActive) {
-        state = state.copyWith(syncMessage: 'Hotspot Active. Waiting for peers...');
+        state = state.copyWith(syncMessage: 'Hotspot Active. Waiting for peers...', clearSyncProgress: true);
       }
     });
 
@@ -359,10 +367,10 @@ class P2pService extends _$P2pService {
       final appClients = clients.map((c) => AppClientInfo(id: c.id, username: c.username, isHost: c.isHost)).toList();
       state = state.copyWith(connectedClients: appClients);
       if (clients.length > previousCount) {
-        state = state.copyWith(syncMessage: 'Client connected. Initiating 2-way sync...');
+        state = state.copyWith(syncMessage: 'Client connected. Initiating 2-way sync...', clearSyncProgress: true);
         _sendManifest();
       } else if (clients.isEmpty) {
-        state = state.copyWith(isSyncing: false, syncMessage: 'Waiting for clients...');
+        state = state.copyWith(isSyncing: false, syncMessage: 'Waiting for clients...', clearSyncProgress: true);
         if (state.isAutoSyncing && previousCount > 0 && !_disposed) {
           _idleTicks = 0;
           _autoSyncTimer?.cancel();
@@ -387,14 +395,14 @@ class P2pService extends _$P2pService {
     if (host == null || _disposed) return;
 
     try {
-      state = state.copyWith(syncMessage: 'Starting Hotspot...');
+      state = state.copyWith(syncMessage: 'Starting Hotspot...', clearSyncProgress: true);
       await host.createGroup(advertise: true);
       if (!state.isHosting || _disposed) {
         await host.removeGroup();
       }
     } catch (e) {
       print("Failed to create group: $e");
-      state = state.copyWith(syncMessage: 'Failed to start host: $e');
+      state = state.copyWith(syncMessage: 'Failed to start host: $e', clearSyncProgress: true);
       await stopHosting();
     }
   }
@@ -413,7 +421,8 @@ class P2pService extends _$P2pService {
       isSyncing: false,
       clearHostState: true,
       connectedClients: [],
-      syncMessage: 'Host stopped.'
+      syncMessage: 'Host stopped.',
+      clearSyncProgress: true
     );
   }
 
@@ -421,7 +430,7 @@ class P2pService extends _$P2pService {
     if (_client != null) return;
     await stopHosting(); // Ensure host is fully stopped before scanning
 
-    state = state.copyWith(isScanning: true, discoveredDevices: [], syncMessage: 'Initializing scanner...');
+    state = state.copyWith(isScanning: true, discoveredDevices: [], syncMessage: 'Initializing scanner...', clearSyncProgress: true);
 
     // Fetch the user's name to broadcast to peers
     final localUser = await ref.read(localUserControllerProvider.future);
@@ -439,7 +448,7 @@ class P2pService extends _$P2pService {
     bool storageGranted = await _client!.checkStoragePermission();
 
     if (!p2pGranted || !btGranted || !storageGranted) {
-      state = state.copyWith(isScanning: false, syncMessage: 'Permissions not granted.');
+      state = state.copyWith(isScanning: false, syncMessage: 'Permissions not granted.', clearSyncProgress: true);
       await disconnect();
       return;
     }
@@ -453,14 +462,14 @@ class P2pService extends _$P2pService {
     if (!btEnabled) _client!.enableBluetoothServices();
 
     if (!locEnabled || !wifiEnabled || !btEnabled) {
-      state = state.copyWith(syncMessage: 'Waiting for services to enable...');
+      state = state.copyWith(syncMessage: 'Waiting for services to enable...', clearSyncProgress: true);
       await Future.delayed(const Duration(seconds: 2));
       locEnabled = await _client!.checkLocationEnabled();
       wifiEnabled = await _client!.checkWifiEnabled();
       btEnabled = await _client!.checkBluetoothEnabled();
       
       if (!locEnabled || !wifiEnabled || !btEnabled) {
-        state = state.copyWith(isScanning: false, syncMessage: 'Services (Wi-Fi/BT/Loc) not enabled.');
+        state = state.copyWith(isScanning: false, syncMessage: 'Services (Wi-Fi/BT/Loc) not enabled.', clearSyncProgress: true);
         await disconnect();
         return;
       }
@@ -475,10 +484,10 @@ class P2pService extends _$P2pService {
         hostIpAddress: hotspotState.hostIpAddress,
       ));
       if (!wasActive && hotspotState.isActive) {
-        state = state.copyWith(syncMessage: 'Connected to host. Initiating 2-way sync...');
+        state = state.copyWith(syncMessage: 'Connected to host. Initiating 2-way sync...', clearSyncProgress: true);
         _sendManifest();
       } else if (wasActive && !hotspotState.isActive) {
-        state = state.copyWith(isSyncing: false, syncMessage: 'Disconnected from host.');
+        state = state.copyWith(isSyncing: false, syncMessage: 'Disconnected from host.', clearSyncProgress: true);
         if (state.isAutoSyncing && !_disposed) {
           _idleTicks = 0;
           _autoSyncTimer?.cancel();
@@ -503,7 +512,7 @@ class P2pService extends _$P2pService {
     if (client == null || _disposed) return;
 
     try {
-      state = state.copyWith(syncMessage: 'Scanning for nearby devices...');
+      state = state.copyWith(syncMessage: 'Scanning for nearby devices...', clearSyncProgress: true);
       final sub = await client.startScan((devices) {
         _rawDiscoveredDevices = devices;
         final appDevices = devices.map((d) => AppDiscoveredDevice(deviceAddress: d.deviceAddress, deviceName: d.deviceName)).toList();
@@ -518,7 +527,7 @@ class P2pService extends _$P2pService {
       }
     } catch (e) {
       print("Failed to start scan: $e");
-      state = state.copyWith(isScanning: false, syncMessage: 'Scan failed: $e');
+      state = state.copyWith(isScanning: false, syncMessage: 'Scan failed: $e', clearSyncProgress: true);
     }
   }
 
@@ -526,7 +535,7 @@ class P2pService extends _$P2pService {
     if (_client == null || state.isConnecting) return;
     try {
       final device = _rawDiscoveredDevices.firstWhere((d) => d.deviceAddress == address);
-      state = state.copyWith(isConnecting: true, syncMessage: 'Connecting to ${device.deviceName}...');
+      state = state.copyWith(isConnecting: true, syncMessage: 'Connecting to ${device.deviceName}...', clearSyncProgress: true);
       await stopScanning();
 
       final client = _client;
@@ -540,10 +549,10 @@ class P2pService extends _$P2pService {
         await client.disconnect();
         return;
       }
-      state = state.copyWith(isConnecting: false);
+      state = state.copyWith(isConnecting: false, clearSyncProgress: true);
     } catch (e) {
       print("Connection failed: $e");
-      state = state.copyWith(isConnecting: false, syncMessage: 'Connection failed: $e');
+      state = state.copyWith(isConnecting: false, syncMessage: 'Connection failed: $e', clearSyncProgress: true);
       if (state.isAutoSyncing && !_disposed) {
         // If connection failed, don't wait for the full cycle, try switching roles soon
         _autoSyncTimer?.cancel();
@@ -574,7 +583,8 @@ class P2pService extends _$P2pService {
       discoveredDevices: [],
       isConnecting: false,
       isSyncing: false,
-      syncMessage: 'Disconnected.'
+      syncMessage: 'Disconnected.',
+      clearSyncProgress: true
     );
   }
 
@@ -597,7 +607,7 @@ class P2pService extends _$P2pService {
           await _handleRequestImage(json['imageId']);
           return;
         } else if (json['type'] == 'up_to_date') {
-          state = state.copyWith(isSyncing: false, lastSyncTime: DateTime.now(), syncMessage: 'Up to date.');
+          state = state.copyWith(isSyncing: false, lastSyncTime: DateTime.now(), syncMessage: 'Up to date.', clearSyncProgress: true);
           return;
         }
       }
@@ -630,15 +640,19 @@ class P2pService extends _$P2pService {
         isDownloadingAny = true;
         final dir = await getApplicationDocumentsDirectory();
 
-        state = state.copyWith(isSyncing: true, syncMessage: 'Downloading ${file.info.name}...');
+        state = state.copyWith(isSyncing: true, syncMessage: 'Downloading ${file.info.name}...', syncProgress: 0.0);
 
         p2pInstance.downloadFile(
           file.info.id,
           '${dir.path}/',
           onProgress: (progress) {
             _idleTicks = 0; // Reset idle timer during download
-            if (progress.progressPercent.toInt() % 10 == 0) {
-              state = state.copyWith(isSyncing: true, syncMessage: 'Downloading file: ${progress.progressPercent.toStringAsFixed(0)}%');
+            if (progress.progressPercent.toInt() % 5 == 0) {
+              state = state.copyWith(
+                isSyncing: true, 
+                syncMessage: 'Downloading file: ${progress.progressPercent.toStringAsFixed(0)}%',
+                syncProgress: progress.progressPercent / 100.0,
+              );
             }
           }
         );
@@ -647,7 +661,7 @@ class P2pService extends _$P2pService {
           final dir = await getApplicationDocumentsDirectory();
           final downloadedFile = File('${dir.path}/${file.info.name}');
           if (await downloadedFile.exists()) {
-            state = state.copyWith(isSyncing: true, syncMessage: 'Unpacking map...');
+            state = state.copyWith(isSyncing: true, syncMessage: 'Unpacking map...', clearSyncProgress: true);
             try {
               final mapCache = ref.read(mapCacheServiceProvider);
               await mapCache.unpackMap(downloadedFile);
@@ -671,13 +685,13 @@ class P2pService extends _$P2pService {
                 }
               }
 
-              state = state.copyWith(isSyncing: false, syncMessage: 'Map updated successfully.');
+              state = state.copyWith(isSyncing: false, syncMessage: 'Map updated successfully.', clearSyncProgress: true);
               
               // Trigger a manifest sync so other connected peers know we have a new map
               _sendManifest();
             } catch (e) {
               print("Error unpacking map: $e");
-              state = state.copyWith(isSyncing: false, syncMessage: 'Failed to unpack map.');
+              state = state.copyWith(isSyncing: false, syncMessage: 'Failed to unpack map.', clearSyncProgress: true);
             } finally {
               if (await downloadedFile.exists()) {
                 await downloadedFile.delete();
@@ -695,9 +709,9 @@ class P2pService extends _$P2pService {
     }
 
     if (isDownloadingAny) {
-      state = state.copyWith(isSyncing: true);
+      // state = state.copyWith(isSyncing: true); // Handled in onProgress
     } else if (!isDownloadingAny && state.isSyncing && state.syncMessage?.startsWith('Downloading') == true) {
-       state = state.copyWith(isSyncing: false, syncMessage: 'Downloads complete.');
+       state = state.copyWith(isSyncing: false, syncMessage: 'Downloads complete.', clearSyncProgress: true);
     }
   }
 
@@ -746,23 +760,23 @@ class P2pService extends _$P2pService {
       };
 
       await broadcastText(jsonEncode(manifest));
-      state = state.copyWith(syncMessage: 'Sync data sent. Waiting for peer...');
+      state = state.copyWith(syncMessage: 'Sync data sent. Waiting for peer...', clearSyncProgress: true);
       
       // Add a timeout to clear isSyncing if no response
       Future.delayed(const Duration(seconds: 15), () {
         if (state.isSyncing && state.syncMessage == 'Sync data sent. Waiting for peer...') {
-          state = state.copyWith(isSyncing: false, syncMessage: 'Sync timeout or up to date.');
+          state = state.copyWith(isSyncing: false, syncMessage: 'Sync timeout or up to date.', clearSyncProgress: true);
         }
       });
     } catch (e) {
       print("Error sending manifest: $e");
-      state = state.copyWith(isSyncing: false, syncMessage: 'Error sending sync data.');
+      state = state.copyWith(isSyncing: false, syncMessage: 'Error sending sync data.', clearSyncProgress: true);
     }
   }
 
   Future<void> _handleManifest(Map<String, dynamic> json) async {
     _idleTicks = 0;
-    state = state.copyWith(isSyncing: true, syncMessage: 'Comparing data...');
+    state = state.copyWith(isSyncing: true, syncMessage: 'Comparing data...', clearSyncProgress: true);
     try {
       final peerRegionsJson = json['offlineRegions'] as List<dynamic>? ?? [];
       final peerRegions = peerRegionsJson.map((e) => OfflineRegion.fromJson(Map<String, dynamic>.from(e))).toList();
@@ -812,11 +826,11 @@ class P2pService extends _$P2pService {
 
       if (newHazards.isEmpty && newNews.isEmpty && newProfiles.isEmpty && newDeleted.isEmpty && newAreas.isEmpty && newPaths.isEmpty && newDelegations.isEmpty && newRevocations.isEmpty) {
         await broadcastText(jsonEncode({'type': 'up_to_date'}));
-        state = state.copyWith(isSyncing: false, lastSyncTime: DateTime.now(), syncMessage: 'Up to date.');
+        state = state.copyWith(isSyncing: false, lastSyncTime: DateTime.now(), syncMessage: 'Up to date.', clearSyncProgress: true);
         return;
       }
 
-      state = state.copyWith(syncMessage: 'Sending ${newHazards.length} markers, ${newNews.length} news, ${newProfiles.length} profiles, ${newAreas.length} areas, ${newPaths.length} paths, ${newDeleted.length} deletions, ${newDelegations.length} delegations, ${newRevocations.length} revocations...');
+      state = state.copyWith(syncMessage: 'Sending ${newHazards.length} markers, ${newNews.length} news, ${newProfiles.length} profiles, ${newAreas.length} areas, ${newPaths.length} paths, ${newDeleted.length} deletions, ${newDelegations.length} delegations, ${newRevocations.length} revocations...', clearSyncProgress: true);
 
       final payload = pb.SyncPayload();
 
@@ -932,12 +946,12 @@ class P2pService extends _$P2pService {
 
       final encoded = base64Encode(payload.writeToBuffer());
       await broadcastText(jsonEncode({'type': 'payload', 'data': encoded}));
-      state = state.copyWith(syncMessage: 'Data sent successfully.');
+      state = state.copyWith(syncMessage: 'Data sent successfully.', clearSyncProgress: true);
     } catch (e) {
       print("Error handling manifest: $e");
-      state = state.copyWith(syncMessage: 'Error sending data.');
+      state = state.copyWith(syncMessage: 'Error sending data.', clearSyncProgress: true);
     } finally {
-      state = state.copyWith(isSyncing: false);
+      state = state.copyWith(isSyncing: false, clearSyncProgress: true);
     }
   }
 
@@ -950,7 +964,7 @@ class P2pService extends _$P2pService {
   }
 
   Future<void> broadcastMapRegion(OfflineRegion? region) async {
-    state = state.copyWith(isSyncing: true, syncMessage: 'Packing offline map for transfer...');
+    state = state.copyWith(isSyncing: true, syncMessage: 'Packing offline map for transfer...', clearSyncProgress: true);
     try {
       final mapCache = ref.read(mapCacheServiceProvider);
       final packFile = await mapCache.packMap(region: region);
@@ -960,30 +974,30 @@ class P2pService extends _$P2pService {
       } else if (_client != null && state.clientState?.isActive == true) {
         await _client!.broadcastFile(packFile);
       }
-      state = state.copyWith(isSyncing: false, syncMessage: 'Map file sent.');
+      state = state.copyWith(isSyncing: false, syncMessage: 'Map file sent.', clearSyncProgress: true);
     } catch (e) {
       print("Error sending map: $e");
-      state = state.copyWith(isSyncing: false, syncMessage: 'Error sending map.');
+      state = state.copyWith(isSyncing: false, syncMessage: 'Error sending map.', clearSyncProgress: true);
     }
   }
 
   Future<void> _handlePayload(Map<String, dynamic> json) async {
     _idleTicks = 0;
-    state = state.copyWith(isSyncing: true, syncMessage: 'Receiving data...');
+    state = state.copyWith(isSyncing: true, syncMessage: 'Receiving data...', clearSyncProgress: true);
     try {
       if (json['data'] == null) {
-        state = state.copyWith(syncMessage: 'Invalid payload received.');
+        state = state.copyWith(syncMessage: 'Invalid payload received.', clearSyncProgress: true);
         return;
       }
       final data = base64Decode(json['data']);
       final payload = pb.SyncPayload.fromBuffer(data);
 
       if (payload.markers.isEmpty && payload.news.isEmpty && payload.profiles.isEmpty && payload.deletedItems.isEmpty && payload.areas.isEmpty && payload.paths.isEmpty && payload.delegations.isEmpty && payload.revokedDelegations.isEmpty) {
-        state = state.copyWith(syncMessage: 'Empty payload received.');
+        state = state.copyWith(syncMessage: 'Empty payload received.', clearSyncProgress: true);
         return;
       }
 
-      state = state.copyWith(syncMessage: 'Verifying signatures...');
+      state = state.copyWith(syncMessage: 'Verifying signatures...', clearSyncProgress: true);
 
       final db = ref.read(databaseProvider);
       await ref.read(cryptoServiceProvider.future); // Ensure crypto is initialized
@@ -1311,7 +1325,7 @@ class P2pService extends _$P2pService {
         }
       }
 
-      state = state.copyWith(syncMessage: 'Saving to database...');
+      state = state.copyWith(syncMessage: 'Saving to database...', clearSyncProgress: true);
 
       await db.batch((batch) {
         batch.insertAll(db.hazardMarkers, validMarkers, mode: InsertMode.insertOrReplace);
@@ -1521,14 +1535,15 @@ class P2pService extends _$P2pService {
       state = state.copyWith(
         isSyncing: false,
         lastSyncTime: DateTime.now(),
-        syncMessage: 'Successfully synced ${validMarkers.length} markers, ${validNews.length} news, ${validProfiles.length} profiles, ${validAreas.length} areas, ${validPaths.length} paths, ${validDeleted.length} deletions, ${validDelegations.length} delegations, ${validRevocations.length} revocations.'
+        syncMessage: 'Successfully synced ${validMarkers.length} markers, ${validNews.length} news, ${validProfiles.length} profiles, ${validAreas.length} areas, ${validPaths.length} paths, ${validDeleted.length} deletions, ${validDelegations.length} delegations, ${validRevocations.length} revocations.',
+        clearSyncProgress: true
       );
       print("Successfully synced ${payload.markers.length} markers, ${payload.news.length} news, ${payload.profiles.length} profiles, ${payload.areas.length} areas, ${payload.paths.length} paths, ${payload.deletedItems.length} deletions, ${payload.delegations.length} delegations, ${payload.revokedDelegations.length} revocations.");
     } catch (e) {
       print("Error handling payload: $e");
-      state = state.copyWith(syncMessage: 'Error syncing data.');
+      state = state.copyWith(syncMessage: 'Error syncing data.', clearSyncProgress: true);
     } finally {
-      state = state.copyWith(isSyncing: false);
+      state = state.copyWith(isSyncing: false, clearSyncProgress: true);
     }
   }
 
