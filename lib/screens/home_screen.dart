@@ -31,7 +31,6 @@ import '../providers/location_provider.dart';
 import '../providers/map_downloader_provider.dart';
 import '../providers/news_item_provider.dart';
 import '../providers/offline_regions_provider.dart';
-import '../providers/p2p_provider.dart';
 import '../providers/path_provider.dart';
 import '../providers/revoked_delegation_provider.dart';
 import '../providers/settings_provider.dart';
@@ -485,6 +484,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
               ref
                   .read(hazardMarkersControllerProvider.notifier)
                   .deleteMarker(id);
+              final timestamp = DateTime.now().millisecondsSinceEpoch;
+              final payload = pb.SyncPayload();
+              payload.deletedItems.add(pb.DeletedItem(id: id, timestamp: Int64(timestamp)));
+              final encoded = base64Encode(payload.writeToBuffer());
+              ref.read(uiP2pServiceProvider.notifier).broadcastText(jsonEncode({'type': 'payload', 'data': encoded}));
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
                   content: Text('Hazard marked as resolved.'),
@@ -517,6 +521,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
             onPressed: () {
               Navigator.pop(dialogContext);
               ref.read(areasControllerProvider.notifier).deleteArea(id);
+              final timestamp = DateTime.now().millisecondsSinceEpoch;
+              final payload = pb.SyncPayload();
+              payload.deletedItems.add(pb.DeletedItem(id: id, timestamp: Int64(timestamp)));
+              final encoded = base64Encode(payload.writeToBuffer());
+              ref.read(uiP2pServiceProvider.notifier).broadcastText(jsonEncode({'type': 'payload', 'data': encoded}));
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
                   content: Text('Area marked as resolved.'),
@@ -549,6 +558,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
             onPressed: () {
               Navigator.pop(dialogContext);
               ref.read(pathsControllerProvider.notifier).deletePath(id);
+              final timestamp = DateTime.now().millisecondsSinceEpoch;
+              final payload = pb.SyncPayload();
+              payload.deletedItems.add(pb.DeletedItem(id: id, timestamp: Int64(timestamp)));
+              final encoded = base64Encode(payload.writeToBuffer());
+              ref.read(uiP2pServiceProvider.notifier).broadcastText(jsonEncode({'type': 'payload', 'data': encoded}));
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
                   content: Text('Path marked as resolved.'),
@@ -640,6 +654,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
             onPressed: () {
               Navigator.pop(dialogContext);
               ref.read(newsItemsControllerProvider.notifier).deleteNewsItem(id);
+              final timestamp = DateTime.now().millisecondsSinceEpoch;
+              final payload = pb.SyncPayload();
+              payload.deletedItems.add(pb.DeletedItem(id: id, timestamp: Int64(timestamp)));
+              final encoded = base64Encode(payload.writeToBuffer());
+              ref.read(uiP2pServiceProvider.notifier).broadcastText(jsonEncode({'type': 'payload', 'data': encoded}));
               ScaffoldMessenger.of(
                 context,
               ).showSnackBar(const SnackBar(
@@ -1545,6 +1564,26 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                 await ref
                     .read(hazardMarkersControllerProvider.notifier)
                     .addMarker(newMarker);
+
+                final payload = pb.SyncPayload();
+                payload.markers.add(
+                  pb.HazardMarker(
+                    id: newMarker.id,
+                    latitude: newMarker.latitude,
+                    longitude: newMarker.longitude,
+                    type: newMarker.type,
+                    description: newMarker.description,
+                    timestamp: Int64(newMarker.timestamp),
+                    senderId: newMarker.senderId,
+                    signature: newMarker.signature ?? '',
+                    trustTier: newMarker.trustTier,
+                    imageId: newMarker.imageId ?? '',
+                    expiresAt: Int64(newMarker.expiresAt ?? 0),
+                    isCritical: newMarker.isCritical,
+                  ),
+                );
+                final encoded = base64Encode(payload.writeToBuffer());
+                ref.read(uiP2pServiceProvider.notifier).broadcastText(jsonEncode({'type': 'payload', 'data': encoded}));
               },
               icon: const Icon(Icons.send, size: 18),
               label: const Text('Report'),
@@ -1761,6 +1800,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                     .read(areasControllerProvider.notifier)
                     .addArea(newArea);
 
+                final payload = pb.SyncPayload();
+                final areaMarker = pb.AreaMarker(
+                  id: newArea.id,
+                  type: newArea.type,
+                  description: newArea.description,
+                  timestamp: Int64(newArea.timestamp),
+                  senderId: newArea.senderId,
+                  signature: newArea.signature ?? '',
+                  trustTier: newArea.trustTier,
+                  expiresAt: Int64(newArea.expiresAt ?? 0),
+                  isCritical: newArea.isCritical,
+                );
+                for (final coord in newArea.coordinates) {
+                  areaMarker.coordinates.add(
+                    pb.Coordinate(latitude: coord['lat']!, longitude: coord['lng']!),
+                  );
+                }
+                payload.areas.add(areaMarker);
+                final encoded = base64Encode(payload.writeToBuffer());
+                ref.read(uiP2pServiceProvider.notifier).broadcastText(jsonEncode({'type': 'payload', 'data': encoded}));
+
                 if (!mounted) return;
                 ref.read(drawingControllerProvider.notifier).cancel();
               },
@@ -1970,6 +2030,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                 await ref
                     .read(pathsControllerProvider.notifier)
                     .addPath(newPath);
+
+                final payload = pb.SyncPayload();
+                final pathMarker = pb.PathMarker(
+                  id: newPath.id,
+                  type: newPath.type,
+                  description: newPath.description,
+                  timestamp: Int64(newPath.timestamp),
+                  senderId: newPath.senderId,
+                  signature: newPath.signature ?? '',
+                  trustTier: newPath.trustTier,
+                  expiresAt: Int64(newPath.expiresAt ?? 0),
+                  isCritical: newPath.isCritical,
+                );
+                for (final coord in newPath.coordinates) {
+                  pathMarker.coordinates.add(
+                    pb.Coordinate(latitude: coord['lat']!, longitude: coord['lng']!),
+                  );
+                }
+                payload.paths.add(pathMarker);
+                final encoded = base64Encode(payload.writeToBuffer());
+                ref.read(uiP2pServiceProvider.notifier).broadcastText(jsonEncode({'type': 'payload', 'data': encoded}));
 
                 if (!mounted) return;
                 ref.read(drawingControllerProvider.notifier).cancel();
@@ -2318,6 +2399,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                 await ref
                     .read(newsItemsControllerProvider.notifier)
                     .addNewsItem(newNews);
+
+                final payload = pb.SyncPayload();
+                payload.news.add(
+                  pb.NewsItem(
+                    id: newNews.id,
+                    title: newNews.title,
+                    content: newNews.content,
+                    timestamp: Int64(newNews.timestamp),
+                    senderId: newNews.senderId,
+                    signature: newNews.signature ?? '',
+                    trustTier: newNews.trustTier,
+                    expiresAt: Int64(newNews.expiresAt ?? 0),
+                    imageId: newNews.imageId ?? '',
+                    isCritical: newNews.isCritical,
+                  ),
+                );
+                final encoded = base64Encode(payload.writeToBuffer());
+                ref.read(uiP2pServiceProvider.notifier).broadcastText(jsonEncode({'type': 'payload', 'data': encoded}));
               },
               icon: const Icon(Icons.broadcast_on_personal, size: 18),
               label: const Text('Broadcast'),
@@ -4152,7 +4251,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                   ),
                 );
               }
-              ref.read(p2pServiceProvider.notifier).triggerSync();
             },
             child: const Text('Promote'),
           ),

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:math';
 
+import 'package:fixnum/fixnum.dart';
 import 'package:floodio/providers/settings_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -19,6 +20,8 @@ import '../providers/trusted_sender_provider.dart';
 import '../providers/untrusted_sender_provider.dart';
 import '../providers/user_profile_provider.dart';
 import '../services/map_cache_service.dart';
+import '../providers/ui_p2p_provider.dart';
+import '../protos/models.pb.dart' as pb;
 import 'settings_screen.dart';
 
 class ProfileTab extends ConsumerStatefulWidget {
@@ -70,6 +73,11 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
               ref
                   .read(hazardMarkersControllerProvider.notifier)
                   .deleteMarker(id);
+              final timestamp = DateTime.now().millisecondsSinceEpoch;
+              final payload = pb.SyncPayload();
+              payload.deletedItems.add(pb.DeletedItem(id: id, timestamp: Int64(timestamp)));
+              final encoded = base64Encode(payload.writeToBuffer());
+              ref.read(uiP2pServiceProvider.notifier).broadcastText(jsonEncode({'type': 'payload', 'data': encoded}));
             },
             child: const Text('Delete'),
           ),
@@ -94,6 +102,11 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
             onPressed: () {
               Navigator.pop(dialogContext);
               ref.read(newsItemsControllerProvider.notifier).deleteNewsItem(id);
+              final timestamp = DateTime.now().millisecondsSinceEpoch;
+              final payload = pb.SyncPayload();
+              payload.deletedItems.add(pb.DeletedItem(id: id, timestamp: Int64(timestamp)));
+              final encoded = base64Encode(payload.writeToBuffer());
+              ref.read(uiP2pServiceProvider.notifier).broadcastText(jsonEncode({'type': 'payload', 'data': encoded}));
             },
             child: const Text('Delete'),
           ),
@@ -120,6 +133,11 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
             onPressed: () {
               Navigator.pop(dialogContext);
               ref.read(areasControllerProvider.notifier).deleteArea(id);
+              final timestamp = DateTime.now().millisecondsSinceEpoch;
+              final payload = pb.SyncPayload();
+              payload.deletedItems.add(pb.DeletedItem(id: id, timestamp: Int64(timestamp)));
+              final encoded = base64Encode(payload.writeToBuffer());
+              ref.read(uiP2pServiceProvider.notifier).broadcastText(jsonEncode({'type': 'payload', 'data': encoded}));
             },
             child: const Text('Delete'),
           ),
@@ -146,6 +164,11 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
             onPressed: () {
               Navigator.pop(dialogContext);
               ref.read(pathsControllerProvider.notifier).deletePath(id);
+              final timestamp = DateTime.now().millisecondsSinceEpoch;
+              final payload = pb.SyncPayload();
+              payload.deletedItems.add(pb.DeletedItem(id: id, timestamp: Int64(timestamp)));
+              final encoded = base64Encode(payload.writeToBuffer());
+              ref.read(uiP2pServiceProvider.notifier).broadcastText(jsonEncode({'type': 'payload', 'data': encoded}));
             },
             child: const Text('Delete'),
           ),
@@ -224,6 +247,19 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                   .saveProfile(profile);
 
               await ref.read(localUserControllerProvider.notifier).updateProfile(newName, newContact);
+
+              final payload = pb.SyncPayload();
+              payload.profiles.add(
+                pb.UserProfile(
+                  publicKey: profile.publicKey,
+                  name: profile.name,
+                  contactInfo: profile.contactInfo,
+                  timestamp: Int64(profile.timestamp),
+                  signature: profile.signature,
+                ),
+              );
+              final encoded = base64Encode(payload.writeToBuffer());
+              ref.read(uiP2pServiceProvider.notifier).broadcastText(jsonEncode({'type': 'payload', 'data': encoded}));
 
               if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -350,6 +386,27 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                 await ref
                     .read(hazardMarkersControllerProvider.notifier)
                     .addMarker(updatedMarker);
+
+                final payload = pb.SyncPayload();
+                payload.markers.add(
+                  pb.HazardMarker(
+                    id: updatedMarker.id,
+                    latitude: updatedMarker.latitude,
+                    longitude: updatedMarker.longitude,
+                    type: updatedMarker.type,
+                    description: updatedMarker.description,
+                    timestamp: Int64(updatedMarker.timestamp),
+                    senderId: updatedMarker.senderId,
+                    signature: updatedMarker.signature ?? '',
+                    trustTier: updatedMarker.trustTier,
+                    imageId: updatedMarker.imageId ?? '',
+                    expiresAt: Int64(updatedMarker.expiresAt ?? 0),
+                    isCritical: updatedMarker.isCritical,
+                  ),
+                );
+                final encoded = base64Encode(payload.writeToBuffer());
+                ref.read(uiP2pServiceProvider.notifier).broadcastText(jsonEncode({'type': 'payload', 'data': encoded}));
+
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
@@ -456,6 +513,25 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                 await ref
                     .read(newsItemsControllerProvider.notifier)
                     .addNewsItem(updatedNews);
+
+                final payload = pb.SyncPayload();
+                payload.news.add(
+                  pb.NewsItem(
+                    id: updatedNews.id,
+                    title: updatedNews.title,
+                    content: updatedNews.content,
+                    timestamp: Int64(updatedNews.timestamp),
+                    senderId: updatedNews.senderId,
+                    signature: updatedNews.signature ?? '',
+                    trustTier: updatedNews.trustTier,
+                    expiresAt: Int64(updatedNews.expiresAt ?? 0),
+                    imageId: updatedNews.imageId ?? '',
+                    isCritical: updatedNews.isCritical,
+                  ),
+                );
+                final encoded = base64Encode(payload.writeToBuffer());
+                ref.read(uiP2pServiceProvider.notifier).broadcastText(jsonEncode({'type': 'payload', 'data': encoded}));
+
                 if (mounted) {
                   ScaffoldMessenger.of(
                     context,
@@ -590,6 +666,28 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                 await ref
                     .read(areasControllerProvider.notifier)
                     .addArea(updatedArea);
+
+                final payload = pb.SyncPayload();
+                final areaMarker = pb.AreaMarker(
+                  id: updatedArea.id,
+                  type: updatedArea.type,
+                  description: updatedArea.description,
+                  timestamp: Int64(updatedArea.timestamp),
+                  senderId: updatedArea.senderId,
+                  signature: updatedArea.signature ?? '',
+                  trustTier: updatedArea.trustTier,
+                  expiresAt: Int64(updatedArea.expiresAt ?? 0),
+                  isCritical: updatedArea.isCritical,
+                );
+                for (final coord in updatedArea.coordinates) {
+                  areaMarker.coordinates.add(
+                    pb.Coordinate(latitude: coord['lat']!, longitude: coord['lng']!),
+                  );
+                }
+                payload.areas.add(areaMarker);
+                final encoded = base64Encode(payload.writeToBuffer());
+                ref.read(uiP2pServiceProvider.notifier).broadcastText(jsonEncode({'type': 'payload', 'data': encoded}));
+
                 if (mounted) {
                   ScaffoldMessenger.of(
                     context,
@@ -722,6 +820,28 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                 await ref
                     .read(pathsControllerProvider.notifier)
                     .addPath(updatedPath);
+
+                final payload = pb.SyncPayload();
+                final pathMarker = pb.PathMarker(
+                  id: updatedPath.id,
+                  type: updatedPath.type,
+                  description: updatedPath.description,
+                  timestamp: Int64(updatedPath.timestamp),
+                  senderId: updatedPath.senderId,
+                  signature: updatedPath.signature ?? '',
+                  trustTier: updatedPath.trustTier,
+                  expiresAt: Int64(updatedPath.expiresAt ?? 0),
+                  isCritical: updatedPath.isCritical,
+                );
+                for (final coord in updatedPath.coordinates) {
+                  pathMarker.coordinates.add(
+                    pb.Coordinate(latitude: coord['lat']!, longitude: coord['lng']!),
+                  );
+                }
+                payload.paths.add(pathMarker);
+                final encoded = base64Encode(payload.writeToBuffer());
+                ref.read(uiP2pServiceProvider.notifier).broadcastText(jsonEncode({'type': 'payload', 'data': encoded}));
+
                 if (mounted) {
                   ScaffoldMessenger.of(
                     context,

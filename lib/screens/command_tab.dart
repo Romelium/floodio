@@ -184,7 +184,6 @@ class CommandTab extends ConsumerWidget {
                                               onPressed: () async {
                                                 Navigator.pop(dialogContext);
                                                 await ref.read(mockGovApiServiceProvider.notifier).revokeAdminTrust(volunteer.publicKey);
-                                                ref.read(uiP2pServiceProvider.notifier).triggerSync();
                                                 if (context.mounted) {
                                                   ScaffoldMessenger.of(context).showSnackBar(
                                                     const SnackBar(

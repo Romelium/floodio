@@ -552,6 +552,7 @@ class P2pService extends _$P2pService {
   }
 
   void _handleReceivedText(String text) async {
+    _idleTicks = 0;
     print("Received text: $text");
     try {
       final json = jsonDecode(text);
@@ -641,6 +642,9 @@ class P2pService extends _$P2pService {
               }
 
               state = state.copyWith(isSyncing: false, syncMessage: 'Map updated successfully.');
+              
+              // Trigger a manifest sync so other connected peers know we have a new map
+              _sendManifest();
             } catch (e) {
               print("Error unpacking map: $e");
               state = state.copyWith(isSyncing: false, syncMessage: 'Failed to unpack map.');
@@ -1345,6 +1349,133 @@ class P2pService extends _$P2pService {
         }
       }
 
+      // Forward newly received and validated data to other connected peers
+      final forwardPayload = pb.SyncPayload();
+      bool hasNewData = false;
+
+      for (final m in validMarkers) {
+        hasNewData = true;
+        forwardPayload.markers.add(pb.HazardMarker(
+          id: m.id.value,
+          latitude: m.latitude.value,
+          longitude: m.longitude.value,
+          type: m.type.value,
+          description: m.description.value,
+          timestamp: Int64(m.timestamp.value),
+          senderId: m.senderId.value,
+          signature: m.signature.value ?? '',
+          trustTier: m.trustTier.value,
+          imageId: m.imageId.value ?? '',
+          expiresAt: Int64(m.expiresAt.value ?? 0),
+          isCritical: m.isCritical.value,
+        ));
+      }
+
+      for (final n in validNews) {
+        hasNewData = true;
+        forwardPayload.news.add(pb.NewsItem(
+          id: n.id.value,
+          title: n.title.value,
+          content: n.content.value,
+          timestamp: Int64(n.timestamp.value),
+          senderId: n.senderId.value,
+          signature: n.signature.value ?? '',
+          trustTier: n.trustTier.value,
+          expiresAt: Int64(n.expiresAt.value ?? 0),
+          imageId: n.imageId.value ?? '',
+          isCritical: n.isCritical.value,
+        ));
+      }
+
+      for (final p in validProfiles) {
+        hasNewData = true;
+        forwardPayload.profiles.add(pb.UserProfile(
+          publicKey: p.publicKey.value,
+          name: p.name.value,
+          contactInfo: p.contactInfo.value,
+          timestamp: Int64(p.timestamp.value),
+          signature: p.signature.value,
+        ));
+      }
+
+      for (final a in validAreas) {
+        hasNewData = true;
+        final areaMarker = pb.AreaMarker(
+          id: a.id.value,
+          type: a.type.value,
+          description: a.description.value,
+          timestamp: Int64(a.timestamp.value),
+          senderId: a.senderId.value,
+          signature: a.signature.value ?? '',
+          trustTier: a.trustTier.value,
+          expiresAt: Int64(a.expiresAt.value ?? 0),
+          isCritical: a.isCritical.value,
+        );
+        for (final coord in a.coordinates.value) {
+          areaMarker.coordinates.add(pb.Coordinate(
+            latitude: coord['lat']!,
+            longitude: coord['lng']!,
+          ));
+        }
+        forwardPayload.areas.add(areaMarker);
+      }
+
+      for (final p in validPaths) {
+        hasNewData = true;
+        final pathMarker = pb.PathMarker(
+          id: p.id.value,
+          type: p.type.value,
+          description: p.description.value,
+          timestamp: Int64(p.timestamp.value),
+          senderId: p.senderId.value,
+          signature: p.signature.value ?? '',
+          trustTier: p.trustTier.value,
+          expiresAt: Int64(p.expiresAt.value ?? 0),
+          isCritical: p.isCritical.value,
+        );
+        for (final coord in p.coordinates.value) {
+          pathMarker.coordinates.add(pb.Coordinate(
+            latitude: coord['lat']!,
+            longitude: coord['lng']!,
+          ));
+        }
+        forwardPayload.paths.add(pathMarker);
+      }
+
+      for (final d in validDeleted) {
+        hasNewData = true;
+        forwardPayload.deletedItems.add(pb.DeletedItem(
+          id: d.id.value,
+          timestamp: Int64(d.timestamp.value),
+        ));
+      }
+
+      for (final d in validDelegations) {
+        hasNewData = true;
+        forwardPayload.delegations.add(pb.TrustDelegation(
+          id: 'delg_${d.publicKey.value}',
+          delegatorPublicKey: d.delegatorPublicKey.value,
+          delegateePublicKey: d.publicKey.value,
+          timestamp: Int64(d.timestamp.value),
+          signature: d.signature.value,
+        ));
+      }
+
+      for (final r in validRevocations) {
+        hasNewData = true;
+        forwardPayload.revokedDelegations.add(pb.RevokedDelegation(
+          delegateePublicKey: r.delegateePublicKey.value,
+          delegatorPublicKey: r.delegatorPublicKey.value,
+          timestamp: Int64(r.timestamp.value),
+          signature: r.signature.value,
+        ));
+      }
+
+      if (hasNewData) {
+        final encoded = base64Encode(forwardPayload.writeToBuffer());
+        broadcastText(jsonEncode({'type': 'payload', 'data': encoded}));
+      }
+
       state = state.copyWith(
         isSyncing: false,
         syncMessage: 'Successfully synced ${validMarkers.length} markers, ${validNews.length} news, ${validProfiles.length} profiles, ${validAreas.length} areas, ${validPaths.length} paths, ${validDeleted.length} deletions, ${validDelegations.length} delegations, ${validRevocations.length} revocations.'
@@ -1371,6 +1502,7 @@ class P2pService extends _$P2pService {
 
   Future<void> broadcastText(String text) async {
     try {
+      _idleTicks = 0;
       if (_host != null && state.hostState?.isActive == true) {
         await _host!.broadcastText(text);
       } else if (_client != null && state.clientState?.isActive == true) {
@@ -1383,6 +1515,7 @@ class P2pService extends _$P2pService {
 
   Future<void> broadcastFile(File file) async {
     try {
+      _idleTicks = 0;
       if (_host != null && state.hostState?.isActive == true) {
         await _host!.broadcastFile(file);
       } else if (_client != null && state.clientState?.isActive == true) {

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:fixnum/fixnum.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../crypto/crypto_service.dart';
@@ -10,6 +11,8 @@ import '../providers/hazard_marker_provider.dart';
 import '../providers/location_provider.dart';
 import '../providers/news_item_provider.dart';
 import '../providers/revoked_delegation_provider.dart';
+import '../providers/ui_p2p_provider.dart';
+import '../protos/models.pb.dart' as pb;
 
 part 'mock_gov_api_service.g.dart';
 
@@ -94,6 +97,36 @@ class MockGovApiService extends _$MockGovApiService {
       isCritical: true,
     );
     await ref.read(hazardMarkersControllerProvider.notifier).addMarker(newMarker);
+
+    final payload = pb.SyncPayload();
+    payload.news.add(pb.NewsItem(
+      id: newNews.id,
+      title: newNews.title,
+      content: newNews.content,
+      timestamp: Int64(newNews.timestamp),
+      senderId: newNews.senderId,
+      signature: newNews.signature ?? '',
+      trustTier: newNews.trustTier,
+      expiresAt: Int64(newNews.expiresAt ?? 0),
+      imageId: newNews.imageId ?? '',
+      isCritical: newNews.isCritical,
+    ));
+    payload.markers.add(pb.HazardMarker(
+      id: newMarker.id,
+      latitude: newMarker.latitude,
+      longitude: newMarker.longitude,
+      type: newMarker.type,
+      description: newMarker.description,
+      timestamp: Int64(newMarker.timestamp),
+      senderId: newMarker.senderId,
+      signature: newMarker.signature ?? '',
+      trustTier: newMarker.trustTier,
+      imageId: newMarker.imageId ?? '',
+      expiresAt: Int64(newMarker.expiresAt ?? 0),
+      isCritical: newMarker.isCritical,
+    ));
+    final encoded = base64Encode(payload.writeToBuffer());
+    ref.read(uiP2pServiceProvider.notifier).broadcastText(jsonEncode({'type': 'payload', 'data': encoded}));
   }
   
   Future<void> delegateAdminTrust(String delegateePublicKey) async {
@@ -109,6 +142,17 @@ class MockGovApiService extends _$MockGovApiService {
     );
     
     await ref.read(adminTrustedSendersControllerProvider.notifier).addAdminTrustedSender(entity);
+
+    final payload = pb.SyncPayload();
+    payload.delegations.add(pb.TrustDelegation(
+      id: 'delg_$delegateePublicKey',
+      delegatorPublicKey: delegatorId,
+      delegateePublicKey: delegateePublicKey,
+      timestamp: Int64(timestamp),
+      signature: signature,
+    ));
+    final encoded = base64Encode(payload.writeToBuffer());
+    ref.read(uiP2pServiceProvider.notifier).broadcastText(jsonEncode({'type': 'payload', 'data': encoded}));
   }
 
   Future<void> revokeAdminTrust(String delegateePublicKey) async {
@@ -124,5 +168,15 @@ class MockGovApiService extends _$MockGovApiService {
     );
 
     await ref.read(revokedDelegationsControllerProvider.notifier).addRevokedDelegation(entity);
+
+    final payload = pb.SyncPayload();
+    payload.revokedDelegations.add(pb.RevokedDelegation(
+      delegateePublicKey: delegateePublicKey,
+      delegatorPublicKey: delegatorId,
+      timestamp: Int64(timestamp),
+      signature: signature,
+    ));
+    final encoded = base64Encode(payload.writeToBuffer());
+    ref.read(uiP2pServiceProvider.notifier).broadcastText(jsonEncode({'type': 'payload', 'data': encoded}));
   }
 }
