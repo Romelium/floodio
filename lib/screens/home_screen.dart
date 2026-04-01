@@ -422,8 +422,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                       .read(appSettingsProvider.notifier)
                       .setOfficialMode(!current);
                   
-                  if (current && ref.read(navigationIndexProvider) == 3) {
-                    ref.read(navigationIndexProvider.notifier).setIndex(2);
+                  if (current && ref.read(navigationIndexProvider) == 4) {
+                    ref.read(navigationIndexProvider.notifier).setIndex(3);
                   }
 
                   if (!mounted) return;
@@ -4323,8 +4323,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
     final effectiveIndex = ref.watch(navigationIndexProvider);
 
     int displayIndex = effectiveIndex;
-    if (!settings.isOfficialMode && displayIndex > 2) {
-      displayIndex = 2;
+    if (!settings.isOfficialMode && displayIndex > 3) {
+      displayIndex = 3;
     }
 
     return Listener(
