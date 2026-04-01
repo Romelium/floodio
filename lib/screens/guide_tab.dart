@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../providers/admin_trusted_sender_provider.dart';
+import '../providers/local_user_provider.dart';
+import '../providers/revoked_delegation_provider.dart';
+import '../providers/settings_provider.dart';
 import '../utils/ui_helpers.dart';
 
 class GuideTab extends ConsumerWidget {
@@ -9,6 +13,22 @@ class GuideTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final settings = ref.watch(appSettingsProvider);
+    final localUserAsync = ref.watch(localUserControllerProvider);
+    final myPublicKey = localUserAsync.value?.publicKey;
+
+    final adminTrustedAsync = ref.watch(adminTrustedSendersControllerProvider);
+    final revokedAsync = ref.watch(revokedDelegationsControllerProvider);
+
+    final adminTrusted = adminTrustedAsync.value ?? [];
+    final revoked = revokedAsync.value ?? [];
+    final revokedKeys = revoked.map((e) => e.delegateePublicKey).toSet();
+
+    final isTier2 = myPublicKey != null &&
+        adminTrusted.any((a) =>
+            a.publicKey == myPublicKey && !revokedKeys.contains(a.publicKey));
+    final isOfficial = settings.isOfficialMode;
+
     return CustomScrollView(
       slivers: [
         SliverAppBar(
@@ -37,61 +57,39 @@ class GuideTab extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildQuickStartCard(context),
+                _buildRoleBanner(context, isOfficial, isTier2),
                 const SizedBox(height: 24),
-                _buildEmergencyProtocolCard(context),
+                _buildQuickStartCard(context, isOfficial, isTier2),
                 const SizedBox(height: 24),
-                const Text(
-                  'Core Concepts',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                ),
+                _buildEmergencyProtocolCard(context, isOfficial, isTier2),
                 const SizedBox(height: 24),
-                const Text(
-                  'Getting Started',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                ),
+                
+                if (isOfficial) ...[
+                  const Text('Official Capabilities', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 12),
+                  _buildConceptTile(context, icon: Icons.campaign, title: 'Broadcast Alerts', description: 'Use the "+" button to send Official Alerts. These appear in Blue (Tier 1) and override all other reports.', color: Colors.blue),
+                  _buildConceptTile(context, icon: Icons.admin_panel_settings, title: 'Manage Volunteers', description: 'Find reliable users in the feed and tap "Make Volunteer" to grant them Tier 2 status. Manage them in the Command Tab.', color: Colors.purple),
+                  _buildConceptTile(context, icon: Icons.cloud_sync, title: 'Cloud Gateway', description: 'When you have internet, use the Command Tab to force a Cloud Sync. This bridges the offline mesh network with the central government database.', color: Colors.indigo),
+                  const SizedBox(height: 24),
+                ] else if (isTier2) ...[
+                  const Text('Volunteer Capabilities', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 12),
+                  _buildConceptTile(context, icon: Icons.verified, title: 'Verify Reports', description: 'When you physically confirm a crowdsourced (Grey) report, tap "Verify & Endorse". It will be upgraded to Verified (Purple) for the entire network.', color: Colors.purple),
+                  _buildConceptTile(context, icon: Icons.gavel, title: 'Debunk Misinformation', description: 'If you see a false report, tap "Debunk". This is a GLOBAL action that deletes the report from the entire mesh network.', color: Colors.red),
+                  const SizedBox(height: 24),
+                ] else ...[
+                  const Text('Citizen Capabilities', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 12),
+                  _buildConceptTile(context, icon: Icons.add_location_alt, title: 'Report Hazards', description: 'Use the "+" button to report floods, roadblocks, or safe zones. Your reports start as Unverified (Grey) until a volunteer confirms them.', color: Colors.blueGrey),
+                  _buildConceptTile(context, icon: Icons.verified_user, title: 'Trust Users', description: 'If you know someone is reliable, tap "Trust" on their report. Their future reports will appear as Trusted (Green) for YOU ONLY.', color: Colors.green),
+                  const SizedBox(height: 24),
+                ],
+
+                const Text('Core Concepts', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 12),
-                _buildConceptTile(
-                  context,
-                  icon: Icons.sync,
-                  title: '1. Enable Mesh Sync',
-                  description: 'Tap the status chip in the top right (usually says "OFFLINE"). Toggle "Mesh Auto-Sync" to ON. Your phone will now periodically look for other Floodio users nearby.',
-                  color: Colors.green,
-                ),
-                _buildConceptTile(
-                  context,
-                  icon: Icons.map,
-                  title: '2. Prepare Offline Maps',
-                  description: 'While you have internet, go to the Map tab and tap the Download icon. Select your local area. This ensures you can see streets even when the grid is down.',
-                  color: Colors.teal,
-                ),
-                _buildConceptTile(
-                  context,
-                  icon: Icons.add_circle_outline,
-                  title: '3. Report & Share',
-                  description: 'Use the "+" button to report hazards. When you walk past another user, your reports will automatically jump to their phone, and theirs to yours.',
-                  color: Colors.blue,
-                ),
-                const SizedBox(height: 24),
-                const Text(
-                  'Advanced Mesh Features',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 12),
-                _buildConceptTile(
-                  context,
-                  icon: Icons.hub,
-                  title: 'Broadcasting Maps',
-                  description: 'If you have a map downloaded and meet someone who doesn\'t, you can "Broadcast" it to them. Open the Sync menu, and if connected, you\'ll see an option to send your map regions.',
-                  color: Colors.orange,
-                ),
-                _buildConceptTile(
-                  context,
-                  icon: Icons.gavel,
-                  title: 'Global vs Local Actions',
-                  description: 'Resolving a hazard or debunking a report is a GLOBAL action—it deletes the item for everyone. Trusting a sender is a LOCAL action—it only changes how YOU see their reports.',
-                  color: Colors.red,
-                ),
+                _buildConceptTile(context, icon: Icons.sync, title: 'Mesh Syncing', description: 'Tap the status chip in the top right. Toggle "Mesh Auto-Sync" to ON. Your phone will automatically find nearby users via Bluetooth and exchange data via Wi-Fi Direct.', color: Colors.teal),
+                _buildConceptTile(context, icon: Icons.map, title: 'Offline Maps', description: 'Standard maps require internet. Go to the Map tab and tap the Download icon to save your area. You can "Broadcast" this map to others via the Sync menu.', color: Colors.orange),
+                
                 const SizedBox(height: 24),
                 const Text(
                   'The 4-Tier Trust Model',
@@ -109,19 +107,6 @@ class GuideTab extends ConsumerWidget {
                 _buildTrustTierInfo(context, 4),
                 const SizedBox(height: 24),
                 const Text(
-                  'Map Management',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 12),
-                _buildConceptTile(
-                  context,
-                  icon: Icons.map_outlined,
-                  title: 'Offline Maps',
-                  description: 'Standard maps require internet. Use the Download icon on the Map tab to save a region. You can then "Broadcast" this map file to other users who have no internet at all.',
-                  color: Colors.teal,
-                ),
-                const SizedBox(height: 24),
-                const Text(
                   'Frequently Asked Questions',
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 ),
@@ -132,7 +117,7 @@ class GuideTab extends ConsumerWidget {
                 ),
                 _buildFAQ(
                   'What is a "Global Action"?',
-                  'When you Resolve a hazard or Debunk a report, that "deletion" is broadcast to the whole network. Once you sync with someone, they will also see that hazard as removed.',
+                  'When an Official or Volunteer Resolves a hazard or Debunks a report, that "deletion" is broadcast to the whole network. Once you sync with someone, they will also see that hazard as removed.',
                 ),
                 _buildFAQ(
                   'Is my data private?',
@@ -141,10 +126,6 @@ class GuideTab extends ConsumerWidget {
                 _buildFAQ(
                   'Why do I need so many permissions?',
                   'Android requires Location and Nearby Devices permissions to use Bluetooth and Wi-Fi Direct. Floodio does not track you for advertising; it only uses these to find other mesh nodes.',
-                ),
-                _buildFAQ(
-                  'How do I get offline maps?',
-                  'Tap the Download icon on the Map screen. Select an area while you have internet. You can then "Broadcast" this map to others who are offline via the Sync menu.',
                 ),
                 const SizedBox(height: 24),
                 const Text(
@@ -169,7 +150,110 @@ class GuideTab extends ConsumerWidget {
     );
   }
 
-  Widget _buildEmergencyProtocolCard(BuildContext context) {
+  Widget _buildRoleBanner(BuildContext context, bool isOfficial, bool isTier2) {
+    Color bgColor;
+    Color textColor;
+    String title;
+    String subtitle;
+    IconData icon;
+
+    if (isOfficial) {
+      bgColor = Colors.blue.shade50;
+      textColor = Colors.blue.shade900;
+      title = 'Official Mode Active';
+      subtitle = 'You have full administrative capabilities to broadcast alerts and manage volunteers.';
+      icon = Icons.security;
+    } else if (isTier2) {
+      bgColor = Colors.purple.shade50;
+      textColor = Colors.purple.shade900;
+      title = 'Verified Volunteer';
+      subtitle = 'You are a trusted node. You can verify crowdsourced reports and debunk misinformation.';
+      icon = Icons.admin_panel_settings;
+    } else {
+      bgColor = Colors.green.shade50;
+      textColor = Colors.green.shade900;
+      title = 'Citizen Node';
+      subtitle = 'You are part of the mesh. Report hazards and sync with others to keep your community informed.';
+      icon = Icons.people;
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: textColor.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: textColor, size: 36),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 18)),
+                const SizedBox(height: 4),
+                Text(subtitle, style: TextStyle(color: textColor, fontSize: 14)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuickStartCard(BuildContext context, bool isOfficial, bool isTier2) {
+    return Card(
+      elevation: 4,
+      shadowColor: Colors.black26,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.bolt, color: Colors.yellow.shade800, size: 28),
+                const SizedBox(width: 8),
+                const Text(
+                  'Quick Start',
+                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            _buildStep(1, 'Enable Auto-Sync', 'Tap the status chip in the top right and toggle "Mesh Auto-Sync" to ON.'),
+            if (isOfficial) ...[
+              _buildStep(2, 'Broadcast Alerts', 'Use the "+" button to send Official Alerts to the network.'),
+              _buildStep(3, 'Promote Volunteers', 'Find reliable users in the feed and tap "Make Volunteer".'),
+              _buildStep(4, 'Cloud Gateway', 'Use the Command Tab to sync the offline mesh with the internet when available.'),
+            ] else if (isTier2) ...[
+              _buildStep(2, 'Verify Reports', 'Check Unverified (Grey) reports. If true, tap "Verify & Endorse".'),
+              _buildStep(3, 'Debunk False Info', 'If a report is false, tap "Debunk" to remove it for everyone.'),
+              _buildStep(4, 'Share Maps', 'Download offline maps and broadcast them to users who need them.'),
+            ] else ...[
+              _buildStep(2, 'Download a Map', 'While you have internet, use the download button on the map to save your local area.'),
+              _buildStep(3, 'Report Hazards', 'Use the "+" button to mark floods or roadblocks. Your reports will spread automatically.'),
+              _buildStep(4, 'Trust Reliable Users', 'Tap "Trust" on reports from people you know to prioritize their updates.'),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmergencyProtocolCard(BuildContext context, bool isOfficial, bool isTier2) {
+    String text;
+    if (isOfficial) {
+      text = 'In a crisis, use the Command Tab to force cloud syncs when internet is available. Issue "Critical" alerts for immediate evacuation notices. These will bypass filters and alert all users.';
+    } else if (isTier2) {
+      text = 'In a crisis, misinformation can be deadly. Actively monitor the feed for Unverified (Grey) reports. If you physically verify them, use "Verify & Endorse". If you know they are false, use "Debunk" to delete them globally.';
+    } else {
+      text = 'If you see a hazard, report it immediately. If you see a false report, you can "Block" the sender locally to hide their posts. Leave global debunking to Verified Volunteers (Purple) and Officials (Blue).';
+    }
+
     return Card(
       color: Colors.red.shade50,
       shape: RoundedRectangleBorder(
@@ -196,41 +280,10 @@ class GuideTab extends ConsumerWidget {
               ],
             ),
             const SizedBox(height: 8),
-            const Text(
-              'In a crisis, misinformation can be deadly. If you see a report you know is false, use the "Debunk" action. This is a GLOBAL action that will tell every device you sync with to delete that report.',
-              style: TextStyle(fontSize: 14, height: 1.4),
+            Text(
+              text,
+              style: const TextStyle(fontSize: 14, height: 1.4),
             ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildQuickStartCard(BuildContext context) {
-    return Card(
-      elevation: 4,
-      shadowColor: Colors.black26,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.bolt, color: Colors.yellow.shade800, size: 28),
-                const SizedBox(width: 8),
-                const Text(
-                  'Quick Start',
-                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            _buildStep(1, 'Enable Auto-Sync', 'Tap the "OFFLINE" chip in the top right and toggle "Mesh Auto-Sync" to ON.'),
-            _buildStep(2, 'Download a Map', 'While you have internet, use the download button on the map to save your local area.'),
-            _buildStep(3, 'Report Hazards', 'Use the "+" button to mark floods, roadblocks, or safe zones. Your reports will spread to others automatically.'),
-            _buildStep(4, 'Verify Others', 'If you see a report you know is true, tap "Verify & Endorse" to increase its trust level for the network.'),
           ],
         ),
       ),
@@ -309,7 +362,7 @@ class GuideTab extends ConsumerWidget {
         break;
       case 3:
         icon = Icons.thumb_up;
-        desc = 'People you have personally marked as "Trusted" in your Profile. Their reports are prioritized on your device.';
+        desc = 'People you have personally marked as "Trusted" in your Profile. Their reports are prioritized on your device only.';
         break;
       case 4:
         icon = Icons.people;
@@ -388,12 +441,12 @@ class _TutorialOverlayState extends State<TutorialOverlay> {
     },
     {
       'title': 'Mesh Networking',
-      'content': 'The "OFFLINE" chip at the top shows your sync status. Tap it to enable Auto-Sync and find nearby peers.',
+      'content': 'The status chip at the top shows your connection. Tap it to enable Auto-Sync and automatically share data with nearby phones via Bluetooth and Wi-Fi.',
       'icon': '📡',
     },
     {
       'title': 'Trust Tiers',
-      'content': 'Reports have colors: Blue is Official, Purple is Verified, Green is Trusted, and Grey is Crowdsourced.',
+      'content': 'Reports are color-coded to fight misinformation:\n🔵 Official\n🟣 Verified Volunteer\n🟢 Personally Trusted\n⚪ Unverified Public',
       'icon': '🛡️',
     },
     {
