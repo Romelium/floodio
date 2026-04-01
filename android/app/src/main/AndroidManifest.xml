@@ -9,7 +9,7 @@
     <!-- Bluetooth Low Energy (BLE) - Android 12+ -->
     <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" tools:targetApi="s" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" tools:targetApi="s" />
-    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" android:usesPermissionFlags="neverForLocation" tools:targetApi="s" />
+    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" tools:targetApi="s" />
 
     <!-- Bluetooth Low Energy (BLE) - Legacy -->
     <uses-permission android:maxSdkVersion="30" android:name="android.permission.BLUETOOTH" />

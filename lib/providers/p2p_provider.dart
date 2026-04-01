@@ -195,8 +195,9 @@ class P2pState {
 
 @Riverpod(keepAlive: true, dependencies: [database, OfflineRegions, CryptoService, mapCacheService, sharedPreferences, LocalUserController])
 class P2pService extends _$P2pService {
-  FlutterP2pHost? _host;
-  FlutterP2pClient? _client;
+  late FlutterP2pHost _host;
+  late FlutterP2pClient _client;
+  bool _isInitialized = false;
 
   StreamSubscription? _hostStateSub;
   StreamSubscription? _clientStateSub;
@@ -231,10 +232,84 @@ class P2pService extends _$P2pService {
       _clientReceivedFilesSub?.cancel();
       _hostSentFilesSub?.cancel();
       _clientSentFilesSub?.cancel();
-      _host?.dispose();
-      _client?.dispose();
+      if (_isInitialized) {
+        _host.dispose();
+        _client.dispose();
+      }
     });
     return const P2pState();
+  }
+
+  Future<void> _initP2p() async {
+    if (_isInitialized) return;
+    final localUser = await ref.read(localUserControllerProvider.future);
+    final username = localUser.name.isNotEmpty ? localUser.name : "Floodio User";
+
+    _host = FlutterP2pHost(serviceUuid: _floodioServiceUuid, username: username);
+    _client = FlutterP2pClient(serviceUuid: _floodioServiceUuid, username: username);
+
+    await _host.initialize();
+    await _client.initialize();
+
+    _hostStateSub = _host.streamHotspotState().listen((hotspotState) {
+      state = state.copyWith(hostState: AppHostState(
+        isActive: hotspotState.isActive,
+        ssid: hotspotState.ssid,
+        preSharedKey: hotspotState.preSharedKey,
+        hostIpAddress: hotspotState.hostIpAddress,
+      ));
+      if (hotspotState.isActive) {
+        state = state.copyWith(syncMessage: 'Hotspot Active. Waiting for peers...', clearSyncProgress: true);
+      }
+    });
+
+    _hostClientListSub = _host.streamClientList().listen((clients) {
+      final previousCount = state.connectedClients.length;
+      final appClients = clients.map((c) => AppClientInfo(id: c.id, username: c.username, isHost: c.isHost)).toList();
+      state = state.copyWith(connectedClients: appClients);
+      if (clients.length > previousCount) {
+        state = state.copyWith(syncMessage: 'Client connected. Initiating 2-way sync...', clearSyncProgress: true);
+        _sendManifest();
+      } else if (clients.isEmpty) {
+        state = state.copyWith(isSyncing: false, syncMessage: 'Waiting for clients...', clearSyncProgress: true);
+        if (state.isAutoSyncing && previousCount > 0 && !_disposed) {
+          _idleTicks = 0;
+          _autoSyncTimer?.cancel();
+          _runAutoSyncCycle();
+        }
+      }
+    });
+
+    _hostTextSub = _host.streamReceivedTexts().listen(_handleReceivedText);
+    _hostReceivedFilesSub = _host.streamReceivedFilesInfo().listen((files) => _handleReceivedFiles(files, _host));
+    _hostSentFilesSub = _host.streamSentFilesInfo().listen((files) => _idleTicks = 0);
+
+    _clientStateSub = _client.streamHotspotState().listen((hotspotState) {
+      final wasActive = state.clientState?.isActive ?? false;
+      state = state.copyWith(clientState: AppClientState(
+        isActive: hotspotState.isActive,
+        hostSsid: hotspotState.hostSsid,
+        hostGatewayIpAddress: hotspotState.hostGatewayIpAddress,
+        hostIpAddress: hotspotState.hostIpAddress,
+      ));
+      if (!wasActive && hotspotState.isActive) {
+        state = state.copyWith(syncMessage: 'Connected to host. Initiating 2-way sync...', clearSyncProgress: true);
+        _sendManifest();
+      } else if (wasActive && !hotspotState.isActive) {
+        state = state.copyWith(isSyncing: false, syncMessage: 'Disconnected from host.', clearSyncProgress: true);
+        if (state.isAutoSyncing && !_disposed) {
+          _idleTicks = 0;
+          _autoSyncTimer?.cancel();
+          _runAutoSyncCycle();
+        }
+      }
+    });
+
+    _clientTextSub = _client.streamReceivedTexts().listen(_handleReceivedText);
+    _clientReceivedFilesSub = _client.streamReceivedFilesInfo().listen((files) => _handleReceivedFiles(files, _client));
+    _clientSentFilesSub = _client.streamSentFilesInfo().listen((files) => _idleTicks = 0);
+
+    _isInitialized = true;
   }
 
   Future<void> toggleAutoSync() async {
@@ -286,7 +361,7 @@ class P2pService extends _$P2pService {
       state = state.copyWith(syncMessage: 'Switching to Scanner...', clearSyncProgress: true);
       await stopHosting();
       if (!state.isAutoSyncing || _disposed) return;
-      await Future.delayed(const Duration(seconds: 2)); // Give OS time to turn off hotspot and turn on Wi-Fi
+      await Future.delayed(const Duration(seconds: 3)); // Give OS time to turn off hotspot and turn on Wi-Fi
       if (!state.isAutoSyncing || _disposed) return;
       await startScanning();
     } else {
@@ -294,7 +369,7 @@ class P2pService extends _$P2pService {
       state = state.copyWith(syncMessage: 'Switching to Host...', clearSyncProgress: true);
       await disconnect(); // stops scanning
       if (!state.isAutoSyncing || _disposed) return;
-      await Future.delayed(const Duration(seconds: 2)); // Give OS time to reset Wi-Fi state
+      await Future.delayed(const Duration(seconds: 3)); // Give OS time to reset Wi-Fi state
       if (!state.isAutoSyncing || _disposed) return;
       await startHosting();
     }
@@ -311,21 +386,11 @@ class P2pService extends _$P2pService {
   }
 
   Future<void> startHosting() async {
-    if (_host != null) return;
+    await _initP2p();
+    if (state.isHosting) return;
     await disconnect(); // Ensure client is fully stopped before hosting
 
     state = state.copyWith(isHosting: true, syncMessage: 'Initializing host...', clearSyncProgress: true);
-
-    // Fetch the user's name to broadcast to peers
-    final localUser = await ref.read(localUserControllerProvider.future);
-    final username = localUser.name.isNotEmpty ? localUser.name : "Floodio User";
-
-    // Initialize with custom UUID and Username
-    _host = FlutterP2pHost(
-      serviceUuid: _floodioServiceUuid,
-      username: username,
-    );
-    await _host!.initialize();
 
     // 1. Platform & Permission Redundancy Checks
     if (!Platform.isAndroid) {
@@ -334,16 +399,16 @@ class P2pService extends _$P2pService {
       return;
     }
 
-    bool p2pGranted = await _host!.checkP2pPermissions();
+    bool p2pGranted = await _host.checkP2pPermissions();
     if (!p2pGranted) {
-      await _host!.askP2pPermissions();
-      p2pGranted = await _host!.checkP2pPermissions(); // Re-verify after asking
+      await _host.askP2pPermissions();
+      p2pGranted = await _host.checkP2pPermissions(); // Re-verify after asking
     }
 
-    bool btGranted = await _host!.checkBluetoothPermissions();
+    bool btGranted = await _host.checkBluetoothPermissions();
     if (!btGranted) {
-      await _host!.askBluetoothPermissions();
-      btGranted = await _host!.checkBluetoothPermissions(); // Re-verify after asking
+      await _host.askBluetoothPermissions();
+      btGranted = await _host.checkBluetoothPermissions(); // Re-verify after asking
     }
 
     if (!p2pGranted || !btGranted) {
@@ -353,13 +418,13 @@ class P2pService extends _$P2pService {
     }
 
     // 2. Hardware Services Redundancy Checks
-    bool locEnabled = await _host!.checkLocationEnabled();
-    bool wifiEnabled = await _host!.checkWifiEnabled();
-    bool btEnabled = await _host!.checkBluetoothEnabled();
+    bool locEnabled = await _host.checkLocationEnabled();
+    bool wifiEnabled = await _host.checkWifiEnabled();
+    bool btEnabled = await _host.checkBluetoothEnabled();
 
-    if (!locEnabled) await _host!.enableLocationServices();
-    if (!wifiEnabled) await _host!.enableWifiServices();
-    if (!btEnabled) await _host!.enableBluetoothServices();
+    if (!locEnabled) await _host.enableLocationServices();
+    if (!wifiEnabled) await _host.enableWifiServices();
+    if (!btEnabled) await _host.enableBluetoothServices();
 
     // 3. Extended Polling Loop (Wait up to 10 seconds for user to accept system prompts)
     int retries = 10;
@@ -367,9 +432,9 @@ class P2pService extends _$P2pService {
       if (_disposed) return;
       state = state.copyWith(syncMessage: 'Waiting for services to enable ($retries)...', clearSyncProgress: true);
       await Future.delayed(const Duration(seconds: 1));
-      locEnabled = await _host!.checkLocationEnabled();
-      wifiEnabled = await _host!.checkWifiEnabled();
-      btEnabled = await _host!.checkBluetoothEnabled();
+      locEnabled = await _host.checkLocationEnabled();
+      wifiEnabled = await _host.checkWifiEnabled();
+      btEnabled = await _host.checkBluetoothEnabled();
       retries--;
     }
 
@@ -379,55 +444,11 @@ class P2pService extends _$P2pService {
       return;
     }
 
-    _hostStateSub = _host!.streamHotspotState().listen((hotspotState) {
-      state = state.copyWith(hostState: AppHostState(
-        isActive: hotspotState.isActive,
-        ssid: hotspotState.ssid,
-        preSharedKey: hotspotState.preSharedKey,
-        hostIpAddress: hotspotState.hostIpAddress,
-      ));
-      if (hotspotState.isActive) {
-        state = state.copyWith(syncMessage: 'Hotspot Active. Waiting for peers...', clearSyncProgress: true);
-      }
-    });
-
-    _hostClientListSub = _host!.streamClientList().listen((clients) {
-      final previousCount = state.connectedClients.length;
-      final appClients = clients.map((c) => AppClientInfo(id: c.id, username: c.username, isHost: c.isHost)).toList();
-      state = state.copyWith(connectedClients: appClients);
-      if (clients.length > previousCount) {
-        state = state.copyWith(syncMessage: 'Client connected. Initiating 2-way sync...', clearSyncProgress: true);
-        _sendManifest();
-      } else if (clients.isEmpty) {
-        state = state.copyWith(isSyncing: false, syncMessage: 'Waiting for clients...', clearSyncProgress: true);
-        if (state.isAutoSyncing && previousCount > 0 && !_disposed) {
-          _idleTicks = 0;
-          _autoSyncTimer?.cancel();
-          _runAutoSyncCycle();
-        }
-      }
-    });
-
-    _hostTextSub = _host!.streamReceivedTexts().listen((text) {
-      _handleReceivedText(text);
-    });
-
-    _hostReceivedFilesSub = _host!.streamReceivedFilesInfo().listen((files) {
-      _handleReceivedFiles(files, _host!);
-    });
-
-    _hostSentFilesSub = _host!.streamSentFilesInfo().listen((files) {
-      _idleTicks = 0;
-    });
-
-    final host = _host;
-    if (host == null || _disposed) return;
-
     try {
       state = state.copyWith(syncMessage: 'Starting Hotspot...', clearSyncProgress: true);
-      await host.createGroup(advertise: true);
+      await _host.createGroup(advertise: true);
       if (!state.isHosting || _disposed) {
-        await host.removeGroup();
+        await _host.removeGroup();
       }
     } catch (e) {
       print("Failed to create group: $e");
@@ -437,14 +458,9 @@ class P2pService extends _$P2pService {
   }
 
   Future<void> stopHosting() async {
-    await _host?.removeGroup();
-    await _host?.dispose();
-    _hostStateSub?.cancel();
-    _hostClientListSub?.cancel();
-    _hostTextSub?.cancel();
-    _hostReceivedFilesSub?.cancel();
-    _hostSentFilesSub?.cancel();
-    _host = null;
+    if (_isInitialized) {
+      await _host.removeGroup();
+    }
     state = state.copyWith(
       isHosting: false,
       isSyncing: false,
@@ -456,21 +472,11 @@ class P2pService extends _$P2pService {
   }
 
   Future<void> startScanning() async {
-    if (_client != null) return;
+    await _initP2p();
+    if (state.isScanning) return;
     await stopHosting(); // Ensure host is fully stopped before scanning
 
     state = state.copyWith(isScanning: true, discoveredDevices: [], syncMessage: 'Initializing scanner...', clearSyncProgress: true);
-
-    // Fetch the user's name to broadcast to peers
-    final localUser = await ref.read(localUserControllerProvider.future);
-    final username = localUser.name.isNotEmpty ? localUser.name : "Floodio User";
-
-    // Initialize with custom UUID and Username
-    _client = FlutterP2pClient(
-      serviceUuid: _floodioServiceUuid,
-      username: username,
-    );
-    await _client!.initialize();
 
     // 1. Platform & Permission Redundancy Checks
     if (!Platform.isAndroid) {
@@ -479,16 +485,16 @@ class P2pService extends _$P2pService {
       return;
     }
 
-    bool p2pGranted = await _client!.checkP2pPermissions();
+    bool p2pGranted = await _client.checkP2pPermissions();
     if (!p2pGranted) {
-      await _client!.askP2pPermissions();
-      p2pGranted = await _client!.checkP2pPermissions(); // Re-verify after asking
+      await _client.askP2pPermissions();
+      p2pGranted = await _client.checkP2pPermissions(); // Re-verify after asking
     }
 
-    bool btGranted = await _client!.checkBluetoothPermissions();
+    bool btGranted = await _client.checkBluetoothPermissions();
     if (!btGranted) {
-      await _client!.askBluetoothPermissions();
-      btGranted = await _client!.checkBluetoothPermissions(); // Re-verify after asking
+      await _client.askBluetoothPermissions();
+      btGranted = await _client.checkBluetoothPermissions(); // Re-verify after asking
     }
 
     if (!p2pGranted || !btGranted) {
@@ -498,13 +504,13 @@ class P2pService extends _$P2pService {
     }
 
     // 2. Hardware Services Redundancy Checks
-    bool locEnabled = await _client!.checkLocationEnabled();
-    bool wifiEnabled = await _client!.checkWifiEnabled();
-    bool btEnabled = await _client!.checkBluetoothEnabled();
+    bool locEnabled = await _client.checkLocationEnabled();
+    bool wifiEnabled = await _client.checkWifiEnabled();
+    bool btEnabled = await _client.checkBluetoothEnabled();
 
-    if (!locEnabled) await _client!.enableLocationServices();
-    if (!wifiEnabled) await _client!.enableWifiServices();
-    if (!btEnabled) await _client!.enableBluetoothServices();
+    if (!locEnabled) await _client.enableLocationServices();
+    if (!wifiEnabled) await _client.enableWifiServices();
+    if (!btEnabled) await _client.enableBluetoothServices();
 
     // 3. Extended Polling Loop (Wait up to 10 seconds for user to accept system prompts)
     int retries = 10;
@@ -512,9 +518,9 @@ class P2pService extends _$P2pService {
       if (_disposed) return;
       state = state.copyWith(syncMessage: 'Waiting for services to enable ($retries)...', clearSyncProgress: true);
       await Future.delayed(const Duration(seconds: 1));
-      locEnabled = await _client!.checkLocationEnabled();
-      wifiEnabled = await _client!.checkWifiEnabled();
-      btEnabled = await _client!.checkBluetoothEnabled();
+      locEnabled = await _client.checkLocationEnabled();
+      wifiEnabled = await _client.checkWifiEnabled();
+      btEnabled = await _client.checkBluetoothEnabled();
       retries--;
     }
 
@@ -524,45 +530,9 @@ class P2pService extends _$P2pService {
       return;
     }
 
-    _clientStateSub = _client!.streamHotspotState().listen((hotspotState) {
-      final wasActive = state.clientState?.isActive ?? false;
-      state = state.copyWith(clientState: AppClientState(
-        isActive: hotspotState.isActive,
-        hostSsid: hotspotState.hostSsid,
-        hostGatewayIpAddress: hotspotState.hostGatewayIpAddress,
-        hostIpAddress: hotspotState.hostIpAddress,
-      ));
-      if (!wasActive && hotspotState.isActive) {
-        state = state.copyWith(syncMessage: 'Connected to host. Initiating 2-way sync...', clearSyncProgress: true);
-        _sendManifest();
-      } else if (wasActive && !hotspotState.isActive) {
-        state = state.copyWith(isSyncing: false, syncMessage: 'Disconnected from host.', clearSyncProgress: true);
-        if (state.isAutoSyncing && !_disposed) {
-          _idleTicks = 0;
-          _autoSyncTimer?.cancel();
-          _runAutoSyncCycle();
-        }
-      }
-    });
-
-    _clientTextSub = _client!.streamReceivedTexts().listen((text) {
-      _handleReceivedText(text);
-    });
-
-    _clientReceivedFilesSub = _client!.streamReceivedFilesInfo().listen((files) {
-      _handleReceivedFiles(files, _client!);
-    });
-
-    _clientSentFilesSub = _client!.streamSentFilesInfo().listen((files) {
-      _idleTicks = 0;
-    });
-
-    final client = _client;
-    if (client == null || _disposed) return;
-
     try {
       state = state.copyWith(syncMessage: 'Scanning for nearby devices...', clearSyncProgress: true);
-      final sub = await client.startScan((devices) {
+      final sub = await _client.startScan((devices) {
         _rawDiscoveredDevices = devices;
         final appDevices = devices.map((d) => AppDiscoveredDevice(deviceAddress: d.deviceAddress, deviceName: d.deviceName)).toList();
         state = state.copyWith(discoveredDevices: appDevices);
@@ -581,21 +551,20 @@ class P2pService extends _$P2pService {
   }
 
   Future<void> connectToDeviceByAddress(String address) async {
-    if (_client == null || state.isConnecting) return;
+    if (!_isInitialized || state.isConnecting) return;
     try {
       final device = _rawDiscoveredDevices.firstWhere((d) => d.deviceAddress == address);
       state = state.copyWith(isConnecting: true, syncMessage: 'Connecting to ${device.deviceName}...', clearSyncProgress: true);
       await stopScanning();
 
-      final client = _client;
-      if (client == null || _disposed) {
+      if (_disposed) {
         state = state.copyWith(isConnecting: false);
         return;
       }
 
-      await client.connectWithDevice(device, timeout: const Duration(seconds: 15));
+      await _client.connectWithDevice(device, timeout: const Duration(seconds: 15));
       if (!state.isConnecting || _disposed) {
-        await client.disconnect();
+        await _client.disconnect();
         return;
       }
       state = state.copyWith(isConnecting: false, clearSyncProgress: true);
@@ -613,20 +582,17 @@ class P2pService extends _$P2pService {
   Future<void> stopScanning() async {
     await _scanSub?.cancel();
     _scanSub = null;
-    await _client?.stopScan();
+    if (_isInitialized) {
+      await _client.stopScan();
+    }
     state = state.copyWith(isScanning: false);
   }
 
   Future<void> disconnect() async {
     await stopScanning();
-    await _client?.disconnect();
-    await _client?.dispose();
-    _clientStateSub?.cancel();
-    _clientTextSub?.cancel();
-    _scanSub?.cancel();
-    _clientReceivedFilesSub?.cancel();
-    _clientSentFilesSub?.cancel();
-    _client = null;
+    if (_isInitialized) {
+      await _client.disconnect();
+    }
     state = state.copyWith(
       clearClientState: true,
       discoveredDevices: [],
@@ -1033,10 +999,10 @@ class P2pService extends _$P2pService {
       final mapCache = ref.read(mapCacheServiceProvider);
       final packFile = await mapCache.packMap(region: region);
 
-      if (_host != null && state.hostState?.isActive == true) {
-        await _host!.broadcastFile(packFile);
-      } else if (_client != null && state.clientState?.isActive == true) {
-        await _client!.broadcastFile(packFile);
+      if (state.hostState?.isActive == true) {
+        await _host.broadcastFile(packFile);
+      } else if (state.clientState?.isActive == true) {
+        await _client.broadcastFile(packFile);
       }
       state = state.copyWith(isSyncing: false, syncMessage: 'Map file sent.', clearSyncProgress: true);
     } catch (e) {
@@ -1625,10 +1591,10 @@ class P2pService extends _$P2pService {
   Future<void> broadcastText(String text) async {
     try {
       _idleTicks = 0;
-      if (_host != null && state.hostState?.isActive == true) {
-        await _host!.broadcastText(text);
-      } else if (_client != null && state.clientState?.isActive == true) {
-        await _client!.broadcastText(text);
+      if (_isInitialized && state.hostState?.isActive == true) {
+        await _host.broadcastText(text);
+      } else if (_isInitialized && state.clientState?.isActive == true) {
+        await _client.broadcastText(text);
       }
     } catch (e) {
       print("Error broadcasting text: $e");
@@ -1638,10 +1604,10 @@ class P2pService extends _$P2pService {
   Future<void> broadcastFile(File file) async {
     try {
       _idleTicks = 0;
-      if (_host != null && state.hostState?.isActive == true) {
-        await _host!.broadcastFile(file);
-      } else if (_client != null && state.clientState?.isActive == true) {
-        await _client!.broadcastFile(file);
+      if (_isInitialized && state.hostState?.isActive == true) {
+        await _host.broadcastFile(file);
+      } else if (_isInitialized && state.clientState?.isActive == true) {
+        await _client.broadcastFile(file);
       }
     } catch (e) {
       print("Error broadcasting file: $e");
