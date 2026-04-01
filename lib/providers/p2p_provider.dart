@@ -259,16 +259,18 @@ class P2pService extends _$P2pService {
     // Alternate role
     if (_lastRoleWasHost) {
       _lastRoleWasHost = false;
+      state = state.copyWith(syncMessage: 'Switching to Scanner...');
       await stopHosting();
       if (!state.isAutoSyncing || _disposed) return;
-      await Future.delayed(const Duration(seconds: 1));
+      await Future.delayed(const Duration(seconds: 2)); // Give OS time to turn off hotspot and turn on Wi-Fi
       if (!state.isAutoSyncing || _disposed) return;
       await startScanning();
     } else {
       _lastRoleWasHost = true;
+      state = state.copyWith(syncMessage: 'Switching to Host...');
       await disconnect(); // stops scanning
       if (!state.isAutoSyncing || _disposed) return;
-      await Future.delayed(const Duration(seconds: 1));
+      await Future.delayed(const Duration(seconds: 2)); // Give OS time to reset Wi-Fi state
       if (!state.isAutoSyncing || _disposed) return;
       await startHosting();
     }
@@ -302,27 +304,35 @@ class P2pService extends _$P2pService {
     await _host!.initialize();
 
     bool p2pGranted = await _host!.checkP2pPermissions();
-    if (!p2pGranted) p2pGranted = await _host!.askP2pPermissions();
-
     bool btGranted = await _host!.checkBluetoothPermissions();
-    if (!btGranted) btGranted = await _host!.askBluetoothPermissions();
-
     bool storageGranted = await _host!.checkStoragePermission();
-    if (!storageGranted) storageGranted = await _host!.askStoragePermission();
 
-    bool locEnabled = await _host!.checkLocationEnabled();
-    if (!locEnabled) locEnabled = await _host!.enableLocationServices();
-
-    bool wifiEnabled = await _host!.checkWifiEnabled();
-    if (!wifiEnabled) wifiEnabled = await _host!.enableWifiServices();
-
-    bool btEnabled = await _host!.checkBluetoothEnabled();
-    if (!btEnabled) btEnabled = await _host!.enableBluetoothServices();
-
-    if (!p2pGranted || !btGranted || !storageGranted || !locEnabled || !wifiEnabled || !btEnabled) {
-      state = state.copyWith(syncMessage: 'Permissions or services not enabled.');
+    if (!p2pGranted || !btGranted || !storageGranted) {
+      state = state.copyWith(syncMessage: 'Permissions not granted.');
       await stopHosting();
       return;
+    }
+
+    bool locEnabled = await _host!.checkLocationEnabled();
+    bool wifiEnabled = await _host!.checkWifiEnabled();
+    bool btEnabled = await _host!.checkBluetoothEnabled();
+
+    if (!locEnabled) _host!.enableLocationServices();
+    if (!wifiEnabled) _host!.enableWifiServices();
+    if (!btEnabled) _host!.enableBluetoothServices();
+
+    if (!locEnabled || !wifiEnabled || !btEnabled) {
+      state = state.copyWith(syncMessage: 'Waiting for services to enable...');
+      await Future.delayed(const Duration(seconds: 2));
+      locEnabled = await _host!.checkLocationEnabled();
+      wifiEnabled = await _host!.checkWifiEnabled();
+      btEnabled = await _host!.checkBluetoothEnabled();
+      
+      if (!locEnabled || !wifiEnabled || !btEnabled) {
+        state = state.copyWith(syncMessage: 'Services (Wi-Fi/BT/Loc) not enabled.');
+        await stopHosting();
+        return;
+      }
     }
 
     _hostStateSub = _host!.streamHotspotState().listen((hotspotState) {
@@ -332,6 +342,9 @@ class P2pService extends _$P2pService {
         preSharedKey: hotspotState.preSharedKey,
         hostIpAddress: hotspotState.hostIpAddress,
       ));
+      if (hotspotState.isActive) {
+        state = state.copyWith(syncMessage: 'Hotspot Active. Waiting for peers...');
+      }
     });
 
     _hostClientListSub = _host!.streamClientList().listen((clients) {
@@ -367,11 +380,10 @@ class P2pService extends _$P2pService {
     if (host == null || _disposed) return;
 
     try {
+      state = state.copyWith(syncMessage: 'Starting Hotspot...');
       await host.createGroup(advertise: true);
       if (!state.isHosting || _disposed) {
         await host.removeGroup();
-      } else {
-        state = state.copyWith(syncMessage: 'Hosting network. Waiting for peers...');
       }
     } catch (e) {
       print("Failed to create group: $e");
@@ -416,27 +428,35 @@ class P2pService extends _$P2pService {
     await _client!.initialize();
 
     bool p2pGranted = await _client!.checkP2pPermissions();
-    if (!p2pGranted) p2pGranted = await _client!.askP2pPermissions();
-
     bool btGranted = await _client!.checkBluetoothPermissions();
-    if (!btGranted) btGranted = await _client!.askBluetoothPermissions();
-
     bool storageGranted = await _client!.checkStoragePermission();
-    if (!storageGranted) storageGranted = await _client!.askStoragePermission();
 
-    bool locEnabled = await _client!.checkLocationEnabled();
-    if (!locEnabled) locEnabled = await _client!.enableLocationServices();
-
-    bool wifiEnabled = await _client!.checkWifiEnabled();
-    if (!wifiEnabled) wifiEnabled = await _client!.enableWifiServices();
-
-    bool btEnabled = await _client!.checkBluetoothEnabled();
-    if (!btEnabled) btEnabled = await _client!.enableBluetoothServices();
-
-    if (!p2pGranted || !btGranted || !storageGranted || !locEnabled || !wifiEnabled || !btEnabled) {
-      state = state.copyWith(isScanning: false, syncMessage: 'Permissions or services not enabled.');
+    if (!p2pGranted || !btGranted || !storageGranted) {
+      state = state.copyWith(isScanning: false, syncMessage: 'Permissions not granted.');
       await disconnect();
       return;
+    }
+
+    bool locEnabled = await _client!.checkLocationEnabled();
+    bool wifiEnabled = await _client!.checkWifiEnabled();
+    bool btEnabled = await _client!.checkBluetoothEnabled();
+
+    if (!locEnabled) _client!.enableLocationServices();
+    if (!wifiEnabled) _client!.enableWifiServices();
+    if (!btEnabled) _client!.enableBluetoothServices();
+
+    if (!locEnabled || !wifiEnabled || !btEnabled) {
+      state = state.copyWith(syncMessage: 'Waiting for services to enable...');
+      await Future.delayed(const Duration(seconds: 2));
+      locEnabled = await _client!.checkLocationEnabled();
+      wifiEnabled = await _client!.checkWifiEnabled();
+      btEnabled = await _client!.checkBluetoothEnabled();
+      
+      if (!locEnabled || !wifiEnabled || !btEnabled) {
+        state = state.copyWith(isScanning: false, syncMessage: 'Services (Wi-Fi/BT/Loc) not enabled.');
+        await disconnect();
+        return;
+      }
     }
 
     _clientStateSub = _client!.streamHotspotState().listen((hotspotState) {
