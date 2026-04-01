@@ -2565,6 +2565,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                         color: color.withValues(alpha: 0.3),
                         borderColor: color,
                         borderStrokeWidth: 2,
+                        label: a.type,
+                        labelStyle: TextStyle(
+                          color: color,
+                          fontWeight: FontWeight.bold,
+                          backgroundColor: Colors.white.withValues(alpha: 0.8),
+                        ),
+                        labelPlacementCalculator: const PolygonLabelPlacementCalculator.polylabel(),
                       );
                     }),
                     if (drawingState.mode == DrawingMode.area && drawingState.points.length >= 3)
@@ -2634,16 +2641,52 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                       .toList(),
                 ),
                 MarkerLayer(
-                  markers: markers.map((m) {
-                    final color = getHazardColor(m.type, m.trustTier);
-                    return Marker(
-                      point: LatLng(m.latitude, m.longitude),
-                      width: m.isCritical ? 50 : 40,
-                      height: m.isCritical ? 50 : 40,
-                      alignment: Alignment.topCenter,
-                      child: GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        onTap: () {
+                  markers: [
+                    ...paths.where((p) => p.coordinates.isNotEmpty).map((p) {
+                      final points = p.coordinates
+                          .map((c) => LatLng(c['lat']!, c['lng']!))
+                          .toList();
+                      final color = p.isCritical ? Colors.red : (
+                          p.type.toLowerCase().contains('safe') ||
+                              p.type.toLowerCase().contains('evacuation')
+                          ? Colors.green
+                          : Colors.orange);
+                      
+                      final midPoint = points[points.length ~/ 2];
+                      
+                      return Marker(
+                        point: midPoint,
+                        width: 120,
+                        height: 30,
+                        alignment: Alignment.center,
+                        child: IgnorePointer(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.8),
+                              borderRadius: BorderRadius.circular(4),
+                              border: Border.all(color: color, width: 1),
+                            ),
+                            child: Text(
+                              p.type,
+                              style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 12),
+                              textAlign: TextAlign.center,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ),
+                      );
+                    }),
+                    ...markers.map((m) {
+                      final color = getHazardColor(m.type, m.trustTier);
+                      return Marker(
+                        point: LatLng(m.latitude, m.longitude),
+                        width: m.isCritical ? 50 : 40,
+                        height: m.isCritical ? 50 : 40,
+                        alignment: Alignment.topCenter,
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: () {
                           final canEndorse =
                               isAdmin && (m.trustTier == 3 || m.trustTier == 4);
     
@@ -2823,7 +2866,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                         ),
                       ),
                     );
-                  }).toList(),
+                  }),
+                  ],
                 ),
                 Consumer(
                   builder: (context, ref, child) {
