@@ -1101,7 +1101,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
       try {
         return _mapController.camera.center;
       } catch (_) {
-        return const LatLng(37.7749, -122.4194);
+        return const LatLng(10.730185, 122.559115);
       }
     }
   }
@@ -2502,7 +2502,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
             FlutterMap(
               mapController: _mapController,
               options: MapOptions(
-                initialCenter: const LatLng(37.7749, -122.4194),
+                initialCenter: const LatLng(10.730185, 122.559115),
                 initialZoom: 13.0,
                 onPositionChanged: (camera, hasGesture) {
                   if (hasGesture && _isTrackingLocation) {

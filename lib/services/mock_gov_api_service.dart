@@ -64,8 +64,8 @@ class MockGovApiService extends _$MockGovApiService {
     );
     await ref.read(newsItemsControllerProvider.notifier).addNewsItem(newNews);
 
-    double lat = 37.7749;
-    double lng = -122.4194;
+    double lat = 10.730185;
+    double lng = 122.559115;
     
     try {
       final pos = await ref.read(locationControllerProvider.notifier).getCurrentPosition();
