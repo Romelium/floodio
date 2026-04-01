@@ -1,11 +1,13 @@
 import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
-import '../providers/ui_p2p_provider.dart';
+
 import '../providers/offline_regions_provider.dart';
+import '../providers/ui_p2p_provider.dart';
 import '../services/cloud_sync_service.dart';
 
 class SyncBottomSheet extends ConsumerWidget {
@@ -17,6 +19,9 @@ class SyncBottomSheet extends ConsumerWidget {
     final p2pNotifier = ref.read(uiP2pServiceProvider.notifier);
     final myRegionsAsync = ref.watch(offlineRegionsProvider);
     final myRegions = myRegionsAsync.value ?? [];
+
+    final isConnected = p2pState.hostState?.isActive == true || p2pState.clientState?.isActive == true;
+    final isBusy = p2pState.isSyncing || p2pState.isConnecting || p2pState.isScanning;
 
     return Container(
       margin: const EdgeInsets.all(16),
@@ -52,207 +57,190 @@ class SyncBottomSheet extends ConsumerWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     const Text(
-                      'Device-to-Device Sync',
+                      'Sync & Connect',
                       style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w900,
                       ),
                     ),
                     IconButton(
                       icon: const Icon(Icons.close),
                       onPressed: () => Navigator.pop(context),
+                      style: IconButton.styleFrom(
+                        backgroundColor: Colors.grey.shade100,
+                      ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 16),
 
-                if (p2pState.hostState?.isActive == true || p2pState.clientState?.isActive == true) ...[
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.green.shade50,
-                      border: Border.all(color: Colors.green.shade200),
-                      borderRadius: BorderRadius.circular(16),
+                // 1. Auto-Sync (Primary)
+                Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: p2pState.isAutoSyncing
+                          ? [Colors.blue.shade700, Colors.blue.shade900]
+                          : [Colors.grey.shade100, Colors.grey.shade200],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                     ),
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: p2pState.isAutoSyncing ? [
+                      BoxShadow(
+                        color: Colors.blue.withValues(alpha: 0.3),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      )
+                    ] : null,
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(20),
+                      onTap: () => p2pNotifier.toggleAutoSync(),
+                      child: Padding(
+                        padding: const EdgeInsets.all(20.0),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: p2pState.isAutoSyncing ? Colors.white.withValues(alpha: 0.2) : Colors.white,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                Icons.autorenew,
+                                color: p2pState.isAutoSyncing ? Colors.white : Colors.grey.shade700,
+                                size: 28,
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Mesh Auto-Sync',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: p2pState.isAutoSyncing ? Colors.white : Colors.black87,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    p2pState.isAutoSyncing ? 'Actively searching for peers...' : 'Tap to enable background sync',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: p2pState.isAutoSyncing ? Colors.blue.shade100 : Colors.grey.shade600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Switch(
+                              value: p2pState.isAutoSyncing,
+                              onChanged: (val) => p2pNotifier.toggleAutoSync(),
+                              activeThumbColor: Colors.white,
+                              activeTrackColor: Colors.blue.shade400,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // 2. Status Dashboard
+                Card(
+                  color: isBusy
+                      ? Theme.of(context).colorScheme.primaryContainer
+                      : (isConnected ? Colors.green.shade50 : Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5)),
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                    side: BorderSide(
+                      color: isBusy
+                          ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.3)
+                          : (isConnected ? Colors.green.shade200 : Colors.transparent),
+                    ),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(20.0),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
                           children: [
-                            const Icon(Icons.check_circle, color: Colors.green),
-                            const SizedBox(width: 8),
-                            Text(
-                              p2pState.hostState?.isActive == true ? 'Hosting Mesh Network' : 'Connected to Mesh',
-                              style: TextStyle(
-                                color: Colors.green.shade800,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
+                            if (isBusy)
+                              const SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(strokeWidth: 3),
+                              )
+                            else
+                              Icon(
+                                isConnected ? Icons.check_circle : Icons.radar,
+                                color: isConnected ? Colors.green : Theme.of(context).colorScheme.primary,
+                                size: 24,
                               ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          p2pState.hostState?.isActive == true 
-                              ? 'SSID: ${p2pState.hostState?.ssid}\nClients: ${p2pState.connectedClients.length}'
-                              : 'Host SSID: ${p2pState.clientState?.hostSsid}',
-                          style: TextStyle(color: Colors.green.shade900),
-                        ),
-                        const SizedBox(height: 12),
-                        SizedBox(
-                          width: double.infinity,
-                          child: FilledButton.icon(
-                            onPressed: p2pState.isSyncing ? null : () {
-                              p2pNotifier.triggerSync();
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Triggered manual mesh sync...'), behavior: SnackBarBehavior.floating),
-                              );
-                            },
-                            icon: p2pState.isSyncing 
-                                ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                                : const Icon(Icons.sync),
-                            label: Text(p2pState.isSyncing ? 'Syncing...' : 'Force Sync Now'),
-                            style: FilledButton.styleFrom(
-                              backgroundColor: Colors.green.shade600,
-                              foregroundColor: Colors.white,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                ],
-
-                // Status Card
-                Card(
-                  color: (p2pState.isSyncing || p2pState.isConnecting)
-                      ? Theme.of(context).colorScheme.primaryContainer
-                      : Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20),
-                    side: BorderSide(
-                      color: (p2pState.isSyncing || p2pState.isConnecting)
-                          ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.3)
-                          : Colors.transparent,
-                    ),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(20.0),
-                    child: Row(
-                      children: [
-                        if (p2pState.isSyncing || p2pState.isConnecting)
-                          const SizedBox(
-                            width: 28,
-                            height: 28,
-                            child: CircularProgressIndicator(strokeWidth: 3),
-                          )
-                        else
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              Icons.radar,
-                              color: Theme.of(context).colorScheme.primary,
-                              size: 28,
-                            ),
-                          ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Activity Log',
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                isConnected ? 'Connected to Mesh' : 'Activity Log',
                                 style: TextStyle(
-                                  fontSize: 13,
-                                  color: Colors.grey.shade600,
+                                  fontSize: 14,
+                                  color: isConnected ? Colors.green.shade800 : Colors.grey.shade700,
                                   fontWeight: FontWeight.bold,
                                   letterSpacing: 0.5,
                                 ),
                               ),
-                              const SizedBox(height: 4),
-                              Text(
-                                p2pState.syncMessage ??
-                                    'Ready to sync. Choose an option below.',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                  color:
-                                      (p2pState.isSyncing ||
-                                          p2pState.isConnecting)
-                                      ? Theme.of(context).colorScheme.primary
-                                      : Colors.black87,
+                            ),
+                            if (isConnected && !p2pState.isSyncing)
+                              FilledButton.tonal(
+                                onPressed: () {
+                                  p2pNotifier.triggerSync();
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Triggered manual mesh sync...'), behavior: SnackBarBehavior.floating),
+                                  );
+                                },
+                                style: FilledButton.styleFrom(
+                                  visualDensity: VisualDensity.compact,
+                                  backgroundColor: Colors.green.shade100,
+                                  foregroundColor: Colors.green.shade800,
                                 ),
+                                child: const Text('Force Sync'),
                               ),
-                              if (p2pState.isSyncing ||
-                                  p2pState.isConnecting) ...[
-                                const SizedBox(height: 12),
-                                ClipRRect(
-                                  borderRadius: BorderRadius.circular(4),
-                                  child: LinearProgressIndicator(
-                                    backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
-                                    color: Theme.of(context).colorScheme.primary,
-                                    minHeight: 6,
-                                  ),
-                                ),
-                              ],
-                            ],
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          p2pState.syncMessage ?? 'Ready to sync. Enable Auto-Sync or use manual controls.',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: isBusy
+                                ? Theme.of(context).colorScheme.primary
+                                : (isConnected ? Colors.green.shade900 : Colors.black87),
                           ),
                         ),
+                        if (isConnected) ...[
+                          const SizedBox(height: 8),
+                          Text(
+                            p2pState.hostState?.isActive == true
+                                ? 'Hosting: ${p2pState.hostState?.ssid}\nPeers: ${p2pState.connectedClients.length}'
+                                : 'Connected to: ${p2pState.clientState?.hostSsid}',
+                            style: TextStyle(color: Colors.green.shade800, fontSize: 13),
+                          ),
+                        ],
                       ],
                     ),
                   ),
                 ),
                 const SizedBox(height: 16),
 
-                // Auto-Sync Section
-                Container(
-                  decoration: BoxDecoration(
-                    border: Border.all(
-                      color: p2pState.isAutoSyncing
-                          ? Colors.blue.shade300
-                          : Colors.grey.shade200,
-                    ),
-                    borderRadius: BorderRadius.circular(20),
-                    color: p2pState.isAutoSyncing
-                        ? Colors.blue.shade50
-                        : Theme.of(context).colorScheme.surface,
-                  ),
-                  child: SwitchListTile(
-                    title: Text(
-                      'Mesh Auto-Sync',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: p2pState.isAutoSyncing
-                            ? Colors.blue.shade800
-                            : Colors.black87,
-                      ),
-                    ),
-                    subtitle: Text(
-                      'Automatically discover and sync with nearby devices in the background.',
-                      style: TextStyle(
-                        color: p2pState.isAutoSyncing
-                            ? Colors.blue.shade700
-                            : Colors.grey.shade600,
-                      ),
-                    ),
-                    value: p2pState.isAutoSyncing,
-                    activeThumbColor: Colors.blue,
-                    activeTrackColor: Colors.blue.shade200,
-                    onChanged: (val) => p2pNotifier.toggleAutoSync(),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                // Cloud Sync Section
+                // 3. Cloud Sync Section
                 Consumer(
                   builder: (context, ref, child) {
                     final cloudSyncState = ref.watch(cloudSyncServiceProvider);
@@ -272,82 +260,60 @@ class SyncBottomSheet extends ConsumerWidget {
                         border: Border.all(color: Colors.grey.shade300),
                         borderRadius: BorderRadius.circular(16),
                       ),
-                      child: Column(
-                        children: [
-                          ListTile(
-                            leading: Icon(
-                              cloudSyncState.hasInternet ? Icons.cloud_sync : Icons.cloud_off,
-                              color: cloudSyncState.hasInternet ? Colors.blue : Colors.red,
-                            ),
-                            title: const Text(
-                              'Cloud Gateway Sync',
-                              style: TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                            subtitle: Text(
-                              'Last synced: $lastSyncText\n${cloudSyncState.hasInternet ? 'Internet connected.' : 'No internet connection.'}',
-                            ),
-                            trailing: cloudSyncState.isSyncing
-                                ? const SizedBox(
-                                    width: 24,
-                                    height: 24,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                    ),
-                                  )
-                                : FilledButton.tonal(
-                                    onPressed: cloudSyncState.hasInternet ? () async {
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        const SnackBar(
-                                          content: Text(
-                                            'Syncing with cloud...',
-                                          ),
-                                          behavior: SnackBarBehavior.floating,
-                                        ),
-                                      );
-                                      final success = await cloudSyncNotifier
-                                          .syncWithCloud();
-                                      if (context.mounted) {
-                                        if (success) {
-                                          ScaffoldMessenger.of(
-                                            context,
-                                          ).showSnackBar(
-                                            const SnackBar(
-                                              content: Text(
-                                                'Cloud sync complete.',
-                                              ),
-                                              behavior: SnackBarBehavior.floating,
-                                            ),
-                                          );
-                                        } else {
-                                          ScaffoldMessenger.of(
-                                            context,
-                                          ).showSnackBar(
-                                            const SnackBar(
-                                              content: Text(
-                                                'Cloud sync failed.',
-                                              ),
-                                              behavior: SnackBarBehavior.floating,
-                                            ),
-                                          );
-                                        }
-                                      }
-                                    } : null,
-                                    child: const Text('Sync Now'),
-                                  ),
+                      child: ListTile(
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        leading: Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: cloudSyncState.hasInternet ? Colors.blue.shade50 : Colors.red.shade50,
+                            shape: BoxShape.circle,
                           ),
-                        ],
+                          child: Icon(
+                            cloudSyncState.hasInternet ? Icons.cloud_sync : Icons.cloud_off,
+                            color: cloudSyncState.hasInternet ? Colors.blue : Colors.red,
+                          ),
+                        ),
+                        title: const Text(
+                          'Cloud Gateway',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        subtitle: Text(
+                          'Last synced: $lastSyncText\n${cloudSyncState.hasInternet ? 'Internet connected.' : 'No internet connection.'}',
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                        trailing: cloudSyncState.isSyncing
+                            ? const SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : FilledButton.tonal(
+                                onPressed: cloudSyncState.hasInternet ? () async {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Syncing with cloud...'), behavior: SnackBarBehavior.floating),
+                                  );
+                                  final success = await cloudSyncNotifier.syncWithCloud();
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(success ? 'Cloud sync complete.' : 'Cloud sync failed.'),
+                                        behavior: SnackBarBehavior.floating,
+                                      ),
+                                    );
+                                  }
+                                } : null,
+                                child: const Text('Sync'),
+                              ),
                       ),
                     );
                   },
                 ),
                 const SizedBox(height: 16),
 
-                // Peer Offline Maps Section
+                // 4. Peer Offline Maps Section
                 if (p2pState.peerOfflineRegions.isNotEmpty) ...[
                   Text(
-                    'Peer Offline Maps',
+                    'Available Peer Maps',
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
@@ -383,6 +349,7 @@ class SyncBottomSheet extends ConsumerWidget {
                           ),
                           subtitle: Text(
                             'Bounds: ${region.bounds.north.toStringAsFixed(2)}, ${region.bounds.west.toStringAsFixed(2)} to ${region.bounds.south.toStringAsFixed(2)}, ${region.bounds.east.toStringAsFixed(2)}',
+                            style: const TextStyle(fontSize: 11),
                           ),
                           trailing: alreadyHave
                               ? const Tooltip(
@@ -419,247 +386,126 @@ class SyncBottomSheet extends ConsumerWidget {
                   const SizedBox(height: 16),
                 ],
 
-                // Manual Controls
-                Text(
-                  'Manual Controls',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.grey.shade600,
-                  ),
-                ),
-                if (p2pState.isAutoSyncing)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4.0, bottom: 8.0),
-                    child: Text(
-                      'Manual controls are disabled while Auto-Sync is active.',
-                      style: TextStyle(fontSize: 12, color: Colors.orange.shade800),
+                // 5. Advanced / Manual Controls
+                Theme(
+                  data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+                  child: ExpansionTile(
+                    tilePadding: EdgeInsets.zero,
+                    title: Text(
+                      'Advanced Manual Controls',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey.shade700,
+                      ),
                     ),
-                  ),
-                const SizedBox(height: 8),
-
-                // Host Section
-                Container(
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.grey.shade300),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Column(
                     children: [
-                      SwitchListTile(
-                        title: const Text(
-                          'Share Data (Host)',
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        subtitle: const Text(
-                          'Create a local network for others to join',
-                        ),
-                        value: p2pState.isHosting,
-                        onChanged:
-                            (p2pState.isScanning || p2pState.isAutoSyncing)
-                            ? null
-                            : (val) {
-                                if (val) {
-                                  p2pNotifier.startHosting();
-                                } else {
-                                  p2pNotifier.stopHosting();
-                                }
-                              },
-                      ),
-                      if (p2pState.hostState?.isActive == true)
-                        Padding(
-                          padding: const EdgeInsets.only(
-                            left: 16.0,
-                            right: 16.0,
-                            bottom: 16.0,
+                      if (p2pState.isAutoSyncing)
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          margin: const EdgeInsets.only(bottom: 12),
+                          decoration: BoxDecoration(
+                            color: Colors.orange.shade50,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.orange.shade200),
                           ),
                           child: Row(
                             children: [
-                              const Icon(
-                                Icons.wifi_tethering,
-                                color: Colors.green,
-                                size: 20,
-                              ),
+                              Icon(Icons.warning_amber_rounded, color: Colors.orange.shade800, size: 20),
                               const SizedBox(width: 8),
                               Expanded(
                                 child: Text(
-                                  'Hosting on: ${p2pState.hostState?.ssid ?? 'Unknown'}',
-                                  style: const TextStyle(
-                                    color: Colors.green,
-                                    fontWeight: FontWeight.w500,
-                                  ),
+                                  'Manual controls are disabled while Auto-Sync is active.',
+                                  style: TextStyle(fontSize: 12, color: Colors.orange.shade900),
                                 ),
                               ),
                             ],
                           ),
                         ),
-                      if (p2pState.hostState?.isActive == true &&
-                          p2pState.connectedClients.isNotEmpty) ...[
-                        const Divider(height: 1),
-                        const Padding(
-                          padding: EdgeInsets.all(16.0),
-                          child: Text(
-                            'Connected Clients',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.grey,
-                            ),
-                          ),
+                      
+                      // Host Section
+                      Container(
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey.shade300),
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                        ...p2pState.connectedClients.map(
-                          (client) => ListTile(
-                            key: ValueKey(client.id),
-                            leading: const CircleAvatar(
-                              backgroundColor: Colors.green,
-                              child: Icon(Icons.check, color: Colors.white),
-                            ),
-                            title: Text(
-                              client.username.isEmpty
-                                  ? 'Unknown Client'
-                                  : client.username,
-                            ),
-                            subtitle: Text(
-                              client.id,
-                              style: const TextStyle(fontSize: 12),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                      ],
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 12),
-
-                // Client Section
-                Container(
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.grey.shade300),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Column(
-                    children: [
-                      SwitchListTile(
-                        title: const Text(
-                          'Receive Data (Scan)',
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        subtitle: const Text(
-                          'Look for nearby devices sharing data',
-                        ),
-                        value:
-                            p2pState.isScanning ||
-                            p2pState.clientState?.isActive == true,
-                        onChanged:
-                            (p2pState.isHosting || p2pState.isAutoSyncing)
-                            ? null
-                            : (val) {
-                                if (val) {
-                                  p2pNotifier.startScanning();
-                                } else {
-                                  p2pNotifier.disconnect();
-                                }
-                              },
-                      ),
-                      if (p2pState.clientState?.isActive == true)
-                        Padding(
-                          padding: const EdgeInsets.only(
-                            left: 16.0,
-                            right: 16.0,
-                            bottom: 16.0,
-                          ),
-                          child: Row(
-                            children: [
-                              const Icon(
-                                Icons.wifi,
-                                color: Colors.green,
-                                size: 20,
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  'Connected to: ${p2pState.clientState?.hostSsid ?? 'Unknown'}',
-                                  style: const TextStyle(
-                                    color: Colors.green,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-
-                      if (p2pState.isScanning &&
-                          p2pState.discoveredDevices.isNotEmpty &&
-                          p2pState.clientState?.isActive != true) ...[
-                        const Divider(height: 1),
-                        const Padding(
-                          padding: EdgeInsets.all(16.0),
-                          child: Text(
-                            'Nearby Devices',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.grey,
-                            ),
-                          ),
-                        ),
-                        ...p2pState.discoveredDevices.map(
-                          (device) => ListTile(
-                            key: ValueKey(device.deviceAddress),
-                            leading: const CircleAvatar(
-                              backgroundColor: Colors.blue,
-                              child: Icon(
-                                Icons.smartphone,
-                                color: Colors.white,
-                              ),
-                            ),
-                            title: Text(
-                              device.deviceName.isEmpty
-                                  ? 'Unknown Device'
-                                  : device.deviceName,
-                            ),
-                            subtitle: Text(
-                              device.deviceAddress,
-                              style: const TextStyle(fontSize: 12),
-                            ),
-                            trailing: FilledButton(
-                              onPressed: p2pState.isConnecting
+                        margin: const EdgeInsets.only(bottom: 12),
+                        child: Column(
+                          children: [
+                            SwitchListTile(
+                              title: const Text('Share Data (Host)', style: TextStyle(fontWeight: FontWeight.bold)),
+                              subtitle: const Text('Create a local network for others to join', style: TextStyle(fontSize: 12)),
+                              value: p2pState.isHosting,
+                              onChanged: (p2pState.isScanning || p2pState.isAutoSyncing)
                                   ? null
-                                  : () => p2pNotifier.connectToDevice(device),
-                              child: p2pState.isConnecting
-                                  ? const Text('Connecting...')
-                                  : const Text('Connect'),
+                                  : (val) {
+                                      if (val) {
+                                        p2pNotifier.startHosting();
+                                      } else {
+                                        p2pNotifier.stopHosting();
+                                      }
+                                    },
                             ),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                      ],
-
-                      if (p2pState.isScanning &&
-                          p2pState.discoveredDevices.isEmpty &&
-                          p2pState.clientState?.isActive != true)
-                        const Padding(
-                          padding: EdgeInsets.all(24.0),
-                          child: Center(
-                            child: Column(
-                              children: [
-                                CircularProgressIndicator(),
-                                SizedBox(height: 16),
-                                Text(
-                                  'Searching for nearby devices...',
-                                  style: TextStyle(color: Colors.grey),
+                            if (p2pState.hostState?.isActive == true && p2pState.connectedClients.isNotEmpty) ...[
+                              const Divider(height: 1),
+                              ...p2pState.connectedClients.map(
+                                (client) => ListTile(
+                                  dense: true,
+                                  leading: const Icon(Icons.smartphone, size: 18),
+                                  title: Text(client.username.isEmpty ? 'Unknown Client' : client.username),
+                                  subtitle: Text(client.id, style: const TextStyle(fontSize: 10)),
                                 ),
-                              ],
-                            ),
-                          ),
+                              ),
+                            ],
+                          ],
                         ),
+                      ),
+
+                      // Client Section
+                      Container(
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey.shade300),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Column(
+                          children: [
+                            SwitchListTile(
+                              title: const Text('Receive Data (Scan)', style: TextStyle(fontWeight: FontWeight.bold)),
+                              subtitle: const Text('Look for nearby devices sharing data', style: TextStyle(fontSize: 12)),
+                              value: p2pState.isScanning || p2pState.clientState?.isActive == true,
+                              onChanged: (p2pState.isHosting || p2pState.isAutoSyncing)
+                                  ? null
+                                  : (val) {
+                                      if (val) {
+                                        p2pNotifier.startScanning();
+                                      } else {
+                                        p2pNotifier.disconnect();
+                                      }
+                                    },
+                            ),
+                            if (p2pState.isScanning && p2pState.discoveredDevices.isNotEmpty && p2pState.clientState?.isActive != true) ...[
+                              const Divider(height: 1),
+                              ...p2pState.discoveredDevices.map(
+                                (device) => ListTile(
+                                  dense: true,
+                                  leading: const Icon(Icons.bluetooth, size: 18),
+                                  title: Text(device.deviceName.isEmpty ? 'Unknown Device' : device.deviceName),
+                                  trailing: TextButton(
+                                    onPressed: p2pState.isConnecting ? null : () => p2pNotifier.connectToDevice(device),
+                                    child: const Text('Connect'),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
                     ],
                   ),
                 ),
                 const SizedBox(height: 16),
                 if (Platform.isAndroid)
-                  OutlinedButton.icon(
+                  TextButton.icon(
                     onPressed: () async {
                       Navigator.pop(context);
                       try {
@@ -686,10 +532,10 @@ class SyncBottomSheet extends ConsumerWidget {
                         // ignore
                       }
                     },
-                    icon: const Icon(Icons.android),
-                    label: const Text('Share Floodio App (APK) via Bluetooth/Wi-Fi'),
+                    icon: const Icon(Icons.android, size: 18),
+                    label: const Text('Share App (APK) via Bluetooth/Wi-Fi'),
+                    style: TextButton.styleFrom(foregroundColor: Colors.grey.shade700),
                   ),
-                const SizedBox(height: 16),
               ],
             ),
           ),

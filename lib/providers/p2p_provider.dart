@@ -289,11 +289,29 @@ class P2pService extends _$P2pService {
     _host = FlutterP2pHost();
     await _host!.initialize();
 
-    if (!await _host!.checkP2pPermissions()) await _host!.askP2pPermissions();
-    if (!await _host!.checkBluetoothPermissions()) await _host!.askBluetoothPermissions();
-    if (!await _host!.checkLocationEnabled()) await _host!.enableLocationServices();
-    if (!await _host!.checkWifiEnabled()) await _host!.enableWifiServices();
-    if (!await _host!.checkBluetoothEnabled()) await _host!.enableBluetoothServices();
+    bool p2pGranted = await _host!.checkP2pPermissions();
+    if (!p2pGranted) p2pGranted = await _host!.askP2pPermissions();
+    
+    bool btGranted = await _host!.checkBluetoothPermissions();
+    if (!btGranted) btGranted = await _host!.askBluetoothPermissions();
+
+    bool storageGranted = await _host!.checkStoragePermission();
+    if (!storageGranted) storageGranted = await _host!.askStoragePermission();
+
+    bool locEnabled = await _host!.checkLocationEnabled();
+    if (!locEnabled) locEnabled = await _host!.enableLocationServices();
+
+    bool wifiEnabled = await _host!.checkWifiEnabled();
+    if (!wifiEnabled) wifiEnabled = await _host!.enableWifiServices();
+
+    bool btEnabled = await _host!.checkBluetoothEnabled();
+    if (!btEnabled) btEnabled = await _host!.enableBluetoothServices();
+
+    if (!p2pGranted || !btGranted || !storageGranted || !locEnabled || !wifiEnabled || !btEnabled) {
+      state = state.copyWith(syncMessage: 'Permissions or services not enabled.');
+      await stopHosting();
+      return;
+    }
 
     _hostStateSub = _host!.streamHotspotState().listen((hotspotState) {
       state = state.copyWith(hostState: AppHostState(
@@ -377,11 +395,29 @@ class P2pService extends _$P2pService {
     _client = FlutterP2pClient();
     await _client!.initialize();
 
-    if (!await _client!.checkP2pPermissions()) await _client!.askP2pPermissions();
-    if (!await _client!.checkBluetoothPermissions()) await _client!.askBluetoothPermissions();
-    if (!await _client!.checkLocationEnabled()) await _client!.enableLocationServices();
-    if (!await _client!.checkWifiEnabled()) await _client!.enableWifiServices();
-    if (!await _client!.checkBluetoothEnabled()) await _client!.enableBluetoothServices();
+    bool p2pGranted = await _client!.checkP2pPermissions();
+    if (!p2pGranted) p2pGranted = await _client!.askP2pPermissions();
+    
+    bool btGranted = await _client!.checkBluetoothPermissions();
+    if (!btGranted) btGranted = await _client!.askBluetoothPermissions();
+
+    bool storageGranted = await _client!.checkStoragePermission();
+    if (!storageGranted) storageGranted = await _client!.askStoragePermission();
+
+    bool locEnabled = await _client!.checkLocationEnabled();
+    if (!locEnabled) locEnabled = await _client!.enableLocationServices();
+
+    bool wifiEnabled = await _client!.checkWifiEnabled();
+    if (!wifiEnabled) wifiEnabled = await _client!.enableWifiServices();
+
+    bool btEnabled = await _client!.checkBluetoothEnabled();
+    if (!btEnabled) btEnabled = await _client!.enableBluetoothServices();
+
+    if (!p2pGranted || !btGranted || !storageGranted || !locEnabled || !wifiEnabled || !btEnabled) {
+      state = state.copyWith(isScanning: false, syncMessage: 'Permissions or services not enabled.');
+      await disconnect();
+      return;
+    }
 
     _clientStateSub = _client!.streamHotspotState().listen((hotspotState) {
       final wasActive = state.clientState?.isActive ?? false;
