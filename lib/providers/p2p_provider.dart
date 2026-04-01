@@ -357,7 +357,7 @@ class P2pService extends _$P2pService {
     if (isHostWithClients || isClientConnected || isHostWaitingForClients) {
       _idleTicks++;
       
-      int maxIdleTicks = isHostWaitingForClients ? 9 : 6; // 45s wait for new clients, 30s wait after sync
+      int maxIdleTicks = isHostWaitingForClients ? 16 : 6; // 80s wait for new clients, 30s wait after sync
       
       if (_idleTicks >= maxIdleTicks) { 
         _idleTicks = 0;
@@ -608,7 +608,7 @@ class P2pService extends _$P2pService {
       
       // Allow the Android BLE stack a brief moment to settle after stopping the scan 
       // before initiating a new GATT connection, preventing dropped connection requests (GATT 133).
-      await Future.delayed(const Duration(milliseconds: 1500));
+      await Future.delayed(const Duration(milliseconds: 2500));
 
       if (_disposed) {
         state = state.copyWith(isConnecting: false);

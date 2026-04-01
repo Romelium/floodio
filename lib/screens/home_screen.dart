@@ -170,7 +170,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
       if (!(await service.isRunning())) {
         await service.startService();
       }
-      ref.invalidate(locationControllerProvider);
+      if (mounted) {
+        ref.invalidate(locationControllerProvider);
+      }
     }
   }
 
@@ -271,7 +273,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
       if (!(await service.isRunning())) {
         await service.startService();
       }
-      ref.invalidate(locationControllerProvider);
+      if (mounted) {
+        ref.invalidate(locationControllerProvider);
+      }
     }
 
     await Future.delayed(const Duration(milliseconds: 500));
