@@ -37,8 +37,8 @@ class GuideTab extends ConsumerWidget {
           pinned: true,
           flexibleSpace: FlexibleSpaceBar(
             title: const Text(
-              'User Guide',
-              style: TextStyle(fontWeight: FontWeight.w900, color: Colors.white),
+              'User Guide & Tutorials',
+              style: TextStyle(fontWeight: FontWeight.w900, color: Colors.white, fontSize: 20),
             ),
             background: Container(
               decoration: BoxDecoration(
@@ -62,7 +62,51 @@ class GuideTab extends ConsumerWidget {
                 _buildQuickStartCard(context, isOfficial, isTier2),
                 const SizedBox(height: 24),
                 _buildEmergencyProtocolCard(context, isOfficial, isTier2),
-                const SizedBox(height: 24),
+                const SizedBox(height: 32),
+
+                const Text('Detailed Guides', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 12),
+                _buildGuideExpansionTile(
+                  context,
+                  icon: Icons.wifi_tethering,
+                  title: 'How Mesh Syncing Works',
+                  content: 'Floodio uses a "Store and Forward" mesh network to keep you connected without internet or cell towers.\n\n'
+                           '• When Auto-Sync is ON, your phone uses Bluetooth Low Energy (BLE) to silently find nearby Floodio users.\n'
+                           '• Once a peer is found, the phones automatically negotiate a high-speed, secure Wi-Fi Direct connection.\n'
+                           '• They compare their databases and exchange any missing reports, news, or map files.\n'
+                           '• After syncing, they disconnect. As you move around, your phone carries this data and passes it to the next person you meet, spreading critical information across the city.',
+                ),
+                _buildGuideExpansionTile(
+                  context,
+                  icon: Icons.map,
+                  title: 'Using & Sharing Offline Maps',
+                  content: 'Standard maps go blank without internet. Floodio allows you to save maps directly to your phone and share them offline.\n\n'
+                           '• Downloading: Go to the Map tab, pan to your city, and tap the Download icon (top right). Choose your zoom level and download.\n'
+                           '• Broadcasting: If you have a map and meet someone who doesn\'t, open the Sync Menu (tap the status chip) and select "Broadcast Offline Map". They will receive the map file directly over Wi-Fi Direct.\n'
+                           '• Requesting: If a peer has a map you need, it will appear in your Sync Menu under "Available Peer Maps". Tap the download icon to request it.',
+                ),
+                _buildGuideExpansionTile(
+                  context,
+                  icon: Icons.edit_location_alt,
+                  title: 'Creating Accurate Reports',
+                  content: 'Good reports save lives. Follow these best practices when creating a report:\n\n'
+                           '• Be Specific: Instead of just "Flood", write "Water is 2 feet deep, impassable for sedans."\n'
+                           '• Add Photos: A picture provides instant context. Tap "Attach Photo" when creating a hazard.\n'
+                           '• Set Expiration: If a road is temporarily blocked by a fallen tree, set it to expire in 12 or 24 hours so the map doesn\'t get cluttered with old data.\n'
+                           '• Use Areas/Paths: For large floods, use "Report Area" to draw a polygon. For blocked evacuation routes, use "Report Path" to draw a line.',
+                ),
+                _buildGuideExpansionTile(
+                  context,
+                  icon: Icons.security,
+                  title: 'Understanding Cryptographic Signatures',
+                  content: 'To prevent malicious actors from spoofing official alerts, Floodio uses Ed25519 cryptographic signatures.\n\n'
+                           '• Every user has a unique private key generated on their device.\n'
+                           '• Every report you create is signed with this key.\n'
+                           '• When an Official promotes a user to a Volunteer, they sign a "Trust Delegation" certificate.\n'
+                           '• When your phone receives a report, it mathematically verifies the signature against the sender\'s public key and the known Official keys to determine its Trust Tier. Fake official reports are instantly rejected.',
+                ),
+
+                const SizedBox(height: 32),
                 
                 if (isOfficial) ...[
                   const Text('Official Capabilities', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
@@ -85,61 +129,57 @@ class GuideTab extends ConsumerWidget {
                   const SizedBox(height: 24),
                 ],
 
-                const Text('Core Concepts', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 12),
-                _buildConceptTile(context, icon: Icons.sync, title: 'Mesh Syncing', description: 'Tap the status chip in the top right. Toggle "Mesh Auto-Sync" to ON. Your phone will automatically find nearby users via Bluetooth and exchange data via Wi-Fi Direct.', color: Colors.teal),
-                _buildConceptTile(context, icon: Icons.map, title: 'Offline Maps', description: 'Standard maps require internet. Go to the Map tab and tap the Download icon to save your area. You can "Broadcast" this map to others via the Sync menu.', color: Colors.orange),
-                
-                const SizedBox(height: 24),
                 const Text(
                   'The 4-Tier Trust Model',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 8),
                 const Text(
                   'To prevent misinformation, every report is cryptographically signed and categorized:',
-                  style: TextStyle(color: Colors.grey),
+                  style: TextStyle(color: Colors.grey, fontSize: 15),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
                 _buildTrustTierInfo(context, 1),
                 _buildTrustTierInfo(context, 2),
                 _buildTrustTierInfo(context, 3),
                 _buildTrustTierInfo(context, 4),
-                const SizedBox(height: 24),
+                
+                const SizedBox(height: 32),
                 const Text(
                   'Frequently Asked Questions',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
                 _buildFAQ(
                   'Does this drain my battery?',
-                  'Mesh syncing uses Bluetooth Low Energy (BLE) to find peers, which is very efficient. However, frequent Wi-Fi Direct transfers can impact battery. You can adjust the "Sync Interval" in Settings.',
+                  'Mesh syncing uses Bluetooth Low Energy (BLE) to find peers, which is very efficient. However, frequent Wi-Fi Direct transfers can impact battery. You can adjust the "Sync Interval" in Settings (e.g., change from 30s to 5m to save power).',
                 ),
                 _buildFAQ(
                   'What is a "Global Action"?',
-                  'When an Official or Volunteer Resolves a hazard or Debunks a report, that "deletion" is broadcast to the whole network. Once you sync with someone, they will also see that hazard as removed.',
+                  'When an Official or Volunteer Resolves a hazard or Debunks a report, that "deletion" is broadcast to the whole network. Once you sync with someone, they will also see that hazard as removed. Local actions (like Blocking a user) only affect your device.',
                 ),
                 _buildFAQ(
                   'Is my data private?',
-                  'Your reports are signed with a unique cryptographic key stored only on your device. While your name is shared with reports, your exact location is only shared when you explicitly create a marker.',
+                  'Your reports are signed with a unique cryptographic key stored only on your device. While your name is shared with reports so others can verify authenticity, your exact location is only shared when you explicitly create a marker.',
                 ),
                 _buildFAQ(
                   'Why do I need so many permissions?',
-                  'Android requires Location and Nearby Devices permissions to use Bluetooth and Wi-Fi Direct. Floodio does not track you for advertising; it only uses these to find other mesh nodes.',
+                  'Android requires Location and Nearby Devices permissions to use Bluetooth and Wi-Fi Direct. Floodio does not track you for advertising; it strictly uses these APIs to find other mesh nodes during emergencies.',
                 ),
-                const SizedBox(height: 24),
+                
+                const SizedBox(height: 32),
                 const Text(
                   'Troubleshooting',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
                 _buildFAQ(
                   'My status says "OFFLINE" even with Auto-Sync on?',
-                  'Ensure Bluetooth and Location are enabled. Android requires Location services to be ON for Bluetooth scanning to work. Also, check if you have granted the "Nearby Devices" permission.',
+                  'Ensure Bluetooth and Location are enabled. Android requires Location services to be ON for Bluetooth scanning to work. Also, check if you have granted the "Nearby Devices" permission in your phone\'s settings.',
                 ),
                 _buildFAQ(
-                  'Syncing is taking a long time?',
-                  'Wi-Fi Direct can sometimes be slow to negotiate. Try moving closer to the other device. If it fails, try toggling Auto-Sync off and on again.',
+                  'Syncing is taking a long time or failing?',
+                  'Wi-Fi Direct can sometimes be slow to negotiate depending on the Android device manufacturer. Try moving closer to the other device. If it consistently fails, try toggling Auto-Sync off and on again, or restart your phone\'s Wi-Fi.',
                 ),
                 const SizedBox(height: 40),
               ],
@@ -160,41 +200,48 @@ class GuideTab extends ConsumerWidget {
     if (isOfficial) {
       bgColor = Colors.blue.shade50;
       textColor = Colors.blue.shade900;
-      title = 'Official Mode Active';
-      subtitle = 'You have full administrative capabilities to broadcast alerts and manage volunteers.';
+      title = 'Official Command Node';
+      subtitle = 'You have full administrative capabilities to broadcast critical alerts, manage volunteers, and bridge the mesh network to the cloud.';
       icon = Icons.security;
     } else if (isTier2) {
       bgColor = Colors.purple.shade50;
       textColor = Colors.purple.shade900;
-      title = 'Verified Volunteer';
-      subtitle = 'You are a trusted node. You can verify crowdsourced reports and debunk misinformation.';
+      title = 'Verified Volunteer Node';
+      subtitle = 'You are a trusted community leader. Your role is to verify crowdsourced reports, debunk misinformation, and help distribute offline maps.';
       icon = Icons.admin_panel_settings;
     } else {
       bgColor = Colors.green.shade50;
       textColor = Colors.green.shade900;
       title = 'Citizen Node';
-      subtitle = 'You are part of the mesh. Report hazards and sync with others to keep your community informed.';
+      subtitle = 'You are a vital part of the mesh network. Report local hazards, trust reliable neighbors, and keep Auto-Sync on to relay information.';
       icon = Icons.people;
     }
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: bgColor,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: textColor.withValues(alpha: 0.3)),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: textColor.withValues(alpha: 0.3), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: textColor.withValues(alpha: 0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          )
+        ]
       ),
       child: Row(
         children: [
-          Icon(icon, color: textColor, size: 36),
-          const SizedBox(width: 16),
+          Icon(icon, color: textColor, size: 42),
+          const SizedBox(width: 20),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 18)),
-                const SizedBox(height: 4),
-                Text(subtitle, style: TextStyle(color: textColor, fontSize: 14)),
+                Text(title, style: TextStyle(color: textColor, fontWeight: FontWeight.w900, fontSize: 20)),
+                const SizedBox(height: 6),
+                Text(subtitle, style: TextStyle(color: textColor, fontSize: 14, height: 1.4)),
               ],
             ),
           ),
@@ -207,36 +254,38 @@ class GuideTab extends ConsumerWidget {
     return Card(
       elevation: 4,
       shadowColor: Colors.black26,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       child: Padding(
-        padding: const EdgeInsets.all(20.0),
+        padding: const EdgeInsets.all(24.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                Icon(Icons.bolt, color: Colors.yellow.shade800, size: 28),
-                const SizedBox(width: 8),
+                Icon(Icons.bolt, color: Colors.yellow.shade800, size: 32),
+                const SizedBox(width: 12),
                 const Text(
-                  'Quick Start',
-                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
+                  'Quick Start Guide',
+                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
-            _buildStep(1, 'Enable Auto-Sync', 'Tap the status chip in the top right and toggle "Mesh Auto-Sync" to ON.'),
+            const SizedBox(height: 24),
             if (isOfficial) ...[
-              _buildStep(2, 'Broadcast Alerts', 'Use the "+" button to send Official Alerts to the network.'),
-              _buildStep(3, 'Promote Volunteers', 'Find reliable users in the feed and tap "Make Volunteer".'),
-              _buildStep(4, 'Cloud Gateway', 'Use the Command Tab to sync the offline mesh with the internet when available.'),
+              _buildStep(1, 'Enable Auto-Sync', 'Tap the status chip (top right) and toggle "Mesh Auto-Sync" ON to connect with nearby devices.'),
+              _buildStep(2, 'Broadcast Alerts', 'Tap the "+" button on the Map or Feed to send Official Alerts. Mark them as "Critical" for immediate evacuation notices.'),
+              _buildStep(3, 'Promote Volunteers', 'Find reliable users in the feed and tap "Make Volunteer" to grant them verification powers.'),
+              _buildStep(4, 'Cloud Gateway', 'When internet is available, go to the Command Tab and tap "Force Cloud Sync Now" to upload mesh data to the central database.'),
             ] else if (isTier2) ...[
-              _buildStep(2, 'Verify Reports', 'Check Unverified (Grey) reports. If true, tap "Verify & Endorse".'),
-              _buildStep(3, 'Debunk False Info', 'If a report is false, tap "Debunk" to remove it for everyone.'),
-              _buildStep(4, 'Share Maps', 'Download offline maps and broadcast them to users who need them.'),
+              _buildStep(1, 'Enable Auto-Sync', 'Tap the status chip (top right) and toggle "Mesh Auto-Sync" ON to relay data between citizens.'),
+              _buildStep(2, 'Verify Reports', 'Check Unverified (Grey) reports. If you physically confirm them, tap "Verify & Endorse" to upgrade them to Verified (Purple).'),
+              _buildStep(3, 'Debunk False Info', 'If a report is definitively false, tap "Debunk" to permanently remove it from the entire mesh network.'),
+              _buildStep(4, 'Share Maps', 'Download offline maps (Map tab -> Download icon) and broadcast them via the Sync menu to users without internet.'),
             ] else ...[
-              _buildStep(2, 'Download a Map', 'While you have internet, use the download button on the map to save your local area.'),
-              _buildStep(3, 'Report Hazards', 'Use the "+" button to mark floods or roadblocks. Your reports will spread automatically.'),
-              _buildStep(4, 'Trust Reliable Users', 'Tap "Trust" on reports from people you know to prioritize their updates.'),
+              _buildStep(1, 'Enable Auto-Sync', 'Tap the status chip (top right) and toggle "Mesh Auto-Sync" ON. Your phone will act as a secure relay for emergency data.'),
+              _buildStep(2, 'Download a Map', 'While you still have internet, tap the download icon on the Map tab to save your local area for offline use.'),
+              _buildStep(3, 'Report Hazards', 'Tap the "+" button to mark floods, roadblocks, or safe zones. Your reports will spread automatically to nearby phones.'),
+              _buildStep(4, 'Trust Reliable Users', 'Tap "Trust" on reports from people you know. Their future updates will be prioritized on your device.'),
             ],
           ],
         ),
@@ -247,42 +296,43 @@ class GuideTab extends ConsumerWidget {
   Widget _buildEmergencyProtocolCard(BuildContext context, bool isOfficial, bool isTier2) {
     String text;
     if (isOfficial) {
-      text = 'In a crisis, use the Command Tab to force cloud syncs when internet is available. Issue "Critical" alerts for immediate evacuation notices. These will bypass filters and alert all users.';
+      text = '1. Issue "Critical" alerts for immediate life-threatening situations. These bypass standard filters.\n\n2. Use the Command Tab to force cloud syncs whenever a temporary internet connection is established.\n\n3. Delegate trust to local community leaders (Make Volunteer) to scale verification efforts.';
     } else if (isTier2) {
-      text = 'In a crisis, misinformation can be deadly. Actively monitor the feed for Unverified (Grey) reports. If you physically verify them, use "Verify & Endorse". If you know they are false, use "Debunk" to delete them globally.';
+      text = '1. Misinformation can be deadly during a crisis. Actively monitor the feed for Unverified (Grey) reports.\n\n2. If you physically verify a hazard, use "Verify & Endorse".\n\n3. If you know a report is false or outdated, use "Debunk" to delete it globally.\n\n4. Keep your device charged and Auto-Sync enabled to act as a data bridge.';
     } else {
-      text = 'If you see a hazard, report it immediately. If you see a false report, you can "Block" the sender locally to hide their posts. Leave global debunking to Verified Volunteers (Purple) and Officials (Blue).';
+      text = '1. If you see a hazard, report it immediately with a clear description and photo if possible.\n\n2. If you see a false report, tap "Block" to hide that user\'s posts locally.\n\n3. Conserve battery, but try to keep Auto-Sync enabled when moving between locations to carry data to others (acting as a "data mule").';
     }
 
     return Card(
       color: Colors.red.shade50,
+      elevation: 0,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: Colors.red.shade200),
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(color: Colors.red.shade200, width: 2),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(24.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                Icon(Icons.gavel, color: Colors.red.shade900),
-                const SizedBox(width: 8),
+                Icon(Icons.gavel, color: Colors.red.shade900, size: 28),
+                const SizedBox(width: 12),
                 Text(
                   'Emergency Protocol',
                   style: TextStyle(
-                    fontWeight: FontWeight.bold,
+                    fontWeight: FontWeight.w900,
                     color: Colors.red.shade900,
-                    fontSize: 18,
+                    fontSize: 20,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 16),
             Text(
               text,
-              style: const TextStyle(fontSize: 14, height: 1.4),
+              style: TextStyle(fontSize: 15, height: 1.5, color: Colors.red.shade900),
             ),
           ],
         ),
@@ -292,22 +342,24 @@ class GuideTab extends ConsumerWidget {
 
   Widget _buildStep(int num, String title, String desc) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12.0),
+      padding: const EdgeInsets.only(bottom: 16.0),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           CircleAvatar(
-            radius: 12,
+            radius: 14,
             backgroundColor: Colors.blue.shade100,
-            child: Text(num.toString(), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+            foregroundColor: Colors.blue.shade900,
+            child: Text(num.toString(), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                Text(desc, style: const TextStyle(fontSize: 13, color: Colors.black87)),
+                Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                const SizedBox(height: 4),
+                Text(desc, style: TextStyle(fontSize: 14, color: Colors.grey.shade800, height: 1.4)),
               ],
             ),
           ),
@@ -319,25 +371,52 @@ class GuideTab extends ConsumerWidget {
   Widget _buildConceptTile(BuildContext context, {required IconData icon, required String title, required String description, required Color color}) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: color, size: 32),
-          const SizedBox(width: 16),
+          Icon(icon, color: color, size: 36),
+          const SizedBox(width: 20),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                const SizedBox(height: 4),
-                Text(description, style: const TextStyle(fontSize: 14, height: 1.3)),
+                Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                const SizedBox(height: 6),
+                Text(description, style: TextStyle(fontSize: 14, height: 1.4, color: Colors.grey.shade800)),
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGuideExpansionTile(BuildContext context, {required IconData icon, required String title, required String content}) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.grey.shade300),
+        borderRadius: BorderRadius.circular(16),
+        color: Theme.of(context).colorScheme.surface,
+      ),
+      child: ExpansionTile(
+        leading: Icon(icon, color: Theme.of(context).colorScheme.primary, size: 28),
+        title: Text(
+          title,
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+        ),
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+            child: Text(
+              content,
+              style: TextStyle(color: Colors.grey.shade800, height: 1.5, fontSize: 14),
             ),
           ),
         ],
@@ -372,21 +451,21 @@ class GuideTab extends ConsumerWidget {
 
     return Card(
       elevation: 0,
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: const EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(
-        side: BorderSide(color: color.withValues(alpha: 0.3)),
-        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: color.withValues(alpha: 0.4), width: 1.5),
+        borderRadius: BorderRadius.circular(16),
       ),
       child: ExpansionTile(
-        leading: Icon(icon, color: color),
+        leading: Icon(icon, color: color, size: 28),
         title: Text(
           title,
-          style: TextStyle(color: color, fontWeight: FontWeight.bold),
+          style: TextStyle(color: color, fontWeight: FontWeight.w800, fontSize: 16),
         ),
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-            child: Text(desc, style: const TextStyle(fontSize: 14)),
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+            child: Text(desc, style: TextStyle(fontSize: 14, color: Colors.grey.shade800, height: 1.4)),
           ),
         ],
       ),
@@ -395,22 +474,23 @@ class GuideTab extends ConsumerWidget {
 
   Widget _buildFAQ(String question, String answer) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         border: Border.all(color: Colors.grey.shade300),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
+        color: Colors.grey.shade50,
       ),
       child: ExpansionTile(
         title: Text(
           question,
-          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
         ),
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
             child: Text(
               answer,
-              style: TextStyle(color: Colors.grey.shade800, height: 1.4),
+              style: TextStyle(color: Colors.grey.shade800, height: 1.5, fontSize: 14),
             ),
           ),
         ],
@@ -436,27 +516,27 @@ class _TutorialOverlayState extends State<TutorialOverlay> {
   final List<Map<String, String>> _steps = [
     {
       'title': 'Welcome to Floodio',
-      'content': 'This app helps you stay informed during floods, even when the internet is down.',
+      'content': 'Floodio is an offline-first disaster communication network. It keeps you connected when cell towers and internet fail.',
       'icon': '👋',
     },
     {
-      'title': 'Mesh Networking',
-      'content': 'The status chip at the top shows your connection. Tap it to enable Auto-Sync and automatically share data with nearby phones via Bluetooth and Wi-Fi.',
+      'title': 'The Mesh Network',
+      'content': 'By turning on "Mesh Auto-Sync", your phone will automatically find nearby users via Bluetooth and securely exchange emergency data over Wi-Fi Direct. You become a vital link in the chain.',
       'icon': '📡',
     },
     {
-      'title': 'Trust Tiers',
-      'content': 'Reports are color-coded to fight misinformation:\n🔵 Official\n🟣 Verified Volunteer\n🟢 Personally Trusted\n⚪ Unverified Public',
+      'title': 'Trust & Verification',
+      'content': 'To fight rumors, reports are color-coded:\n\n🔵 Official (Gov/NGO)\n🟣 Verified (Trusted Volunteers)\n🟢 Trusted (Your Contacts)\n⚪ Unverified (Public)',
       'icon': '🛡️',
     },
     {
       'title': 'Reporting Hazards',
-      'content': 'Use the "+" button to report floods or roadblocks. Your report will spread to others as they pass by you.',
+      'content': 'Tap the "+" button to report floods, draw safe zones, or mark blocked roads. Add photos and descriptions to help your community navigate safely.',
       'icon': '📍',
     },
     {
       'title': 'Offline Maps',
-      'content': 'Tap the download icon on the map to save areas for offline use. You can even share these maps with others over the mesh!',
+      'content': 'Download maps while you have internet. If the network goes down, you can still navigate and even share your downloaded maps directly with other users offline.',
       'icon': '🗺️',
     },
   ];
@@ -482,7 +562,7 @@ class _TutorialOverlayState extends State<TutorialOverlay> {
         if (_showTutorial)
           Positioned.fill(
             child: Material(
-              color: Colors.black.withValues(alpha: 0.85),
+              color: Colors.black.withValues(alpha: 0.90),
               child: Center(
                 child: Padding(
                   padding: const EdgeInsets.all(32.0),
@@ -493,16 +573,16 @@ class _TutorialOverlayState extends State<TutorialOverlay> {
                         _steps[_currentStep]['icon']!,
                         style: const TextStyle(fontSize: 80),
                       ),
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 32),
                       Text(
                         _steps[_currentStep]['title']!,
-                        style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold),
+                        style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w900),
                         textAlign: TextAlign.center,
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 20),
                       Text(
                         _steps[_currentStep]['content']!,
-                        style: const TextStyle(color: Colors.white70, fontSize: 18, height: 1.4),
+                        style: const TextStyle(color: Colors.white70, fontSize: 18, height: 1.5),
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 48),
@@ -512,29 +592,52 @@ class _TutorialOverlayState extends State<TutorialOverlay> {
                           if (_currentStep > 0)
                             OutlinedButton(
                               onPressed: () => setState(() => _currentStep--),
-                              style: OutlinedButton.styleFrom(foregroundColor: Colors.white, side: const BorderSide(color: Colors.white24)),
-                              child: const Text('Back'),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: Colors.white, 
+                                side: const BorderSide(color: Colors.white38, width: 2),
+                                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                              child: const Text('Back', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                             ),
-                          const SizedBox(width: 16),
-                          ElevatedButton(
-                            onPressed: () {
-                              if (_currentStep < _steps.length - 1) {
-                                setState(() => _currentStep++);
-                              } else {
-                                _finish();
-                              }
-                            },
-                            style: ElevatedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                          if (_currentStep > 0)
+                            const SizedBox(width: 16),
+                          Expanded(
+                            child: FilledButton(
+                              onPressed: () {
+                                if (_currentStep < _steps.length - 1) {
+                                  setState(() => _currentStep++);
+                                } else {
+                                  _finish();
+                                }
+                              },
+                              style: FilledButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(vertical: 16),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                              child: Text(
+                                _currentStep < _steps.length - 1 ? 'Next' : 'Start Using Floodio',
+                                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)
+                              ),
                             ),
-                            child: Text(_currentStep < _steps.length - 1 ? 'Next' : 'Start Using Floodio'),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 24),
-                      Text(
-                        'Step ${_currentStep + 1} of ${_steps.length}',
-                        style: const TextStyle(color: Colors.white38, fontSize: 12),
+                      const SizedBox(height: 32),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: List.generate(
+                          _steps.length,
+                          (index) => Container(
+                            margin: const EdgeInsets.symmetric(horizontal: 4),
+                            width: 8,
+                            height: 8,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: _currentStep == index ? Colors.blue : Colors.white24,
+                            ),
+                          ),
+                        ),
                       ),
                     ],
                   ),
