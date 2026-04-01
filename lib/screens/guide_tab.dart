@@ -97,6 +97,24 @@ class GuideTab extends ConsumerWidget {
                 ),
                 _buildGuideExpansionTile(
                   context,
+                  icon: Icons.share,
+                  title: 'Sharing the App Without Internet',
+                  content: 'If someone needs Floodio but has no internet, you can share the app directly:\n\n'
+                           '• Tap the "Share" icon in the top right of the app bar.\n'
+                           '• This extracts the Floodio APK from your device.\n'
+                           '• Send it to them via Bluetooth, Nearby Share, or Wi-Fi Direct.\n'
+                           '• Once they install it, they can immediately join the mesh network.',
+                ),
+                _buildGuideExpansionTile(
+                  context,
+                  icon: Icons.cleaning_services,
+                  title: 'Resolving vs. Debunking vs. Blocking',
+                  content: '• Resolve (Green Check): The hazard existed but is now cleared (e.g., water receded). Removes it from the map for everyone.\n'
+                           '• Debunk (Red Hammer - Officials/Volunteers only): The report was fake or malicious. Deletes it globally.\n'
+                           '• Block (Red Circle): You don\'t trust this user. Hides their reports on YOUR device only.',
+                ),
+                _buildGuideExpansionTile(
+                  context,
                   icon: Icons.security,
                   title: 'Understanding Cryptographic Signatures',
                   content: 'To prevent malicious actors from spoofing official alerts, Floodio uses Ed25519 cryptographic signatures.\n\n'
@@ -150,6 +168,14 @@ class GuideTab extends ConsumerWidget {
                   style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 16),
+                _buildFAQ(
+                  'How do I draw an Area or Path?',
+                  'Tap the "+" button and select "Report Area" or "Report Path". The map will enter drawing mode. Tap on the map to add points. When finished, tap the green "Done" button in the bottom right to add details and submit.',
+                ),
+                _buildFAQ(
+                  'What happens when a report expires?',
+                  'When creating a report, you can set an expiration time (e.g., 24 hours). Once that time passes, the report is automatically hidden and eventually deleted from the database to keep the map clean. You can extend the expiration by editing the report.',
+                ),
                 _buildFAQ(
                   'Does this drain my battery?',
                   'Mesh syncing uses Bluetooth Low Energy (BLE) to find peers, which is very efficient. However, frequent Wi-Fi Direct transfers can impact battery. You can adjust the "Sync Interval" in Settings (e.g., change from 30s to 5m to save power).',
@@ -272,20 +298,20 @@ class GuideTab extends ConsumerWidget {
             ),
             const SizedBox(height: 24),
             if (isOfficial) ...[
-              _buildStep(1, 'Enable Auto-Sync', 'Tap the status chip (top right) and toggle "Mesh Auto-Sync" ON to connect with nearby devices.'),
-              _buildStep(2, 'Broadcast Alerts', 'Tap the "+" button on the Map or Feed to send Official Alerts. Mark them as "Critical" for immediate evacuation notices.'),
-              _buildStep(3, 'Promote Volunteers', 'Find reliable users in the feed and tap "Make Volunteer" to grant them verification powers.'),
-              _buildStep(4, 'Cloud Gateway', 'When internet is available, go to the Command Tab and tap "Force Cloud Sync Now" to upload mesh data to the central database.'),
+              _buildStep(1, 'Enable Auto-Sync', 'Tap the status chip (top right) and toggle "Mesh Auto-Sync" ON to connect with nearby devices and build the local mesh.'),
+              _buildStep(2, 'Broadcast Alerts', 'Tap the "+" button to send Official Alerts. Mark them as "Critical" for immediate evacuation notices. These appear in Blue (Tier 1).'),
+              _buildStep(3, 'Promote Volunteers', 'Find reliable users in the feed and tap "Make Volunteer" to grant them verification powers. Manage them in the Command Tab.'),
+              _buildStep(4, 'Cloud Gateway', 'When internet is available, go to the Command Tab and tap "Force Cloud Sync Now" to upload mesh data to the central database and download global updates.'),
             ] else if (isTier2) ...[
-              _buildStep(1, 'Enable Auto-Sync', 'Tap the status chip (top right) and toggle "Mesh Auto-Sync" ON to relay data between citizens.'),
-              _buildStep(2, 'Verify Reports', 'Check Unverified (Grey) reports. If you physically confirm them, tap "Verify & Endorse" to upgrade them to Verified (Purple).'),
+              _buildStep(1, 'Enable Auto-Sync', 'Tap the status chip (top right) and toggle "Mesh Auto-Sync" ON to relay data between citizens and officials.'),
+              _buildStep(2, 'Verify Reports', 'Check Unverified (Grey) reports. If you physically confirm them, tap "Verify & Endorse" to upgrade them to Verified (Purple) for everyone.'),
               _buildStep(3, 'Debunk False Info', 'If a report is definitively false, tap "Debunk" to permanently remove it from the entire mesh network.'),
               _buildStep(4, 'Share Maps', 'Download offline maps (Map tab -> Download icon) and broadcast them via the Sync menu to users without internet.'),
             ] else ...[
               _buildStep(1, 'Enable Auto-Sync', 'Tap the status chip (top right) and toggle "Mesh Auto-Sync" ON. Your phone will act as a secure relay for emergency data.'),
               _buildStep(2, 'Download a Map', 'While you still have internet, tap the download icon on the Map tab to save your local area for offline use.'),
               _buildStep(3, 'Report Hazards', 'Tap the "+" button to mark floods, roadblocks, or safe zones. Your reports will spread automatically to nearby phones.'),
-              _buildStep(4, 'Trust Reliable Users', 'Tap "Trust" on reports from people you know. Their future updates will be prioritized on your device.'),
+              _buildStep(4, 'Trust Reliable Users', 'Tap "Trust" on reports from people you know. Their future updates will be prioritized on your device (Green).'),
             ],
           ],
         ),
@@ -296,11 +322,11 @@ class GuideTab extends ConsumerWidget {
   Widget _buildEmergencyProtocolCard(BuildContext context, bool isOfficial, bool isTier2) {
     String text;
     if (isOfficial) {
-      text = '1. Issue "Critical" alerts for immediate life-threatening situations. These bypass standard filters.\n\n2. Use the Command Tab to force cloud syncs whenever a temporary internet connection is established.\n\n3. Delegate trust to local community leaders (Make Volunteer) to scale verification efforts.';
+      text = '1. Issue "Critical" alerts for immediate life-threatening situations. These bypass standard filters and alert users immediately.\n\n2. Use the Command Tab to force cloud syncs whenever a temporary internet connection is established to bridge the mesh with the outside world.\n\n3. Delegate trust to local community leaders (Make Volunteer) to scale verification efforts across disconnected zones.\n\n4. Broadcast offline maps to areas where cellular infrastructure has completely collapsed.';
     } else if (isTier2) {
-      text = '1. Misinformation can be deadly during a crisis. Actively monitor the feed for Unverified (Grey) reports.\n\n2. If you physically verify a hazard, use "Verify & Endorse".\n\n3. If you know a report is false or outdated, use "Debunk" to delete it globally.\n\n4. Keep your device charged and Auto-Sync enabled to act as a data bridge.';
+      text = '1. Misinformation can be deadly during a crisis. Actively monitor the feed for Unverified (Grey) reports.\n\n2. If you physically verify a hazard, use "Verify & Endorse" to elevate its trust level.\n\n3. If you know a report is false or outdated, use "Debunk" to delete it globally and prevent panic.\n\n4. Keep your device charged and Auto-Sync enabled to act as a critical data bridge between neighborhoods.';
     } else {
-      text = '1. If you see a hazard, report it immediately with a clear description and photo if possible.\n\n2. If you see a false report, tap "Block" to hide that user\'s posts locally.\n\n3. Conserve battery, but try to keep Auto-Sync enabled when moving between locations to carry data to others (acting as a "data mule").';
+      text = '1. If you see a hazard, report it immediately with a clear description and photo if possible. Accurate data saves lives.\n\n2. If you see a false report, tap "Block" to hide that user\'s posts locally.\n\n3. Conserve battery, but try to keep Auto-Sync enabled when moving between locations to carry data to others (acting as a "data mule").\n\n4. Follow instructions from Official (Blue) and Verified (Purple) reports.';
     }
 
     return Card(
@@ -538,6 +564,11 @@ class _TutorialOverlayState extends State<TutorialOverlay> {
       'title': 'Offline Maps',
       'content': 'Download maps while you have internet. If the network goes down, you can still navigate and even share your downloaded maps directly with other users offline.',
       'icon': '🗺️',
+    },
+    {
+      'title': 'Share the App Offline',
+      'content': 'If someone needs Floodio but has no internet, tap the Share icon in the top right to send them the app directly via Bluetooth or Nearby Share.',
+      'icon': '📲',
     },
   ];
 
