@@ -4362,11 +4362,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
         child: Scaffold(
         appBar: AppBar(
           title: Row(
+            mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Text(
-                'FLOODIO',
-                style: TextStyle(letterSpacing: 2, fontWeight: FontWeight.w900),
+              const Flexible(
+                child: Text(
+                  'FLOODIO',
+                  style: TextStyle(letterSpacing: 2, fontWeight: FontWeight.w900),
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
               const SizedBox(width: 12),
               if (downloadProgress.isDownloading)

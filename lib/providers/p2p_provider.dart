@@ -223,6 +223,7 @@ class P2pService extends _$P2pService {
 
   String? _originalBluetoothName;
   static const _systemChannel = MethodChannel('com.example.floodio/system');
+  bool _isSwitchingRoles = false;
 
   @override
   P2pState build() {
@@ -279,7 +280,7 @@ class P2pService extends _$P2pService {
         _sendManifest();
       } else if (clients.isEmpty) {
         state = state.copyWith(isSyncing: false, syncMessage: 'Waiting for clients...', clearSyncProgress: true);
-        if (state.isAutoSyncing && previousCount > 0 && !_disposed) {
+        if (state.isAutoSyncing && previousCount > 0 && !_disposed && !_isSwitchingRoles) {
           _idleTicks = 0;
           _autoSyncTimer?.cancel();
           _runAutoSyncCycle();
@@ -304,7 +305,7 @@ class P2pService extends _$P2pService {
         _sendManifest();
       } else if (wasActive && !hotspotState.isActive) {
         state = state.copyWith(isSyncing: false, syncMessage: 'Disconnected from host.', clearSyncProgress: true);
-        if (state.isAutoSyncing && !_disposed) {
+        if (state.isAutoSyncing && !_disposed && !_isSwitchingRoles) {
           _idleTicks = 0;
           _autoSyncTimer?.cancel();
           _runAutoSyncCycle();
@@ -326,8 +327,13 @@ class P2pService extends _$P2pService {
       _autoSyncTimer?.cancel();
       if (state.isAutoSyncing) {
         state = state.copyWith(isAutoSyncing: false, syncMessage: 'Auto-sync disabled.', clearSyncProgress: true);
-        await stopHosting();
-        await disconnect();
+        _isSwitchingRoles = true;
+        try {
+          await stopHosting();
+          await disconnect();
+        } finally {
+          _isSwitchingRoles = false;
+        }
       } else {
         state = state.copyWith(isAutoSyncing: true, syncMessage: 'Auto-sync enabled. Starting...', clearSyncProgress: true);
         _idleTicks = 0;
@@ -355,10 +361,15 @@ class P2pService extends _$P2pService {
       _idleTicks++;
       if (_idleTicks >= 6) { // 30 seconds idle after sync
         _idleTicks = 0;
-        if (isClientConnected) {
-          await disconnect();
-        } else {
-          await stopHosting();
+        _isSwitchingRoles = true;
+        try {
+          if (isClientConnected) {
+            await disconnect();
+          } else {
+            await stopHosting();
+          }
+        } finally {
+          _isSwitchingRoles = false;
         }
       } else {
         _autoSyncTimer = Timer(const Duration(seconds: 5), _runAutoSyncCycle);
@@ -368,39 +379,44 @@ class P2pService extends _$P2pService {
       _idleTicks = 0;
     }
 
-    // Alternate role
-    if (_lastRoleWasHost) {
-      _lastRoleWasHost = false;
-      state = state.copyWith(syncMessage: 'Switching to Scanner...', clearSyncProgress: true);
-      await stopHosting();
-      if (!state.isAutoSyncing || _disposed) return;
-      
-            try {
-              await _systemChannel.invokeMethod('toggleWifi', {'enable': true});
-            } catch (_) {}
-      
-      // Wait for Wi-Fi to turn back on after hotspot is disabled
-      int waitCount = 0;
-      while (!(await _client.checkWifiEnabled()) && waitCount < 10) {
-        await Future.delayed(const Duration(seconds: 1));
-        waitCount++;
+    _isSwitchingRoles = true;
+    try {
+      // Alternate role
+      if (_lastRoleWasHost) {
+        _lastRoleWasHost = false;
+        state = state.copyWith(syncMessage: 'Switching to Scanner...', clearSyncProgress: true);
+        await stopHosting();
+        if (!state.isAutoSyncing || _disposed) return;
+  
+              try {
+                await _systemChannel.invokeMethod('toggleWifi', {'enable': true});
+              } catch (_) {}
+  
+        // Wait for Wi-Fi to turn back on after hotspot is disabled
+        int waitCount = 0;
+        while (!(await _client.checkWifiEnabled()) && waitCount < 10) {
+          await Future.delayed(const Duration(seconds: 1));
+          waitCount++;
+        }
+  
+        if (!state.isAutoSyncing || _disposed) return;
+        await startScanning();
+      } else {
+        _lastRoleWasHost = true;
+        state = state.copyWith(syncMessage: 'Switching to Host...', clearSyncProgress: true);
+        await disconnect(); // stops scanning
+        if (!state.isAutoSyncing || _disposed) return;
+  
+              try {
+                await _systemChannel.invokeMethod('toggleWifi', {'enable': false});
+              } catch (_) {}
+  
+        await Future.delayed(const Duration(seconds: 3)); // Give OS time to reset Wi-Fi state
+        if (!state.isAutoSyncing || _disposed) return;
+        await startHosting();
       }
-      
-      if (!state.isAutoSyncing || _disposed) return;
-      await startScanning();
-    } else {
-      _lastRoleWasHost = true;
-      state = state.copyWith(syncMessage: 'Switching to Host...', clearSyncProgress: true);
-      await disconnect(); // stops scanning
-      if (!state.isAutoSyncing || _disposed) return;
-      
-            try {
-              await _systemChannel.invokeMethod('toggleWifi', {'enable': false});
-            } catch (_) {}
-      
-      await Future.delayed(const Duration(seconds: 3)); // Give OS time to reset Wi-Fi state
-      if (!state.isAutoSyncing || _disposed) return;
-      await startHosting();
+    } finally {
+      _isSwitchingRoles = false;
     }
 
     if (state.isAutoSyncing && !_disposed) {
@@ -622,7 +638,7 @@ class P2pService extends _$P2pService {
       print("Connection failed: $e");
       await _client.disconnect(); // Ensure cleanup
       state = state.copyWith(isConnecting: false, syncMessage: 'Connection failed: $e', clearSyncProgress: true);
-      if (state.isAutoSyncing && !_disposed) {
+      if (state.isAutoSyncing && !_disposed && !_isSwitchingRoles) {
         // If connection failed, don't wait for the full cycle, try switching roles soon
         _autoSyncTimer?.cancel();
         _autoSyncTimer = Timer(const Duration(seconds: 2), _runAutoSyncCycle);
