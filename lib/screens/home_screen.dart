@@ -4342,6 +4342,28 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
           actions: [
             Consumer(
               builder: (context, ref, child) {
+                final p2pState = ref.watch(uiP2pServiceProvider);
+                final isConnected = p2pState.hostState?.isActive == true || p2pState.clientState?.isActive == true;
+                
+                if (!isConnected) return const SizedBox.shrink();
+                
+                return IconButton(
+                  icon: const Icon(Icons.sync),
+                  tooltip: 'Manual Mesh Sync',
+                  onPressed: p2pState.isSyncing ? null : () {
+                    ref.read(uiP2pServiceProvider.notifier).triggerSync();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Triggered manual mesh sync...'),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
+            Consumer(
+              builder: (context, ref, child) {
                 final hasInternet = ref.watch(cloudSyncServiceProvider.select((s) => s.hasInternet));
                 final isSyncing = ref.watch(cloudSyncServiceProvider.select((s) => s.isSyncing));
                 

@@ -375,6 +375,8 @@ class CommandTab extends ConsumerWidget {
   Widget _buildMeshActionsCard(BuildContext context, WidgetRef ref) {
     final offlineRegionsAsync = ref.watch(offlineRegionsProvider);
     final offlineRegions = offlineRegionsAsync.value ?? [];
+    final p2pState = ref.watch(uiP2pServiceProvider);
+    final isConnected = p2pState.hostState?.isActive == true || p2pState.clientState?.isActive == true;
 
     return Card(
       elevation: 0,
@@ -387,6 +389,40 @@ class CommandTab extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            const Text(
+              'Manual Mesh Sync',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Force a 2-way synchronization with all currently connected devices in the mesh network.',
+              style: TextStyle(color: Colors.grey, fontSize: 13),
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: (!isConnected || p2pState.isSyncing)
+                    ? null
+                    : () {
+                        ref.read(uiP2pServiceProvider.notifier).triggerSync();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Triggered manual mesh sync...'),
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                      },
+                icon: const Icon(Icons.sync, size: 18),
+                label: Text(p2pState.isSyncing ? 'Syncing...' : 'Force Mesh Sync Now'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: Colors.green.shade600,
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+            const Divider(),
+            const SizedBox(height: 16),
             const Text(
               'Broadcast Offline Map',
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
