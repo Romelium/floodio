@@ -2289,366 +2289,414 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           }
         });
 
-        return FlutterMap(
-          mapController: _mapController,
-          options: MapOptions(
-            initialCenter: const LatLng(37.7749, -122.4194),
-            initialZoom: 13.0,
-            onPositionChanged: (camera, hasGesture) {
-              if (camera.rotation != _mapRotation) {
-                setState(() {
-                  _mapRotation = camera.rotation;
-                });
-              }
-            },
-            onTap: (tapPosition, point) {
-              final drawingState = ref.read(drawingControllerProvider);
-              if (drawingState.mode == DrawingMode.area) {
-                ref.read(drawingControllerProvider.notifier).addPoint(point);
-              } else if (drawingState.mode == DrawingMode.path) {
-                ref.read(drawingControllerProvider.notifier).addPoint(point);
-              } else {
-                _showAddHazardDialog(point);
-              }
-            },
-          ),
+        return Stack(
           children: [
-            TileLayer(
-              urlTemplate: settings.mapStyle.url,
-              userAgentPackageName: 'com.example.floodio',
-              tileProvider: CachedTileProvider(
-                ref.read(mapCacheServiceProvider),
+            FlutterMap(
+              mapController: _mapController,
+              options: MapOptions(
+                initialCenter: const LatLng(37.7749, -122.4194),
+                initialZoom: 13.0,
+                onPositionChanged: (camera, hasGesture) {
+                  if (camera.rotation != _mapRotation) {
+                    setState(() {
+                      _mapRotation = camera.rotation;
+                    });
+                  }
+                },
+                onTap: (tapPosition, point) {
+                  final drawingState = ref.read(drawingControllerProvider);
+                  if (drawingState.mode == DrawingMode.area) {
+                    ref.read(drawingControllerProvider.notifier).addPoint(point);
+                  } else if (drawingState.mode == DrawingMode.path) {
+                    ref.read(drawingControllerProvider.notifier).addPoint(point);
+                  } else {
+                    _showAddHazardDialog(point);
+                  }
+                },
               ),
-            ),
-            PolygonLayer(
-              polygons: [
-                if (showOfflineRegions)
-                  ...offlineRegions.map(
-                    (r) => Polygon(
-                      points: [
-                        LatLng(r.bounds.north, r.bounds.west),
-                        LatLng(r.bounds.north, r.bounds.east),
-                        LatLng(r.bounds.south, r.bounds.east),
-                        LatLng(r.bounds.south, r.bounds.west),
-                      ],
-                      color: Colors.teal.withValues(alpha: 0.15),
-                      borderColor: Colors.teal,
-                      borderStrokeWidth: 2,
-                    ),
+              children: [
+                TileLayer(
+                  urlTemplate: settings.mapStyle.url,
+                  userAgentPackageName: 'com.example.floodio',
+                  tileProvider: CachedTileProvider(
+                    ref.read(mapCacheServiceProvider),
                   ),
-                ...areas.map((a) {
-                  final points = a.coordinates
-                      .map((c) => LatLng(c['lat']!, c['lng']!))
-                      .toList();
-                  final color = a.isCritical ? Colors.red : (
-                      a.type.toLowerCase().contains('safe') ||
-                          a.type.toLowerCase().contains('evacuation')
-                      ? Colors.green
-                      : Colors.orange);
-                  return Polygon(
-                    points: points,
-                    color: color.withValues(alpha: 0.3),
-                    borderColor: color,
-                    borderStrokeWidth: 2,
-                  );
-                }),
-                if (drawingState.mode == DrawingMode.area && drawingState.points.length >= 3)
-                  Polygon(
-                    points: drawingState.points,
-                    color: Colors.blue.withValues(alpha: 0.3),
-                    borderColor: Colors.blue,
-                    borderStrokeWidth: 2,
-                  ),
-              ],
-            ),
-            PolylineLayer(
-              polylines: [
-                ...paths.map((p) {
-                  final points = p.coordinates
-                      .map((c) => LatLng(c['lat']!, c['lng']!))
-                      .toList();
-                  final color = p.isCritical ? Colors.red : (
-                      p.type.toLowerCase().contains('safe') ||
-                          p.type.toLowerCase().contains('evacuation')
-                      ? Colors.green
-                      : Colors.orange);
-                  return Polyline(
-                    points: points,
-                    color: color,
-                    strokeWidth: 4.0,
-                    pattern: p.type.toLowerCase().contains('blocked')
-                        ? StrokePattern.dashed(segments: const [10.0, 10.0])
-                        : const StrokePattern.solid(),
-                  );
-                }),
-                if (drawingState.mode != DrawingMode.none && drawingState.points.isNotEmpty)
-                  Polyline(
-                    points: drawingState.mode == DrawingMode.area 
-                        ? (drawingState.points.length > 1 ? [...drawingState.points, drawingState.points.first] : drawingState.points)
-                        : drawingState.points,
-                    color: drawingState.mode == DrawingMode.area ? Colors.blue : Colors.teal,
-                    strokeWidth: 4.0,
-                    pattern: StrokePattern.dashed(segments: [10.0, 10.0]),
-                  ),
-              ],
-            ),
-            if (drawingState.mode != DrawingMode.none && drawingState.points.isNotEmpty)
-              CircleLayer(
-                circles: drawingState.points.map((p) => CircleMarker(
-                  point: p,
-                  radius: 6,
-                  color: Colors.white,
-                  borderColor: drawingState.mode == DrawingMode.area ? Colors.blue : Colors.teal,
-                  borderStrokeWidth: 2,
-                )).toList(),
-              ),
-            CircleLayer(
-              circles: markers
-                  .where((m) => m.trustTier == 1 || m.trustTier == 2)
-                  .map((m) {
-                    final color = getHazardColor(m.type, m.trustTier);
-                    return CircleMarker(
-                      point: LatLng(m.latitude, m.longitude),
-                      radius: m.trustTier == 1 ? 500 : 300,
-                      useRadiusInMeter: true,
-                      color: color.withValues(alpha: 0.2),
-                      borderColor: color,
-                      borderStrokeWidth: 2,
-                    );
-                  })
-                  .toList(),
-            ),
-            MarkerLayer(
-              markers: markers.map((m) {
-                final color = getHazardColor(m.type, m.trustTier);
-                return Marker(
-                  point: LatLng(m.latitude, m.longitude),
-                  width: m.isCritical ? 50 : 40,
-                  height: m.isCritical ? 50 : 40,
-                  alignment: Alignment.topCenter,
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: () {
-                      final canEndorse =
-                          isAdmin && (m.trustTier == 3 || m.trustTier == 4);
-
-                      showDialog(
-                        context: context,
-                        builder: (dialogContext) => AlertDialog(
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          title: Row(
-                            children: [
-                              Icon(getHazardIcon(m.type), color: color),
-                              const SizedBox(width: 8),
-                              Text(m.type),
-                            ],
-                          ),
-                          content: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              buildTrustBadge(m.trustTier),
-                              const SizedBox(height: 16),
-                              Text(
-                                m.description,
-                                style: const TextStyle(fontSize: 16),
-                              ),
-                              if (m.imageId != null && m.imageId!.isNotEmpty)
-                                LocalImageDisplay(imageId: m.imageId!),
-                              const SizedBox(height: 8),
-                              Text(
-                                'Reported: ${formatTimestamp(m.timestamp)}',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey.shade600,
-                                ),
-                              ),
-                              Builder(
-                                builder: (context) {
-                                  final profile = getProfile(
-                                    m.senderId,
-                                    profiles,
-                                  );
-                                  if (profile != null) {
-                                    return Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        const Divider(),
-                                        Text('Reported by: ${profile.name}'),
-                                        if (profile.contactInfo.isNotEmpty)
-                                          Text(
-                                            'Contact: ${profile.contactInfo}',
-                                          ),
-                                      ],
-                                    );
-                                  } else {
-                                    return const Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Divider(),
-                                        Text('Reported by: Unknown User'),
-                                      ],
-                                    );
-                                  }
-                                },
-                              ),
-                            ],
-                          ),
-                          actions: [
-                            if (canEndorse)
-                              TextButton.icon(
-                                onPressed: () {
-                                  Navigator.pop(dialogContext);
-                                  _endorseHazard(m);
-                                },
-                                icon: const Icon(Icons.verified, size: 18),
-                                label: const Text('Verify & Endorse'),
-                                style: TextButton.styleFrom(
-                                  foregroundColor: Colors.purple,
-                                ),
-                              ),
-                            if (canEndorse)
-                              TextButton.icon(
-                                onPressed: () {
-                                  Navigator.pop(dialogContext);
-                                  _confirmDebunkReport(m.id, 'marker');
-                                },
-                                icon: const Icon(Icons.gavel, size: 18),
-                                label: const Text('Debunk'),
-                                style: TextButton.styleFrom(
-                                  foregroundColor: Colors.red,
-                                ),
-                              ),
-                            TextButton.icon(
-                              onPressed: () {
-                                Navigator.pop(dialogContext);
-                                _resolveMarker(m.id);
-                              },
-                              icon: const Icon(
-                                Icons.check_circle_outline,
-                                size: 18,
-                              ),
-                              label: const Text('Resolve'),
-                              style: TextButton.styleFrom(
-                                foregroundColor: Colors.green,
-                              ),
-                            ),
-                            if (m.trustTier == 4 || m.trustTier == 3)
-                              TextButton.icon(
-                                onPressed: () {
-                                  Navigator.pop(dialogContext);
-                                  _blockSender(m.senderId);
-                                },
-                                icon: const Icon(Icons.block, size: 18),
-                                label: const Text('Block'),
-                                style: TextButton.styleFrom(
-                                  foregroundColor: Colors.red,
-                                ),
-                              ),
-                            if (m.trustTier == 4 ||
-                                (settings.isOfficialMode && m.trustTier == 3))
-                              TextButton.icon(
-                                onPressed: () {
-                                  Navigator.pop(dialogContext);
-                                  if (settings.isOfficialMode) {
-                                    _makeOfficialVolunteer(m.senderId);
-                                  } else {
-                                    _markAsTrusted(m.senderId);
-                                  }
-                                },
-                                icon: Icon(
-                                  settings.isOfficialMode
-                                      ? Icons.admin_panel_settings
-                                      : Icons.verified_user,
-                                  size: 18,
-                                ),
-                                label: Text(
-                                  settings.isOfficialMode
-                                      ? 'Make Volunteer'
-                                      : 'Trust',
-                                ),
-                                style: TextButton.styleFrom(
-                                  foregroundColor: settings.isOfficialMode
-                                      ? Colors.purple
-                                      : Colors.green,
-                                ),
-                              ),
-                            TextButton(
-                              onPressed: () => Navigator.pop(dialogContext),
-                              child: const Text('Close'),
-                            ),
+                ),
+                PolygonLayer(
+                  polygons: [
+                    if (showOfflineRegions)
+                      ...offlineRegions.map(
+                        (r) => Polygon(
+                          points: [
+                            LatLng(r.bounds.north, r.bounds.west),
+                            LatLng(r.bounds.north, r.bounds.east),
+                            LatLng(r.bounds.south, r.bounds.east),
+                            LatLng(r.bounds.south, r.bounds.west),
                           ],
+                          color: Colors.teal.withValues(alpha: 0.15),
+                          borderColor: Colors.teal,
+                          borderStrokeWidth: 2,
                         ),
+                      ),
+                    ...areas.map((a) {
+                      final points = a.coordinates
+                          .map((c) => LatLng(c['lat']!, c['lng']!))
+                          .toList();
+                      final color = a.isCritical ? Colors.red : (
+                          a.type.toLowerCase().contains('safe') ||
+                              a.type.toLowerCase().contains('evacuation')
+                          ? Colors.green
+                          : Colors.orange);
+                      return Polygon(
+                        points: points,
+                        color: color.withValues(alpha: 0.3),
+                        borderColor: color,
+                        borderStrokeWidth: 2,
                       );
-                    },
-                    child: Stack(
-                      alignment: Alignment.center,
-                      clipBehavior: Clip.none,
-                      children: [
-                        Icon(Icons.location_on, color: color, size: m.isCritical ? 50 : 40),
-                        Positioned(
-                          top: m.isCritical ? 8 : 6,
-                          child: Icon(
-                            getHazardIcon(m.type),
-                            color: Colors.white,
-                            size: m.isCritical ? 20 : 16,
-                          ),
-                        ),
-                        if (m.isCritical)
-                          const Positioned(
-                            right: -4,
-                            top: -4,
-                            child: Icon(Icons.warning, color: Colors.red, size: 20),
-                          ),
-                      ],
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
-            Consumer(
-              builder: (context, ref, child) {
-                final locationAsync = ref.watch(locationControllerProvider);
-                final currentPosition = locationAsync.value;
-                if (currentPosition == null) return const SizedBox.shrink();
-                return MarkerLayer(
-                  markers: [
-                    Marker(
-                      point: LatLng(
-                        currentPosition.latitude,
-                        currentPosition.longitude,
+                    }),
+                    if (drawingState.mode == DrawingMode.area && drawingState.points.length >= 3)
+                      Polygon(
+                        points: drawingState.points,
+                        color: Colors.blue.withValues(alpha: 0.3),
+                        borderColor: Colors.blue,
+                        borderStrokeWidth: 2,
                       ),
-                      width: 24,
-                      height: 24,
-                      alignment: Alignment.center,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Colors.blue,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 3),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.blue.withValues(alpha: 0.5),
-                              blurRadius: 10,
-                              spreadRadius: 5,
+                  ],
+                ),
+                PolylineLayer(
+                  polylines: [
+                    ...paths.map((p) {
+                      final points = p.coordinates
+                          .map((c) => LatLng(c['lat']!, c['lng']!))
+                          .toList();
+                      final color = p.isCritical ? Colors.red : (
+                          p.type.toLowerCase().contains('safe') ||
+                              p.type.toLowerCase().contains('evacuation')
+                          ? Colors.green
+                          : Colors.orange);
+                      return Polyline(
+                        points: points,
+                        color: color,
+                        strokeWidth: 4.0,
+                        pattern: p.type.toLowerCase().contains('blocked')
+                            ? StrokePattern.dashed(segments: const [10.0, 10.0])
+                            : const StrokePattern.solid(),
+                      );
+                    }),
+                    if (drawingState.mode != DrawingMode.none && drawingState.points.isNotEmpty)
+                      Polyline(
+                        points: drawingState.mode == DrawingMode.area
+                            ? (drawingState.points.length > 1 ? [...drawingState.points, drawingState.points.first] : drawingState.points)
+                            : drawingState.points,
+                        color: drawingState.mode == DrawingMode.area ? Colors.blue : Colors.teal,
+                        strokeWidth: 4.0,
+                        pattern: StrokePattern.dashed(segments: [10.0, 10.0]),
+                      ),
+                  ],
+                ),
+                if (drawingState.mode != DrawingMode.none && drawingState.points.isNotEmpty)
+                  CircleLayer(
+                    circles: drawingState.points.map((p) => CircleMarker(
+                      point: p,
+                      radius: 6,
+                      color: Colors.white,
+                      borderColor: drawingState.mode == DrawingMode.area ? Colors.blue : Colors.teal,
+                      borderStrokeWidth: 2,
+                    )).toList(),
+                  ),
+                CircleLayer(
+                  circles: markers
+                      .where((m) => m.trustTier == 1 || m.trustTier == 2)
+                      .map((m) {
+                        final color = getHazardColor(m.type, m.trustTier);
+                        return CircleMarker(
+                          point: LatLng(m.latitude, m.longitude),
+                          radius: m.trustTier == 1 ? 500 : 300,
+                          useRadiusInMeter: true,
+                          color: color.withValues(alpha: 0.2),
+                          borderColor: color,
+                          borderStrokeWidth: 2,
+                        );
+                      })
+                      .toList(),
+                ),
+                MarkerLayer(
+                  markers: markers.map((m) {
+                    final color = getHazardColor(m.type, m.trustTier);
+                    return Marker(
+                      point: LatLng(m.latitude, m.longitude),
+                      width: m.isCritical ? 50 : 40,
+                      height: m.isCritical ? 50 : 40,
+                      alignment: Alignment.topCenter,
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () {
+                          final canEndorse =
+                              isAdmin && (m.trustTier == 3 || m.trustTier == 4);
+    
+                          showDialog(
+                            context: context,
+                            builder: (dialogContext) => AlertDialog(
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              title: Row(
+                                children: [
+                                  Icon(getHazardIcon(m.type), color: color),
+                                  const SizedBox(width: 8),
+                                  Text(m.type),
+                                ],
+                              ),
+                              content: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  buildTrustBadge(m.trustTier),
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    m.description,
+                                    style: const TextStyle(fontSize: 16),
+                                  ),
+                                  if (m.imageId != null && m.imageId!.isNotEmpty)
+                                    LocalImageDisplay(imageId: m.imageId!),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    'Reported: ${formatTimestamp(m.timestamp)}',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey.shade600,
+                                    ),
+                                  ),
+                                  Builder(
+                                    builder: (context) {
+                                      final profile = getProfile(
+                                        m.senderId,
+                                        profiles,
+                                      );
+                                      if (profile != null) {
+                                        return Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            const Divider(),
+                                            Text('Reported by: ${profile.name}'),
+                                            if (profile.contactInfo.isNotEmpty)
+                                              Text(
+                                                'Contact: ${profile.contactInfo}',
+                                              ),
+                                          ],
+                                        );
+                                      } else {
+                                        return const Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Divider(),
+                                            Text('Reported by: Unknown User'),
+                                          ],
+                                        );
+                                      }
+                                    },
+                                  ),
+                                ],
+                              ),
+                              actions: [
+                                if (canEndorse)
+                                  TextButton.icon(
+                                    onPressed: () {
+                                      Navigator.pop(dialogContext);
+                                      _endorseHazard(m);
+                                    },
+                                    icon: const Icon(Icons.verified, size: 18),
+                                    label: const Text('Verify & Endorse'),
+                                    style: TextButton.styleFrom(
+                                      foregroundColor: Colors.purple,
+                                    ),
+                                  ),
+                                if (canEndorse)
+                                  TextButton.icon(
+                                    onPressed: () {
+                                      Navigator.pop(dialogContext);
+                                      _confirmDebunkReport(m.id, 'marker');
+                                    },
+                                    icon: const Icon(Icons.gavel, size: 18),
+                                    label: const Text('Debunk'),
+                                    style: TextButton.styleFrom(
+                                      foregroundColor: Colors.red,
+                                    ),
+                                  ),
+                                TextButton.icon(
+                                  onPressed: () {
+                                    Navigator.pop(dialogContext);
+                                    _resolveMarker(m.id);
+                                  },
+                                  icon: const Icon(
+                                    Icons.check_circle_outline,
+                                    size: 18,
+                                  ),
+                                  label: const Text('Resolve'),
+                                  style: TextButton.styleFrom(
+                                    foregroundColor: Colors.green,
+                                  ),
+                                ),
+                                if (m.trustTier == 4 || m.trustTier == 3)
+                                  TextButton.icon(
+                                    onPressed: () {
+                                      Navigator.pop(dialogContext);
+                                      _blockSender(m.senderId);
+                                    },
+                                    icon: const Icon(Icons.block, size: 18),
+                                    label: const Text('Block'),
+                                    style: TextButton.styleFrom(
+                                      foregroundColor: Colors.red,
+                                    ),
+                                  ),
+                                if (m.trustTier == 4 ||
+                                    (settings.isOfficialMode && m.trustTier == 3))
+                                  TextButton.icon(
+                                    onPressed: () {
+                                      Navigator.pop(dialogContext);
+                                      if (settings.isOfficialMode) {
+                                        _makeOfficialVolunteer(m.senderId);
+                                      } else {
+                                        _markAsTrusted(m.senderId);
+                                      }
+                                    },
+                                    icon: Icon(
+                                      settings.isOfficialMode
+                                          ? Icons.admin_panel_settings
+                                          : Icons.verified_user,
+                                      size: 18,
+                                    ),
+                                    label: Text(
+                                      settings.isOfficialMode
+                                          ? 'Make Volunteer'
+                                          : 'Trust',
+                                    ),
+                                    style: TextButton.styleFrom(
+                                      foregroundColor: settings.isOfficialMode
+                                          ? Colors.purple
+                                          : Colors.green,
+                                    ),
+                                  ),
+                                TextButton(
+                                  onPressed: () => Navigator.pop(dialogContext),
+                                  child: const Text('Close'),
+                                ),
+                              ],
                             ),
+                          );
+                        },
+                        child: Stack(
+                          alignment: Alignment.center,
+                          clipBehavior: Clip.none,
+                          children: [
+                            Icon(Icons.location_on, color: color, size: m.isCritical ? 50 : 40),
+                            Positioned(
+                              top: m.isCritical ? 8 : 6,
+                              child: Icon(
+                                getHazardIcon(m.type),
+                                color: Colors.white,
+                                size: m.isCritical ? 20 : 16,
+                              ),
+                            ),
+                            if (m.isCritical)
+                              const Positioned(
+                                right: -4,
+                                top: -4,
+                                child: Icon(Icons.warning, color: Colors.red, size: 20),
+                              ),
                           ],
                         ),
                       ),
-                    ),
+                    );
+                  }).toList(),
+                ),
+                Consumer(
+                  builder: (context, ref, child) {
+                    final locationAsync = ref.watch(locationControllerProvider);
+                    final currentPosition = locationAsync.value;
+                    if (currentPosition == null) return const SizedBox.shrink();
+                    return MarkerLayer(
+                      markers: [
+                        Marker(
+                          point: LatLng(
+                            currentPosition.latitude,
+                            currentPosition.longitude,
+                          ),
+                          width: 24,
+                          height: 24,
+                          alignment: Alignment.center,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.blue,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 3),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.blue.withValues(alpha: 0.5),
+                                  blurRadius: 10,
+                                  spreadRadius: 5,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+                const RichAttributionWidget(
+                  attributions: [
+                    TextSourceAttribution('OpenStreetMap contributors'),
                   ],
-                );
-              },
-            ),
-            const RichAttributionWidget(
-              attributions: [
-                TextSourceAttribution('OpenStreetMap contributors'),
+                ),
               ],
             ),
+            if (ref.watch(uiP2pServiceProvider.select((s) => s.isSyncing)))
+              Positioned(
+                top: 16,
+                left: 0,
+                right: 0,
+                child: Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.9),
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.1),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Theme.of(context).colorScheme.onPrimaryContainer,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Syncing data...',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            color: Theme.of(context).colorScheme.onPrimaryContainer,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
           ],
         );
       },
@@ -2721,6 +2769,34 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             return _buildFilterBar(filter, filterNotifier);
           },
         ),
+        if (ref.watch(uiP2pServiceProvider.select((s) => s.isSyncing)))
+          Container(
+            width: double.infinity,
+            color: Theme.of(context).colorScheme.primaryContainer,
+            padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                SizedBox(
+                  width: 12,
+                  height: 12,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Theme.of(context).colorScheme.onPrimaryContainer,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Syncing data...',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).colorScheme.onPrimaryContainer,
+                  ),
+                ),
+              ],
+            ),
+          ),
         Expanded(
           child: RefreshIndicator(
             onRefresh: () async {

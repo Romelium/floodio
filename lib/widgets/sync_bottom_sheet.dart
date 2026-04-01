@@ -1,5 +1,9 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 import '../providers/ui_p2p_provider.dart';
 import '../providers/offline_regions_provider.dart';
 import '../services/cloud_sync_service.dart';
@@ -62,6 +66,64 @@ class SyncBottomSheet extends ConsumerWidget {
                 ),
                 const SizedBox(height: 8),
 
+                if (p2pState.hostState?.isActive == true || p2pState.clientState?.isActive == true) ...[
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.green.shade50,
+                      border: Border.all(color: Colors.green.shade200),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.check_circle, color: Colors.green),
+                            const SizedBox(width: 8),
+                            Text(
+                              p2pState.hostState?.isActive == true ? 'Hosting Mesh Network' : 'Connected to Mesh',
+                              style: TextStyle(
+                                color: Colors.green.shade800,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          p2pState.hostState?.isActive == true 
+                              ? 'SSID: ${p2pState.hostState?.ssid}\nClients: ${p2pState.connectedClients.length}'
+                              : 'Host SSID: ${p2pState.clientState?.hostSsid}',
+                          style: TextStyle(color: Colors.green.shade900),
+                        ),
+                        const SizedBox(height: 12),
+                        SizedBox(
+                          width: double.infinity,
+                          child: FilledButton.icon(
+                            onPressed: p2pState.isSyncing ? null : () {
+                              p2pNotifier.triggerSync();
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Triggered manual mesh sync...'), behavior: SnackBarBehavior.floating),
+                              );
+                            },
+                            icon: p2pState.isSyncing 
+                                ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                                : const Icon(Icons.sync),
+                            label: Text(p2pState.isSyncing ? 'Syncing...' : 'Force Sync Now'),
+                            style: FilledButton.styleFrom(
+                              backgroundColor: Colors.green.shade600,
+                              foregroundColor: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+
                 // Status Card
                 Card(
                   color: (p2pState.isSyncing || p2pState.isConnecting)
@@ -105,7 +167,7 @@ class SyncBottomSheet extends ConsumerWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Sync Status',
+                                'Activity Log',
                                 style: TextStyle(
                                   fontSize: 13,
                                   color: Colors.grey.shade600,
@@ -366,6 +428,14 @@ class SyncBottomSheet extends ConsumerWidget {
                     color: Colors.grey.shade600,
                   ),
                 ),
+                if (p2pState.isAutoSyncing)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4.0, bottom: 8.0),
+                    child: Text(
+                      'Manual controls are disabled while Auto-Sync is active.',
+                      style: TextStyle(fontSize: 12, color: Colors.orange.shade800),
+                    ),
+                  ),
                 const SizedBox(height: 8),
 
                 // Host Section
@@ -587,6 +657,38 @@ class SyncBottomSheet extends ConsumerWidget {
                     ],
                   ),
                 ),
+                const SizedBox(height: 16),
+                if (Platform.isAndroid)
+                  OutlinedButton.icon(
+                    onPressed: () async {
+                      Navigator.pop(context);
+                      try {
+                        const platform = MethodChannel('com.example.floodio/apk');
+                        final String? apkPath = await platform.invokeMethod('getApkPath');
+
+                        if (apkPath != null) {
+                          final tempDir = await getTemporaryDirectory();
+                          final tempFile = File('${tempDir.path}/floodio.apk');
+
+                          if (await tempFile.exists()) {
+                            await tempFile.delete();
+                          }
+                          await File(apkPath).copy(tempFile.path);
+
+                          await SharePlus.instance.share(
+                            ShareParams(
+                              files: [XFile(tempFile.path)],
+                              text: 'Install Floodio to stay connected during emergencies!',
+                            ),
+                          );
+                        }
+                      } catch (e) {
+                        // ignore
+                      }
+                    },
+                    icon: const Icon(Icons.android),
+                    label: const Text('Share Floodio App (APK) via Bluetooth/Wi-Fi'),
+                  ),
                 const SizedBox(height: 16),
               ],
             ),
