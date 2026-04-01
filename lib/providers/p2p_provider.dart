@@ -216,6 +216,7 @@ class P2pService extends _$P2pService {
   int _idleTicks = 0;
   List<BleDiscoveredDevice> _rawDiscoveredDevices = [];
   final Map<String, DateTime> _downloadStartTimes = {};
+  bool _isToggling = false;
 
   @override
   P2pState build() {
@@ -313,15 +314,21 @@ class P2pService extends _$P2pService {
   }
 
   Future<void> toggleAutoSync() async {
-    _autoSyncTimer?.cancel();
-    if (state.isAutoSyncing) {
-      state = state.copyWith(isAutoSyncing: false, syncMessage: 'Auto-sync disabled.', clearSyncProgress: true);
-      await stopHosting();
-      await disconnect();
-    } else {
-      state = state.copyWith(isAutoSyncing: true, syncMessage: 'Auto-sync enabled. Starting...', clearSyncProgress: true);
-      _idleTicks = 0;
-      _runAutoSyncCycle();
+    if (_isToggling) return;
+    _isToggling = true;
+    try {
+      _autoSyncTimer?.cancel();
+      if (state.isAutoSyncing) {
+        state = state.copyWith(isAutoSyncing: false, syncMessage: 'Auto-sync disabled.', clearSyncProgress: true);
+        await stopHosting();
+        await disconnect();
+      } else {
+        state = state.copyWith(isAutoSyncing: true, syncMessage: 'Auto-sync enabled. Starting...', clearSyncProgress: true);
+        _idleTicks = 0;
+        _runAutoSyncCycle();
+      }
+    } finally {
+      _isToggling = false;
     }
   }
 
@@ -361,7 +368,14 @@ class P2pService extends _$P2pService {
       state = state.copyWith(syncMessage: 'Switching to Scanner...', clearSyncProgress: true);
       await stopHosting();
       if (!state.isAutoSyncing || _disposed) return;
-      await Future.delayed(const Duration(seconds: 3)); // Give OS time to turn off hotspot and turn on Wi-Fi
+      
+      // Wait for Wi-Fi to turn back on after hotspot is disabled
+      int waitCount = 0;
+      while (!(await _client.checkWifiEnabled()) && waitCount < 10) {
+        await Future.delayed(const Duration(seconds: 1));
+        waitCount++;
+      }
+      
       if (!state.isAutoSyncing || _disposed) return;
       await startScanning();
     } else {
@@ -369,6 +383,7 @@ class P2pService extends _$P2pService {
       state = state.copyWith(syncMessage: 'Switching to Host...', clearSyncProgress: true);
       await disconnect(); // stops scanning
       if (!state.isAutoSyncing || _disposed) return;
+      
       await Future.delayed(const Duration(seconds: 3)); // Give OS time to reset Wi-Fi state
       if (!state.isAutoSyncing || _disposed) return;
       await startHosting();
@@ -379,8 +394,8 @@ class P2pService extends _$P2pService {
       final prefs = ref.read(sharedPreferencesProvider);
       final baseInterval = prefs.getInt('settings_sync_interval') ?? 30;
 
-      // Add a small jitter (0-5s) to prevent perfect sync loops between two devices
-      final nextCycleSeconds = baseInterval + Random().nextInt(6);
+      // Add a jitter (0-10s) to prevent perfect sync loops between two devices
+      final nextCycleSeconds = baseInterval + Random().nextInt(10);
       _autoSyncTimer = Timer(Duration(seconds: nextCycleSeconds), _runAutoSyncCycle);
     }
   }
@@ -422,10 +437,6 @@ class P2pService extends _$P2pService {
     bool wifiEnabled = await _host.checkWifiEnabled();
     bool btEnabled = await _host.checkBluetoothEnabled();
 
-    if (!locEnabled) await _host.enableLocationServices();
-    if (!wifiEnabled) await _host.enableWifiServices();
-    if (!btEnabled) await _host.enableBluetoothServices();
-
     // 3. Extended Polling Loop (Wait up to 10 seconds for user to accept system prompts)
     int retries = 10;
     while ((!locEnabled || !wifiEnabled || !btEnabled) && retries > 0) {
@@ -439,9 +450,25 @@ class P2pService extends _$P2pService {
     }
 
     if (!locEnabled || !wifiEnabled || !btEnabled) {
-      state = state.copyWith(isAutoSyncing: false, syncMessage: 'Services (Wi-Fi/BT/Loc) not enabled.', clearSyncProgress: true);
-      await stopHosting();
-      return;
+      if (!state.isAutoSyncing) {
+        if (!locEnabled) await _host.enableLocationServices();
+        if (!wifiEnabled) await _host.enableWifiServices();
+        if (!btEnabled) await _host.enableBluetoothServices();
+        
+        locEnabled = await _host.checkLocationEnabled();
+        wifiEnabled = await _host.checkWifiEnabled();
+        btEnabled = await _host.checkBluetoothEnabled();
+        
+        if (!locEnabled || !wifiEnabled || !btEnabled) {
+          state = state.copyWith(isHosting: false, syncMessage: 'Services not enabled. Cannot host.', clearSyncProgress: true);
+          await stopHosting();
+          return;
+        }
+      } else {
+        state = state.copyWith(isAutoSyncing: false, syncMessage: 'Services disabled. Auto-sync stopped.', clearSyncProgress: true);
+        await stopHosting();
+        return;
+      }
     }
 
     try {
@@ -508,10 +535,6 @@ class P2pService extends _$P2pService {
     bool wifiEnabled = await _client.checkWifiEnabled();
     bool btEnabled = await _client.checkBluetoothEnabled();
 
-    if (!locEnabled) await _client.enableLocationServices();
-    if (!wifiEnabled) await _client.enableWifiServices();
-    if (!btEnabled) await _client.enableBluetoothServices();
-
     // 3. Extended Polling Loop (Wait up to 10 seconds for user to accept system prompts)
     int retries = 10;
     while ((!locEnabled || !wifiEnabled || !btEnabled) && retries > 0) {
@@ -525,9 +548,25 @@ class P2pService extends _$P2pService {
     }
 
     if (!locEnabled || !wifiEnabled || !btEnabled) {
-      state = state.copyWith(isAutoSyncing: false, isScanning: false, syncMessage: 'Services (Wi-Fi/BT/Loc) not enabled.', clearSyncProgress: true);
-      await disconnect();
-      return;
+      if (!state.isAutoSyncing) {
+        if (!locEnabled) await _client.enableLocationServices();
+        if (!wifiEnabled) await _client.enableWifiServices();
+        if (!btEnabled) await _client.enableBluetoothServices();
+        
+        locEnabled = await _client.checkLocationEnabled();
+        wifiEnabled = await _client.checkWifiEnabled();
+        btEnabled = await _client.checkBluetoothEnabled();
+        
+        if (!locEnabled || !wifiEnabled || !btEnabled) {
+          state = state.copyWith(isScanning: false, syncMessage: 'Services not enabled. Cannot scan.', clearSyncProgress: true);
+          await disconnect();
+          return;
+        }
+      } else {
+        state = state.copyWith(isAutoSyncing: false, isScanning: false, syncMessage: 'Services disabled. Auto-sync stopped.', clearSyncProgress: true);
+        await disconnect();
+        return;
+      }
     }
 
     try {
@@ -539,7 +578,7 @@ class P2pService extends _$P2pService {
         if (state.isAutoSyncing && devices.isNotEmpty && state.clientState?.isActive != true && !state.isConnecting) {
           connectToDeviceByAddress(devices.first.deviceAddress);
         }
-      });
+      }, timeout: const Duration(seconds: 30));
       _scanSub = sub;
       if (!state.isScanning || _disposed) {
         await stopScanning();
@@ -562,7 +601,21 @@ class P2pService extends _$P2pService {
         return;
       }
 
-      await _client.connectWithDevice(device, timeout: const Duration(seconds: 15));
+      // Ensure Wi-Fi is enabled before attempting to connect
+      bool wifiEnabled = await _client.checkWifiEnabled();
+      int wifiRetries = 10;
+      while (!wifiEnabled && wifiRetries > 0) {
+        state = state.copyWith(syncMessage: 'Waiting for Wi-Fi to enable ($wifiRetries)...');
+        await Future.delayed(const Duration(seconds: 1));
+        wifiEnabled = await _client.checkWifiEnabled();
+        wifiRetries--;
+      }
+
+      if (!wifiEnabled) {
+        throw Exception("Wi-Fi is disabled. Cannot connect to hotspot.");
+      }
+
+      await _client.connectWithDevice(device, timeout: const Duration(seconds: 25));
       if (!state.isConnecting || _disposed) {
         await _client.disconnect();
         return;
@@ -570,6 +623,7 @@ class P2pService extends _$P2pService {
       state = state.copyWith(isConnecting: false, clearSyncProgress: true);
     } catch (e) {
       print("Connection failed: $e");
+      await _client.disconnect(); // Ensure cleanup
       state = state.copyWith(isConnecting: false, syncMessage: 'Connection failed: $e', clearSyncProgress: true);
       if (state.isAutoSyncing && !_disposed) {
         // If connection failed, don't wait for the full cycle, try switching roles soon
