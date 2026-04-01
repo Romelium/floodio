@@ -64,7 +64,86 @@ class GuideTab extends ConsumerWidget {
                 _buildEmergencyProtocolCard(context, isOfficial, isTier2),
                 const SizedBox(height: 32),
 
-                const Text('Detailed Guides', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                if (isOfficial) ...[
+                  const Text('Official Guides', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 12),
+                  _buildGuideExpansionTile(
+                    context,
+                    icon: Icons.campaign,
+                    title: 'Broadcasting Critical Alerts',
+                    content: 'As an Official, your alerts override all other reports and are highlighted in blue.\n\n'
+                             '• Tap the "+" button and select "Official Alert".\n'
+                             '• Use the quick templates for standard alerts (e.g., Evacuation Order, Boil Water Advisory).\n'
+                             '• Check "Mark as Critical Emergency" for immediate life-threatening situations. This ensures the alert is prominently displayed.\n'
+                             '• Set an appropriate expiration time so the alert automatically clears when the danger has passed.',
+                  ),
+                  _buildGuideExpansionTile(
+                    context,
+                    icon: Icons.admin_panel_settings,
+                    title: 'Managing Volunteers',
+                    content: 'You can delegate trust to reliable community members, empowering them to verify crowdsourced data.\n\n'
+                             '• In the Feed or Map, tap on a report from a reliable user.\n'
+                             '• Tap "Make Volunteer". This cryptographically signs a delegation certificate, upgrading them to Tier 2 (Verified).\n'
+                             '• To manage or revoke volunteers, go to the "Command" tab. Revoking a volunteer immediately downgrades their future and past unverified reports.',
+                  ),
+                  _buildGuideExpansionTile(
+                    context,
+                    icon: Icons.cloud_sync,
+                    title: 'Using the Cloud Gateway',
+                    content: 'The Cloud Gateway bridges the offline mesh network with the central government database.\n\n'
+                             '• When you have an active internet connection (e.g., via Starlink or a restored cell tower), go to the "Command" tab.\n'
+                             '• Tap "Force Cloud Sync Now".\n'
+                             '• This uploads all mesh data collected from citizens to the cloud and downloads the latest global official alerts to your device, which you can then carry back into the offline mesh.',
+                  ),
+                  const SizedBox(height: 24),
+                ] else if (isTier2) ...[
+                  const Text('Volunteer Guides', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 12),
+                  _buildGuideExpansionTile(
+                    context,
+                    icon: Icons.verified,
+                    title: 'Verifying & Endorsing Reports',
+                    content: 'Your primary role is to filter noise and elevate accurate information.\n\n'
+                             '• When you physically confirm a crowdsourced (Grey) report, tap on it and select "Verify & Endorse".\n'
+                             '• This cryptographically signs the report with your Tier 2 key, upgrading it to Purple (Verified) for the entire network.\n'
+                             '• Only endorse reports you have personally verified to maintain the integrity of the network.',
+                  ),
+                  _buildGuideExpansionTile(
+                    context,
+                    icon: Icons.gavel,
+                    title: 'Debunking Misinformation',
+                    content: 'False reports can cause panic or misdirect resources.\n\n'
+                             '• If you encounter a definitively false or malicious report, tap "Debunk".\n'
+                             '• This is a GLOBAL action. It creates a cryptographic "tombstone" that actively deletes the report from the entire mesh network as devices sync.\n'
+                             '• Use this power carefully. For hazards that have simply been cleared (e.g., water receded), use "Resolve" instead.',
+                  ),
+                  const SizedBox(height: 24),
+                ] else ...[
+                  const Text('Citizen Guides', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 12),
+                  _buildGuideExpansionTile(
+                    context,
+                    icon: Icons.add_location_alt,
+                    title: 'Reporting Hazards Effectively',
+                    content: 'Good reports save lives. Follow these best practices:\n\n'
+                             '• Be Specific: Instead of just "Flood", write "Water is 2 feet deep, impassable for sedans."\n'
+                             '• Add Photos: A picture provides instant context. Tap "Attach Photo" when creating a hazard.\n'
+                             '• Set Expiration: If a road is temporarily blocked by a fallen tree, set it to expire in 12 or 24 hours so the map doesn\'t get cluttered with old data.\n'
+                             '• Use Areas/Paths: For large floods, use "Report Area" to draw a polygon. For blocked evacuation routes, use "Report Path" to draw a line.',
+                  ),
+                  _buildGuideExpansionTile(
+                    context,
+                    icon: Icons.verified_user,
+                    title: 'Trusting Reliable Neighbors',
+                    content: 'You can build your own localized web of trust.\n\n'
+                             '• If you see a report from someone you know is reliable, tap "Trust" on their report.\n'
+                             '• Their future reports will appear as Trusted (Green) for YOU ONLY.\n'
+                             '• If someone posts spam, tap "Block" to hide their reports from your device.',
+                  ),
+                  const SizedBox(height: 24),
+                ],
+
+                const Text('General Guides', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 12),
                 _buildGuideExpansionTile(
                   context,
@@ -84,16 +163,6 @@ class GuideTab extends ConsumerWidget {
                            '• Downloading: Go to the Map tab, pan to your city, and tap the Download icon (top right). Choose your zoom level and download.\n'
                            '• Broadcasting: If you have a map and meet someone who doesn\'t, open the Sync Menu (tap the status chip) and select "Broadcast Offline Map". They will receive the map file directly over Wi-Fi Direct.\n'
                            '• Requesting: If a peer has a map you need, it will appear in your Sync Menu under "Available Peer Maps". Tap the download icon to request it.',
-                ),
-                _buildGuideExpansionTile(
-                  context,
-                  icon: Icons.edit_location_alt,
-                  title: 'Creating Accurate Reports',
-                  content: 'Good reports save lives. Follow these best practices when creating a report:\n\n'
-                           '• Be Specific: Instead of just "Flood", write "Water is 2 feet deep, impassable for sedans."\n'
-                           '• Add Photos: A picture provides instant context. Tap "Attach Photo" when creating a hazard.\n'
-                           '• Set Expiration: If a road is temporarily blocked by a fallen tree, set it to expire in 12 or 24 hours so the map doesn\'t get cluttered with old data.\n'
-                           '• Use Areas/Paths: For large floods, use "Report Area" to draw a polygon. For blocked evacuation routes, use "Report Path" to draw a line.',
                 ),
                 _buildGuideExpansionTile(
                   context,
@@ -125,27 +194,6 @@ class GuideTab extends ConsumerWidget {
                 ),
 
                 const SizedBox(height: 32),
-                
-                if (isOfficial) ...[
-                  const Text('Official Capabilities', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 12),
-                  _buildConceptTile(context, icon: Icons.campaign, title: 'Broadcast Alerts', description: 'Use the "+" button to send Official Alerts. These appear in Blue (Tier 1) and override all other reports.', color: Colors.blue),
-                  _buildConceptTile(context, icon: Icons.admin_panel_settings, title: 'Manage Volunteers', description: 'Find reliable users in the feed and tap "Make Volunteer" to grant them Tier 2 status. Manage them in the Command Tab.', color: Colors.purple),
-                  _buildConceptTile(context, icon: Icons.cloud_sync, title: 'Cloud Gateway', description: 'When you have internet, use the Command Tab to force a Cloud Sync. This bridges the offline mesh network with the central government database.', color: Colors.indigo),
-                  const SizedBox(height: 24),
-                ] else if (isTier2) ...[
-                  const Text('Volunteer Capabilities', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 12),
-                  _buildConceptTile(context, icon: Icons.verified, title: 'Verify Reports', description: 'When you physically confirm a crowdsourced (Grey) report, tap "Verify & Endorse". It will be upgraded to Verified (Purple) for the entire network.', color: Colors.purple),
-                  _buildConceptTile(context, icon: Icons.gavel, title: 'Debunk Misinformation', description: 'If you see a false report, tap "Debunk". This is a GLOBAL action that deletes the report from the entire mesh network.', color: Colors.red),
-                  const SizedBox(height: 24),
-                ] else ...[
-                  const Text('Citizen Capabilities', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 12),
-                  _buildConceptTile(context, icon: Icons.add_location_alt, title: 'Report Hazards', description: 'Use the "+" button to report floods, roadblocks, or safe zones. Your reports start as Unverified (Grey) until a volunteer confirms them.', color: Colors.blueGrey),
-                  _buildConceptTile(context, icon: Icons.verified_user, title: 'Trust Users', description: 'If you know someone is reliable, tap "Trust" on their report. Their future reports will appear as Trusted (Green) for YOU ONLY.', color: Colors.green),
-                  const SizedBox(height: 24),
-                ],
 
                 const Text(
                   'The 4-Tier Trust Model',
@@ -386,35 +434,6 @@ class GuideTab extends ConsumerWidget {
                 Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                 const SizedBox(height: 4),
                 Text(desc, style: TextStyle(fontSize: 14, color: Colors.grey.shade800, height: 1.4)),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildConceptTile(BuildContext context, {required IconData icon, required String title, required String description, required Color color}) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withValues(alpha: 0.2)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, color: color, size: 36),
-          const SizedBox(width: 20),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-                const SizedBox(height: 6),
-                Text(description, style: TextStyle(fontSize: 14, height: 1.4, color: Colors.grey.shade800)),
               ],
             ),
           ),
