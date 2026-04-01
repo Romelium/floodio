@@ -7,6 +7,8 @@ import 'dart:math';
 import 'package:drift/drift.dart';
 import 'package:fixnum/fixnum.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_p2p_connection/flutter_p2p_connection.dart';
 import 'package:latlong2/latlong.dart';
@@ -218,6 +220,9 @@ class P2pService extends _$P2pService {
   final Map<String, DateTime> _downloadStartTimes = {};
   bool _isToggling = false;
 
+  String? _originalBluetoothName;
+  static const _systemChannel = MethodChannel('com.example.floodio/system');
+
   @override
   P2pState build() {
     ref.onDispose(() {
@@ -369,6 +374,10 @@ class P2pService extends _$P2pService {
       await stopHosting();
       if (!state.isAutoSyncing || _disposed) return;
       
+            try {
+              await _systemChannel.invokeMethod('toggleWifi', {'enable': true});
+            } catch (_) {}
+      
       // Wait for Wi-Fi to turn back on after hotspot is disabled
       int waitCount = 0;
       while (!(await _client.checkWifiEnabled()) && waitCount < 10) {
@@ -383,6 +392,10 @@ class P2pService extends _$P2pService {
       state = state.copyWith(syncMessage: 'Switching to Host...', clearSyncProgress: true);
       await disconnect(); // stops scanning
       if (!state.isAutoSyncing || _disposed) return;
+      
+            try {
+              await _systemChannel.invokeMethod('toggleWifi', {'enable': false});
+            } catch (_) {}
       
       await Future.delayed(const Duration(seconds: 3)); // Give OS time to reset Wi-Fi state
       if (!state.isAutoSyncing || _disposed) return;
@@ -472,6 +485,13 @@ class P2pService extends _$P2pService {
     }
 
     try {
+      _originalBluetoothName ??= await _systemChannel.invokeMethod('getBluetoothName');
+      await _systemChannel.invokeMethod('setBluetoothName', {'name': 'FLD'});
+    } catch (e) {
+      print("Failed to set BT name: $e");
+    }
+
+    try {
       state = state.copyWith(syncMessage: 'Starting Hotspot...', clearSyncProgress: true);
       await _host.createGroup(advertise: true);
       if (!state.isHosting || _disposed) {
@@ -496,6 +516,14 @@ class P2pService extends _$P2pService {
       syncMessage: 'Host stopped.',
       clearSyncProgress: true
     );
+
+    try {
+      if (_originalBluetoothName != null) {
+        await _systemChannel.invokeMethod('setBluetoothName', {'name': _originalBluetoothName});
+      }
+    } catch (e) {
+      print("Failed to restore BT name: $e");
+    }
   }
 
   Future<void> startScanning() async {
@@ -571,15 +599,33 @@ class P2pService extends _$P2pService {
 
     try {
       state = state.copyWith(syncMessage: 'Scanning for nearby devices...', clearSyncProgress: true);
-      final sub = await _client.startScan((devices) {
-        _rawDiscoveredDevices = devices;
-        final appDevices = devices.map((d) => AppDiscoveredDevice(deviceAddress: d.deviceAddress, deviceName: d.deviceName)).toList();
+
+      try {
+        await FlutterBluePlus.adapterState.where((s) => s == BluetoothAdapterState.on).first.timeout(const Duration(seconds: 5));
+      } catch (_) {}
+
+      await FlutterBluePlus.startScan(
+        withServices: [Guid(_floodioServiceUuid)],
+        timeout: const Duration(seconds: 30),
+      );
+
+      _scanSub = FlutterBluePlus.onScanResults.listen((results) {
+        _rawDiscoveredDevices = results.map((r) => BleDiscoveredDevice(
+          deviceAddress: r.device.remoteId.str,
+          deviceName: r.device.platformName,
+        )).toList();
+
+        final appDevices = results.map((r) => AppDiscoveredDevice(
+          deviceAddress: r.device.remoteId.str,
+          deviceName: r.device.platformName,
+        )).toList();
+
         state = state.copyWith(discoveredDevices: appDevices);
-        if (state.isAutoSyncing && devices.isNotEmpty && state.clientState?.isActive != true && !state.isConnecting) {
-          connectToDeviceByAddress(devices.first.deviceAddress);
+        if (state.isAutoSyncing && appDevices.isNotEmpty && state.clientState?.isActive != true && !state.isConnecting) {
+          connectToDeviceByAddress(appDevices.first.deviceAddress);
         }
-      }, timeout: const Duration(seconds: 30));
-      _scanSub = sub;
+      });
+
       if (!state.isScanning || _disposed) {
         await stopScanning();
       }
@@ -636,6 +682,9 @@ class P2pService extends _$P2pService {
   Future<void> stopScanning() async {
     await _scanSub?.cancel();
     _scanSub = null;
+    try {
+      await FlutterBluePlus.stopScan();
+    } catch (_) {}
     if (_isInitialized) {
       await _client.stopScan();
     }
