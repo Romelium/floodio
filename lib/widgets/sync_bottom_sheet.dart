@@ -225,7 +225,9 @@ class SyncBottomSheet extends ConsumerWidget {
                               const SizedBox(width: 8),
                               Expanded(
                                 child: Text(
-                                  p2pState.syncMessage ?? 'Ready to sync. Enable Auto-Sync or use manual controls.',
+                                  p2pState.syncMessage != null 
+                                      ? '${p2pState.syncMessage}${p2pState.syncEstimatedSeconds != null ? ' (~${p2pState.syncEstimatedSeconds}s left)' : ''}'
+                                      : 'Ready to sync. Enable Auto-Sync or use manual controls.',
                                   style: TextStyle(
                                     fontSize: 13,
                                     fontWeight: FontWeight.w600,

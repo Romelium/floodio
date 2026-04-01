@@ -2926,7 +2926,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                           const SizedBox(width: 8),
                           Flexible(
                             child: Text(
-                              ref.watch(uiP2pServiceProvider.select((s) => s.syncMessage)) ?? 'Syncing data...',
+                              ref.watch(uiP2pServiceProvider.select((s) {
+                                final msg = s.syncMessage ?? 'Syncing data...';
+                                if (s.syncEstimatedSeconds != null) {
+                                  return '$msg (~${s.syncEstimatedSeconds}s left)';
+                                }
+                                return msg;
+                              })),
                               style: TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.bold,
@@ -3058,7 +3064,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                       const SizedBox(width: 8),
                       Flexible(
                         child: Text(
-                          ref.watch(uiP2pServiceProvider.select((s) => s.syncMessage)) ?? 'Syncing data...',
+                          ref.watch(uiP2pServiceProvider.select((s) {
+                            final msg = s.syncMessage ?? 'Syncing data...';
+                            if (s.syncEstimatedSeconds != null) {
+                              return '$msg (~${s.syncEstimatedSeconds}s left)';
+                            }
+                            return msg;
+                          })),
                           style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.bold,

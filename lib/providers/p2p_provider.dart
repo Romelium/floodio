@@ -38,6 +38,7 @@ class P2pState {
   final bool isAutoSyncing;
   final String? syncMessage;
   final double? syncProgress;
+  final int? syncEstimatedSeconds;
   final DateTime? lastSyncTime;
   final AppHostState? hostState;
   final AppClientState? clientState;
@@ -54,6 +55,7 @@ class P2pState {
     this.isAutoSyncing = false,
     this.syncMessage,
     this.syncProgress,
+    this.syncEstimatedSeconds,
     this.lastSyncTime,
     this.hostState,
     this.clientState,
@@ -72,6 +74,8 @@ class P2pState {
     String? syncMessage,
     double? syncProgress,
     bool clearSyncProgress = false,
+    int? syncEstimatedSeconds,
+    bool clearSyncEstimatedSeconds = false,
     DateTime? lastSyncTime,
     AppHostState? hostState,
     bool clearHostState = false,
@@ -90,6 +94,7 @@ class P2pState {
       isAutoSyncing: isAutoSyncing ?? this.isAutoSyncing,
       syncMessage: syncMessage ?? this.syncMessage,
       syncProgress: clearSyncProgress ? null : (syncProgress ?? this.syncProgress),
+      syncEstimatedSeconds: (clearSyncProgress || clearSyncEstimatedSeconds) ? null : (syncEstimatedSeconds ?? this.syncEstimatedSeconds),
       lastSyncTime: lastSyncTime ?? this.lastSyncTime,
       hostState: clearHostState ? null : (hostState ?? this.hostState),
       clientState: clearClientState ? null : (clientState ?? this.clientState),
@@ -109,6 +114,7 @@ class P2pState {
       'isAutoSyncing': isAutoSyncing,
       'syncMessage': syncMessage,
       'syncProgress': syncProgress,
+      'syncEstimatedSeconds': syncEstimatedSeconds,
       'lastSyncTime': lastSyncTime?.millisecondsSinceEpoch,
       'hostState': hostState != null ? {
         'isActive': hostState!.isActive,
@@ -144,6 +150,7 @@ class P2pState {
       isAutoSyncing: map['isAutoSyncing'] ?? false,
       syncMessage: map['syncMessage'],
       syncProgress: map['syncProgress']?.toDouble(),
+      syncEstimatedSeconds: map['syncEstimatedSeconds'] as int?,
       lastSyncTime: map['lastSyncTime'] != null ? DateTime.fromMillisecondsSinceEpoch(map['lastSyncTime']) : null,
       hostState: map['hostState'] != null ? AppHostState.fromMap(Map<String, dynamic>.from(map['hostState'])) : null,
       clientState: map['clientState'] != null ? AppClientState.fromMap(Map<String, dynamic>.from(map['clientState'])) : null,
@@ -165,6 +172,7 @@ class P2pState {
       other.isAutoSyncing == isAutoSyncing &&
       other.syncMessage == syncMessage &&
       other.syncProgress == syncProgress &&
+      other.syncEstimatedSeconds == syncEstimatedSeconds &&
       other.lastSyncTime == lastSyncTime &&
       other.hostState == hostState &&
       other.clientState == clientState &&
@@ -178,7 +186,7 @@ class P2pState {
   int get hashCode {
     return Object.hash(
       isHosting, isScanning, isSyncing, isConnecting, isAutoSyncing,
-      syncMessage, syncProgress, lastSyncTime, hostState, clientState,
+      syncMessage, syncProgress, syncEstimatedSeconds, lastSyncTime, hostState, clientState,
       Object.hashAll(discoveredDevices), Object.hashAll(connectedClients),
       Object.hashAll(receivedTexts), Object.hashAll(peerOfflineRegions),
     );
@@ -206,6 +214,7 @@ class P2pService extends _$P2pService {
   bool _lastRoleWasHost = false;
   int _idleTicks = 0;
   List<BleDiscoveredDevice> _rawDiscoveredDevices = [];
+  final Map<String, DateTime> _downloadStartTimes = {};
 
   @override
   P2pState build() {
@@ -680,23 +689,38 @@ class P2pService extends _$P2pService {
         isDownloadingAny = true;
         final dir = await getApplicationDocumentsDirectory();
 
-        state = state.copyWith(isSyncing: true, syncMessage: 'Downloading ${file.info.name}...', syncProgress: 0.0);
+        state = state.copyWith(isSyncing: true, syncMessage: 'Downloading ${file.info.name}...', syncProgress: 0.0, clearSyncEstimatedSeconds: true);
+        _downloadStartTimes[file.info.id] = DateTime.now();
 
         p2pInstance.downloadFile(
           file.info.id,
           '${dir.path}/',
           onProgress: (progress) {
             _idleTicks = 0; // Reset idle timer during download
+            
+            int? estimatedSeconds;
+            final startTime = _downloadStartTimes[file.info.id];
+            if (startTime != null && progress.bytesDownloaded > 0) {
+              final elapsed = DateTime.now().difference(startTime).inMilliseconds;
+              if (elapsed > 1000) {
+                final bytesPerMs = progress.bytesDownloaded / elapsed;
+                final remainingBytes = progress.totalSize - progress.bytesDownloaded;
+                estimatedSeconds = (remainingBytes / bytesPerMs / 1000).round();
+              }
+            }
+
             if (progress.progressPercent.toInt() % 5 == 0) {
               state = state.copyWith(
                 isSyncing: true, 
                 syncMessage: 'Downloading file: ${progress.progressPercent.toStringAsFixed(0)}%',
                 syncProgress: progress.progressPercent / 100.0,
+                syncEstimatedSeconds: estimatedSeconds,
               );
             }
           }
         );
       } else if (file.state == ReceivableFileState.completed) {
+        _downloadStartTimes.remove(file.info.id);
         if (file.info.name.endsWith('.fmap')) {
           final dir = await getApplicationDocumentsDirectory();
           final downloadedFile = File('${dir.path}/${file.info.name}');

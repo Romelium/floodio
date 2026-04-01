@@ -76,7 +76,8 @@ class _MeshStatusChipState extends ConsumerState<MeshStatusChip> with SingleTick
           const SizedBox(width: 6),
           Text(
             isSyncing
-                ? (p2pState.syncProgress != null ? 'SYNCING (${(p2pState.syncProgress! * 100).toInt()}%)' : 'SYNCING')
+                ? (p2pState.syncProgress != null ? 'SYNCING (${(p2pState.syncProgress! * 100).toInt()}%${p2pState.syncEstimatedSeconds != null ? ' - ${p2pState.syncEstimatedSeconds}s' : ''})'  : 'SYNCING')
+                    
                 : isConnected
                     ? (p2pState.hostState?.isActive == true ? 'HOST (${p2pState.connectedClients.length})' : 'CONNECTED')
                     : (p2pState.isAutoSyncing ? 'SEARCHING' : 'OFFLINE'),
