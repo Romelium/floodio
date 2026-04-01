@@ -339,7 +339,7 @@ class P2pService extends _$P2pService {
       final appClients = clients.map((c) => AppClientInfo(id: c.id, username: c.username, isHost: c.isHost)).toList();
       state = state.copyWith(connectedClients: appClients);
       if (clients.length > previousCount) {
-        state = state.copyWith(syncMessage: 'Client connected. Initiating sync...');
+        state = state.copyWith(syncMessage: 'Client connected. Initiating 2-way sync...');
         _sendManifest();
       } else if (clients.isEmpty) {
         state = state.copyWith(syncMessage: 'Waiting for clients...');
@@ -448,7 +448,7 @@ class P2pService extends _$P2pService {
         hostIpAddress: hotspotState.hostIpAddress,
       ));
       if (!wasActive && hotspotState.isActive) {
-        state = state.copyWith(syncMessage: 'Connected to host. Initiating sync...');
+        state = state.copyWith(syncMessage: 'Connected to host. Initiating 2-way sync...');
         _sendManifest();
       } else if (wasActive && !hotspotState.isActive) {
         state = state.copyWith(isSyncing: false, syncMessage: 'Disconnected from host.');

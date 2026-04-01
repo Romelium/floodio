@@ -253,7 +253,7 @@ class SyncBottomSheet extends ConsumerWidget {
                                 );
                               },
                               icon: const Icon(Icons.sync),
-                              label: Text(p2pState.isSyncing ? 'Syncing...' : 'Force Sync Now'),
+                              label: Text(p2pState.isSyncing ? 'Syncing...' : 'Force 2-Way Sync Now'),
                               style: FilledButton.styleFrom(
                                 backgroundColor: Colors.green.shade600,
                                 padding: const EdgeInsets.symmetric(vertical: 12),
@@ -460,8 +460,8 @@ class SyncBottomSheet extends ConsumerWidget {
                         child: Column(
                           children: [
                             SwitchListTile(
-                              title: const Text('Share Data (Host)', style: TextStyle(fontWeight: FontWeight.bold)),
-                              subtitle: const Text('Create a local network for others to join', style: TextStyle(fontSize: 12)),
+                              title: const Text('Create Mesh Node (Host)', style: TextStyle(fontWeight: FontWeight.bold)),
+                              subtitle: const Text('Create a local network. Data syncs both ways.', style: TextStyle(fontSize: 12)),
                               value: p2pState.isHosting,
                               onChanged: (p2pState.isScanning || p2pState.isAutoSyncing)
                                   ? null
@@ -497,8 +497,8 @@ class SyncBottomSheet extends ConsumerWidget {
                         child: Column(
                           children: [
                             SwitchListTile(
-                              title: const Text('Receive Data (Scan)', style: TextStyle(fontWeight: FontWeight.bold)),
-                              subtitle: const Text('Look for nearby devices sharing data', style: TextStyle(fontSize: 12)),
+                              title: const Text('Join Mesh Node (Scan)', style: TextStyle(fontWeight: FontWeight.bold)),
+                              subtitle: const Text('Look for nearby networks. Data syncs both ways.', style: TextStyle(fontSize: 12)),
                               value: p2pState.isScanning || p2pState.clientState?.isActive == true,
                               onChanged: (p2pState.isHosting || p2pState.isAutoSyncing)
                                   ? null
