@@ -635,6 +635,8 @@ class P2pService extends _$P2pService {
         }
       } else if (file.state == ReceivableFileState.downloading) {
         isDownloadingAny = true;
+      } else if (file.state == ReceivableFileState.error) {
+        print("Failed to download file ${file.info.name}");
       }
     }
 

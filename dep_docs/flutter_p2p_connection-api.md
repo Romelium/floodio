@@ -58,18 +58,20 @@ Both `FlutterP2pHost` and `FlutterP2pClient` inherit these utility methods for p
 
 ### 3.2 Host API (`FlutterP2pHost`)
 Used by the device creating the network.
+*   **Instantiation:**
+    *   `FlutterP2pHost({String? serviceUuid, bool? bondingRequired, bool? encryptionRequired, String? username})`
 *   **Lifecycle:**
-    *   `Future<void> initialize({String? serviceUuid, bool? bondingRequired, bool? encryptionRequired})`
+    *   `Future<void> initialize()` *(Note: Configuration is passed in the constructor, not here)*
     *   `Future<void> dispose()`
 *   **Network Management:**
-    *   `Future<HotspotHostState> createGroup({bool advertise = true, Duration timeout = 60s})`: Creates Wi-Fi hotspot, starts WebSocket/HTTP servers, and optionally advertises via BLE.
+    *   `Future<HotspotHostState> createGroup({bool advertise = true, Duration timeout = const Duration(seconds: 60)})`: Creates Wi-Fi hotspot, starts WebSocket/HTTP servers, and optionally advertises via BLE.
     *   `Future<void> removeGroup()`: Tears down network and servers.
 *   **Data Transfer:**
     *   `Future<void> broadcastText(String text, {List<String>? excludeClientIds})`
     *   `Future<bool> sendTextToClient(String text, String clientId)`
     *   `Future<P2pFileInfo?> broadcastFile(File file, {List<String>? excludeClientIds})`
     *   `Future<P2pFileInfo?> sendFileToClient(File file, String clientId)`
-    *   `Future<bool> downloadFile(String fileId, String saveDirectory, {String? customFileName, Function(FileDownloadProgressUpdate)? onProgress})`
+    *   `Future<bool> downloadFile(String fileId, String saveDirectory, {String? customFileName, bool? deleteOnError, Function(FileDownloadProgressUpdate)? onProgress, int? rangeStart, int? rangeEnd})`
 *   **Streams (State & Data):**
     *   `Stream<HotspotHostState> streamHotspotState()`
     *   `Stream<List<P2pClientInfo>> streamClientList()`
@@ -79,14 +81,16 @@ Used by the device creating the network.
 
 ### 3.3 Client API (`FlutterP2pClient`)
 Used by devices joining the network.
+*   **Instantiation:**
+    *   `FlutterP2pClient({String? serviceUuid, bool? bondingRequired, bool? encryptionRequired, String? username})`
 *   **Lifecycle:**
-    *   `Future<void> initialize({String? serviceUuid, ...})`
+    *   `Future<void> initialize()`
     *   `Future<void> dispose()`
 *   **Discovery & Connection:**
-    *   `Future<StreamSubscription> startScan(void Function(List<BleDiscoveredDevice>)? onData, {Function? onError, void Function()? onDone, Duration timeout = 15s})`
+    *   `Future<StreamSubscription<List<BleDiscoveredDevice>>> startScan(void Function(List<BleDiscoveredDevice>)? onData, {Function? onError, void Function()? onDone, bool? cancelOnError, Duration timeout = const Duration(seconds: 15)})`
     *   `Future<void> stopScan()`
-    *   `Future<void> connectWithDevice(BleDiscoveredDevice device, {Duration timeout = 20s})`: Connects via BLE, gets credentials, connects to Wi-Fi, connects to WebSocket.
-    *   `Future<void> connectWithCredentials(String ssid, String psk, {Duration timeout = 60s})`: Manual connection (e.g., via QR code).
+    *   `Future<void> connectWithDevice(BleDiscoveredDevice device, {Duration timeout = const Duration(seconds: 20)})`: Connects via BLE, gets credentials, connects to Wi-Fi, connects to WebSocket.
+    *   `Future<void> connectWithCredentials(String ssid, String psk, {Duration timeout = const Duration(seconds: 60)})`: Manual connection (e.g., via QR code).
     *   `Future<void> disconnect()`
 *   **Data Transfer:** Same signatures as Host (`broadcastText`, `sendFileToClient`, `downloadFile`, etc.)
 *   **Streams (State & Data):**
@@ -101,8 +105,8 @@ Used by devices joining the network.
 *   **`HotspotClientState`**: `{ bool isActive, String? hostSsid, String? hostGatewayIpAddress, String? hostIpAddress }`
 *   **`BleDiscoveredDevice`**: `{ String deviceAddress, String deviceName }`
 *   **`P2pClientInfo`**: `{ String id, String username, bool isHost }`
-*   **`ReceivableFileInfo`**: Represents a file available to download. Contains `P2pFileInfo info`, `ReceivableFileState state` (idle, downloading, completed, error), and `double downloadProgressPercent`.
-*   **`HostedFileInfo`**: Represents a file currently being served by this device.
+*   **`ReceivableFileInfo`**: Represents a file available to download. Contains `P2pFileInfo info`, `ReceivableFileState state` (idle, downloading, completed, error), `double downloadProgressPercent`, and `String? savePath`.
+*   **`HostedFileInfo`**: Represents a file currently being served by this device. Contains `P2pFileInfo info`, `String localPath`, and `List<String> recipientIds`.
 *   **`FileDownloadProgressUpdate`**: `{ String fileId, double progressPercent, int bytesDownloaded, int totalSize, String savePath }`
 
 ---
@@ -111,10 +115,14 @@ Used by devices joining the network.
 
 ### Workflow 1: Host Initialization & Group Creation
 ```dart
-final host = FlutterP2pHost();
+// Configuration (like serviceUuid) is passed to the constructor
+final host = FlutterP2pHost(
+  username: "Player 1",
+  serviceUuid: "0f0540bd-4a04-46d0-b90d-b0447453ec3a", // Optional custom UUID
+);
 
 Future<void> startHosting() async {
-  await host.initialize();
+  await host.initialize(); // No arguments here
   
   // 1. Check Permissions & Services (Crucial step)
   if (!await host.checkP2pPermissions()) await host.askP2pPermissions();
@@ -140,10 +148,14 @@ Future<void> startHosting() async {
 
 ### Workflow 2: Client Discovery & Connection
 ```dart
-final client = FlutterP2pClient();
+// Configuration must match the Host if using custom UUIDs
+final client = FlutterP2pClient(
+  username: "Player 2",
+  serviceUuid: "0f0540bd-4a04-46d0-b90d-b0447453ec3a", 
+);
 
 Future<void> joinNetwork() async {
-  await client.initialize();
+  await client.initialize(); // No arguments here
   
   // 1. Check Permissions & Services (Same as Host)
   // ... permission checks ...
@@ -189,7 +201,9 @@ void setupFileReceiver() {
           onProgress: (progress) {
             print("Downloading ${file.info.name}: ${progress.progressPercent}%");
           }
-        );
+        ).then((success) {
+          print(success ? "Download complete!" : "Download failed.");
+        });
       }
     }
   });
@@ -200,9 +214,10 @@ void setupFileReceiver() {
 
 ## 6. Generation Rules & Caveats
 
-1.  **Always enforce permission checks:** Before calling `createGroup`, `startScan`, or `connectWithDevice`, generate code that checks and requests P2P, Bluetooth, and Location permissions.
-2.  **Always enforce service checks:** Ensure Wi-Fi, Bluetooth, and Location hardware are turned on using the provided `check...Enabled()` and `enable...Services()` methods.
-3.  **Android Only:** If want for iOS support, this plugin relies on Android's `WifiManager.LocalOnlyHotspot` and Wi-Fi Direct APIs, which do not have direct equivalents on iOS.
-4.  **File Paths:** When generating file download code, use standard Android paths (e.g., `/storage/emulated/0/Download/`) or use the `path_provider` package. Remind yourself about Android Scoped Storage rules.
-5.  **Initialization:** `initialize()` MUST be called before any other method on `FlutterP2pHost` or `FlutterP2pClient`.
-6.  **Disposal:** Always generate a `dispose()` method in `StatefulWidget`s to call `host.dispose()` or `client.dispose()` to prevent memory leaks and lingering native network configurations.
+1.  **Constructor vs Initialize:** `serviceUuid`, `bondingRequired`, `encryptionRequired`, and `username` are passed to the **constructor** of `FlutterP2pHost` or `FlutterP2pClient`. The `initialize()` method takes no arguments.
+2.  **Always enforce permission checks:** Before calling `createGroup`, `startScan`, or `connectWithDevice`, generate code that checks and requests P2P, Bluetooth, and Location permissions.
+3.  **Always enforce service checks:** Ensure Wi-Fi, Bluetooth, and Location hardware are turned on using the provided `check...Enabled()` and `enable...Services()` methods.
+4.  **Android Only:** If asked for iOS support, this plugin relies on Android's `WifiManager.LocalOnlyHotspot` and Wi-Fi Direct APIs, which do not have direct equivalents on iOS.
+5.  **File Paths:** When generating file download code, use standard Android paths (e.g., `/storage/emulated/0/Download/`) or use the `path_provider` package. Remind yourself about Android Scoped Storage rules.
+6.  **Initialization:** `initialize()` MUST be called before any other method on `FlutterP2pHost` or `FlutterP2pClient`.
+7.  **Disposal:** Always generate a `dispose()` method in `StatefulWidget`s to call `host.dispose()` or `client.dispose()` to prevent memory leaks and lingering native network configurations.
