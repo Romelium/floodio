@@ -35,7 +35,7 @@ class AreasController extends _$AreasController {
       );
       await db.into(db.seenMessageIds).insert(
         SeenMessageIdsCompanion.insert(
-          messageId: area.id,
+          messageId: '${area.id}_${area.timestamp}',
           timestamp: DateTime.now().millisecondsSinceEpoch,
         ),
         mode: InsertMode.insertOrReplace,

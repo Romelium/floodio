@@ -139,7 +139,7 @@ class P2pState {
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
-  
+
     return other is P2pState &&
       other.isHosting == isHosting &&
       other.isScanning == isScanning &&
@@ -273,7 +273,7 @@ class P2pService extends _$P2pService {
       // Read the latest interval from preferences
       final prefs = ref.read(sharedPreferencesProvider);
       final baseInterval = prefs.getInt('settings_sync_interval') ?? 30;
-      
+
       // Add a small jitter (0-5s) to prevent perfect sync loops between two devices
       final nextCycleSeconds = baseInterval + Random().nextInt(6);
       _autoSyncTimer = Timer(Duration(seconds: nextCycleSeconds), _runAutoSyncCycle);
@@ -542,12 +542,12 @@ class P2pService extends _$P2pService {
       if (file.state == ReceivableFileState.idle) {
         isDownloadingAny = true;
         final dir = await getApplicationDocumentsDirectory();
-        
+
         state = state.copyWith(isSyncing: true, syncMessage: 'Downloading ${file.info.name}...');
-        
+
         p2pInstance.downloadFile(
           file.info.id,
-          dir.path,
+          '${dir.path}/',
           onProgress: (progress) {
             _idleTicks = 0; // Reset idle timer during download
             if (progress.progressPercent.toInt() % 10 == 0) {
@@ -564,7 +564,7 @@ class P2pService extends _$P2pService {
             try {
               final mapCache = ref.read(mapCacheServiceProvider);
               await mapCache.unpackMap(downloadedFile);
-              
+
               if (file.info.name.startsWith('map_')) {
                 try {
                   final parts = file.info.name.replaceAll('.fmap', '').split('_');
@@ -583,7 +583,7 @@ class P2pService extends _$P2pService {
                   print("Failed to parse region from map filename: $e");
                 }
               }
-              
+
               state = state.copyWith(isSyncing: false, syncMessage: 'Map updated successfully.');
             } catch (e) {
               print("Error unpacking map: $e");
@@ -601,7 +601,7 @@ class P2pService extends _$P2pService {
         isDownloadingAny = true;
       }
     }
-    
+
     if (isDownloadingAny) {
       state = state.copyWith(isSyncing: true);
     } else if (!isDownloadingAny && state.isSyncing && state.syncMessage?.startsWith('Downloading') == true) {
@@ -627,32 +627,32 @@ class P2pService extends _$P2pService {
           bloomFilter.add(seen.messageId);
         }
         for (final d in deletedItems) {
-          bloomFilter.add('del_${d.id}');
+          bloomFilter.add('del_${d.id}_${d.timestamp}');
         }
-        
+
         final adminTrusted = await db.select(db.adminTrustedSenders).get();
         for (final a in adminTrusted) {
-          bloomFilter.add('delg_${a.publicKey}');
+          bloomFilter.add('delg_${a.publicKey}_${a.timestamp}');
         }
 
         final revoked = await db.select(db.revokedDelegations).get();
         for (final r in revoked) {
-          bloomFilter.add('rev_${r.delegateePublicKey}');
+          bloomFilter.add('rev_${r.delegateePublicKey}_${r.timestamp}');
         }
 
         await db.close();
         return (bloomFilter.bits, size);
       });
-  
+
       final offlineRegions = ref.read(offlineRegionsProvider).value ?? [];
-  
+
       final manifest = {
         'type': 'manifest',
         'bloomFilter': bloomBits,
         'bloomSize': bloomSize,
         'offlineRegions': offlineRegions.map((r) => r.toJson()).toList(),
       };
-  
+
       await broadcastText(jsonEncode(manifest));
     } catch (e) {
       print("Error sending manifest: $e");
@@ -686,14 +686,14 @@ class P2pService extends _$P2pService {
         final allAdminTrusted = await db.select(db.adminTrustedSenders).get();
         final allRevoked = await db.select(db.revokedDelegations).get();
 
-        final newHazards = allHazards.where((h) => !peerBloomFilter.mightContain(h.id)).take(200).toList();
-        final newNews = allNews.where((n) => !peerBloomFilter.mightContain(n.id)).take(200).toList();
+        final newHazards = allHazards.where((h) => !peerBloomFilter.mightContain('${h.id}_${h.timestamp}')).take(200).toList();
+        final newNews = allNews.where((n) => !peerBloomFilter.mightContain('${n.id}_${n.timestamp}')).take(200).toList();
         final newProfiles = allProfiles.where((p) => !peerBloomFilter.mightContain('${p.publicKey}_${p.timestamp}')).take(200).toList();
-        final newDeleted = allDeleted.where((d) => !peerBloomFilter.mightContain('del_${d.id}')).take(200).toList();
-        final newAreas = allAreas.where((a) => !peerBloomFilter.mightContain(a.id)).take(200).toList();
-        final newPaths = allPaths.where((p) => !peerBloomFilter.mightContain(p.id)).take(200).toList();
-        final newDelegations = allAdminTrusted.where((a) => !peerBloomFilter.mightContain('delg_${a.publicKey}')).take(200).toList();
-        final newRevocations = allRevoked.where((r) => !peerBloomFilter.mightContain('rev_${r.delegateePublicKey}')).take(200).toList();
+        final newDeleted = allDeleted.where((d) => !peerBloomFilter.mightContain('del_${d.id}_${d.timestamp}')).take(200).toList();
+        final newAreas = allAreas.where((a) => !peerBloomFilter.mightContain('${a.id}_${a.timestamp}')).take(200).toList();
+        final newPaths = allPaths.where((p) => !peerBloomFilter.mightContain('${p.id}_${p.timestamp}')).take(200).toList();
+        final newDelegations = allAdminTrusted.where((a) => !peerBloomFilter.mightContain('delg_${a.publicKey}_${a.timestamp}')).take(200).toList();
+        final newRevocations = allRevoked.where((r) => !peerBloomFilter.mightContain('rev_${r.delegateePublicKey}_${r.timestamp}')).take(200).toList();
 
         await db.close();
 
@@ -925,11 +925,26 @@ class P2pService extends _$P2pService {
       final existingPaths = payloadPathIds.isEmpty ? [] : await (db.select(db.paths)..where((t) => t.id.isIn(payloadPathIds))).get();
       final pathTimestamps = {for (var p in existingPaths) p.id: p.timestamp};
 
-      for (final d in payload.deletedItems) {
-        deletedIds.add(d.id);
-      }
+      final existingDeleted = await db.select(db.deletedItems).get();
+      final existingDeletedIds = existingDeleted.map((e) => e.id).toSet();
+      final validDeleted = <DeletedItemsCompanion>[];
 
       final seenIds = <SeenMessageIdsCompanion>[];
+
+      for (final d in payload.deletedItems) {
+        deletedIds.add(d.id);
+        if (!existingDeletedIds.contains(d.id)) {
+          validDeleted.add(DeletedItemsCompanion.insert(
+            id: d.id,
+            timestamp: d.timestamp.toInt(),
+          ));
+          seenIds.add(SeenMessageIdsCompanion.insert(
+            messageId: 'del_${d.id}_${d.timestamp}',
+            timestamp: DateTime.now().millisecondsSinceEpoch,
+          ));
+        }
+      }
+
       final validDelegations = <AdminTrustedSendersCompanion>[];
       for (final d in payload.delegations) {
         final existingTs = delegationTimestamps[d.delegateePublicKey] ?? 0;
@@ -950,7 +965,7 @@ class P2pService extends _$P2pService {
           ));
           adminTrustedKeys.add(d.delegateePublicKey);
           seenIds.add(SeenMessageIdsCompanion.insert(
-            messageId: d.id,
+            messageId: 'delg_${d.delegateePublicKey}_${d.timestamp}',
             timestamp: DateTime.now().millisecondsSinceEpoch,
           ));
         } else {
@@ -977,7 +992,7 @@ class P2pService extends _$P2pService {
             signature: r.signature,
           ));
           seenIds.add(SeenMessageIdsCompanion.insert(
-            messageId: 'rev_${r.delegateePublicKey}',
+            messageId: 'rev_${r.delegateePublicKey}_${r.timestamp}',
             timestamp: DateTime.now().millisecondsSinceEpoch,
           ));
         } else {
@@ -1025,7 +1040,7 @@ class P2pService extends _$P2pService {
             isCritical: Value(m.isCritical),
           ));
           seenIds.add(SeenMessageIdsCompanion.insert(
-            messageId: m.id,
+            messageId: '${m.id}_${m.timestamp}',
             timestamp: DateTime.now().millisecondsSinceEpoch,
           ));
         } else {
@@ -1067,7 +1082,7 @@ class P2pService extends _$P2pService {
             isCritical: Value(n.isCritical),
           ));
           seenIds.add(SeenMessageIdsCompanion.insert(
-            messageId: n.id,
+            messageId: '${n.id}_${n.timestamp}',
             timestamp: DateTime.now().millisecondsSinceEpoch,
           ));
         } else {
@@ -1143,7 +1158,7 @@ class P2pService extends _$P2pService {
             isCritical: Value(a.isCritical),
           ));
           seenIds.add(SeenMessageIdsCompanion.insert(
-            messageId: a.id,
+            messageId: '${a.id}_${a.timestamp}',
             timestamp: DateTime.now().millisecondsSinceEpoch,
           ));
         } else {
@@ -1186,20 +1201,12 @@ class P2pService extends _$P2pService {
             isCritical: Value(p.isCritical),
           ));
           seenIds.add(SeenMessageIdsCompanion.insert(
-            messageId: p.id,
+            messageId: '${p.id}_${p.timestamp}',
             timestamp: DateTime.now().millisecondsSinceEpoch,
           ));
         } else {
           print("Invalid signature for path ${p.id}, dropping.");
         }
-      }
-
-      final validDeleted = <DeletedItemsCompanion>[];
-      for (final d in payload.deletedItems) {
-        validDeleted.add(DeletedItemsCompanion.insert(
-          id: d.id,
-          timestamp: d.timestamp.toInt(),
-        ));
       }
 
       state = state.copyWith(syncMessage: 'Saving to database...');
@@ -1224,7 +1231,7 @@ class P2pService extends _$P2pService {
             final file = File('${dir.path}/${marker.imageId}');
             if (await file.exists()) await file.delete();
           }
-          
+
           final news = await (db.select(db.newsItems)..where((t) => t.id.equals(d.id.value))).getSingleOrNull();
           if (news?.imageId != null && news!.imageId!.isNotEmpty) {
             final file = File('${dir.path}/${news.imageId}');

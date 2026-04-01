@@ -28,6 +28,14 @@ class RevokedDelegationsController extends _$RevokedDelegationsController {
         mode: InsertMode.insertOrReplace,
       );
 
+      await db.into(db.seenMessageIds).insert(
+        SeenMessageIdsCompanion.insert(
+          messageId: 'rev_${entity.delegateePublicKey}_${entity.timestamp}',
+          timestamp: DateTime.now().millisecondsSinceEpoch,
+        ),
+        mode: InsertMode.insertOrReplace,
+      );
+
       final trusted = await (db.select(db.trustedSenders)..where((t) => t.publicKey.equals(entity.delegateePublicKey))).getSingleOrNull();
       final fallbackTier = trusted != null ? 3 : 4;
 

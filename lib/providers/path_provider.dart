@@ -35,7 +35,7 @@ class PathsController extends _$PathsController {
       );
       await db.into(db.seenMessageIds).insert(
         SeenMessageIdsCompanion.insert(
-          messageId: path.id,
+          messageId: '${path.id}_${path.timestamp}',
           timestamp: DateTime.now().millisecondsSinceEpoch,
         ),
         mode: InsertMode.insertOrReplace,

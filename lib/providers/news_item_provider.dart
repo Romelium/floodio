@@ -38,7 +38,7 @@ class NewsItemsController extends _$NewsItemsController {
       );
       await db.into(db.seenMessageIds).insert(
         SeenMessageIdsCompanion.insert(
-          messageId: item.id,
+          messageId: '${item.id}_${item.timestamp}',
           timestamp: DateTime.now().millisecondsSinceEpoch,
         ),
         mode: InsertMode.insertOrReplace,

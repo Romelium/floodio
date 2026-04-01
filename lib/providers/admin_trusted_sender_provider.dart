@@ -28,6 +28,14 @@ class AdminTrustedSendersController extends _$AdminTrustedSendersController {
         mode: InsertMode.insertOrReplace,
       );
 
+      await db.into(db.seenMessageIds).insert(
+        SeenMessageIdsCompanion.insert(
+          messageId: 'delg_${entity.publicKey}_${entity.timestamp}',
+          timestamp: DateTime.now().millisecondsSinceEpoch,
+        ),
+        mode: InsertMode.insertOrReplace,
+      );
+
       // Do not upgrade markers if this key has already been revoked
       final revoked = await (db.select(db.revokedDelegations)..where((t) => t.delegateePublicKey.equals(entity.publicKey))).getSingleOrNull();
       if (revoked != null) return;

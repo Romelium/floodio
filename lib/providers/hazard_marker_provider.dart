@@ -40,7 +40,7 @@ class HazardMarkersController extends _$HazardMarkersController {
       );
       await db.into(db.seenMessageIds).insert(
         SeenMessageIdsCompanion.insert(
-          messageId: marker.id,
+          messageId: '${marker.id}_${marker.timestamp}',
           timestamp: DateTime.now().millisecondsSinceEpoch,
         ),
         mode: InsertMode.insertOrReplace,

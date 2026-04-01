@@ -126,6 +126,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
   DateTime? _lastTapTime;
   final MapController _mapController = MapController();
   bool _hasCenteredOnLocation = false;
+  bool _isTrackingLocation = true;
   double _mapRotation = 0.0;
 
   @override
@@ -2299,12 +2300,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
         });
 
         ref.listen<AsyncValue<Position?>>(locationControllerProvider, (prev, next) {
-          if (prev?.value == null && next.value != null && !_hasCenteredOnLocation) {
-            _hasCenteredOnLocation = true;
-            try {
-              _mapController.move(LatLng(next.value!.latitude, next.value!.longitude), 15.0);
-            } catch (e) {
-              debugPrint('Map not ready yet: $e');
+          if (next.value != null) {
+            if (!_hasCenteredOnLocation || _isTrackingLocation) {
+              final zoom = _hasCenteredOnLocation ? _mapController.camera.zoom : 15.0;
+              _hasCenteredOnLocation = true;
+              try {
+                _mapController.move(LatLng(next.value!.latitude, next.value!.longitude), zoom);
+              } catch (e) {
+                debugPrint('Map not ready yet: $e');
+              }
             }
           }
         });
@@ -2317,6 +2321,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                 initialCenter: const LatLng(37.7749, -122.4194),
                 initialZoom: 13.0,
                 onPositionChanged: (camera, hasGesture) {
+                  if (hasGesture && _isTrackingLocation) {
+                    setState(() {
+                      _isTrackingLocation = false;
+                    });
+                  }
                   if (camera.rotation != _mapRotation) {
                     setState(() {
                       _mapRotation = camera.rotation;
@@ -2631,6 +2640,28 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                       ),
                     );
                   }).toList(),
+                ),
+                Consumer(
+                  builder: (context, ref, child) {
+                    final locationAsync = ref.watch(locationControllerProvider);
+                    final currentPosition = locationAsync.value;
+                    if (currentPosition == null) return const SizedBox.shrink();
+                    return CircleLayer(
+                      circles: [
+                        CircleMarker(
+                          point: LatLng(
+                            currentPosition.latitude,
+                            currentPosition.longitude,
+                          ),
+                          radius: currentPosition.accuracy,
+                          useRadiusInMeter: true,
+                          color: Colors.blue.withValues(alpha: 0.15),
+                          borderColor: Colors.blue.withValues(alpha: 0.3),
+                          borderStrokeWidth: 1,
+                        ),
+                      ],
+                    );
+                  },
                 ),
                 Consumer(
                   builder: (context, ref, child) {
@@ -4313,6 +4344,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                     );
                   }
 
+                  final locationState = ref.watch(locationControllerProvider);
+                  final isLocationLoading = locationState.isLoading && locationState.value == null;
+
                   return Column(
                     mainAxisAlignment: MainAxisAlignment.end,
                     mainAxisSize: MainAxisSize.min,
@@ -4385,14 +4419,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                         FloatingActionButton.small(
                           heroTag: 'center_map',
                           onPressed: () async {
+                            setState(() {
+                              _isTrackingLocation = true;
+                            });
                             try {
                               final pos = await ref
                                   .read(locationControllerProvider.notifier)
                                   .getCurrentPosition();
                               if (pos != null) {
+                                final zoom = _mapController.camera.zoom < 10.0 ? 15.0 : _mapController.camera.zoom;
                                 _mapController.move(
                                   LatLng(pos.latitude, pos.longitude),
-                                  15.0,
+                                  zoom,
                                 );
                               } else {
                                 if (mounted) {
@@ -4400,7 +4438,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                                     this.context,
                                   ).showSnackBar(
                                     const SnackBar(
-                                      content: Text('Location not available'),
+                                      content: Text('Location not available. Please check permissions.'),
                                       behavior: SnackBarBehavior.floating,
                                     ),
                                   );
@@ -4410,9 +4448,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                               debugPrint('Map not ready yet: $e');
                             }
                           },
-                          backgroundColor: Theme.of(context).colorScheme.surface,
-                          foregroundColor: Theme.of(context).colorScheme.primary,
-                          child: const Icon(Icons.my_location),
+                          backgroundColor: _isTrackingLocation ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.surface,
+                          foregroundColor: _isTrackingLocation ? Theme.of(context).colorScheme.onPrimary : Theme.of(context).colorScheme.primary,
+                          child: isLocationLoading
+                              ? Padding(
+                                  padding: const EdgeInsets.all(8.0),
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: _isTrackingLocation ? Theme.of(context).colorScheme.onPrimary : Theme.of(context).colorScheme.primary,
+                                  ),
+                                )
+                              : const Icon(Icons.my_location),
                         ),
                         const SizedBox(height: 16),
                       ],
