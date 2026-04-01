@@ -8,6 +8,12 @@ An Android application that is essentially an offline resilient disaster informa
 *   **Global Actions:** Creating reports, resolving hazards, debunking, and promoting users to "Official Volunteer" (Tier 2) are **global** actions. They will propagate to all other devices in the mesh network during sync.
 *   **Local Actions:** "Trusting" a sender (Tier 3), "Blocking" a sender, and "Clearing All Data" in settings are **local** actions. They only affect your personal device and will not alter the data on other users' devices.
 
+## How the Mesh Works
+1.  **Discovery:** The app uses Bluetooth Low Energy (BLE) to advertise its presence and scan for nearby peers.
+2.  **Connection:** Once a peer is found, the devices negotiate a Wi-Fi Direct connection (one acts as a temporary Hotspot).
+3.  **Sync:** Devices exchange a "Bloom Filter" (a compact summary of their database). They then identify which reports, news, or map files the other is missing and transfer them.
+4.  **Propagation:** As users move around, data "hops" from device to device, eventually covering the entire affected area without needing a single cell tower.
+
 ## 1. Prerequisites tools and libraries installed on your system:
 *   **Flutter SDK** (Version 3.38.4 or higher, as specified in your `pubspec.yaml`).
 *   **Protocol Buffers Compiler (`protoc`)**: This is used to compile your `.proto` files. 

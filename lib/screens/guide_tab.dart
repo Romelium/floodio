@@ -40,23 +40,50 @@ class GuideTab extends ConsumerWidget {
                 _buildQuickStartCard(context),
                 const SizedBox(height: 24),
                 const Text(
-                  'Core Concepts',
+                  'Getting Started',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 12),
+                _buildConceptTile(
+                  context,
+                  icon: Icons.sync,
+                  title: '1. Enable Mesh Sync',
+                  description: 'Tap the status chip in the top right (usually says "OFFLINE"). Toggle "Mesh Auto-Sync" to ON. Your phone will now periodically look for other Floodio users nearby.',
+                  color: Colors.green,
+                ),
+                _buildConceptTile(
+                  context,
+                  icon: Icons.map,
+                  title: '2. Prepare Offline Maps',
+                  description: 'While you have internet, go to the Map tab and tap the Download icon. Select your local area. This ensures you can see streets even when the grid is down.',
+                  color: Colors.teal,
+                ),
+                _buildConceptTile(
+                  context,
+                  icon: Icons.add_circle_outline,
+                  title: '3. Report & Share',
+                  description: 'Use the "+" button to report hazards. When you walk past another user, your reports will automatically jump to their phone, and theirs to yours.',
+                  color: Colors.blue,
+                ),
+                const SizedBox(height: 24),
+                const Text(
+                  'Advanced Mesh Features',
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 12),
                 _buildConceptTile(
                   context,
                   icon: Icons.hub,
-                  title: 'The Mesh Network',
-                  description: 'Floodio works without internet. It uses Bluetooth Low Energy to find peers and Wi-Fi Direct to "gossip" data. When two users are near each other, their databases automatically sync missing reports, maps, and alerts.',
-                  color: Colors.blue,
+                  title: 'Broadcasting Maps',
+                  description: 'If you have a map downloaded and meet someone who doesn\'t, you can "Broadcast" it to them. Open the Sync menu, and if connected, you\'ll see an option to send your map regions.',
+                  color: Colors.orange,
                 ),
                 _buildConceptTile(
                   context,
-                  icon: Icons.directions_run,
-                  title: 'Functioning as a "Mule"',
-                  description: 'If you have internet access, your app downloads the latest official data. When you move to an offline area, you carry that data with you and automatically share it with offline users you encounter.',
-                  color: Colors.orange,
+                  icon: Icons.gavel,
+                  title: 'Global vs Local Actions',
+                  description: 'Resolving a hazard or debunking a report is a GLOBAL action—it deletes the item for everyone. Trusting a sender is a LOCAL action—it only changes how YOU see their reports.',
+                  color: Colors.red,
                 ),
                 const SizedBox(height: 24),
                 const Text(
@@ -111,6 +138,20 @@ class GuideTab extends ConsumerWidget {
                 _buildFAQ(
                   'How do I get offline maps?',
                   'Tap the Download icon on the Map screen. Select an area while you have internet. You can then "Broadcast" this map to others who are offline via the Sync menu.',
+                ),
+                const SizedBox(height: 24),
+                const Text(
+                  'Troubleshooting',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 12),
+                _buildFAQ(
+                  'My status says "OFFLINE" even with Auto-Sync on?',
+                  'Ensure Bluetooth and Location are enabled. Android requires Location services to be ON for Bluetooth scanning to work. Also, check if you have granted the "Nearby Devices" permission.',
+                ),
+                _buildFAQ(
+                  'Syncing is taking a long time?',
+                  'Wi-Fi Direct can sometimes be slow to negotiate. Try moving closer to the other device. If it fails, try toggling Auto-Sync off and on again.',
                 ),
                 const SizedBox(height: 40),
               ],
@@ -315,6 +356,11 @@ class _TutorialOverlayState extends State<TutorialOverlay> {
       'title': 'Reporting Hazards',
       'content': 'Use the "+" button to report floods or roadblocks. Your report will spread to others as they pass by you.',
       'icon': '📍',
+    },
+    {
+      'title': 'Offline Maps',
+      'content': 'Tap the download icon on the map to save areas for offline use. You can even share these maps with others over the mesh!',
+      'icon': '🗺️',
     },
   ];
 
