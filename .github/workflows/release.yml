@@ -4,6 +4,8 @@ on:
   push:
     tags:
       - 'v*'
+    branches:
+      - main
 
 permissions:
   contents: write
@@ -48,9 +50,8 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .dart_tool/build
-          key: ${{ runner.os }}-build_runner-${{ hashFiles('**/pubspec.lock') }}-${{ github.sha }}
+          key: ${{ runner.os }}-build_runner-${{ hashFiles('**/pubspec.lock') }}
           restore-keys: |
-            ${{ runner.os }}-build_runner-${{ hashFiles('**/pubspec.lock') }}-
             ${{ runner.os }}-build_runner-
 
       - name: Setup Protoc
@@ -85,6 +86,7 @@ jobs:
         run: mv build/app/outputs/flutter-apk/app-release.apk "build/app/outputs/flutter-apk/${{ env.APP_FILENAME }}-${{ github.ref_name }}.apk"
 
       - name: Create Release and Upload APK
+        if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
