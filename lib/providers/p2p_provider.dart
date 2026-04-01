@@ -288,8 +288,6 @@ class P2pService extends _$P2pService {
         }
       }
     });
-
-    _hostTextSub = _host.streamReceivedTexts().listen(_handleReceivedText);
     _hostReceivedFilesSub = _host.streamReceivedFilesInfo().listen((files) => _handleReceivedFiles(files, _host));
     _hostSentFilesSub = _host.streamSentFilesInfo().listen((files) => _idleTicks = 0);
 
@@ -302,8 +300,7 @@ class P2pService extends _$P2pService {
         hostIpAddress: hotspotState.hostIpAddress,
       ));
       if (!wasActive && hotspotState.isActive) {
-        state = state.copyWith(syncMessage: 'Connected to host. Initiating 2-way sync...', clearSyncProgress: true);
-        _sendManifest();
+        state = state.copyWith(syncMessage: 'Wi-Fi connected. Connecting to host...', clearSyncProgress: true);
       } else if (wasActive && !hotspotState.isActive) {
         state = state.copyWith(isSyncing: false, syncMessage: 'Disconnected from host.', clearSyncProgress: true);
         if (state.isAutoSyncing && !_disposed && !_isSwitchingRoles) {
@@ -313,8 +310,6 @@ class P2pService extends _$P2pService {
         }
       }
     });
-
-    _clientTextSub = _client.streamReceivedTexts().listen(_handleReceivedText);
     _clientReceivedFilesSub = _client.streamReceivedFilesInfo().listen((files) => _handleReceivedFiles(files, _client));
     _clientSentFilesSub = _client.streamSentFilesInfo().listen((files) => _idleTicks = 0);
 
@@ -486,6 +481,9 @@ class P2pService extends _$P2pService {
       await _host.createGroup(advertise: true);
       if (!state.isHosting || _disposed) {
         await _host.removeGroup();
+      } else {
+        _hostTextSub?.cancel();
+        _hostTextSub = _host.streamReceivedTexts().listen(_handleReceivedText);
       }
     } catch (e) {
       print("Failed to create group: $e");
@@ -495,6 +493,7 @@ class P2pService extends _$P2pService {
   }
 
   Future<void> stopHosting() async {
+    _hostTextSub?.cancel();
     if (_isInitialized) {
       await _host.removeGroup();
     }
@@ -638,7 +637,15 @@ class P2pService extends _$P2pService {
         await _client.disconnect();
         return;
       }
+      
+      _clientTextSub?.cancel();
+      _clientTextSub = _client.streamReceivedTexts().listen(_handleReceivedText);
+
       state = state.copyWith(isConnecting: false, clearSyncProgress: true);
+      
+      // Trigger manifest here!
+      state = state.copyWith(syncMessage: 'Connected to host. Initiating 2-way sync...', clearSyncProgress: true);
+      _sendManifest();
     } catch (e) {
       print("Connection failed: $e");
       await _client.disconnect(); // Ensure cleanup
@@ -664,6 +671,7 @@ class P2pService extends _$P2pService {
   }
 
   Future<void> disconnect() async {
+    _clientTextSub?.cancel();
     await stopScanning();
     if (_isInitialized) {
       await _client.disconnect();
