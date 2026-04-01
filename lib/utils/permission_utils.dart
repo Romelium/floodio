@@ -99,17 +99,17 @@ Future<bool> ensureServicesEnabled() async {
   final dummy = FlutterP2pHost();
   bool loc = await dummy.checkLocationEnabled();
   if (!loc) {
-    await dummy.enableLocationServices();
+    try { await dummy.enableLocationServices(); } catch (_) {}
     loc = await dummy.checkLocationEnabled();
   }
   bool wifi = await dummy.checkWifiEnabled();
   if (!wifi) {
-    await dummy.enableWifiServices();
+    try { await dummy.enableWifiServices(); } catch (_) {}
     wifi = await dummy.checkWifiEnabled();
   }
   bool bt = await dummy.checkBluetoothEnabled();
   if (!bt) {
-    await dummy.enableBluetoothServices();
+    try { await dummy.enableBluetoothServices(); } catch (_) {}
     bt = await dummy.checkBluetoothEnabled();
   }
   return loc && wifi && bt;

@@ -3,11 +3,11 @@ package com.example.floodio
 import android.bluetooth.BluetoothManager
 import android.content.Context
 import android.net.wifi.WifiManager
-import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
-class MainActivity : FlutterActivity() {
+class MainActivity : FlutterFragmentActivity() {
     private val APK_CHANNEL = "com.example.floodio/apk"
     private val SYSTEM_CHANNEL = "com.example.floodio/system"
 

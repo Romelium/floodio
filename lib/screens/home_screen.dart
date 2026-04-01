@@ -129,6 +129,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
   bool _isTrackingLocation = true;
   double _mapRotation = 0.0;
   bool _showTutorial = false;
+  bool _isRequestingPermissions = false;
 
   @override
   void initState() {
@@ -144,6 +145,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
       setState(() => _showTutorial = true);
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       ref.read(cloudSyncServiceProvider);
     });
   }
@@ -156,7 +158,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
+    if (state == AppLifecycleState.resumed && !_isRequestingPermissions) {
       _checkPermissionsSilently();
     }
   }
@@ -173,6 +175,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
   }
 
   Future<void> _initPermissions() async {
+    if (_isRequestingPermissions) return;
+    _isRequestingPermissions = true;
+
+    try {
     final alreadyGranted = await checkAppPermissions();
     if (!alreadyGranted) {
       if (!mounted) return;
@@ -220,6 +226,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
     }
 
     final granted = await requestAppPermissions();
+    await Future.delayed(const Duration(milliseconds: 500));
+
     if (!granted && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -266,6 +274,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
       ref.invalidate(locationControllerProvider);
     }
 
+    await Future.delayed(const Duration(milliseconds: 500));
+
     final locationEnabled = await checkLocationServices();
     if (!locationEnabled && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -281,6 +291,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
           behavior: SnackBarBehavior.floating,
         ),
       );
+    }
+    } finally {
+      _isRequestingPermissions = false;
     }
   }
 
