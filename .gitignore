@@ -47,3 +47,7 @@ app.*.map.json
 # Generators
 *.g.dart
 *.pb*.dart
+
+# Env
+*.env
+!*.env.example
