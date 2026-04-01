@@ -225,7 +225,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
     } else if (granted) {
       if (mounted) {
         final batteryExempt = await Permission.ignoreBatteryOptimizations.isGranted;
-        if (!batteryExempt) {
+        if (!batteryExempt && mounted) {
           await showDialog(
             context: context,
             builder: (context) => AlertDialog(
