@@ -342,7 +342,7 @@ class P2pService extends _$P2pService {
         state = state.copyWith(syncMessage: 'Client connected. Initiating 2-way sync...');
         _sendManifest();
       } else if (clients.isEmpty) {
-        state = state.copyWith(syncMessage: 'Waiting for clients...');
+        state = state.copyWith(isSyncing: false, syncMessage: 'Waiting for clients...');
         if (state.isAutoSyncing && previousCount > 0 && !_disposed) {
           _idleTicks = 0;
           _autoSyncTimer?.cancel();
@@ -569,6 +569,9 @@ class P2pService extends _$P2pService {
         } else if (json['type'] == 'request_image') {
           await _handleRequestImage(json['imageId']);
           return;
+        } else if (json['type'] == 'up_to_date') {
+          state = state.copyWith(isSyncing: false, syncMessage: 'Up to date.');
+          return;
         }
       }
     } catch (e) {
@@ -716,8 +719,17 @@ class P2pService extends _$P2pService {
       };
 
       await broadcastText(jsonEncode(manifest));
+      state = state.copyWith(syncMessage: 'Sync data sent. Waiting for peer...');
+      
+      // Add a timeout to clear isSyncing if no response
+      Future.delayed(const Duration(seconds: 15), () {
+        if (state.isSyncing && state.syncMessage == 'Sync data sent. Waiting for peer...') {
+          state = state.copyWith(isSyncing: false, syncMessage: 'Sync timeout or up to date.');
+        }
+      });
     } catch (e) {
       print("Error sending manifest: $e");
+      state = state.copyWith(isSyncing: false, syncMessage: 'Error sending sync data.');
     }
   }
 
@@ -772,6 +784,7 @@ class P2pService extends _$P2pService {
       final newRevocations = filterResult.$8;
 
       if (newHazards.isEmpty && newNews.isEmpty && newProfiles.isEmpty && newDeleted.isEmpty && newAreas.isEmpty && newPaths.isEmpty && newDelegations.isEmpty && newRevocations.isEmpty) {
+        await broadcastText(jsonEncode({'type': 'up_to_date'}));
         state = state.copyWith(isSyncing: false, syncMessage: 'Up to date.');
         return;
       }
@@ -1473,7 +1486,9 @@ class P2pService extends _$P2pService {
 
       if (hasNewData) {
         final encoded = base64Encode(forwardPayload.writeToBuffer());
-        broadcastText(jsonEncode({'type': 'payload', 'data': encoded}));
+        await broadcastText(jsonEncode({'type': 'payload', 'data': encoded}));
+      } else {
+        await broadcastText(jsonEncode({'type': 'up_to_date'}));
       }
 
       state = state.copyWith(
