@@ -7,7 +7,7 @@ import '../providers/revoked_delegation_provider.dart';
 import '../providers/ui_p2p_provider.dart';
 import '../providers/user_profile_provider.dart';
 import '../services/cloud_sync_service.dart';
-import '../services/mock_gov_api_service.dart';
+import '../services/gov_api_service.dart';
 import '../utils/ui_helpers.dart';
 
 class CommandTab extends ConsumerWidget {
@@ -183,7 +183,7 @@ class CommandTab extends ConsumerWidget {
                                               ),
                                               onPressed: () async {
                                                 Navigator.pop(dialogContext);
-                                                await ref.read(mockGovApiServiceProvider.notifier).revokeAdminTrust(volunteer.publicKey);
+                                                await ref.read(govApiServiceProvider.notifier).revokeAdminTrust(volunteer.publicKey);
                                                 if (context.mounted) {
                                                   ScaffoldMessenger.of(context).showSnackBar(
                                                     const SnackBar(

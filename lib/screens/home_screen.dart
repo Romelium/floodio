@@ -41,7 +41,7 @@ import '../providers/untrusted_sender_provider.dart';
 import '../providers/user_profile_provider.dart';
 import '../services/cloud_sync_service.dart';
 import '../services/map_cache_service.dart';
-import '../services/mock_gov_api_service.dart';
+import '../services/gov_api_service.dart';
 import '../utils/permission_utils.dart';
 import '../utils/ui_helpers.dart';
 import '../widgets/download_map_dialog.dart';
@@ -353,23 +353,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                 },
               ),
               ListTile(
-                leading: const Icon(Icons.api, color: Colors.blue),
-                title: const Text('Fetch Mock Gov API Data'),
-                onTap: () async {
-                  Navigator.pop(sheetContext);
-                  await ref
-                      .read(mockGovApiServiceProvider.notifier)
-                      .fetchAndInjectMockData();
-                  if (!mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Mock Gov API data injected'),
-                      behavior: SnackBarBehavior.floating,
-                    ),
-                  );
-                },
-              ),
-              ListTile(
                 leading: const Icon(
                   Icons.admin_panel_settings,
                   color: Colors.purple,
@@ -381,7 +364,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                   final myPubKey = localUser?.publicKey;
                   if (myPubKey == null) return;
                   await ref
-                      .read(mockGovApiServiceProvider.notifier)
+                      .read(govApiServiceProvider.notifier)
                       .delegateAdminTrust(myPubKey);
                   if (!mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -401,7 +384,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                   final myPubKey = localUser?.publicKey;
                   if (myPubKey == null) return;
                   await ref
-                      .read(mockGovApiServiceProvider.notifier)
+                      .read(govApiServiceProvider.notifier)
                       .revokeAdminTrust(myPubKey);
                   if (!mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -4342,7 +4325,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
             style: FilledButton.styleFrom(backgroundColor: Colors.purple),
             onPressed: () async {
               Navigator.pop(dialogContext);
-              await ref.read(mockGovApiServiceProvider.notifier).delegateAdminTrust(senderId);
+              await ref.read(govApiServiceProvider.notifier).delegateAdminTrust(senderId);
               if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(

@@ -14,6 +14,7 @@ import 'package:flutter_p2p_connection/flutter_p2p_connection.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../crypto/crypto_service.dart';
 import '../database/connection.dart';
@@ -716,7 +717,7 @@ class P2pService extends _$P2pService {
           await _handleManifest(json);
           return;
         } else if (json['type'] == 'payload') {
-          await _handlePayload(json);
+          await processPayload(json['data']);
           return;
         } else if (json['type'] == 'request_map') {
           await _handleRequestMap(json);
@@ -1114,15 +1115,11 @@ class P2pService extends _$P2pService {
     }
   }
 
-  Future<void> _handlePayload(Map<String, dynamic> json) async {
+  Future<void> processPayload(String base64Data) async {
     _idleTicks = 0;
     state = state.copyWith(isSyncing: true, syncMessage: 'Receiving data...', clearSyncProgress: true);
     try {
-      if (json['data'] == null) {
-        state = state.copyWith(syncMessage: 'Invalid payload received.', clearSyncProgress: true);
-        return;
-      }
-      final data = base64Decode(json['data']);
+      final data = base64Decode(base64Data);
       final payload = pb.SyncPayload.fromBuffer(data);
 
       if (payload.markers.isEmpty && payload.news.isEmpty && payload.profiles.isEmpty && payload.deletedItems.isEmpty && payload.areas.isEmpty && payload.paths.isEmpty && payload.delegations.isEmpty && payload.revokedDelegations.isEmpty) {
@@ -1522,7 +1519,16 @@ class P2pService extends _$P2pService {
         if (imageId != null && imageId.isNotEmpty) {
           final file = File('${dir.path}/$imageId');
           if (!await file.exists()) {
-            await broadcastText(jsonEncode({'type': 'request_image', 'imageId': imageId}));
+            bool downloaded = false;
+            try {
+              final bytes = await Supabase.instance.client.storage.from('images').download(imageId);
+              await file.writeAsBytes(bytes);
+              downloaded = true;
+            } catch (_) {}
+            
+            if (!downloaded) {
+              await broadcastText(jsonEncode({'type': 'request_image', 'imageId': imageId}));
+            }
           }
         }
       }
@@ -1531,7 +1537,16 @@ class P2pService extends _$P2pService {
         if (imageId != null && imageId.isNotEmpty) {
           final file = File('${dir.path}/$imageId');
           if (!await file.exists()) {
-            await broadcastText(jsonEncode({'type': 'request_image', 'imageId': imageId}));
+            bool downloaded = false;
+            try {
+              final bytes = await Supabase.instance.client.storage.from('images').download(imageId);
+              await file.writeAsBytes(bytes);
+              downloaded = true;
+            } catch (_) {}
+            
+            if (!downloaded) {
+              await broadcastText(jsonEncode({'type': 'request_image', 'imageId': imageId}));
+            }
           }
         }
       }

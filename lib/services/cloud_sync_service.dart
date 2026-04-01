@@ -1,12 +1,17 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:drift/drift.dart';
+import 'package:fixnum/fixnum.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../protos/models.pb.dart' as pb;
 import '../providers/database_provider.dart';
-import 'mock_gov_api_service.dart';
+import '../providers/p2p_provider.dart';
 
 part 'cloud_sync_service.g.dart';
 
@@ -146,7 +151,12 @@ class CloudSyncService extends _$CloudSyncService {
         return expr;
       })).get();
       
-      pending = markers.length + news.length + areas.length + paths.length;
+      final profiles = await (db.select(db.userProfiles)..where((t) => t.timestamp.isBiggerThanValue(lastSync))).get();
+      final deleted = await (db.select(db.deletedItems)..where((t) => t.timestamp.isBiggerThanValue(lastSync))).get();
+      final delegations = await (db.select(db.adminTrustedSenders)..where((t) => t.timestamp.isBiggerThanValue(lastSync))).get();
+      final revocations = await (db.select(db.revokedDelegations)..where((t) => t.timestamp.isBiggerThanValue(lastSync))).get();
+
+      pending = markers.length + news.length + areas.length + paths.length + profiles.length + deleted.length + delegations.length + revocations.length;
     } catch (_) {}
     
     state = state.copyWith(hasInternet: internet, pendingUploads: pending);
@@ -176,9 +186,6 @@ class CloudSyncService extends _$CloudSyncService {
     state = state.copyWith(isSyncing: true, hasInternet: true);
     
     try {
-      // Simulate network delay for upload/download
-      await Future.delayed(const Duration(seconds: 2));
-
       // 1. "Upload" local data
       final db = ref.read(databaseProvider);
       final lastSync = state.lastSyncTime?.millisecondsSinceEpoch ?? 0;
@@ -211,15 +218,166 @@ class CloudSyncService extends _$CloudSyncService {
         }
         return expr;
       })).get();
+      final profiles = await (db.select(db.userProfiles)..where((t) => t.timestamp.isBiggerThanValue(lastSync))).get();
+      final deleted = await (db.select(db.deletedItems)..where((t) => t.timestamp.isBiggerThanValue(lastSync))).get();
+      final delegations = await (db.select(db.adminTrustedSenders)..where((t) => t.timestamp.isBiggerThanValue(lastSync))).get();
+      final revocations = await (db.select(db.revokedDelegations)..where((t) => t.timestamp.isBiggerThanValue(lastSync))).get();
       
-      print('CloudSync: Uploaded ${markers.length} markers, ${news.length} news, ${areas.length} areas, ${paths.length} paths to the cloud.');
-      if (state.syncTextOnly) {
-        print('CloudSync: Skipped image uploads (Text Only mode).');
+      final payload = pb.SyncPayload();
+
+      for (final m in markers) {
+        if (state.onlyTier1And2 && m.trustTier > 2) continue;
+        payload.markers.add(pb.HazardMarker(
+          id: m.id,
+          latitude: m.latitude,
+          longitude: m.longitude,
+          type: m.type,
+          description: m.description,
+          timestamp: Int64(m.timestamp),
+          senderId: m.senderId,
+          signature: m.signature ?? '',
+          trustTier: m.trustTier,
+          imageId: m.imageId ?? '',
+          expiresAt: Int64(m.expiresAt ?? 0),
+          isCritical: m.isCritical,
+        ));
+      }
+
+      for (final n in news) {
+        if (state.onlyTier1And2 && n.trustTier > 2) continue;
+        payload.news.add(pb.NewsItem(
+          id: n.id,
+          title: n.title,
+          content: n.content,
+          timestamp: Int64(n.timestamp),
+          senderId: n.senderId,
+          signature: n.signature ?? '',
+          trustTier: n.trustTier,
+          expiresAt: Int64(n.expiresAt ?? 0),
+          imageId: n.imageId ?? '',
+          isCritical: n.isCritical,
+        ));
+      }
+
+      for (final a in areas) {
+        if (state.onlyTier1And2 && a.trustTier > 2) continue;
+        final areaMarker = pb.AreaMarker(
+          id: a.id,
+          type: a.type,
+          description: a.description,
+          timestamp: Int64(a.timestamp),
+          senderId: a.senderId,
+          signature: a.signature ?? '',
+          trustTier: a.trustTier,
+          expiresAt: Int64(a.expiresAt ?? 0),
+          isCritical: a.isCritical,
+        );
+        for (final coord in a.coordinates) {
+          areaMarker.coordinates.add(pb.Coordinate(
+            latitude: coord['lat']!,
+            longitude: coord['lng']!,
+          ));
+        }
+        payload.areas.add(areaMarker);
+      }
+
+      for (final p in paths) {
+        if (state.onlyTier1And2 && p.trustTier > 2) continue;
+        final pathMarker = pb.PathMarker(
+          id: p.id,
+          type: p.type,
+          description: p.description,
+          timestamp: Int64(p.timestamp),
+          senderId: p.senderId,
+          signature: p.signature ?? '',
+          trustTier: p.trustTier,
+          expiresAt: Int64(p.expiresAt ?? 0),
+          isCritical: p.isCritical,
+        );
+        for (final coord in p.coordinates) {
+          pathMarker.coordinates.add(pb.Coordinate(
+            latitude: coord['lat']!,
+            longitude: coord['lng']!,
+          ));
+        }
+        payload.paths.add(pathMarker);
+      }
+
+      for (final p in profiles) {
+        payload.profiles.add(pb.UserProfile(
+          publicKey: p.publicKey,
+          name: p.name,
+          contactInfo: p.contactInfo,
+          timestamp: Int64(p.timestamp),
+          signature: p.signature,
+        ));
+      }
+
+      for (final d in deleted) {
+        payload.deletedItems.add(pb.DeletedItem(
+          id: d.id,
+          timestamp: Int64(d.timestamp),
+        ));
+      }
+
+      for (final d in delegations) {
+        payload.delegations.add(pb.TrustDelegation(
+          id: 'delg_${d.publicKey}',
+          delegatorPublicKey: d.delegatorPublicKey,
+          delegateePublicKey: d.publicKey,
+          timestamp: Int64(d.timestamp),
+          signature: d.signature,
+        ));
+      }
+
+      for (final r in revocations) {
+        payload.revokedDelegations.add(pb.RevokedDelegation(
+          delegateePublicKey: r.delegateePublicKey,
+          delegatorPublicKey: r.delegatorPublicKey,
+          timestamp: Int64(r.timestamp),
+          signature: r.signature,
+        ));
+      }
+
+      if (payload.markers.isNotEmpty || payload.news.isNotEmpty || payload.areas.isNotEmpty || payload.paths.isNotEmpty || payload.profiles.isNotEmpty || payload.deletedItems.isNotEmpty || payload.delegations.isNotEmpty || payload.revokedDelegations.isNotEmpty) {
+        final encoded = base64Encode(payload.writeToBuffer());
+        await Supabase.instance.client.from('sync_events').insert({
+          'payload_base64': encoded,
+        });
+        print('CloudSync: Uploaded ${payload.markers.length} markers, ${payload.news.length} news, ${payload.areas.length} areas, ${payload.paths.length} paths to the cloud.');
+      }
+
+      if (!state.syncTextOnly) {
+        final dir = await getApplicationDocumentsDirectory();
+        final imageIds = [
+          ...markers.map((m) => m.imageId).where((id) => id != null && id.isNotEmpty),
+          ...news.map((n) => n.imageId).where((id) => id != null && id.isNotEmpty),
+        ];
+        
+        for (final imageId in imageIds) {
+          final file = File('${dir.path}/$imageId');
+          if (await file.exists()) {
+            try {
+              await Supabase.instance.client.storage.from('images').upload(imageId!, file);
+            } catch (e) {
+              // Ignore if already exists or error
+            }
+          }
+        }
       }
 
       // 2. "Download" new data from cloud
-      // We trigger the MockGovApiService to generate some new data as if it came from the cloud
-      await ref.read(mockGovApiServiceProvider.notifier).fetchAndInjectMockData();
+      final lastSyncIso = DateTime.fromMillisecondsSinceEpoch(lastSync).toUtc().toIso8601String();
+      final response = await Supabase.instance.client
+          .from('sync_events')
+          .select()
+          .gt('created_at', lastSyncIso)
+          .order('created_at', ascending: true);
+
+      for (final row in response) {
+        final encoded = row['payload_base64'] as String;
+        await ref.read(p2pServiceProvider.notifier).processPayload(encoded);
+      }
       
       print('CloudSync: Downloaded new data from the cloud.');
 
