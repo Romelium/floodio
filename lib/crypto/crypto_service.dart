@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:isolate';
 
 import 'package:cryptography/cryptography.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -136,7 +137,7 @@ class CryptoService extends _$CryptoService {
     await prefs.reload();
     final privateKeyStr = prefs.getString('user_private_key');
     
-    final (userKeyPairData, serverPublicKey, newPrivateKeyStr) = await _initKeysLogic(privateKeyStr);
+    final (userKeyPairData, serverPublicKey, newPrivateKeyStr) = await Isolate.run(() => _initKeysLogic(privateKeyStr));
 
     if (newPrivateKeyStr != null) {
       await prefs.setString('user_private_key', newPrivateKeyStr);

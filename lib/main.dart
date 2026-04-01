@@ -24,7 +24,7 @@ void main() async {
 
   final prefs = await SharedPreferences.getInstance();
 
-  await db.cleanupOldData();
+  db.cleanupOldData().ignore();
   await initializeBackgroundService();
   runApp(
     ProviderScope(

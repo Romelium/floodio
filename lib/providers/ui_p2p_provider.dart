@@ -2,10 +2,12 @@ import 'dart:async';
 import 'dart:io';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/p2p_models.dart';
 import 'p2p_provider.dart';
 import 'offline_regions_provider.dart';
+import 'settings_provider.dart';
 
 part 'ui_p2p_provider.g.dart';
 
@@ -21,6 +23,18 @@ class UiP2pService extends _$UiP2pService {
       if (event != null) {
         state = P2pState.fromMap(Map<String, dynamic>.from(event));
       }
+    });
+
+    service.on('reloadOfflineRegions').listen((_) async {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.reload();
+      ref.invalidate(offlineRegionsProvider);
+    });
+
+    service.on('reloadSettings').listen((_) async {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.reload();
+      ref.invalidate(appSettingsProvider);
     });
 
     service.invoke('requestState');

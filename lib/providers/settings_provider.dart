@@ -1,6 +1,7 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
+import '../services/background_service.dart';
 
 part 'settings_provider.g.dart';
 
@@ -78,20 +79,33 @@ class AppSettings extends _$AppSettings {
     state = state.copyWith(mapStyle: style);
     final prefs = ref.read(sharedPreferencesProvider);
     await prefs.setInt(_keyMapStyle, style.index);
-    FlutterBackgroundService().invoke('reloadSettings');
+    if (bgServiceInstance != null) {
+      bgServiceInstance!.invoke('reloadSettings');
+    } else {
+      try { FlutterBackgroundService().invoke('reloadSettings'); } catch (_) {}
+    }
   }
 
   Future<void> setSyncInterval(int seconds) async {
     state = state.copyWith(syncIntervalSeconds: seconds);
     final prefs = ref.read(sharedPreferencesProvider);
     await prefs.setInt(_keySyncInterval, seconds);
-    FlutterBackgroundService().invoke('reloadSettings');
+    if (bgServiceInstance != null) {
+      bgServiceInstance!.invoke('reloadSettings');
+    } else {
+      try { FlutterBackgroundService().invoke('reloadSettings'); } catch (_) {}
+    }
   }
 
   Future<void> setOfficialMode(bool isOfficial) async {
     state = state.copyWith(isOfficialMode: isOfficial);
     final prefs = ref.read(sharedPreferencesProvider);
     await prefs.setBool(_keyIsOfficialMode, isOfficial);
-    FlutterBackgroundService().invoke('reloadSettings');
+    if (bgServiceInstance != null) {
+      bgServiceInstance!.invoke('reloadSettings');
+    } else {
+      try { FlutterBackgroundService().invoke('reloadSettings'); } catch (_) {}
+    }
   }
 }
+

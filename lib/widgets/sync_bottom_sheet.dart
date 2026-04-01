@@ -11,6 +11,7 @@ import '../providers/offline_regions_provider.dart';
 import '../providers/ui_p2p_provider.dart';
 import '../services/cloud_sync_service.dart';
 import '../utils/ui_helpers.dart';
+import '../utils/permission_utils.dart';
 
 class SyncBottomSheet extends ConsumerWidget {
   const SyncBottomSheet({super.key});
@@ -99,7 +100,14 @@ class SyncBottomSheet extends ConsumerWidget {
                     color: Colors.transparent,
                     child: InkWell(
                       borderRadius: BorderRadius.circular(20),
-                      onTap: () => p2pNotifier.toggleAutoSync(),
+                      onTap: () async {
+                        if (!p2pState.isAutoSyncing) {
+                          final enabled = await ensureServicesEnabled();
+                          if (enabled) p2pNotifier.toggleAutoSync();
+                        } else {
+                          p2pNotifier.toggleAutoSync();
+                        }
+                      },
                       child: Padding(
                         padding: const EdgeInsets.all(20.0),
                         child: Row(
@@ -142,7 +150,14 @@ class SyncBottomSheet extends ConsumerWidget {
                             ),
                             Switch(
                               value: p2pState.isAutoSyncing,
-                              onChanged: (val) => p2pNotifier.toggleAutoSync(),
+                              onChanged: (val) async {
+                                if (val) {
+                                  final enabled = await ensureServicesEnabled();
+                                  if (enabled) p2pNotifier.toggleAutoSync();
+                                } else {
+                                  p2pNotifier.toggleAutoSync();
+                                }
+                              },
                               activeThumbColor: Colors.white,
                               activeTrackColor: Colors.blue.shade400,
                             ),
@@ -517,9 +532,10 @@ class SyncBottomSheet extends ConsumerWidget {
                               value: p2pState.isHosting,
                               onChanged: (p2pState.isScanning || p2pState.isAutoSyncing)
                                   ? null
-                                  : (val) {
+                                  : (val) async {
                                       if (val) {
-                                        p2pNotifier.startHosting();
+                                        final enabled = await ensureServicesEnabled();
+                                        if (enabled) p2pNotifier.startHosting();
                                       } else {
                                         p2pNotifier.stopHosting();
                                       }
@@ -554,9 +570,10 @@ class SyncBottomSheet extends ConsumerWidget {
                               value: p2pState.isScanning || p2pState.clientState?.isActive == true,
                               onChanged: (p2pState.isHosting || p2pState.isAutoSyncing)
                                   ? null
-                                  : (val) {
+                                  : (val) async {
                                       if (val) {
-                                        p2pNotifier.startScanning();
+                                        final enabled = await ensureServicesEnabled();
+                                        if (enabled) p2pNotifier.startScanning();
                                       } else {
                                         p2pNotifier.disconnect();
                                       }

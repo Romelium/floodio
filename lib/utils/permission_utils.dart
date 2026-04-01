@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:flutter_p2p_connection/flutter_p2p_connection.dart';
 
 Future<bool> requestAppPermissions() async {
   if (!Platform.isAndroid) return true;
@@ -92,3 +93,25 @@ Future<void> requestBatteryOptimizationExemption() async {
     await Permission.ignoreBatteryOptimizations.request();
   }
 }
+
+Future<bool> ensureServicesEnabled() async {
+  if (!Platform.isAndroid) return true;
+  final dummy = FlutterP2pHost();
+  bool loc = await dummy.checkLocationEnabled();
+  if (!loc) {
+    await dummy.enableLocationServices();
+    loc = await dummy.checkLocationEnabled();
+  }
+  bool wifi = await dummy.checkWifiEnabled();
+  if (!wifi) {
+    await dummy.enableWifiServices();
+    wifi = await dummy.checkWifiEnabled();
+  }
+  bool bt = await dummy.checkBluetoothEnabled();
+  if (!bt) {
+    await dummy.enableBluetoothServices();
+    bt = await dummy.checkBluetoothEnabled();
+  }
+  return loc && wifi && bt;
+}
+

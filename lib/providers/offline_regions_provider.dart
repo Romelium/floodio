@@ -5,6 +5,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../services/background_service.dart';
 
 part 'offline_regions_provider.g.dart';
 
@@ -82,14 +83,22 @@ class OfflineRegions extends _$OfflineRegions {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('offline_regions', jsonEncode(updated.map((e) => e.toJson()).toList()));
     state = AsyncData(updated);
-    FlutterBackgroundService().invoke('reloadOfflineRegions');
+    if (bgServiceInstance != null) {
+      bgServiceInstance!.invoke('reloadOfflineRegions');
+    } else {
+      try { FlutterBackgroundService().invoke('reloadOfflineRegions'); } catch (_) {}
+    }
   }
 
   Future<void> clearRegions() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('offline_regions');
     state = const AsyncData([]);
-    FlutterBackgroundService().invoke('reloadOfflineRegions');
+    if (bgServiceInstance != null) {
+      bgServiceInstance!.invoke('reloadOfflineRegions');
+    } else {
+      try { FlutterBackgroundService().invoke('reloadOfflineRegions'); } catch (_) {}
+    }
   }
 
   Future<void> removeRegion(OfflineRegion region) async {
@@ -106,6 +115,11 @@ class OfflineRegions extends _$OfflineRegions {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('offline_regions', jsonEncode(updated.map((e) => e.toJson()).toList()));
     state = AsyncData(updated);
-    FlutterBackgroundService().invoke('reloadOfflineRegions');
+    if (bgServiceInstance != null) {
+      bgServiceInstance!.invoke('reloadOfflineRegions');
+    } else {
+      try { FlutterBackgroundService().invoke('reloadOfflineRegions'); } catch (_) {}
+    }
   }
 }
+

@@ -15,6 +15,8 @@ import '../providers/p2p_provider.dart';
 import '../providers/offline_regions_provider.dart';
 import '../providers/settings_provider.dart';
 
+ServiceInstance? bgServiceInstance;
+
 Future<void> initializeBackgroundService() async {
   final service = FlutterBackgroundService();
 
@@ -72,6 +74,7 @@ Future<bool> onIosBackground(ServiceInstance service) async {
 
 @pragma('vm:entry-point')
 void onStart(ServiceInstance service) async {
+  bgServiceInstance = service;
   DartPluginRegistrant.ensureInitialized();
 
   final connection = await getSharedConnection();

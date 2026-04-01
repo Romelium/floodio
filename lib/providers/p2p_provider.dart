@@ -429,16 +429,7 @@ class P2pService extends _$P2pService {
     }
 
     bool p2pGranted = await _host.checkP2pPermissions();
-    if (!p2pGranted) {
-      await _host.askP2pPermissions();
-      p2pGranted = await _host.checkP2pPermissions(); // Re-verify after asking
-    }
-
     bool btGranted = await _host.checkBluetoothPermissions();
-    if (!btGranted) {
-      await _host.askBluetoothPermissions();
-      btGranted = await _host.checkBluetoothPermissions(); // Re-verify after asking
-    }
 
     if (!p2pGranted || !btGranted) {
       state = state.copyWith(isAutoSyncing: false, syncMessage: 'Permissions denied. Cannot start.', clearSyncProgress: true);
@@ -451,8 +442,8 @@ class P2pService extends _$P2pService {
     bool wifiEnabled = await _host.checkWifiEnabled();
     bool btEnabled = await _host.checkBluetoothEnabled();
 
-    // 3. Extended Polling Loop (Wait up to 10 seconds for user to accept system prompts)
-    int retries = 10;
+    // 3. Short Polling Loop (Wait up to 3 seconds for OS to reflect state)
+    int retries = 3;
     while ((!locEnabled || !wifiEnabled || !btEnabled) && retries > 0) {
       if (_disposed) return;
       state = state.copyWith(syncMessage: 'Waiting for services to enable ($retries)...', clearSyncProgress: true);
@@ -464,25 +455,9 @@ class P2pService extends _$P2pService {
     }
 
     if (!locEnabled || !wifiEnabled || !btEnabled) {
-      if (!state.isAutoSyncing) {
-        if (!locEnabled) await _host.enableLocationServices();
-        if (!wifiEnabled) await _host.enableWifiServices();
-        if (!btEnabled) await _host.enableBluetoothServices();
-        
-        locEnabled = await _host.checkLocationEnabled();
-        wifiEnabled = await _host.checkWifiEnabled();
-        btEnabled = await _host.checkBluetoothEnabled();
-        
-        if (!locEnabled || !wifiEnabled || !btEnabled) {
-          state = state.copyWith(isHosting: false, syncMessage: 'Services not enabled. Cannot host.', clearSyncProgress: true);
-          await stopHosting();
-          return;
-        }
-      } else {
-        state = state.copyWith(isAutoSyncing: false, syncMessage: 'Services disabled. Auto-sync stopped.', clearSyncProgress: true);
-        await stopHosting();
-        return;
-      }
+      state = state.copyWith(isHosting: false, isAutoSyncing: false, syncMessage: 'Services disabled. Cannot host.', clearSyncProgress: true);
+      await stopHosting();
+      return;
     }
 
     try {
@@ -542,16 +517,7 @@ class P2pService extends _$P2pService {
     }
 
     bool p2pGranted = await _client.checkP2pPermissions();
-    if (!p2pGranted) {
-      await _client.askP2pPermissions();
-      p2pGranted = await _client.checkP2pPermissions(); // Re-verify after asking
-    }
-
     bool btGranted = await _client.checkBluetoothPermissions();
-    if (!btGranted) {
-      await _client.askBluetoothPermissions();
-      btGranted = await _client.checkBluetoothPermissions(); // Re-verify after asking
-    }
 
     if (!p2pGranted || !btGranted) {
       state = state.copyWith(isAutoSyncing: false, isScanning: false, syncMessage: 'Permissions denied. Cannot scan.', clearSyncProgress: true);
@@ -564,8 +530,8 @@ class P2pService extends _$P2pService {
     bool wifiEnabled = await _client.checkWifiEnabled();
     bool btEnabled = await _client.checkBluetoothEnabled();
 
-    // 3. Extended Polling Loop (Wait up to 10 seconds for user to accept system prompts)
-    int retries = 10;
+    // 3. Short Polling Loop (Wait up to 3 seconds for OS to reflect state)
+    int retries = 3;
     while ((!locEnabled || !wifiEnabled || !btEnabled) && retries > 0) {
       if (_disposed) return;
       state = state.copyWith(syncMessage: 'Waiting for services to enable ($retries)...', clearSyncProgress: true);
@@ -577,25 +543,9 @@ class P2pService extends _$P2pService {
     }
 
     if (!locEnabled || !wifiEnabled || !btEnabled) {
-      if (!state.isAutoSyncing) {
-        if (!locEnabled) await _client.enableLocationServices();
-        if (!wifiEnabled) await _client.enableWifiServices();
-        if (!btEnabled) await _client.enableBluetoothServices();
-        
-        locEnabled = await _client.checkLocationEnabled();
-        wifiEnabled = await _client.checkWifiEnabled();
-        btEnabled = await _client.checkBluetoothEnabled();
-        
-        if (!locEnabled || !wifiEnabled || !btEnabled) {
-          state = state.copyWith(isScanning: false, syncMessage: 'Services not enabled. Cannot scan.', clearSyncProgress: true);
-          await disconnect();
-          return;
-        }
-      } else {
-        state = state.copyWith(isAutoSyncing: false, isScanning: false, syncMessage: 'Services disabled. Auto-sync stopped.', clearSyncProgress: true);
-        await disconnect();
-        return;
-      }
+      state = state.copyWith(isScanning: false, isAutoSyncing: false, syncMessage: 'Services disabled. Cannot scan.', clearSyncProgress: true);
+      await disconnect();
+      return;
     }
 
     try {
