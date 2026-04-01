@@ -45,8 +45,13 @@ android {
 
     buildTypes {
         release {
-            // 2. Use the release config if the environment variables exist (in CI), 
-            // otherwise fallback to debug so local `flutter run --release` still works.
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+            
             signingConfig = if (System.getenv("STORE_PASSWORD") != null) {
                 signingConfigs.getByName("release")
             } else {
