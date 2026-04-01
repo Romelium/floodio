@@ -4417,6 +4417,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
               builder: (context, ref, child) {
                 final hasInternet = ref.watch(cloudSyncServiceProvider.select((s) => s.hasInternet));
                 final isSyncing = ref.watch(cloudSyncServiceProvider.select((s) => s.isSyncing));
+                final pendingUploads = ref.watch(cloudSyncServiceProvider.select((s) => s.pendingUploads));
                 
                 if (isSyncing) {
                   return const Padding(
@@ -4431,30 +4432,62 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                   );
                 }
                 
-                return IconButton(
-                  icon: Icon(
-                    hasInternet ? Icons.cloud_done : Icons.cloud_off,
-                    color: hasInternet ? Colors.white : Colors.white54,
-                  ),
-                  tooltip: hasInternet ? 'Cloud Connected' : 'Cloud Offline',
-                  onPressed: () {
-                    if (hasInternet) {
-                      ref.read(cloudSyncServiceProvider.notifier).syncWithCloud();
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Syncing with cloud...'),
-                          behavior: SnackBarBehavior.floating,
+                return Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    IconButton(
+                      icon: Icon(
+                        hasInternet ? Icons.cloud_done : Icons.cloud_off,
+                        color: hasInternet ? Colors.white : Colors.white54,
+                      ),
+                      tooltip: hasInternet ? 'Cloud Connected' : 'Cloud Offline',
+                      onPressed: () {
+                        if (hasInternet) {
+                          ref.read(cloudSyncServiceProvider.notifier).syncWithCloud();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Syncing with cloud...'),
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('No internet connection available.'),
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                        }
+                      },
+                    ),
+                    if (pendingUploads > 0)
+                      Positioned(
+                        right: 8,
+                        top: 8,
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: const BoxDecoration(
+                            color: Colors.red,
+                            shape: BoxShape.circle,
+                          ),
+                          constraints: const BoxConstraints(
+                            minWidth: 16,
+                            minHeight: 16,
+                          ),
+                          child: Center(
+                            child: Text(
+                              pendingUploads > 99 ? '99+' : '$pendingUploads',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 9,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
                         ),
-                      );
-                    } else {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('No internet connection available.'),
-                          behavior: SnackBarBehavior.floating,
-                        ),
-                      );
-                    }
-                  },
+                      ),
+                  ],
                 );
               },
             ),

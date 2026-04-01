@@ -357,7 +357,7 @@ class SyncBottomSheet extends ConsumerWidget {
                           style: TextStyle(fontWeight: FontWeight.bold),
                         ),
                         subtitle: Text(
-                          'Last synced: $lastSyncText\n${cloudSyncState.hasInternet ? 'Internet connected.' : 'No internet connection.'}',
+                          'Last synced: $lastSyncText\n${cloudSyncState.hasInternet ? 'Internet connected.' : 'No internet connection.'}\nPending uploads: ${cloudSyncState.pendingUploads}',
                           style: const TextStyle(fontSize: 12),
                         ),
                         trailing: cloudSyncState.isSyncing

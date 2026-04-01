@@ -122,39 +122,33 @@ class CloudSyncService extends _$CloudSyncService {
       final db = ref.read(databaseProvider);
       final lastSync = state.lastSyncTime?.millisecondsSinceEpoch ?? 0;
       
-      final markers = await (db.select(db.hazardMarkers)..where((t) {
-        var expr = t.timestamp.isBiggerThanValue(lastSync);
-        if (state.onlyTier1And2) {
-          expr = expr & t.trustTier.isSmallerOrEqualValue(2);
-        }
-        return expr;
-      })).get();
-      final news = await (db.select(db.newsItems)..where((t) {
-        var expr = t.timestamp.isBiggerThanValue(lastSync);
-        if (state.onlyTier1And2) {
-          expr = expr & t.trustTier.isSmallerOrEqualValue(2);
-        }
-        return expr;
-      })).get();
-      final areas = await (db.select(db.areas)..where((t) {
-        var expr = t.timestamp.isBiggerThanValue(lastSync);
-        if (state.onlyTier1And2) {
-          expr = expr & t.trustTier.isSmallerOrEqualValue(2);
-        }
-        return expr;
-      })).get();
-      final paths = await (db.select(db.paths)..where((t) {
-        var expr = t.timestamp.isBiggerThanValue(lastSync);
-        if (state.onlyTier1And2) {
-          expr = expr & t.trustTier.isSmallerOrEqualValue(2);
-        }
-        return expr;
-      })).get();
-      
-      final profiles = await (db.select(db.userProfiles)..where((t) => t.timestamp.isBiggerThanValue(lastSync))).get();
-      final deleted = await (db.select(db.deletedItems)..where((t) => t.timestamp.isBiggerThanValue(lastSync))).get();
-      final delegations = await (db.select(db.adminTrustedSenders)..where((t) => t.timestamp.isBiggerThanValue(lastSync))).get();
-      final revocations = await (db.select(db.revokedDelegations)..where((t) => t.timestamp.isBiggerThanValue(lastSync))).get();
+      final recentSeen = await (db.select(db.seenMessageIds)..where((t) => t.timestamp.isBiggerThanValue(lastSync))).get();
+      final recentSeenSet = recentSeen.map((e) => e.messageId).toSet();
+
+      final markers = (await db.select(db.hazardMarkers).get()).where((m) {
+        if (state.onlyTier1And2 && m.trustTier > 2) return false;
+        return recentSeenSet.contains('${m.id}_${m.timestamp}');
+      }).toList();
+
+      final news = (await db.select(db.newsItems).get()).where((n) {
+        if (state.onlyTier1And2 && n.trustTier > 2) return false;
+        return recentSeenSet.contains('${n.id}_${n.timestamp}');
+      }).toList();
+
+      final areas = (await db.select(db.areas).get()).where((a) {
+        if (state.onlyTier1And2 && a.trustTier > 2) return false;
+        return recentSeenSet.contains('${a.id}_${a.timestamp}');
+      }).toList();
+
+      final paths = (await db.select(db.paths).get()).where((p) {
+        if (state.onlyTier1And2 && p.trustTier > 2) return false;
+        return recentSeenSet.contains('${p.id}_${p.timestamp}');
+      }).toList();
+
+      final profiles = (await db.select(db.userProfiles).get()).where((p) => recentSeenSet.contains('${p.publicKey}_${p.timestamp}')).toList();
+      final deleted = (await db.select(db.deletedItems).get()).where((d) => recentSeenSet.contains('del_${d.id}_${d.timestamp}')).toList();
+      final delegations = (await db.select(db.adminTrustedSenders).get()).where((d) => recentSeenSet.contains('delg_${d.publicKey}_${d.timestamp}')).toList();
+      final revocations = (await db.select(db.revokedDelegations).get()).where((r) => recentSeenSet.contains('rev_${r.delegateePublicKey}_${r.timestamp}')).toList();
 
       pending = markers.length + news.length + areas.length + paths.length + profiles.length + deleted.length + delegations.length + revocations.length;
     } catch (_) {}
@@ -186,47 +180,41 @@ class CloudSyncService extends _$CloudSyncService {
     state = state.copyWith(isSyncing: true, hasInternet: true);
     
     try {
-      // 1. "Upload" local data
+      final syncStartTime = DateTime.now();
       final db = ref.read(databaseProvider);
       final lastSync = state.lastSyncTime?.millisecondsSinceEpoch ?? 0;
       
-      final markers = await (db.select(db.hazardMarkers)..where((t) {
-        var expr = t.timestamp.isBiggerThanValue(lastSync);
-        if (state.onlyTier1And2) {
-          expr = expr & t.trustTier.isSmallerOrEqualValue(2);
-        }
-        return expr;
-      })).get();
-      final news = await (db.select(db.newsItems)..where((t) {
-        var expr = t.timestamp.isBiggerThanValue(lastSync);
-        if (state.onlyTier1And2) {
-          expr = expr & t.trustTier.isSmallerOrEqualValue(2);
-        }
-        return expr;
-      })).get();
-      final areas = await (db.select(db.areas)..where((t) {
-        var expr = t.timestamp.isBiggerThanValue(lastSync);
-        if (state.onlyTier1And2) {
-          expr = expr & t.trustTier.isSmallerOrEqualValue(2);
-        }
-        return expr;
-      })).get();
-      final paths = await (db.select(db.paths)..where((t) {
-        var expr = t.timestamp.isBiggerThanValue(lastSync);
-        if (state.onlyTier1And2) {
-          expr = expr & t.trustTier.isSmallerOrEqualValue(2);
-        }
-        return expr;
-      })).get();
-      final profiles = await (db.select(db.userProfiles)..where((t) => t.timestamp.isBiggerThanValue(lastSync))).get();
-      final deleted = await (db.select(db.deletedItems)..where((t) => t.timestamp.isBiggerThanValue(lastSync))).get();
-      final delegations = await (db.select(db.adminTrustedSenders)..where((t) => t.timestamp.isBiggerThanValue(lastSync))).get();
-      final revocations = await (db.select(db.revokedDelegations)..where((t) => t.timestamp.isBiggerThanValue(lastSync))).get();
+      final recentSeen = await (db.select(db.seenMessageIds)..where((t) => t.timestamp.isBiggerThanValue(lastSync))).get();
+      final recentSeenSet = recentSeen.map((e) => e.messageId).toSet();
+
+      final markers = (await db.select(db.hazardMarkers).get()).where((m) {
+        if (state.onlyTier1And2 && m.trustTier > 2) return false;
+        return recentSeenSet.contains('${m.id}_${m.timestamp}');
+      }).toList();
+
+      final news = (await db.select(db.newsItems).get()).where((n) {
+        if (state.onlyTier1And2 && n.trustTier > 2) return false;
+        return recentSeenSet.contains('${n.id}_${n.timestamp}');
+      }).toList();
+
+      final areas = (await db.select(db.areas).get()).where((a) {
+        if (state.onlyTier1And2 && a.trustTier > 2) return false;
+        return recentSeenSet.contains('${a.id}_${a.timestamp}');
+      }).toList();
+
+      final paths = (await db.select(db.paths).get()).where((p) {
+        if (state.onlyTier1And2 && p.trustTier > 2) return false;
+        return recentSeenSet.contains('${p.id}_${p.timestamp}');
+      }).toList();
+
+      final profiles = (await db.select(db.userProfiles).get()).where((p) => recentSeenSet.contains('${p.publicKey}_${p.timestamp}')).toList();
+      final deleted = (await db.select(db.deletedItems).get()).where((d) => recentSeenSet.contains('del_${d.id}_${d.timestamp}')).toList();
+      final delegations = (await db.select(db.adminTrustedSenders).get()).where((d) => recentSeenSet.contains('delg_${d.publicKey}_${d.timestamp}')).toList();
+      final revocations = (await db.select(db.revokedDelegations).get()).where((r) => recentSeenSet.contains('rev_${r.delegateePublicKey}_${r.timestamp}')).toList();
       
       final payload = pb.SyncPayload();
 
       for (final m in markers) {
-        if (state.onlyTier1And2 && m.trustTier > 2) continue;
         payload.markers.add(pb.HazardMarker(
           id: m.id,
           latitude: m.latitude,
@@ -244,7 +232,6 @@ class CloudSyncService extends _$CloudSyncService {
       }
 
       for (final n in news) {
-        if (state.onlyTier1And2 && n.trustTier > 2) continue;
         payload.news.add(pb.NewsItem(
           id: n.id,
           title: n.title,
@@ -260,7 +247,6 @@ class CloudSyncService extends _$CloudSyncService {
       }
 
       for (final a in areas) {
-        if (state.onlyTier1And2 && a.trustTier > 2) continue;
         final areaMarker = pb.AreaMarker(
           id: a.id,
           type: a.type,
@@ -282,7 +268,6 @@ class CloudSyncService extends _$CloudSyncService {
       }
 
       for (final p in paths) {
-        if (state.onlyTier1And2 && p.trustTier > 2) continue;
         final pathMarker = pb.PathMarker(
           id: p.id,
           type: p.type,
@@ -381,11 +366,10 @@ class CloudSyncService extends _$CloudSyncService {
       
       print('CloudSync: Downloaded new data from the cloud.');
 
-      final now = DateTime.now();
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setInt('last_cloud_sync_time', now.millisecondsSinceEpoch);
+      await prefs.setInt('last_cloud_sync_time', syncStartTime.millisecondsSinceEpoch);
 
-      state = state.copyWith(isSyncing: false, lastSyncTime: now, pendingUploads: 0);
+      state = state.copyWith(isSyncing: false, lastSyncTime: syncStartTime, pendingUploads: 0);
       return true;
     } catch (e) {
       print('CloudSync: Error syncing with cloud: $e');
