@@ -43,14 +43,15 @@ class PathsController extends _$PathsController {
     });
   }
 
-  Future<void> deletePath(String id) async {
+  Future<void> deletePath(String id, {int? timestamp}) async {
     final db = ref.read(databaseProvider);
+    final ts = timestamp ?? DateTime.now().millisecondsSinceEpoch;
     await db.transaction(() async {
       await (db.delete(db.paths)..where((t) => t.id.equals(id))).go();
       await db.into(db.deletedItems).insert(
         DeletedItemsCompanion.insert(
           id: id,
-          timestamp: DateTime.now().millisecondsSinceEpoch,
+          timestamp: ts,
         ),
         mode: InsertMode.insertOrReplace,
       );

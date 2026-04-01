@@ -491,10 +491,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
             style: FilledButton.styleFrom(backgroundColor: Colors.green),
             onPressed: () {
               Navigator.pop(dialogContext);
+              final timestamp = DateTime.now().millisecondsSinceEpoch;
               ref
                   .read(hazardMarkersControllerProvider.notifier)
-                  .deleteMarker(id);
-              final timestamp = DateTime.now().millisecondsSinceEpoch;
+                  .deleteMarker(id, timestamp: timestamp);
               final payload = pb.SyncPayload();
               payload.deletedItems.add(pb.DeletedItem(id: id, timestamp: Int64(timestamp)));
               final encoded = base64Encode(payload.writeToBuffer());
@@ -530,8 +530,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
             style: FilledButton.styleFrom(backgroundColor: Colors.green),
             onPressed: () {
               Navigator.pop(dialogContext);
-              ref.read(areasControllerProvider.notifier).deleteArea(id);
               final timestamp = DateTime.now().millisecondsSinceEpoch;
+              ref.read(areasControllerProvider.notifier).deleteArea(id, timestamp: timestamp);
               final payload = pb.SyncPayload();
               payload.deletedItems.add(pb.DeletedItem(id: id, timestamp: Int64(timestamp)));
               final encoded = base64Encode(payload.writeToBuffer());
@@ -567,8 +567,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
             style: FilledButton.styleFrom(backgroundColor: Colors.green),
             onPressed: () {
               Navigator.pop(dialogContext);
-              ref.read(pathsControllerProvider.notifier).deletePath(id);
               final timestamp = DateTime.now().millisecondsSinceEpoch;
+              ref.read(pathsControllerProvider.notifier).deletePath(id, timestamp: timestamp);
               final payload = pb.SyncPayload();
               payload.deletedItems.add(pb.DeletedItem(id: id, timestamp: Int64(timestamp)));
               final encoded = base64Encode(payload.writeToBuffer());
@@ -591,13 +591,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
     final timestamp = DateTime.now().millisecondsSinceEpoch;
 
     if (type == 'marker') {
-      await ref.read(hazardMarkersControllerProvider.notifier).deleteMarker(id);
+      await ref.read(hazardMarkersControllerProvider.notifier).deleteMarker(id, timestamp: timestamp);
     } else if (type == 'news') {
-      await ref.read(newsItemsControllerProvider.notifier).deleteNewsItem(id);
+      await ref.read(newsItemsControllerProvider.notifier).deleteNewsItem(id, timestamp: timestamp);
     } else if (type == 'area') {
-      await ref.read(areasControllerProvider.notifier).deleteArea(id);
+      await ref.read(areasControllerProvider.notifier).deleteArea(id, timestamp: timestamp);
     } else if (type == 'path') {
-      await ref.read(pathsControllerProvider.notifier).deletePath(id);
+      await ref.read(pathsControllerProvider.notifier).deletePath(id, timestamp: timestamp);
     }
 
     final payload = pb.SyncPayload();
@@ -663,8 +663,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
             style: FilledButton.styleFrom(backgroundColor: Colors.green),
             onPressed: () {
               Navigator.pop(dialogContext);
-              ref.read(newsItemsControllerProvider.notifier).deleteNewsItem(id);
               final timestamp = DateTime.now().millisecondsSinceEpoch;
+              ref.read(newsItemsControllerProvider.notifier).deleteNewsItem(id, timestamp: timestamp);
               final payload = pb.SyncPayload();
               payload.deletedItems.add(pb.DeletedItem(id: id, timestamp: Int64(timestamp)));
               final encoded = base64Encode(payload.writeToBuffer());

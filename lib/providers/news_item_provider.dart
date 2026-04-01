@@ -46,8 +46,9 @@ class NewsItemsController extends _$NewsItemsController {
     });
   }
 
-  Future<void> deleteNewsItem(String id) async {
+  Future<void> deleteNewsItem(String id, {int? timestamp}) async {
     final db = ref.read(databaseProvider);
+    final ts = timestamp ?? DateTime.now().millisecondsSinceEpoch;
     
     final newsItem = await (db.select(db.newsItems)..where((t) => t.id.equals(id))).getSingleOrNull();
 
@@ -56,7 +57,7 @@ class NewsItemsController extends _$NewsItemsController {
       await db.into(db.deletedItems).insert(
         DeletedItemsCompanion.insert(
           id: id,
-          timestamp: DateTime.now().millisecondsSinceEpoch,
+          timestamp: ts,
         ),
         mode: InsertMode.insertOrReplace,
       );

@@ -43,14 +43,15 @@ class AreasController extends _$AreasController {
     });
   }
 
-  Future<void> deleteArea(String id) async {
+  Future<void> deleteArea(String id, {int? timestamp}) async {
     final db = ref.read(databaseProvider);
+    final ts = timestamp ?? DateTime.now().millisecondsSinceEpoch;
     await db.transaction(() async {
       await (db.delete(db.areas)..where((t) => t.id.equals(id))).go();
       await db.into(db.deletedItems).insert(
         DeletedItemsCompanion.insert(
           id: id,
-          timestamp: DateTime.now().millisecondsSinceEpoch,
+          timestamp: ts,
         ),
         mode: InsertMode.insertOrReplace,
       );

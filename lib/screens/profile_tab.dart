@@ -70,10 +70,10 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
             style: FilledButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () {
               Navigator.pop(dialogContext);
+              final timestamp = DateTime.now().millisecondsSinceEpoch;
               ref
                   .read(hazardMarkersControllerProvider.notifier)
-                  .deleteMarker(id);
-              final timestamp = DateTime.now().millisecondsSinceEpoch;
+                  .deleteMarker(id, timestamp: timestamp);
               final payload = pb.SyncPayload();
               payload.deletedItems.add(pb.DeletedItem(id: id, timestamp: Int64(timestamp)));
               final encoded = base64Encode(payload.writeToBuffer());
@@ -101,8 +101,8 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
             style: FilledButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () {
               Navigator.pop(dialogContext);
-              ref.read(newsItemsControllerProvider.notifier).deleteNewsItem(id);
               final timestamp = DateTime.now().millisecondsSinceEpoch;
+              ref.read(newsItemsControllerProvider.notifier).deleteNewsItem(id, timestamp: timestamp);
               final payload = pb.SyncPayload();
               payload.deletedItems.add(pb.DeletedItem(id: id, timestamp: Int64(timestamp)));
               final encoded = base64Encode(payload.writeToBuffer());
@@ -132,8 +132,8 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
             style: FilledButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () {
               Navigator.pop(dialogContext);
-              ref.read(areasControllerProvider.notifier).deleteArea(id);
               final timestamp = DateTime.now().millisecondsSinceEpoch;
+              ref.read(areasControllerProvider.notifier).deleteArea(id, timestamp: timestamp);
               final payload = pb.SyncPayload();
               payload.deletedItems.add(pb.DeletedItem(id: id, timestamp: Int64(timestamp)));
               final encoded = base64Encode(payload.writeToBuffer());
@@ -163,8 +163,8 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
             style: FilledButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () {
               Navigator.pop(dialogContext);
-              ref.read(pathsControllerProvider.notifier).deletePath(id);
               final timestamp = DateTime.now().millisecondsSinceEpoch;
+              ref.read(pathsControllerProvider.notifier).deletePath(id, timestamp: timestamp);
               final payload = pb.SyncPayload();
               payload.deletedItems.add(pb.DeletedItem(id: id, timestamp: Int64(timestamp)));
               final encoded = base64Encode(payload.writeToBuffer());

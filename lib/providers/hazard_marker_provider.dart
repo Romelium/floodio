@@ -48,8 +48,9 @@ class HazardMarkersController extends _$HazardMarkersController {
     });
   }
 
-  Future<void> deleteMarker(String id) async {
+  Future<void> deleteMarker(String id, {int? timestamp}) async {
     final db = ref.read(databaseProvider);
+    final ts = timestamp ?? DateTime.now().millisecondsSinceEpoch;
     
     final marker = await (db.select(db.hazardMarkers)..where((t) => t.id.equals(id))).getSingleOrNull();
     
@@ -58,7 +59,7 @@ class HazardMarkersController extends _$HazardMarkersController {
       await db.into(db.deletedItems).insert(
         DeletedItemsCompanion.insert(
           id: id,
-          timestamp: DateTime.now().millisecondsSinceEpoch,
+          timestamp: ts,
         ),
         mode: InsertMode.insertOrReplace,
       );
