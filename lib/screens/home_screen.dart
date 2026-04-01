@@ -48,6 +48,7 @@ import '../widgets/download_map_dialog.dart';
 import '../widgets/local_image_display.dart';
 import '../widgets/mesh_status_chip.dart';
 import 'command_tab.dart';
+import 'guide_tab.dart';
 import 'initializer_screen.dart';
 import 'profile_tab.dart';
 
@@ -4381,6 +4382,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
           children: [
             _buildMap(),
             _buildFeed(),
+            const GuideTab(),
             ProfileTab(
               onEditAreaShape: (area) {
                 ref.read(navigationIndexProvider.notifier).setIndex(0);
@@ -4430,6 +4432,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
               label: 'Feed',
             ),
             const NavigationDestination(
+              icon: Icon(Icons.help_outline),
+              selectedIcon: Icon(Icons.help),
+              label: 'Guide',
+            ),
+            const NavigationDestination(
               icon: Icon(Icons.person_outline),
               selectedIcon: Icon(Icons.person),
               label: 'Profile',
@@ -4442,7 +4449,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
               ),
           ],
         ),
-        floatingActionButton: (displayIndex == 2 || displayIndex == 3)
+        floatingActionButton: (displayIndex >= 2)
             ? null
             : cryptoState.when(
                 data: (_) {
