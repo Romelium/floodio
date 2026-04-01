@@ -117,6 +117,19 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 prefixIcon: const Icon(Icons.phone),
               ),
             ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Text(
+                '🔒 Privacy Note: Your identity is stored locally. Your name is only shared when you create a report so others can verify its authenticity.',
+                style: TextStyle(fontSize: 12, color: Colors.blueGrey),
+                textAlign: TextAlign.center,
+              ),
+            ),
             const SizedBox(height: 32),
             FilledButton(
               style: FilledButton.styleFrom(

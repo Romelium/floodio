@@ -128,12 +128,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
   bool _hasCenteredOnLocation = false;
   bool _isTrackingLocation = true;
   double _mapRotation = 0.0;
+  bool _showTutorial = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _initPermissions();
+    _checkTutorial();
+  }
+
+  Future<void> _checkTutorial() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (!(prefs.getBool('has_seen_tutorial') ?? false)) {
+      setState(() => _showTutorial = true);
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(cloudSyncServiceProvider);
     });
@@ -4275,7 +4284,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
     return Listener(
       behavior: HitTestBehavior.translucent,
       onPointerDown: _handlePointerDown,
-      child: Scaffold(
+      child: TutorialOverlay(
+        onComplete: () => setState(() => _showTutorial = false),
+        // Only show the overlay if the flag is set
+        child: _showTutorial ? const SizedBox.shrink() : Scaffold(
         appBar: AppBar(
           title: Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -4666,6 +4678,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                   child: Icon(Icons.error),
                 ),
               ),
+      ),
       ),
     );
   }

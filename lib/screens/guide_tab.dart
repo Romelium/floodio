@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../utils/ui_helpers.dart';
 
@@ -47,7 +48,7 @@ class GuideTab extends ConsumerWidget {
                   context,
                   icon: Icons.hub,
                   title: 'The Mesh Network',
-                  description: 'Floodio works without internet. It uses Bluetooth and Wi-Fi Direct to "gossip" data between phones. When two users are near each other, their databases automatically sync missing reports.',
+                  description: 'Floodio works without internet. It uses Bluetooth Low Energy to find peers and Wi-Fi Direct to "gossip" data. When two users are near each other, their databases automatically sync missing reports, maps, and alerts.',
                   color: Colors.blue,
                 ),
                 _buildConceptTile(
@@ -74,6 +75,19 @@ class GuideTab extends ConsumerWidget {
                 _buildTrustTierInfo(context, 4),
                 const SizedBox(height: 24),
                 const Text(
+                  'Map Management',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 12),
+                _buildConceptTile(
+                  context,
+                  icon: Icons.map_outlined,
+                  title: 'Offline Maps',
+                  description: 'Standard maps require internet. Use the Download icon on the Map tab to save a region. You can then "Broadcast" this map file to other users who have no internet at all.',
+                  color: Colors.teal,
+                ),
+                const SizedBox(height: 24),
+                const Text(
                   'Frequently Asked Questions',
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 ),
@@ -85,6 +99,14 @@ class GuideTab extends ConsumerWidget {
                 _buildFAQ(
                   'What is a "Global Action"?',
                   'When you Resolve a hazard or Debunk a report, that "deletion" is broadcast to the whole network. Once you sync with someone, they will also see that hazard as removed.',
+                ),
+                _buildFAQ(
+                  'Is my data private?',
+                  'Your reports are signed with a unique cryptographic key stored only on your device. While your name is shared with reports, your exact location is only shared when you explicitly create a marker.',
+                ),
+                _buildFAQ(
+                  'Why do I need so many permissions?',
+                  'Android requires Location and Nearby Devices permissions to use Bluetooth and Wi-Fi Direct. Floodio does not track you for advertising; it only uses these to find other mesh nodes.',
                 ),
                 _buildFAQ(
                   'How do I get offline maps?',
@@ -262,7 +284,8 @@ class GuideTab extends ConsumerWidget {
 /// A helper widget to show a mini-tutorial overlay on first launch
 class TutorialOverlay extends StatefulWidget {
   final Widget child;
-  const TutorialOverlay({super.key, required this.child});
+  final VoidCallback onComplete;
+  const TutorialOverlay({super.key, required this.child, required this.onComplete});
 
   @override
   State<TutorialOverlay> createState() => _TutorialOverlayState();
@@ -276,26 +299,36 @@ class _TutorialOverlayState extends State<TutorialOverlay> {
     {
       'title': 'Welcome to Floodio',
       'content': 'This app helps you stay informed during floods, even when the internet is down.',
+      'icon': '👋',
     },
     {
-      'title': 'The Mesh Network',
-      'content': 'Data is shared phone-to-phone. Keep Bluetooth on to automatically sync with people nearby.',
+      'title': 'Mesh Networking',
+      'content': 'The "OFFLINE" chip at the top shows your sync status. Tap it to enable Auto-Sync and find nearby peers.',
+      'icon': '📡',
     },
     {
       'title': 'Trust Tiers',
-      'content': 'Look for the "Official" and "Verified" badges to find the most reliable information.',
+      'content': 'Reports have colors: Blue is Official, Purple is Verified, Green is Trusted, and Grey is Crowdsourced.',
+      'icon': '🛡️',
+    },
+    {
+      'title': 'Reporting Hazards',
+      'content': 'Use the "+" button to report floods or roadblocks. Your report will spread to others as they pass by you.',
+      'icon': '📍',
     },
   ];
 
   @override
   void initState() {
     super.initState();
-    _checkFirstTime();
+    _showTutorial = true;
   }
 
-  void _checkFirstTime() async {
-    // In a real app, check SharedPreferences here
-    // For now, we'll just show it once per session if needed
+  void _finish() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('has_seen_tutorial', true);
+    setState(() => _showTutorial = false);
+    widget.onComplete();
   }
 
   @override
@@ -314,6 +347,11 @@ class _TutorialOverlayState extends State<TutorialOverlay> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    Text(
+                      _steps[_currentStep]['icon']!,
+                      style: const TextStyle(fontSize: 64, decoration: TextDecoration.none),
+                    ),
+                    const SizedBox(height: 24),
                     Text(
                       _steps[_currentStep]['title']!,
                       style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold, decoration: TextDecoration.none),
@@ -340,7 +378,7 @@ class _TutorialOverlayState extends State<TutorialOverlay> {
                             if (_currentStep < _steps.length - 1) {
                               setState(() => _currentStep++);
                             } else {
-                              setState(() => _showTutorial = false);
+                              _finish();
                             }
                           },
                           child: Text(_currentStep < _steps.length - 1 ? 'Next' : 'Got it!'),

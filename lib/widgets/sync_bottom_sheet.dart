@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../providers/ui_state_provider.dart';
 import '../providers/offline_regions_provider.dart';
 import '../providers/ui_p2p_provider.dart';
 import '../services/cloud_sync_service.dart';
@@ -221,6 +222,17 @@ class SyncBottomSheet extends ConsumerWidget {
                                 ),
                               ),
                             ],
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton(
+                            onPressed: () {
+                              Navigator.pop(context);
+                              ref.read(navigationIndexProvider.notifier).setIndex(2);
+                            },
+                            child: const Text('How does mesh sync work?'),
                           ),
                         ),
                         if (isConnected) ...[
