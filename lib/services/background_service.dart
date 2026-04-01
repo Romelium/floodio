@@ -15,6 +15,7 @@ import '../providers/p2p_provider.dart';
 import '../providers/offline_regions_provider.dart';
 import '../providers/settings_provider.dart';
 
+bool isBackgroundIsolate = false;
 ServiceInstance? bgServiceInstance;
 
 Future<void> initializeBackgroundService() async {
@@ -74,6 +75,7 @@ Future<bool> onIosBackground(ServiceInstance service) async {
 
 @pragma('vm:entry-point')
 void onStart(ServiceInstance service) async {
+  isBackgroundIsolate = true;
   bgServiceInstance = service;
   DartPluginRegistrant.ensureInitialized();
 

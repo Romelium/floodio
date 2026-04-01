@@ -83,8 +83,8 @@ class OfflineRegions extends _$OfflineRegions {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('offline_regions', jsonEncode(updated.map((e) => e.toJson()).toList()));
     state = AsyncData(updated);
-    if (bgServiceInstance != null) {
-      bgServiceInstance!.invoke('reloadOfflineRegions');
+    if (isBackgroundIsolate) {
+      bgServiceInstance?.invoke('reloadOfflineRegions');
     } else {
       try { FlutterBackgroundService().invoke('reloadOfflineRegions'); } catch (_) {}
     }
@@ -94,8 +94,8 @@ class OfflineRegions extends _$OfflineRegions {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('offline_regions');
     state = const AsyncData([]);
-    if (bgServiceInstance != null) {
-      bgServiceInstance!.invoke('reloadOfflineRegions');
+    if (isBackgroundIsolate) {
+      bgServiceInstance?.invoke('reloadOfflineRegions');
     } else {
       try { FlutterBackgroundService().invoke('reloadOfflineRegions'); } catch (_) {}
     }
@@ -115,8 +115,8 @@ class OfflineRegions extends _$OfflineRegions {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('offline_regions', jsonEncode(updated.map((e) => e.toJson()).toList()));
     state = AsyncData(updated);
-    if (bgServiceInstance != null) {
-      bgServiceInstance!.invoke('reloadOfflineRegions');
+    if (isBackgroundIsolate) {
+      bgServiceInstance?.invoke('reloadOfflineRegions');
     } else {
       try { FlutterBackgroundService().invoke('reloadOfflineRegions'); } catch (_) {}
     }

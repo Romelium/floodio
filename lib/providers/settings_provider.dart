@@ -79,8 +79,8 @@ class AppSettings extends _$AppSettings {
     state = state.copyWith(mapStyle: style);
     final prefs = ref.read(sharedPreferencesProvider);
     await prefs.setInt(_keyMapStyle, style.index);
-    if (bgServiceInstance != null) {
-      bgServiceInstance!.invoke('reloadSettings');
+    if (isBackgroundIsolate) {
+      bgServiceInstance?.invoke('reloadSettings');
     } else {
       try { FlutterBackgroundService().invoke('reloadSettings'); } catch (_) {}
     }
@@ -90,8 +90,8 @@ class AppSettings extends _$AppSettings {
     state = state.copyWith(syncIntervalSeconds: seconds);
     final prefs = ref.read(sharedPreferencesProvider);
     await prefs.setInt(_keySyncInterval, seconds);
-    if (bgServiceInstance != null) {
-      bgServiceInstance!.invoke('reloadSettings');
+    if (isBackgroundIsolate) {
+      bgServiceInstance?.invoke('reloadSettings');
     } else {
       try { FlutterBackgroundService().invoke('reloadSettings'); } catch (_) {}
     }
@@ -101,8 +101,8 @@ class AppSettings extends _$AppSettings {
     state = state.copyWith(isOfficialMode: isOfficial);
     final prefs = ref.read(sharedPreferencesProvider);
     await prefs.setBool(_keyIsOfficialMode, isOfficial);
-    if (bgServiceInstance != null) {
-      bgServiceInstance!.invoke('reloadSettings');
+    if (isBackgroundIsolate) {
+      bgServiceInstance?.invoke('reloadSettings');
     } else {
       try { FlutterBackgroundService().invoke('reloadSettings'); } catch (_) {}
     }

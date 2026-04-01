@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:isolate';
 import 'dart:ui';
@@ -28,8 +29,12 @@ Future<QueryExecutor> getSharedConnection() async {
   SendPort? port = IsolateNameServer.lookupPortByName(_dbIsolateName);
 
   if (port != null) {
-    final isolate = DriftIsolate.fromConnectPort(port);
-    return await isolate.connect();
+    try {
+      final isolate = DriftIsolate.fromConnectPort(port);
+      return await isolate.connect().timeout(const Duration(seconds: 2));
+    } catch (e) {
+      IsolateNameServer.removePortNameMapping(_dbIsolateName);
+    }
   }
 
   final dir = await getApplicationDocumentsDirectory();
@@ -42,14 +47,8 @@ Future<QueryExecutor> getSharedConnection() async {
   );
 
   final isolate = await receivePort.first as DriftIsolate;
-  final registered = IsolateNameServer.registerPortWithName(isolate.connectPort, _dbIsolateName);
-
-  if (!registered) {
-    port = IsolateNameServer.lookupPortByName(_dbIsolateName);
-    if (port != null) {
-      return await DriftIsolate.fromConnectPort(port).connect();
-    }
-  }
+  IsolateNameServer.removePortNameMapping(_dbIsolateName);
+  IsolateNameServer.registerPortWithName(isolate.connectPort, _dbIsolateName);
 
   return await isolate.connect();
 }
