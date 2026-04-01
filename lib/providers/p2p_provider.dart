@@ -37,6 +37,7 @@ class P2pState {
   final bool isConnecting;
   final bool isAutoSyncing;
   final String? syncMessage;
+  final DateTime? lastSyncTime;
   final AppHostState? hostState;
   final AppClientState? clientState;
   final List<AppDiscoveredDevice> discoveredDevices;
@@ -51,6 +52,7 @@ class P2pState {
     this.isConnecting = false,
     this.isAutoSyncing = false,
     this.syncMessage,
+    this.lastSyncTime,
     this.hostState,
     this.clientState,
     this.discoveredDevices = const [],
@@ -66,6 +68,7 @@ class P2pState {
     bool? isConnecting,
     bool? isAutoSyncing,
     String? syncMessage,
+    DateTime? lastSyncTime,
     AppHostState? hostState,
     bool clearHostState = false,
     AppClientState? clientState,
@@ -82,6 +85,7 @@ class P2pState {
       isConnecting: isConnecting ?? this.isConnecting,
       isAutoSyncing: isAutoSyncing ?? this.isAutoSyncing,
       syncMessage: syncMessage ?? this.syncMessage,
+      lastSyncTime: lastSyncTime ?? this.lastSyncTime,
       hostState: clearHostState ? null : (hostState ?? this.hostState),
       clientState: clearClientState ? null : (clientState ?? this.clientState),
       discoveredDevices: discoveredDevices ?? this.discoveredDevices,
@@ -99,6 +103,7 @@ class P2pState {
       'isConnecting': isConnecting,
       'isAutoSyncing': isAutoSyncing,
       'syncMessage': syncMessage,
+      'lastSyncTime': lastSyncTime?.millisecondsSinceEpoch,
       'hostState': hostState != null ? {
         'isActive': hostState!.isActive,
         'ssid': hostState!.ssid,
@@ -132,6 +137,7 @@ class P2pState {
       isConnecting: map['isConnecting'] ?? false,
       isAutoSyncing: map['isAutoSyncing'] ?? false,
       syncMessage: map['syncMessage'],
+      lastSyncTime: map['lastSyncTime'] != null ? DateTime.fromMillisecondsSinceEpoch(map['lastSyncTime']) : null,
       hostState: map['hostState'] != null ? AppHostState.fromMap(Map<String, dynamic>.from(map['hostState'])) : null,
       clientState: map['clientState'] != null ? AppClientState.fromMap(Map<String, dynamic>.from(map['clientState'])) : null,
       discoveredDevices: (map['discoveredDevices'] as List?)?.map((d) => AppDiscoveredDevice.fromMap(Map<String, dynamic>.from(d))).toList() ?? [],
@@ -151,6 +157,7 @@ class P2pState {
       other.isConnecting == isConnecting &&
       other.isAutoSyncing == isAutoSyncing &&
       other.syncMessage == syncMessage &&
+      other.lastSyncTime == lastSyncTime &&
       other.hostState == hostState &&
       other.clientState == clientState &&
       listEquals(other.discoveredDevices, discoveredDevices) &&
@@ -163,7 +170,7 @@ class P2pState {
   int get hashCode {
     return Object.hash(
       isHosting, isScanning, isSyncing, isConnecting, isAutoSyncing,
-      syncMessage, hostState, clientState,
+      syncMessage, lastSyncTime, hostState, clientState,
       Object.hashAll(discoveredDevices), Object.hashAll(connectedClients),
       Object.hashAll(receivedTexts), Object.hashAll(peerOfflineRegions),
     );
@@ -590,7 +597,7 @@ class P2pService extends _$P2pService {
           await _handleRequestImage(json['imageId']);
           return;
         } else if (json['type'] == 'up_to_date') {
-          state = state.copyWith(isSyncing: false, syncMessage: 'Up to date.');
+          state = state.copyWith(isSyncing: false, lastSyncTime: DateTime.now(), syncMessage: 'Up to date.');
           return;
         }
       }
@@ -805,7 +812,7 @@ class P2pService extends _$P2pService {
 
       if (newHazards.isEmpty && newNews.isEmpty && newProfiles.isEmpty && newDeleted.isEmpty && newAreas.isEmpty && newPaths.isEmpty && newDelegations.isEmpty && newRevocations.isEmpty) {
         await broadcastText(jsonEncode({'type': 'up_to_date'}));
-        state = state.copyWith(isSyncing: false, syncMessage: 'Up to date.');
+        state = state.copyWith(isSyncing: false, lastSyncTime: DateTime.now(), syncMessage: 'Up to date.');
         return;
       }
 
@@ -1513,6 +1520,7 @@ class P2pService extends _$P2pService {
 
       state = state.copyWith(
         isSyncing: false,
+        lastSyncTime: DateTime.now(),
         syncMessage: 'Successfully synced ${validMarkers.length} markers, ${validNews.length} news, ${validProfiles.length} profiles, ${validAreas.length} areas, ${validPaths.length} paths, ${validDeleted.length} deletions, ${validDelegations.length} delegations, ${validRevocations.length} revocations.'
       );
       print("Successfully synced ${payload.markers.length} markers, ${payload.news.length} news, ${payload.profiles.length} profiles, ${payload.areas.length} areas, ${payload.paths.length} paths, ${payload.deletedItems.length} deletions, ${payload.delegations.length} delegations, ${payload.revokedDelegations.length} revocations.");

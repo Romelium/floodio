@@ -421,6 +421,31 @@ class CommandTab extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: 24),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.access_time, size: 16, color: Colors.grey.shade700),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      p2pState.lastSyncTime != null 
+                          ? 'Last mesh sync: ${formatTimestamp(p2pState.lastSyncTime!.millisecondsSinceEpoch)}' 
+                          : 'Never synced with mesh',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.grey.shade800,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
             const Divider(),
             const SizedBox(height: 16),
             const Text(

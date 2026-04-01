@@ -10,6 +10,7 @@ import '../providers/ui_state_provider.dart';
 import '../providers/offline_regions_provider.dart';
 import '../providers/ui_p2p_provider.dart';
 import '../services/cloud_sync_service.dart';
+import '../utils/ui_helpers.dart';
 
 class SyncBottomSheet extends ConsumerWidget {
   const SyncBottomSheet({super.key});
@@ -214,6 +215,32 @@ class SyncBottomSheet extends ConsumerWidget {
                               Expanded(
                                 child: Text(
                                   p2pState.syncMessage ?? 'Ready to sync. Enable Auto-Sync or use manual controls.',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.grey.shade800,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.5),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.access_time, size: 16, color: Colors.grey.shade700),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  p2pState.lastSyncTime != null 
+                                      ? 'Last synced: ${formatTimestamp(p2pState.lastSyncTime!.millisecondsSinceEpoch)}' 
+                                      : 'Never synced',
                                   style: TextStyle(
                                     fontSize: 13,
                                     fontWeight: FontWeight.w600,
