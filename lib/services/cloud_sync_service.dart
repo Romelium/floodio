@@ -85,7 +85,7 @@ class CloudSyncService extends _$CloudSyncService {
       syncWithCloud();
     });
     
-    _statusTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+    _statusTimer = Timer.periodic(const Duration(seconds: 15), (_) {
       _updateStatus();
     });
     

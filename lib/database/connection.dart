@@ -18,7 +18,12 @@ class _IsolateStartRequest {
 }
 
 void _databaseIsolateEntry(_IsolateStartRequest request) {
-  final executor = NativeDatabase(File(request.path));
+  final executor = NativeDatabase(
+    File(request.path),
+    setup: (db) {
+      db.execute('PRAGMA journal_mode=WAL;');
+    },
+  );
   final driftIsolate = DriftIsolate.inCurrent(
     () => DatabaseConnection(executor),
   );

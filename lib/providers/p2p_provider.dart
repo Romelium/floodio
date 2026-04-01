@@ -355,11 +355,15 @@ class P2pService extends _$P2pService {
     }
 
     final isHostWithClients = state.isHosting && state.connectedClients.isNotEmpty;
+    final isHostWaitingForClients = state.isHosting && state.connectedClients.isEmpty;
     final isClientConnected = state.clientState?.isActive == true;
 
-    if (isHostWithClients || isClientConnected) {
+    if (isHostWithClients || isClientConnected || isHostWaitingForClients) {
       _idleTicks++;
-      if (_idleTicks >= 6) { // 30 seconds idle after sync
+      
+      int maxIdleTicks = isHostWaitingForClients ? 9 : 6; // 45s wait for new clients, 30s wait after sync
+      
+      if (_idleTicks >= maxIdleTicks) { 
         _idleTicks = 0;
         _isSwitchingRoles = true;
         try {
