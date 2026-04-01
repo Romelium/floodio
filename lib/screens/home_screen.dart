@@ -121,7 +121,7 @@ class HomeScreen extends ConsumerStatefulWidget {
   ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends ConsumerState<HomeScreen> {
+class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObserver {
   int _tapCount = 0;
   DateTime? _lastTapTime;
   final MapController _mapController = MapController();
@@ -131,6 +131,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _initPermissions();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(cloudSyncServiceProvider);
@@ -139,7 +140,26 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _checkPermissionsSilently();
+    }
+  }
+
+  Future<void> _checkPermissionsSilently() async {
+    final granted = await checkAppPermissions();
+    if (granted) {
+      final service = FlutterBackgroundService();
+      if (!(await service.isRunning())) {
+        await service.startService();
+      }
+      ref.invalidate(locationControllerProvider);
+    }
   }
 
   Future<void> _initPermissions() async {

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:geolocator/geolocator.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
@@ -7,9 +8,15 @@ part 'location_provider.g.dart';
 class LocationController extends _$LocationController {
   @override
   Stream<Position?> build() async* {
+    final serviceStatusSub = Geolocator.getServiceStatusStream().listen((status) {
+      ref.invalidateSelf();
+    });
+    ref.onDispose(serviceStatusSub.cancel);
+
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
       yield null;
+      return;
     }
 
     LocationPermission permission = await Geolocator.checkPermission();
@@ -19,14 +26,15 @@ class LocationController extends _$LocationController {
     
     if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
       yield null;
-    } else {
-      yield* Geolocator.getPositionStream(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.high,
-          distanceFilter: 5,
-        ),
-      );
+      return;
     }
+
+    yield* Geolocator.getPositionStream(
+      locationSettings: const LocationSettings(
+        accuracy: LocationAccuracy.high,
+        distanceFilter: 5,
+      ),
+    );
   }
 
   Future<Position?> getCurrentPosition() async {
