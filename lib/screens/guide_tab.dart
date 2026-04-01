@@ -39,6 +39,13 @@ class GuideTab extends ConsumerWidget {
               children: [
                 _buildQuickStartCard(context),
                 const SizedBox(height: 24),
+                _buildEmergencyProtocolCard(context),
+                const SizedBox(height: 24),
+                const Text(
+                  'Core Concepts',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 24),
                 const Text(
                   'Getting Started',
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
@@ -159,6 +166,43 @@ class GuideTab extends ConsumerWidget {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildEmergencyProtocolCard(BuildContext context) {
+    return Card(
+      color: Colors.red.shade50,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: Colors.red.shade200),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.gavel, color: Colors.red.shade900),
+                const SizedBox(width: 8),
+                Text(
+                  'Emergency Protocol',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.red.shade900,
+                    fontSize: 18,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'In a crisis, misinformation can be deadly. If you see a report you know is false, use the "Debunk" action. This is a GLOBAL action that will tell every device you sync with to delete that report.',
+              style: TextStyle(fontSize: 14, height: 1.4),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -373,8 +417,8 @@ class _TutorialOverlayState extends State<TutorialOverlay> {
   void _finish() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('has_seen_tutorial', true);
-    setState(() => _showTutorial = false);
     widget.onComplete();
+    setState(() => _showTutorial = false);
   }
 
   @override
@@ -383,59 +427,68 @@ class _TutorialOverlayState extends State<TutorialOverlay> {
       children: [
         widget.child,
         if (_showTutorial)
-          Container(
-            color: Colors.black87,
-            width: double.infinity,
-            height: double.infinity,
-            child: Center(
-              child: Padding(
-                padding: const EdgeInsets.all(32.0),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      _steps[_currentStep]['icon']!,
-                      style: const TextStyle(fontSize: 64, decoration: TextDecoration.none),
-                    ),
-                    const SizedBox(height: 24),
-                    Text(
-                      _steps[_currentStep]['title']!,
-                      style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold, decoration: TextDecoration.none),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      _steps[_currentStep]['content']!,
-                      style: const TextStyle(color: Colors.white70, fontSize: 16, fontWeight: FontWeight.normal, decoration: TextDecoration.none),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 32),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        if (_currentStep > 0)
-                          TextButton(
-                            onPressed: () => setState(() => _currentStep--),
-                            child: const Text('Back', style: TextStyle(color: Colors.white)),
+          Positioned.fill(
+            child: Material(
+              color: Colors.black.withValues(alpha: 0.85),
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(32.0),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        _steps[_currentStep]['icon']!,
+                        style: const TextStyle(fontSize: 80),
+                      ),
+                      const SizedBox(height: 24),
+                      Text(
+                        _steps[_currentStep]['title']!,
+                        style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        _steps[_currentStep]['content']!,
+                        style: const TextStyle(color: Colors.white70, fontSize: 18, height: 1.4),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 48),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          if (_currentStep > 0)
+                            OutlinedButton(
+                              onPressed: () => setState(() => _currentStep--),
+                              style: OutlinedButton.styleFrom(foregroundColor: Colors.white, side: const BorderSide(color: Colors.white24)),
+                              child: const Text('Back'),
+                            ),
+                          const SizedBox(width: 16),
+                          ElevatedButton(
+                            onPressed: () {
+                              if (_currentStep < _steps.length - 1) {
+                                setState(() => _currentStep++);
+                              } else {
+                                _finish();
+                              }
+                            },
+                            style: ElevatedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                            ),
+                            child: Text(_currentStep < _steps.length - 1 ? 'Next' : 'Start Using Floodio'),
                           ),
-                        const SizedBox(width: 16),
-                        ElevatedButton(
-                          onPressed: () {
-                            if (_currentStep < _steps.length - 1) {
-                              setState(() => _currentStep++);
-                            } else {
-                              _finish();
-                            }
-                          },
-                          child: Text(_currentStep < _steps.length - 1 ? 'Next' : 'Got it!'),
-                        ),
-                      ],
-                    ),
-                  ],
+                        ],
+                      ),
+                      const SizedBox(height: 24),
+                      Text(
+                        'Step ${_currentStep + 1} of ${_steps.length}',
+                        style: const TextStyle(color: Colors.white38, fontSize: 12),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
+          )
       ],
     );
   }

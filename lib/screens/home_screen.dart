@@ -3000,6 +3000,28 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
           child: const _SearchBar(),
         ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          child: Row(
+            children: [
+              const Text(
+                'Live Reports',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.grey),
+              ),
+              const Spacer(),
+              TextButton.icon(
+                onPressed: () {
+                  ref.read(navigationIndexProvider.notifier).setIndex(2);
+                },
+                icon: const Icon(Icons.help_outline, size: 14),
+                label: const Text('Trust Model', style: TextStyle(fontSize: 12)),
+                style: TextButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                ),
+              ),
+            ],
+          ),
+        ),
         Consumer(
           builder: (context, ref, child) {
             final filter = ref.watch(feedFilterControllerProvider);
@@ -4286,8 +4308,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
       onPointerDown: _handlePointerDown,
       child: TutorialOverlay(
         onComplete: () => setState(() => _showTutorial = false),
-        // Only show the overlay if the flag is set
-        child: _showTutorial ? const SizedBox.shrink() : Scaffold(
+        child: Scaffold(
         appBar: AppBar(
           title: Row(
             mainAxisAlignment: MainAxisAlignment.center,

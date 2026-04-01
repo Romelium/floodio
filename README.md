@@ -8,6 +8,20 @@ An Android application that is essentially an offline resilient disaster informa
 *   **Global Actions:** Creating reports, resolving hazards, debunking, and promoting users to "Official Volunteer" (Tier 2) are **global** actions. They will propagate to all other devices in the mesh network during sync.
 *   **Local Actions:** "Trusting" a sender (Tier 3), "Blocking" a sender, and "Clearing All Data" in settings are **local** actions. They only affect your personal device and will not alter the data on other users' devices.
 
+## User Guide & Functional Flow
+### 1. The Trust Model
+*   **Tier 1 (Blue):** Verified government/NGO sources.
+*   **Tier 2 (Purple):** Vetted volunteers. They can "Verify" Tier 4 reports to upgrade them.
+*   **Tier 3 (Green):** People *you* personally trust.
+*   **Tier 4 (Grey):** General public. Use with caution until verified.
+
+### 2. Mesh Syncing
+To sync with a peer:
+1.  Both users tap the **Mesh Status Chip** (top right).
+2.  Toggle **Mesh Auto-Sync** to ON.
+3.  Keep devices within Bluetooth range. The app will automatically negotiate a Wi-Fi Direct connection, exchange database Bloom Filters, and transfer missing records/files.
+4.  Once "Up to Date" appears, you can move apart; the data is now stored on both devices.
+
 ## How the Mesh Works
 1.  **Discovery:** The app uses Bluetooth Low Energy (BLE) to advertise its presence and scan for nearby peers.
 2.  **Connection:** Once a peer is found, the devices negotiate a Wi-Fi Direct connection (one acts as a temporary Hotspot).
