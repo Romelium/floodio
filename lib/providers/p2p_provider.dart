@@ -870,8 +870,8 @@ class P2pService extends _$P2pService {
       await broadcastText(jsonEncode(manifest));
       state = state.copyWith(syncMessage: 'Sync data sent. Waiting for peer...', clearSyncProgress: true);
       
-      // Add a timeout to clear isSyncing if no response
-      Future.delayed(const Duration(seconds: 15), () {
+      // Timeout to clear isSyncing if no response (allows time for heavy crypto processing)
+      Future.delayed(const Duration(seconds: 60), () {
         if (state.isSyncing && state.syncMessage == 'Sync data sent. Waiting for peer...') {
           state = state.copyWith(isSyncing: false, syncMessage: 'Sync timeout or up to date.', clearSyncProgress: true);
         }
@@ -1165,8 +1165,23 @@ class P2pService extends _$P2pService {
         }
       }
 
+      // Track progress to update the UI during heavy cryptography
+      int totalCryptoItems = payload.delegations.length + payload.revokedDelegations.length + payload.markers.length + payload.news.length + payload.profiles.length + payload.areas.length + payload.paths.length;
+      int processedCryptoItems = 0;
+
+      void updateCryptoProgress(String type) {
+        processedCryptoItems++;
+        if (processedCryptoItems % 5 == 0 || processedCryptoItems == totalCryptoItems) {
+          state = state.copyWith(
+            syncMessage: 'Verifying $type ($processedCryptoItems/$totalCryptoItems)...',
+            syncProgress: totalCryptoItems > 0 ? processedCryptoItems / totalCryptoItems : 0.0,
+          );
+        }
+      }
+
       final validDelegations = <AdminTrustedSendersCompanion>[];
       for (final d in payload.delegations) {
+        await Future.delayed(const Duration(milliseconds: 2)); // Throttle to allow Android UI to render
         final existingTs = delegationTimestamps[d.delegateePublicKey] ?? 0;
         if (d.timestamp.toInt() <= existingTs) continue; // LWW CRDT
 
@@ -1191,10 +1206,12 @@ class P2pService extends _$P2pService {
         } else {
           print("Invalid signature for delegation ${d.id}, dropping.");
         }
+        updateCryptoProgress('delegations');
       }
 
       final validRevocations = <RevokedDelegationsCompanion>[];
       for (final r in payload.revokedDelegations) {
+        await Future.delayed(const Duration(milliseconds: 2));
         final existingTs = revocationTimestamps[r.delegateePublicKey] ?? 0;
         if (r.timestamp.toInt() <= existingTs) continue;
 
@@ -1218,6 +1235,7 @@ class P2pService extends _$P2pService {
         } else {
           print("Invalid signature for revocation ${r.delegateePublicKey}, dropping.");
         }
+        updateCryptoProgress('revocations');
       }
 
       for (final r in validRevocations) {
@@ -1226,6 +1244,7 @@ class P2pService extends _$P2pService {
 
       final validMarkers = <HazardMarkersCompanion>[];
       for (final m in payload.markers) {
+        await Future.delayed(const Duration(milliseconds: 2));
         if (deletedIds.contains(m.id)) continue;
         final existingTs = markerTimestamps[m.id] ?? 0;
         if (m.timestamp.toInt() <= existingTs) continue; // LWW CRDT
@@ -1266,10 +1285,12 @@ class P2pService extends _$P2pService {
         } else {
           print("Invalid signature for marker ${m.id}, dropping.");
         }
+        updateCryptoProgress('markers');
       }
 
       final validNews = <NewsItemsCompanion>[];
       for (final n in payload.news) {
+        await Future.delayed(const Duration(milliseconds: 2));
         if (deletedIds.contains(n.id)) continue;
         final existingTs = newsTimestamps[n.id] ?? 0;
         if (n.timestamp.toInt() <= existingTs) continue; // LWW CRDT
@@ -1308,10 +1329,12 @@ class P2pService extends _$P2pService {
         } else {
           print("Invalid signature for news ${n.id}, dropping.");
         }
+        updateCryptoProgress('news');
       }
 
       final validProfiles = <UserProfilesCompanion>[];
       for (final p in payload.profiles) {
+        await Future.delayed(const Duration(milliseconds: 2));
         final existingTs = profileTimestamps[p.publicKey] ?? 0;
         if (p.timestamp.toInt() <= existingTs) continue; // LWW CRDT
 
@@ -1341,10 +1364,12 @@ class P2pService extends _$P2pService {
         } else {
           print("Invalid signature for profile ${p.publicKey}, dropping.");
         }
+        updateCryptoProgress('profiles');
       }
 
       final validAreas = <AreasCompanion>[];
       for (final a in payload.areas) {
+        await Future.delayed(const Duration(milliseconds: 2));
         if (deletedIds.contains(a.id)) continue;
         final existingTs = areaTimestamps[a.id] ?? 0;
         if (a.timestamp.toInt() <= existingTs) continue; // LWW CRDT
@@ -1384,10 +1409,12 @@ class P2pService extends _$P2pService {
         } else {
           print("Invalid signature for area ${a.id}, dropping.");
         }
+        updateCryptoProgress('areas');
       }
 
       final validPaths = <PathsCompanion>[];
       for (final p in payload.paths) {
+        await Future.delayed(const Duration(milliseconds: 2));
         if (deletedIds.contains(p.id)) continue;
         final existingTs = pathTimestamps[p.id] ?? 0;
         if (p.timestamp.toInt() <= existingTs) continue; // LWW CRDT
@@ -1427,6 +1454,7 @@ class P2pService extends _$P2pService {
         } else {
           print("Invalid signature for path ${p.id}, dropping.");
         }
+        updateCryptoProgress('paths');
       }
 
       state = state.copyWith(syncMessage: 'Saving to database...', clearSyncProgress: true);
@@ -1648,8 +1676,14 @@ class P2pService extends _$P2pService {
       }
 
       if (hasNewData) {
-        final encoded = base64Encode(forwardPayload.writeToBuffer());
-        await broadcastText(jsonEncode({'type': 'payload', 'data': encoded}));
+        // Prevent Echo Storm: Only forward the payload if we are a Host with MULTIPLE clients.
+        // If we are a Client, or a Host with only 1 client, the sender already has this data.
+        if (state.isHosting && state.connectedClients.length > 1) {
+          final encoded = base64Encode(forwardPayload.writeToBuffer());
+          await broadcastText(jsonEncode({'type': 'payload', 'data': encoded}));
+        } else {
+          await broadcastText(jsonEncode({'type': 'up_to_date'}));
+        }
       } else {
         await broadcastText(jsonEncode({'type': 'up_to_date'}));
       }
@@ -1657,7 +1691,7 @@ class P2pService extends _$P2pService {
       state = state.copyWith(
         isSyncing: false,
         lastSyncTime: DateTime.now(),
-        syncMessage: 'Successfully synced ${validMarkers.length} markers, ${validNews.length} news, ${validProfiles.length} profiles, ${validAreas.length} areas, ${validPaths.length} paths, ${validDeleted.length} deletions, ${validDelegations.length} delegations, ${validRevocations.length} revocations.',
+        syncMessage: 'Successfully synced data.',
         clearSyncProgress: true
       );
       print("Successfully synced ${payload.markers.length} markers, ${payload.news.length} news, ${payload.profiles.length} profiles, ${payload.areas.length} areas, ${payload.paths.length} paths, ${payload.deletedItems.length} deletions, ${payload.delegations.length} delegations, ${payload.revokedDelegations.length} revocations.");
