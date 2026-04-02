@@ -300,7 +300,7 @@ class P2pService extends _$P2pService {
         hostIpAddress: hotspotState.hostIpAddress,
       ));
       if (hotspotState.isActive) {
-        state = state.copyWith(syncMessage: 'Hotspot Active. Waiting for peers...', clearSyncProgress: true);
+        state = state.copyWith(syncMessage: 'Broadcasting presence. Waiting for peers...', clearSyncProgress: true);
       }
     });
 
@@ -312,7 +312,7 @@ class P2pService extends _$P2pService {
         state = state.copyWith(syncMessage: 'Client connected. Initiating 2-way sync...', clearSyncProgress: true);
         _sendManifest();
       } else if (clients.isEmpty) {
-        state = state.copyWith(isSyncing: false, syncMessage: 'Waiting for clients...', clearSyncProgress: true);
+        state = state.copyWith(isSyncing: false, syncMessage: 'Broadcasting presence. Waiting for peers...', clearSyncProgress: true);
         if (state.isAutoSyncing && previousCount > 0 && !_disposed && !_isSwitchingRoles) {
           _idleTicks = 0;
           _autoSyncTimer?.cancel();
@@ -383,15 +383,14 @@ class P2pService extends _$P2pService {
     }
 
     final isHostWithClients = state.isHosting && state.connectedClients.isNotEmpty;
-    final isHostWaitingForClients = state.isHosting && state.connectedClients.isEmpty;
     final isClientConnected = state.clientState?.isActive == true;
 
-    if (isHostWithClients || isClientConnected || isHostWaitingForClients) {
+    // If we are actively connected to someone, we stay in this role but monitor idle time
+    if (isHostWithClients || isClientConnected) {
       _idleTicks++;
       
-      int maxIdleTicks = isHostWaitingForClients ? 8 : 6;
-      
-      if (_idleTicks >= maxIdleTicks) { 
+            // If idle for 30 seconds (6 * 5s) while connected, disconnect to find new peers
+            if (_idleTicks >= 6) {
         _idleTicks = 0;
         _isSwitchingRoles = true;
         try {
@@ -427,7 +426,7 @@ class P2pService extends _$P2pService {
         await startScanning();
       } else {
         _lastRoleWasHost = true;
-        state = state.copyWith(syncMessage: 'Switching to Host...', clearSyncProgress: true);
+        state = state.copyWith(syncMessage: 'Switching to Broadcaster...', clearSyncProgress: true);
         await disconnect(); // stops scanning
         if (!state.isAutoSyncing || _disposed) return;
   
@@ -442,10 +441,10 @@ class P2pService extends _$P2pService {
     if (state.isAutoSyncing && !_disposed) {
       // Read the latest interval from preferences
       final prefs = ref.read(sharedPreferencesProvider);
-      final baseInterval = prefs.getInt('settings_sync_interval') ?? 30;
+      final baseInterval = prefs.getInt('settings_sync_interval') ?? 15;
 
-      // Add a jitter (0-10s) to prevent perfect sync loops between two devices
-      final nextCycleSeconds = baseInterval + Random().nextInt(10);
+      // Add a jitter (0-5s) to prevent perfect sync loops between two devices
+      final nextCycleSeconds = baseInterval + Random().nextInt(6);
       _autoSyncTimer = Timer(Duration(seconds: nextCycleSeconds), _runAutoSyncCycle);
     }
   }
@@ -455,7 +454,7 @@ class P2pService extends _$P2pService {
     if (state.isHosting) return;
     await disconnect(); // Ensure client is fully stopped before hosting
 
-    state = state.copyWith(isHosting: true, syncMessage: 'Initializing host...', clearSyncProgress: true);
+    state = state.copyWith(isHosting: true, syncMessage: 'Initializing broadcaster...', clearSyncProgress: true);
 
     // 1. Platform & Permission Redundancy Checks
     if (!Platform.isAndroid) {
@@ -583,7 +582,7 @@ class P2pService extends _$P2pService {
     await _setBluetoothName('FLD-S');
 
     try {
-      state = state.copyWith(syncMessage: 'Scanning for nearby devices...', clearSyncProgress: true);
+      state = state.copyWith(syncMessage: 'Looking for nearby devices...', clearSyncProgress: true);
 
       try {
         await FlutterBluePlus.adapterState.where((s) => s == BluetoothAdapterState.on).first.timeout(const Duration(seconds: 5));

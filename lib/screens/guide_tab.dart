@@ -267,7 +267,7 @@ class GuideTab extends ConsumerWidget {
                 ),
                 _buildFAQ(
                   'Does this drain my battery?',
-                  'Mesh syncing uses Bluetooth Low Energy (BLE) to find peers, which is very efficient. However, frequent Wi-Fi Direct transfers can impact battery life. You can adjust the "Sync Interval" in Settings (e.g., change from 30s to 5m to save power). The app also respects Android\'s battery optimization settings.',
+                  'Mesh syncing uses Bluetooth Low Energy (BLE) to find peers, which is very efficient. However, frequent Wi-Fi Direct transfers can impact battery life. You can adjust the "Sync Interval" in Settings (e.g., change from 15s to 5m) to save power. The app also respects Android\'s battery optimization settings.',
                 ),
                 _buildFAQ(
                   'What is a "Global Action"?',

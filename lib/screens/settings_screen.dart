@@ -58,7 +58,7 @@ class SettingsScreen extends ConsumerWidget {
             leading: const Icon(Icons.sync),
             title: const Text('Mesh Auto-Sync Frequency'),
             subtitle: const Text(
-              'How often the device wakes up to search and sync with nearby peers.',
+              'How often the device switches between broadcasting and scanning for peers.',
             ),
           ),
           Padding(
@@ -90,7 +90,7 @@ class SettingsScreen extends ConsumerWidget {
           const Padding(
             padding: EdgeInsets.all(16.0),
             child: Text(
-              'Note: Faster sync intervals consume more battery. 30s-60s is recommended during active emergencies.',
+              'Note: Faster sync intervals consume more battery but discover peers much quicker. 15s-30s is recommended during active emergencies.',
               style: TextStyle(
                 fontSize: 12,
                 color: Colors.grey,

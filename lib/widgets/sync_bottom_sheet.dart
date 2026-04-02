@@ -139,7 +139,7 @@ class SyncBottomSheet extends ConsumerWidget {
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
-                                    p2pState.isAutoSyncing ? 'Actively searching for peers...' : 'Tap to enable background sync',
+                                    p2pState.isAutoSyncing ? 'Alternating between broadcasting and scanning...' : 'Tap to enable background sync',
                                     style: TextStyle(
                                       fontSize: 13,
                                       color: p2pState.isAutoSyncing ? Colors.blue.shade100 : Colors.grey.shade600,
@@ -208,7 +208,7 @@ class SyncBottomSheet extends ConsumerWidget {
                             const SizedBox(width: 12),
                             Expanded(
                               child: Text(
-                                isConnected ? 'Connected to Mesh' : (p2pState.isAutoSyncing ? 'Searching for Peers...' : 'Mesh Offline'),
+                                isConnected ? 'Connected to Mesh' : (p2pState.isAutoSyncing ? 'Auto-Sync Active' : 'Mesh Offline'),
                                 style: TextStyle(
                                   fontSize: 16,
                                   color: isConnected ? Colors.green.shade800 : (p2pState.isAutoSyncing ? Colors.orange.shade800 : Colors.grey.shade700),

@@ -78,10 +78,11 @@ class _MeshStatusChipState extends ConsumerState<MeshStatusChip> with SingleTick
             child: Text(
               isSyncing
                   ? (p2pState.syncProgress != null ? 'SYNCING (${(p2pState.syncProgress! * 100).toInt()}%${p2pState.syncEstimatedSeconds != null ? ' - ${p2pState.syncEstimatedSeconds}s' : ''})'  : 'SYNCING')
-  
-                  : isConnected
-                      ? (p2pState.hostState?.isActive == true ? 'HOST (${p2pState.connectedClients.length})' : 'CONNECTED')
-                      : (p2pState.isAutoSyncing ? 'SEARCHING' : 'OFFLINE'),
+                   : isConnected
+                       ? (p2pState.hostState?.isActive == true 
+                           ? (p2pState.connectedClients.isEmpty && p2pState.isAutoSyncing ? 'BROADCASTING' : 'HOST (${p2pState.connectedClients.length})') 
+                           : 'CONNECTED')
+                      : (p2pState.isAutoSyncing ? (p2pState.isScanning ? 'SCANNING' : 'STARTING...') : 'OFFLINE'),
               style: TextStyle(
                 color: isConnected || p2pState.isAutoSyncing ? Colors.white : Theme.of(context).colorScheme.onSurfaceVariant,
                 fontSize: 11,

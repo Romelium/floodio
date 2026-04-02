@@ -65,7 +65,7 @@ class AppSettings extends _$AppSettings {
   AppSettingsData build() {
     final prefs = ref.watch(sharedPreferencesProvider);
     final styleIndex = prefs.getInt(_keyMapStyle) ?? 0;
-    final interval = prefs.getInt(_keySyncInterval) ?? 30;
+    final interval = prefs.getInt(_keySyncInterval) ?? 15;
     final isOfficial = prefs.getBool(_keyIsOfficialMode) ?? false;
 
     return AppSettingsData(
