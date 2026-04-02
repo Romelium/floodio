@@ -1,8 +1,7 @@
-import 'package:drift/drift.dart';
-import 'package:flutter_ringtone_player/flutter_ringtone_player.dart';
-import 'package:riverpod_annotation/riverpod_annotation.dart';
-import 'package:vibration/vibration.dart';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:drift/drift.dart';
+import 'package:flutter/services.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../database/tables.dart';
 import 'database_provider.dart';
@@ -17,6 +16,7 @@ class RedAlertController extends _$RedAlertController {
   List<PathEntity> _paths = [];
   final Set<String> _notifiedIds = {};
   final AudioPlayer _audioPlayer = AudioPlayer();
+  bool _isVibrating = false;
 
   @override
   bool build() {
@@ -88,6 +88,7 @@ class RedAlertController extends _$RedAlertController {
       nSub.cancel();
       aSub.cancel();
       pSub.cancel();
+      _isVibrating = false;
       _audioPlayer.dispose();
     });
 
@@ -95,21 +96,27 @@ class RedAlertController extends _$RedAlertController {
   }
 
   void _triggerAlarm() async {
-    try {
-      if (await Vibration.hasVibrator() ?? false) {
-        Vibration.vibrate(pattern: [500, 1000, 500, 1000, 500, 1000, 500, 1000]);
-      }
-    } catch (_) {}
+    _isVibrating = true;
+    _vibrateLoop();
     try {
       _audioPlayer.setReleaseMode(ReleaseMode.loop);
       await _audioPlayer.play(UrlSource('https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg'));
     } catch (_) {}
   }
 
+  void _vibrateLoop() async {
+    while (_isVibrating) {
+      try {
+        HapticFeedback.heavyImpact();
+      } catch (_) {}
+      await Future.delayed(const Duration(milliseconds: 1000));
+    }
+  }
+
   void stopAlarm() {
+    _isVibrating = false;
     try {
       _audioPlayer.stop();
-      Vibration.cancel();
     } catch (_) {}
   }
 }
