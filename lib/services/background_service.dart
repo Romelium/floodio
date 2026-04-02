@@ -179,6 +179,30 @@ void onStart(ServiceInstance service) async {
     }
   });
 
+  service.on('mockDiscoveredDevice').listen((_) {
+    p2pNotifier.mockDiscoveredDevice();
+  });
+
+  service.on('mockConnectedClient').listen((_) {
+    p2pNotifier.mockConnectedClient();
+  });
+
+  service.on('mockReceivedHazard').listen((_) {
+    p2pNotifier.mockReceivedHazard();
+  });
+
+  service.on('mockHostState').listen((_) {
+    p2pNotifier.mockHostState();
+  });
+
+  service.on('mockClientState').listen((_) {
+    p2pNotifier.mockClientState();
+  });
+
+  service.on('mockSyncProgress').listen((_) {
+    p2pNotifier.mockSyncProgress();
+  });
+
   service.on('reloadSettings').listen((_) async {
     await prefs.reload();
     container.invalidate(appSettingsProvider);

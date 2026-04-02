@@ -6,6 +6,7 @@ import 'dart:math';
 
 import 'package:drift/drift.dart';
 import 'package:fixnum/fixnum.dart';
+import 'package:floodio/providers/location_provider.dart';
 import 'package:floodio/services/background_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
@@ -2367,5 +2368,108 @@ class P2pService extends _$P2pService {
     } catch (e) {
       print("Error broadcasting file: $e");
     }
+  }
+
+  void mockDiscoveredDevice() {
+    final newDevice = AppDiscoveredDevice(
+      deviceAddress: '00:11:22:33:44:${Random().nextInt(99).toString().padLeft(2, '0')}',
+      deviceName: 'Mock Peer ${Random().nextInt(1000)}',
+    );
+    state = state.copyWith(
+      discoveredDevices: [...state.discoveredDevices, newDevice],
+    );
+  }
+
+  void mockConnectedClient() {
+    final newClient = AppClientInfo(
+      id: 'mock_client_${Random().nextInt(1000)}',
+      username: 'Mock User ${Random().nextInt(1000)}',
+      isHost: false,
+    );
+    state = state.copyWith(
+      connectedClients: [...state.connectedClients, newClient],
+    );
+  }
+
+  Future<void> mockReceivedHazard() async {
+    final db = ref.read(databaseProvider);
+    final crypto = ref.read(cryptoServiceProvider.notifier);
+    final myPubKey = await crypto.getPublicKeyString();
+    
+    final id = 'mock_hazard_${DateTime.now().millisecondsSinceEpoch}';
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+    
+    final loc = await ref.read(locationControllerProvider.notifier).getCurrentPosition();
+    final lat = loc?.latitude ?? 10.730185;
+    final lng = loc?.longitude ?? 122.559115;
+
+    final newMarker = HazardMarkersCompanion.insert(
+      id: id,
+      latitude: lat + (Random().nextDouble() - 0.5) * 0.02,
+      longitude: lng + (Random().nextDouble() - 0.5) * 0.02,
+      type: 'Flood',
+      description: 'Mocked flood report from debug menu',
+      timestamp: timestamp,
+      senderId: myPubKey,
+      signature: const Value('mock_signature'),
+      trustTier: 4,
+      isCritical: const Value(false),
+    );
+    
+    await db.into(db.hazardMarkers).insert(newMarker);
+  }
+
+  void mockHostState() {
+    state = state.copyWith(
+      isHosting: true,
+      hostState: AppHostState(
+        isActive: true,
+        ssid: 'DIRECT-Mock-Host',
+        preSharedKey: 'mockpassword',
+        hostIpAddress: '192.168.49.1',
+      ),
+      syncMessage: 'Mock Host Active',
+      clearSyncProgress: true,
+    );
+  }
+
+  void mockClientState() {
+    state = state.copyWith(
+      clientState: AppClientState(
+        isActive: true,
+        hostSsid: 'DIRECT-Mock-Host',
+        hostGatewayIpAddress: '192.168.49.1',
+        hostIpAddress: '192.168.49.123',
+      ),
+      syncMessage: 'Mock Client Active',
+      clearSyncProgress: true,
+    );
+  }
+
+  void mockSyncProgress() {
+    state = state.copyWith(
+      isSyncing: true,
+      syncMessage: 'Mock syncing...',
+      syncProgress: 0.0,
+      syncEstimatedSeconds: 10,
+    );
+    
+    int progress = 0;
+    Timer.periodic(const Duration(milliseconds: 500), (timer) {
+      progress += 10;
+      if (progress > 100) {
+        timer.cancel();
+        state = state.copyWith(
+          isSyncing: false,
+          syncMessage: 'Mock sync complete',
+          clearSyncProgress: true,
+        );
+      } else {
+        state = state.copyWith(
+          syncProgress: progress / 100.0,
+          syncEstimatedSeconds: 10 - (progress ~/ 10),
+        );
+      }
+    });
   }
 }

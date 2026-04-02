@@ -95,4 +95,28 @@ class UiP2pService extends _$UiP2pService {
   void processPayload(String base64Data) {
     FlutterBackgroundService().invoke('processPayload', {'data': base64Data});
   }
+
+  void mockDiscoveredDevice() {
+    FlutterBackgroundService().invoke('mockDiscoveredDevice');
+  }
+
+  void mockConnectedClient() {
+    FlutterBackgroundService().invoke('mockConnectedClient');
+  }
+
+  void mockReceivedHazard() {
+    FlutterBackgroundService().invoke('mockReceivedHazard');
+  }
+
+  void mockHostState() {
+    FlutterBackgroundService().invoke('mockHostState');
+  }
+
+  void mockClientState() {
+    FlutterBackgroundService().invoke('mockClientState');
+  }
+
+  void mockSyncProgress() {
+    FlutterBackgroundService().invoke('mockSyncProgress');
+  }
 }

@@ -339,122 +339,198 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       context: context,
       builder: (sheetContext) {
         return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const ListTile(
-                title: Text(
-                  'Debug Menu',
-                  style: TextStyle(fontWeight: FontWeight.bold),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const ListTile(
+                  title: Text(
+                    'Debug Menu',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
                 ),
-              ),
-              ListTile(
-                leading: const Icon(Icons.delete_forever, color: Colors.red),
-                title: const Text('Clear All Data'),
-                onTap: () async {
-                  Navigator.pop(sheetContext);
-                  final db = ref.read(databaseProvider);
-                  await db.transaction(() async {
-                    await db.delete(db.hazardMarkers).go();
-                    await db.delete(db.newsItems).go();
-                    await db.delete(db.deletedItems).go();
-                    await db.delete(db.seenMessageIds).go();
-                    await db.delete(db.trustedSenders).go();
-                    await db.delete(db.untrustedSenders).go();
-                    await db.delete(db.userProfiles).go();
-                    await db.delete(db.areas).go();
-                    await db.delete(db.paths).go();
-                    await db.delete(db.adminTrustedSenders).go();
-                    await db.delete(db.revokedDelegations).go();
-                  });
-                  final prefs = await SharedPreferences.getInstance();
-                  await prefs.remove('user_name');
-                  await prefs.remove('user_contact');
-                  ref.invalidate(localUserControllerProvider);
-                  if (!mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('All data cleared'),
-                      behavior: SnackBarBehavior.floating,
-                    ),
-                  );
-                  Navigator.of(context).pushAndRemoveUntil(
-                    MaterialPageRoute(
-                      builder: (_) => const InitializerScreen(),
-                    ),
-                    (route) => false,
-                  );
-                },
-              ),
-              ListTile(
-                leading: const Icon(
-                  Icons.admin_panel_settings,
-                  color: Colors.purple,
-                ),
-                title: const Text('Make Me Admin-Trusted (Tier 2)'),
-                onTap: () async {
-                  Navigator.pop(sheetContext);
-                  final localUser = ref.read(localUserControllerProvider).value;
-                  final myPubKey = localUser?.publicKey;
-                  if (myPubKey == null) return;
-                  await ref
-                      .read(govApiServiceProvider.notifier)
-                      .delegateAdminTrust(myPubKey);
-                  if (!mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('You are now an Admin-Trusted Volunteer!'),
-                      behavior: SnackBarBehavior.floating,
-                    ),
-                  );
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.remove_moderator, color: Colors.red),
-                title: const Text('Revoke My Admin Trust'),
-                onTap: () async {
-                  Navigator.pop(sheetContext);
-                  final localUser = ref.read(localUserControllerProvider).value;
-                  final myPubKey = localUser?.publicKey;
-                  if (myPubKey == null) return;
-                  await ref
-                      .read(govApiServiceProvider.notifier)
-                      .revokeAdminTrust(myPubKey);
-                  if (!mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Your Admin Trust has been revoked!'),
-                      behavior: SnackBarBehavior.floating,
-                    ),
-                  );
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.security, color: Colors.orange),
-                title: const Text('Toggle Official Mode'),
-                onTap: () async {
-                  Navigator.pop(sheetContext);
-                  final current = ref.read(appSettingsProvider).isOfficialMode;
-                  await ref
-                      .read(appSettingsProvider.notifier)
-                      .setOfficialMode(!current);
-
-                  if (current && ref.read(navigationIndexProvider) == 4) {
-                    ref.read(navigationIndexProvider.notifier).setIndex(3);
-                  }
-
-                  if (!mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        'Official Mode: ${!current ? "ON" : "OFF"}',
+                ListTile(
+                  leading: const Icon(Icons.delete_forever, color: Colors.red),
+                  title: const Text('Clear All Data'),
+                  onTap: () async {
+                    Navigator.pop(sheetContext);
+                    final db = ref.read(databaseProvider);
+                    await db.transaction(() async {
+                      await db.delete(db.hazardMarkers).go();
+                      await db.delete(db.newsItems).go();
+                      await db.delete(db.deletedItems).go();
+                      await db.delete(db.seenMessageIds).go();
+                      await db.delete(db.trustedSenders).go();
+                      await db.delete(db.untrustedSenders).go();
+                      await db.delete(db.userProfiles).go();
+                      await db.delete(db.areas).go();
+                      await db.delete(db.paths).go();
+                      await db.delete(db.adminTrustedSenders).go();
+                      await db.delete(db.revokedDelegations).go();
+                    });
+                    final prefs = await SharedPreferences.getInstance();
+                    await prefs.remove('user_name');
+                    await prefs.remove('user_contact');
+                    ref.invalidate(localUserControllerProvider);
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('All data cleared'),
+                        behavior: SnackBarBehavior.floating,
                       ),
-                      behavior: SnackBarBehavior.floating,
+                    );
+                    Navigator.of(context).pushAndRemoveUntil(
+                      MaterialPageRoute(
+                        builder: (_) => const InitializerScreen(),
+                      ),
+                      (route) => false,
+                    );
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(
+                    Icons.admin_panel_settings,
+                    color: Colors.purple,
+                  ),
+                  title: const Text('Make Me Admin-Trusted (Tier 2)'),
+                  onTap: () async {
+                    Navigator.pop(sheetContext);
+                    final localUser = ref.read(localUserControllerProvider).value;
+                    final myPubKey = localUser?.publicKey;
+                    if (myPubKey == null) return;
+                    await ref
+                        .read(govApiServiceProvider.notifier)
+                        .delegateAdminTrust(myPubKey);
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('You are now an Admin-Trusted Volunteer!'),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.remove_moderator, color: Colors.red),
+                  title: const Text('Revoke My Admin Trust'),
+                  onTap: () async {
+                    Navigator.pop(sheetContext);
+                    final localUser = ref.read(localUserControllerProvider).value;
+                    final myPubKey = localUser?.publicKey;
+                    if (myPubKey == null) return;
+                    await ref
+                        .read(govApiServiceProvider.notifier)
+                        .revokeAdminTrust(myPubKey);
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Your Admin Trust has been revoked!'),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.security, color: Colors.orange),
+                  title: const Text('Toggle Official Mode'),
+                  onTap: () async {
+                    Navigator.pop(sheetContext);
+                    final current = ref.read(appSettingsProvider).isOfficialMode;
+                    await ref
+                        .read(appSettingsProvider.notifier)
+                        .setOfficialMode(!current);
+  
+                    if (current && ref.read(navigationIndexProvider) == 4) {
+                      ref.read(navigationIndexProvider.notifier).setIndex(3);
+                    }
+  
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          'Official Mode: ${!current ? "ON" : "OFF"}',
+                        ),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  },
+                ),
+                const Divider(),
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'Mock Actions',
+                      style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey),
                     ),
-                  );
-                },
-              ),
-            ],
+                  ),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.bluetooth, color: Colors.blue),
+                  title: const Text('Mock Discovered Peer'),
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    ref.read(uiP2pServiceProvider.notifier).mockDiscoveredDevice();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Mock peer added')),
+                    );
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.people, color: Colors.green),
+                  title: const Text('Mock Connected Client'),
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    ref.read(uiP2pServiceProvider.notifier).mockConnectedClient();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Mock client added')),
+                    );
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.warning, color: Colors.orange),
+                  title: const Text('Mock Received Hazard'),
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    ref.read(uiP2pServiceProvider.notifier).mockReceivedHazard();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Mock hazard added')),
+                    );
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.router, color: Colors.teal),
+                  title: const Text('Mock Host State'),
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    ref.read(uiP2pServiceProvider.notifier).mockHostState();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Mock host state set')),
+                    );
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.smartphone, color: Colors.indigo),
+                  title: const Text('Mock Client State'),
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    ref.read(uiP2pServiceProvider.notifier).mockClientState();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Mock client state set')),
+                    );
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.sync, color: Colors.cyan),
+                  title: const Text('Mock Sync Progress'),
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    ref.read(uiP2pServiceProvider.notifier).mockSyncProgress();
+                  },
+                ),
+              ],
+            ),
           ),
         );
       },
