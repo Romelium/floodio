@@ -179,6 +179,12 @@ void onStart(ServiceInstance service) async {
     }
   });
 
+  service.on('processPayloadFromFile').listen((event) {
+    if (event != null && event['filePath'] != null) {
+      p2pNotifier.processPayloadFromFile(event['filePath']);
+    }
+  });
+
   service.on('mockDiscoveredDevice').listen((_) {
     p2pNotifier.mockDiscoveredDevice();
   });

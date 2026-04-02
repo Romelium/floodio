@@ -103,6 +103,10 @@ class UiP2pService extends _$UiP2pService {
     FlutterBackgroundService().invoke('processPayload', {'data': base64Data});
   }
 
+  void processPayloadFromFile(String filePath) {
+    FlutterBackgroundService().invoke('processPayloadFromFile', {'filePath': filePath});
+  }
+
   void mockDiscoveredDevice() {
     FlutterBackgroundService().invoke('mockDiscoveredDevice');
   }

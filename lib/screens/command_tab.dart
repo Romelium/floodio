@@ -320,10 +320,30 @@ class CommandTab extends ConsumerWidget {
                 ),
                 const Spacer(),
                 if (cloudState.isSyncing)
-                  const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2, value: cloudState.syncProgress),
+                        ),
+                        if (cloudState.syncMessage != null) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            cloudState.syncMessage!,
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Theme.of(context).colorScheme.primary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            textAlign: TextAlign.right,
+                            maxLines: 2,
+                          ),
+                        ]
+                      ],
+                    ),
                   ),
               ],
             ),

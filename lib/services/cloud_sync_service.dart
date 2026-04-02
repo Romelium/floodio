@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:isolate';
 
 import 'package:drift/drift.dart';
 import 'package:fixnum/fixnum.dart';
@@ -22,6 +23,8 @@ class CloudSyncState {
   final int pendingUploads;
   final bool syncTextOnly;
   final bool onlyTier1And2;
+  final String? syncMessage;
+  final double? syncProgress;
 
   CloudSyncState({
     this.isSyncing = false,
@@ -30,6 +33,8 @@ class CloudSyncState {
     this.pendingUploads = 0,
     this.syncTextOnly = false,
     this.onlyTier1And2 = false,
+    this.syncMessage,
+    this.syncProgress,
   });
 
   CloudSyncState copyWith({
@@ -39,6 +44,10 @@ class CloudSyncState {
     int? pendingUploads,
     bool? syncTextOnly,
     bool? onlyTier1And2,
+    String? syncMessage,
+    bool clearSyncMessage = false,
+    double? syncProgress,
+    bool clearSyncProgress = false,
   }) {
     return CloudSyncState(
       isSyncing: isSyncing ?? this.isSyncing,
@@ -47,6 +56,8 @@ class CloudSyncState {
       pendingUploads: pendingUploads ?? this.pendingUploads,
       syncTextOnly: syncTextOnly ?? this.syncTextOnly,
       onlyTier1And2: onlyTier1And2 ?? this.onlyTier1And2,
+      syncMessage: clearSyncMessage ? null : (syncMessage ?? this.syncMessage),
+      syncProgress: clearSyncProgress ? null : (syncProgress ?? this.syncProgress),
     );
   }
 
@@ -60,7 +71,9 @@ class CloudSyncState {
           hasInternet == other.hasInternet &&
           pendingUploads == other.pendingUploads &&
           syncTextOnly == other.syncTextOnly &&
-          onlyTier1And2 == other.onlyTier1And2;
+          onlyTier1And2 == other.onlyTier1And2 &&
+          syncMessage == other.syncMessage &&
+          syncProgress == other.syncProgress;
 
   @override
   int get hashCode => Object.hash(
@@ -70,6 +83,8 @@ class CloudSyncState {
     pendingUploads,
     syncTextOnly,
     onlyTier1And2,
+    syncMessage,
+    syncProgress,
   );
 }
 
@@ -208,7 +223,12 @@ class CloudSyncService extends _$CloudSyncService {
       return false;
     }
 
-    state = state.copyWith(isSyncing: true, hasInternet: true);
+    state = state.copyWith(
+      isSyncing: true, 
+      hasInternet: true,
+      syncMessage: 'Preparing data for upload...',
+      syncProgress: 0.1,
+    );
 
     try {
       final db = ref.read(databaseProvider);
@@ -385,7 +405,12 @@ class CloudSyncService extends _$CloudSyncService {
           payload.deletedItems.isNotEmpty ||
           payload.delegations.isNotEmpty ||
           payload.revokedDelegations.isNotEmpty) {
-        final encoded = base64Encode(payload.writeToBuffer());
+        
+        state = state.copyWith(
+          syncMessage: 'Uploading to cloud...',
+          syncProgress: 0.3,
+        );
+        final encoded = await Isolate.run(() => base64Encode(payload.writeToBuffer()));
         await Supabase.instance.client.from('sync_events').insert({
           'payload_base64': encoded,
         });
@@ -395,6 +420,10 @@ class CloudSyncService extends _$CloudSyncService {
       }
 
       if (!state.syncTextOnly) {
+        state = state.copyWith(
+          syncMessage: 'Uploading images...',
+          syncProgress: 0.4,
+        );
         final dir = await getApplicationDocumentsDirectory();
         final imageIds = [
           ...markers
@@ -420,6 +449,10 @@ class CloudSyncService extends _$CloudSyncService {
       }
 
       // 2. "Download" new data from cloud
+      state = state.copyWith(
+        syncMessage: 'Checking for new data...',
+        syncProgress: 0.5,
+      );
       final lastSyncIso = DateTime.fromMillisecondsSinceEpoch(
         lastSync,
       ).toUtc().toIso8601String();
@@ -432,35 +465,47 @@ class CloudSyncService extends _$CloudSyncService {
       if (response.isEmpty) {
         print('CloudSync: No new data found in the cloud.');
       } else {
-        final combinedPayload = pb.SyncPayload();
-        for (final row in response) {
-          final encoded = row['payload_base64'] as String;
-          try {
-            final data = base64Decode(encoded);
-            final payload = pb.SyncPayload.fromBuffer(data);
-            combinedPayload.markers.addAll(payload.markers);
-            combinedPayload.news.addAll(payload.news);
-            combinedPayload.profiles.addAll(payload.profiles);
-            combinedPayload.deletedItems.addAll(payload.deletedItems);
-            combinedPayload.areas.addAll(payload.areas);
-            combinedPayload.paths.addAll(payload.paths);
-            combinedPayload.delegations.addAll(payload.delegations);
-            combinedPayload.revokedDelegations.addAll(payload.revokedDelegations);
-          } catch (e) {
-            print('Error decoding payload from cloud: $e');
+        state = state.copyWith(
+          syncMessage: 'Downloading from cloud...',
+          syncProgress: 0.7,
+        );
+        final tempDir = await getTemporaryDirectory();
+        final tempFile = File('${tempDir.path}/cloud_sync_payload_${DateTime.now().millisecondsSinceEpoch}.dat');
+        
+        final hasData = await Isolate.run(() async {
+          final combinedPayload = pb.SyncPayload();
+          bool added = false;
+          for (final row in response) {
+            final encoded = row['payload_base64'] as String;
+            try {
+              final data = base64Decode(encoded);
+              final payload = pb.SyncPayload.fromBuffer(data);
+              combinedPayload.markers.addAll(payload.markers);
+              combinedPayload.news.addAll(payload.news);
+              combinedPayload.profiles.addAll(payload.profiles);
+              combinedPayload.deletedItems.addAll(payload.deletedItems);
+              combinedPayload.areas.addAll(payload.areas);
+              combinedPayload.paths.addAll(payload.paths);
+              combinedPayload.delegations.addAll(payload.delegations);
+              combinedPayload.revokedDelegations.addAll(payload.revokedDelegations);
+              added = true;
+            } catch (e) {
+              print('Error decoding payload from cloud: $e');
+            }
           }
-        }
+          if (added) {
+            await tempFile.writeAsBytes(combinedPayload.writeToBuffer());
+            return true;
+          }
+          return false;
+        });
 
-        if (combinedPayload.markers.isNotEmpty ||
-            combinedPayload.news.isNotEmpty ||
-            combinedPayload.profiles.isNotEmpty ||
-            combinedPayload.deletedItems.isNotEmpty ||
-            combinedPayload.areas.isNotEmpty ||
-            combinedPayload.paths.isNotEmpty ||
-            combinedPayload.delegations.isNotEmpty ||
-            combinedPayload.revokedDelegations.isNotEmpty) {
-          final combinedEncoded = base64Encode(combinedPayload.writeToBuffer());
-          ref.read(uiP2pServiceProvider.notifier).processPayload(combinedEncoded);
+        if (hasData) {
+          state = state.copyWith(
+            syncMessage: 'Processing downloaded data...',
+            syncProgress: 0.9,
+          );
+          ref.read(uiP2pServiceProvider.notifier).processPayloadFromFile(tempFile.path);
           
           // Wait for the background service to pick it up
           await Future.delayed(const Duration(seconds: 1));
@@ -477,8 +522,6 @@ class CloudSyncService extends _$CloudSyncService {
         print('CloudSync: Downloaded and processed new data from the cloud.');
       }
 
-      print('CloudSync: Downloaded new data from the cloud.');
-
       final prefs = await SharedPreferences.getInstance();
       final syncEndTime = DateTime.now();
       await prefs.setInt(
@@ -490,11 +533,18 @@ class CloudSyncService extends _$CloudSyncService {
         isSyncing: false,
         lastSyncTime: syncEndTime,
         pendingUploads: 0,
+        clearSyncMessage: true,
+        clearSyncProgress: true,
       );
       return true;
     } catch (e) {
       print('CloudSync: Error syncing with cloud: $e');
-      state = state.copyWith(isSyncing: false);
+      state = state.copyWith(
+        isSyncing: false,
+        syncMessage: 'Error: $e',
+        clearSyncProgress: true,
+      );
+      Future.delayed(const Duration(seconds: 3), () => state = state.copyWith(clearSyncMessage: true));
       return false;
     }
   }
