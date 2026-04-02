@@ -327,7 +327,7 @@ class GuideTab extends ConsumerWidget {
                 ),
                 const SizedBox(height: 16),
                 _buildFAQ(
-                  'My status says "OFFLINE" even with Auto-Sync on?',
+                  'My status says "STANDBY" even with Auto-Sync on?',
                   'Ensure Bluetooth and Location are enabled. Android requires Location services to be ON for Bluetooth scanning to work. Also, check if you have granted the "Nearby Devices" permission in your phone\'s settings. Try toggling Auto-Sync off and on again.',
                 ),
                 _buildFAQ(

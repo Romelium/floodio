@@ -647,7 +647,7 @@ class SyncBottomSheet extends ConsumerWidget {
                                     ? 'Broadcasting Presence...'
                                     : (p2pState.isAutoSyncing
                                           ? 'Auto-Sync Active'
-                                          : 'Mesh Offline'))),
+                                          : 'Standby (Auto-Sync Off)'))),
                     style: TextStyle(
                       fontSize: 16,
                       color: hasPeers

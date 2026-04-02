@@ -23,7 +23,7 @@ import '../protos/models.pb.dart' as pb;
 import '../providers/admin_trusted_sender_provider.dart';
 import '../providers/area_provider.dart';
 import '../providers/cached_tile_provider.dart';
-import '../providers/database_provider.dart';
+import '../providers/critical_alert_provider.dart';
 import '../providers/feed_provider.dart';
 import '../providers/hazard_marker_provider.dart';
 import '../providers/local_user_provider.dart';
@@ -39,10 +39,10 @@ import '../providers/ui_p2p_provider.dart';
 import '../providers/ui_state_provider.dart';
 import '../providers/untrusted_sender_provider.dart';
 import '../providers/user_profile_provider.dart';
-import '../providers/critical_alert_provider.dart';
 import '../services/cloud_sync_service.dart';
 import '../services/gov_api_service.dart';
 import '../services/map_cache_service.dart';
+import '../utils/clear_data.dart';
 import '../utils/permission_utils.dart';
 import '../utils/ui_helpers.dart';
 import '../widgets/download_map_dialog.dart';
@@ -51,7 +51,6 @@ import '../widgets/local_image_display.dart';
 import '../widgets/mesh_status_chip.dart';
 import 'command_tab.dart';
 import 'guide_tab.dart';
-import 'initializer_screen.dart';
 import 'mesh_topology_screen.dart';
 import 'profile_tab.dart';
 
@@ -418,58 +417,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   title: const Text('Clear All Data'),
                   onTap: () async {
                     Navigator.pop(sheetContext);
-                    final db = ref.read(databaseProvider);
-                    await db.transaction(() async {
-                      await db.delete(db.hazardMarkers).go();
-                      await db.delete(db.newsItems).go();
-                      await db.delete(db.deletedItems).go();
-                      await db.delete(db.seenMessageIds).go();
-                      await db.delete(db.trustedSenders).go();
-                      await db.delete(db.untrustedSenders).go();
-                      await db.delete(db.userProfiles).go();
-                      await db.delete(db.areas).go();
-                      await db.delete(db.paths).go();
-                      await db.delete(db.adminTrustedSenders).go();
-                      await db.delete(db.revokedDelegations).go();
-                    });
-
-                    final dir = await getApplicationDocumentsDirectory();
-                    if (await dir.exists()) {
-                      final entities = dir.listSync();
-                      for (final entity in entities) {
-                        if (entity is File && entity.path.split('/').last.startsWith('img_')) {
-                          try {
-                            await entity.delete();
-                          } catch (_) {}
-                        }
-                      }
-                    }
-
-                    await ref.read(mapCacheServiceProvider).clearCache();
-                    await ref.read(offlineRegionsProvider.notifier).clearRegions();
-
-                    final prefs = await SharedPreferences.getInstance();
-                    await prefs.clear();
-                    try {
-                      FlutterBackgroundService().invoke('reloadSettings');
-                    } catch (_) {}
-
-                    ref.invalidate(localUserControllerProvider);
-                    ref.invalidate(appSettingsProvider);
-                    ref.invalidate(cryptoServiceProvider);
-                    if (!mounted) return;
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('All data cleared'),
-                        behavior: SnackBarBehavior.floating,
-                      ),
-                    );
-                    Navigator.of(context).pushAndRemoveUntil(
-                      MaterialPageRoute(
-                        builder: (_) => const InitializerScreen(),
-                      ),
-                      (route) => false,
-                    );
+                    await clearAllAppData(context, ref);
                   },
                 ),
                 ListTile(
@@ -4946,7 +4894,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                         ),
                         tooltip: hasInternet
                             ? 'Cloud Connected'
-                            : 'Cloud Offline',
+                            : 'No Internet',
                         onPressed: () {
                           if (hasInternet) {
                             ref

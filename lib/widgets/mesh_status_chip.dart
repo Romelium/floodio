@@ -120,7 +120,7 @@ class _MeshStatusChipState extends ConsumerState<MeshStatusChip>
                               : 'CONNECTED')
                         : (p2pState.isAutoSyncing
                               ? (p2pState.isScanning ? 'SCANNING' : 'STARTING...')
-                              : 'OFFLINE'),
+                              : 'STANDBY'),
                     style: TextStyle(
                       color: isConnected || p2pState.isAutoSyncing
                           ? Colors.white

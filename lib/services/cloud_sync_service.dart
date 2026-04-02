@@ -211,7 +211,6 @@ class CloudSyncService extends _$CloudSyncService {
     state = state.copyWith(isSyncing: true, hasInternet: true);
 
     try {
-      final syncStartTime = DateTime.now();
       final db = ref.read(databaseProvider);
       final lastSync = state.lastSyncTime?.millisecondsSinceEpoch ?? 0;
 
@@ -433,9 +432,47 @@ class CloudSyncService extends _$CloudSyncService {
       if (response.isEmpty) {
         print('CloudSync: No new data found in the cloud.');
       } else {
+        final combinedPayload = pb.SyncPayload();
         for (final row in response) {
           final encoded = row['payload_base64'] as String;
-          ref.read(uiP2pServiceProvider.notifier).processPayload(encoded);
+          try {
+            final data = base64Decode(encoded);
+            final payload = pb.SyncPayload.fromBuffer(data);
+            combinedPayload.markers.addAll(payload.markers);
+            combinedPayload.news.addAll(payload.news);
+            combinedPayload.profiles.addAll(payload.profiles);
+            combinedPayload.deletedItems.addAll(payload.deletedItems);
+            combinedPayload.areas.addAll(payload.areas);
+            combinedPayload.paths.addAll(payload.paths);
+            combinedPayload.delegations.addAll(payload.delegations);
+            combinedPayload.revokedDelegations.addAll(payload.revokedDelegations);
+          } catch (e) {
+            print('Error decoding payload from cloud: $e');
+          }
+        }
+
+        if (combinedPayload.markers.isNotEmpty ||
+            combinedPayload.news.isNotEmpty ||
+            combinedPayload.profiles.isNotEmpty ||
+            combinedPayload.deletedItems.isNotEmpty ||
+            combinedPayload.areas.isNotEmpty ||
+            combinedPayload.paths.isNotEmpty ||
+            combinedPayload.delegations.isNotEmpty ||
+            combinedPayload.revokedDelegations.isNotEmpty) {
+          final combinedEncoded = base64Encode(combinedPayload.writeToBuffer());
+          ref.read(uiP2pServiceProvider.notifier).processPayload(combinedEncoded);
+          
+          // Wait for the background service to pick it up
+          await Future.delayed(const Duration(seconds: 1));
+          
+          // Wait until the background service finishes processing
+          while (true) {
+            final p2pState = ref.read(uiP2pServiceProvider);
+            if (!p2pState.isSyncing) {
+              break;
+            }
+            await Future.delayed(const Duration(milliseconds: 500));
+          }
         }
         print('CloudSync: Downloaded and processed new data from the cloud.');
       }
@@ -443,14 +480,15 @@ class CloudSyncService extends _$CloudSyncService {
       print('CloudSync: Downloaded new data from the cloud.');
 
       final prefs = await SharedPreferences.getInstance();
+      final syncEndTime = DateTime.now();
       await prefs.setInt(
         'last_cloud_sync_time',
-        syncStartTime.millisecondsSinceEpoch,
+        syncEndTime.millisecondsSinceEpoch,
       );
 
       state = state.copyWith(
         isSyncing: false,
-        lastSyncTime: syncStartTime,
+        lastSyncTime: syncEndTime,
         pendingUploads: 0,
       );
       return true;

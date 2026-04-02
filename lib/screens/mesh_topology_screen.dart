@@ -221,7 +221,7 @@ class _MeshTopologyScreenState extends ConsumerState<MeshTopologyScreen>
           case NodeType.me:
             icon = Icons.person;
             color = Colors.blue;
-            role = 'This Device (Disconnected)';
+            role = 'This Device (Local Node)';
             break;
           case NodeType.host:
             icon = Icons.router;

@@ -1,16 +1,8 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:flutter_background_service/flutter_background_service.dart';
-import 'package:path_provider/path_provider.dart';
+
 import '../providers/settings_provider.dart';
-import '../providers/database_provider.dart';
-import '../providers/local_user_provider.dart';
-import '../screens/initializer_screen.dart';
-import '../services/map_cache_service.dart';
-import '../providers/offline_regions_provider.dart';
-import '../crypto/crypto_service.dart';
+import '../utils/clear_data.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -140,58 +132,7 @@ class SettingsScreen extends ConsumerWidget {
                       ),
                       onPressed: () async {
                         Navigator.pop(dialogContext);
-                        final db = ref.read(databaseProvider);
-                        await db.transaction(() async {
-                          await db.delete(db.hazardMarkers).go();
-                          await db.delete(db.newsItems).go();
-                          await db.delete(db.deletedItems).go();
-                          await db.delete(db.seenMessageIds).go();
-                          await db.delete(db.trustedSenders).go();
-                          await db.delete(db.untrustedSenders).go();
-                          await db.delete(db.userProfiles).go();
-                          await db.delete(db.areas).go();
-                          await db.delete(db.paths).go();
-                          await db.delete(db.adminTrustedSenders).go();
-                          await db.delete(db.revokedDelegations).go();
-                        });
-
-                        final dir = await getApplicationDocumentsDirectory();
-                        if (await dir.exists()) {
-                          final entities = dir.listSync();
-                          for (final entity in entities) {
-                            if (entity is File && entity.path.split('/').last.startsWith('img_')) {
-                              try {
-                                await entity.delete();
-                              } catch (_) {}
-                            }
-                          }
-                        }
-
-                        await ref.read(mapCacheServiceProvider).clearCache();
-                        await ref.read(offlineRegionsProvider.notifier).clearRegions();
-
-                        final prefs = await SharedPreferences.getInstance();
-                        await prefs.clear();
-                        try {
-                          FlutterBackgroundService().invoke('reloadSettings');
-                        } catch (_) {}
-
-                        ref.invalidate(localUserControllerProvider);
-                        ref.invalidate(appSettingsProvider);
-                        ref.invalidate(cryptoServiceProvider);
-                        if (!context.mounted) return;
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('All data cleared'),
-                            behavior: SnackBarBehavior.floating,
-                          ),
-                        );
-                        Navigator.of(context).pushAndRemoveUntil(
-                          MaterialPageRoute(
-                            builder: (_) => const InitializerScreen(),
-                          ),
-                          (route) => false,
-                        );
+                        await clearAllAppData(context, ref);
                       },
                       child: const Text('Clear Data'),
                     ),
