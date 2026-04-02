@@ -369,10 +369,31 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                       await db.delete(db.adminTrustedSenders).go();
                       await db.delete(db.revokedDelegations).go();
                     });
+
+                    final dir = await getApplicationDocumentsDirectory();
+                    if (await dir.exists()) {
+                      final entities = dir.listSync();
+                      for (final entity in entities) {
+                        if (entity is File && entity.path.split('/').last.startsWith('img_')) {
+                          try {
+                            await entity.delete();
+                          } catch (_) {}
+                        }
+                      }
+                    }
+
+                    await ref.read(mapCacheServiceProvider).clearCache();
+                    await ref.read(offlineRegionsProvider.notifier).clearRegions();
+
                     final prefs = await SharedPreferences.getInstance();
-                    await prefs.remove('user_name');
-                    await prefs.remove('user_contact');
+                    await prefs.clear();
+                    try {
+                      FlutterBackgroundService().invoke('reloadSettings');
+                    } catch (_) {}
+
                     ref.invalidate(localUserControllerProvider);
+                    ref.invalidate(appSettingsProvider);
+                    ref.invalidate(cryptoServiceProvider);
                     if (!mounted) return;
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(

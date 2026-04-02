@@ -1,10 +1,16 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_background_service/flutter_background_service.dart';
+import 'package:path_provider/path_provider.dart';
 import '../providers/settings_provider.dart';
 import '../providers/database_provider.dart';
 import '../providers/local_user_provider.dart';
 import '../screens/initializer_screen.dart';
+import '../services/map_cache_service.dart';
+import '../providers/offline_regions_provider.dart';
+import '../crypto/crypto_service.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -148,10 +154,31 @@ class SettingsScreen extends ConsumerWidget {
                           await db.delete(db.adminTrustedSenders).go();
                           await db.delete(db.revokedDelegations).go();
                         });
+
+                        final dir = await getApplicationDocumentsDirectory();
+                        if (await dir.exists()) {
+                          final entities = dir.listSync();
+                          for (final entity in entities) {
+                            if (entity is File && entity.path.split('/').last.startsWith('img_')) {
+                              try {
+                                await entity.delete();
+                              } catch (_) {}
+                            }
+                          }
+                        }
+
+                        await ref.read(mapCacheServiceProvider).clearCache();
+                        await ref.read(offlineRegionsProvider.notifier).clearRegions();
+
                         final prefs = await SharedPreferences.getInstance();
-                        await prefs.remove('user_name');
-                        await prefs.remove('user_contact');
+                        await prefs.clear();
+                        try {
+                          FlutterBackgroundService().invoke('reloadSettings');
+                        } catch (_) {}
+
                         ref.invalidate(localUserControllerProvider);
+                        ref.invalidate(appSettingsProvider);
+                        ref.invalidate(cryptoServiceProvider);
                         if (!context.mounted) return;
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
