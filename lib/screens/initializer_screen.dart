@@ -41,9 +41,21 @@ class _InitializerScreenState extends State<InitializerScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.hub, size: 96, color: Theme.of(context).colorScheme.primary),
+              Icon(
+                Icons.hub,
+                size: 96,
+                color: Theme.of(context).colorScheme.primary,
+              ),
               const SizedBox(height: 24),
-              Text('FLOODIO', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, letterSpacing: 4, color: Theme.of(context).colorScheme.primary)),
+              Text(
+                'FLOODIO',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 4,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+              ),
               const SizedBox(height: 32),
               const CircularProgressIndicator(),
             ],

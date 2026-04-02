@@ -27,7 +27,9 @@ class LocalUserController extends _$LocalUserController {
     final contact = prefs.getString('user_contact') ?? '';
 
     await ref.watch(cryptoServiceProvider.future);
-    final pubKey = await ref.read(cryptoServiceProvider.notifier).getPublicKeyString();
+    final pubKey = await ref
+        .read(cryptoServiceProvider.notifier)
+        .getPublicKeyString();
 
     return LocalUser(name: name, contact: contact, publicKey: pubKey);
   }
@@ -37,7 +39,11 @@ class LocalUserController extends _$LocalUserController {
     await prefs.setString('user_name', name);
     await prefs.setString('user_contact', contact);
 
-    final pubKey = state.value?.publicKey ?? await ref.read(cryptoServiceProvider.notifier).getPublicKeyString();
-    state = AsyncData(LocalUser(name: name, contact: contact, publicKey: pubKey));
+    final pubKey =
+        state.value?.publicKey ??
+        await ref.read(cryptoServiceProvider.notifier).getPublicKeyString();
+    state = AsyncData(
+      LocalUser(name: name, contact: contact, publicKey: pubKey),
+    );
   }
 }

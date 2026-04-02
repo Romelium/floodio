@@ -33,7 +33,7 @@ class CommandTab extends ConsumerWidget {
                   style: TextStyle(color: Colors.grey, fontSize: 16),
                 ),
                 const SizedBox(height: 24),
-                
+
                 // Cloud Gateway Section
                 const Row(
                   children: [
@@ -50,11 +50,12 @@ class CommandTab extends ConsumerWidget {
                 ),
                 const SizedBox(height: 12),
                 Consumer(
-                  builder: (context, ref, child) => _buildCloudGatewayCard(context, ref),
+                  builder: (context, ref, child) =>
+                      _buildCloudGatewayCard(context, ref),
                 ),
-                
+
                 const SizedBox(height: 32),
-                
+
                 Row(
                   children: [
                     const Icon(Icons.hub, color: Colors.orange),
@@ -70,30 +71,44 @@ class CommandTab extends ConsumerWidget {
                 ),
                 const SizedBox(height: 12),
                 Consumer(
-                  builder: (context, ref, child) => _buildMeshActionsCard(context, ref),
+                  builder: (context, ref, child) =>
+                      _buildMeshActionsCard(context, ref),
                 ),
 
                 const SizedBox(height: 32),
 
                 Consumer(
                   builder: (context, ref, child) {
-                    final adminTrustedAsync = ref.watch(adminTrustedSendersControllerProvider);
-                    final revokedAsync = ref.watch(revokedDelegationsControllerProvider);
-                    final profilesAsync = ref.watch(userProfilesControllerProvider);
+                    final adminTrustedAsync = ref.watch(
+                      adminTrustedSendersControllerProvider,
+                    );
+                    final revokedAsync = ref.watch(
+                      revokedDelegationsControllerProvider,
+                    );
+                    final profilesAsync = ref.watch(
+                      userProfilesControllerProvider,
+                    );
 
                     final adminTrusted = adminTrustedAsync.value ?? [];
                     final revoked = revokedAsync.value ?? [];
                     final profiles = profilesAsync.value ?? [];
 
-                    final revokedKeys = revoked.map((e) => e.delegateePublicKey).toSet();
-                    final activeVolunteers = adminTrusted.where((a) => !revokedKeys.contains(a.publicKey)).toList();
+                    final revokedKeys = revoked
+                        .map((e) => e.delegateePublicKey)
+                        .toSet();
+                    final activeVolunteers = adminTrusted
+                        .where((a) => !revokedKeys.contains(a.publicKey))
+                        .toList();
 
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
                           children: [
-                            const Icon(Icons.admin_panel_settings, color: Colors.purple),
+                            const Icon(
+                              Icons.admin_panel_settings,
+                              color: Colors.purple,
+                            ),
                             const SizedBox(width: 8),
                             const Text(
                               'Active Volunteers (Tier 2)',
@@ -120,12 +135,18 @@ class CommandTab extends ConsumerWidget {
                             ),
                             child: Row(
                               children: [
-                                Icon(Icons.admin_panel_settings_outlined, color: Colors.purple.shade300, size: 32),
+                                Icon(
+                                  Icons.admin_panel_settings_outlined,
+                                  color: Colors.purple.shade300,
+                                  size: 32,
+                                ),
                                 const SizedBox(width: 16),
                                 Expanded(
                                   child: Text(
                                     'No active volunteers. You can promote trusted users from the feed.',
-                                    style: TextStyle(color: Colors.purple.shade800),
+                                    style: TextStyle(
+                                      color: Colors.purple.shade800,
+                                    ),
                                   ),
                                 ),
                               ],
@@ -142,10 +163,14 @@ class CommandTab extends ConsumerWidget {
                               shrinkWrap: true,
                               physics: const NeverScrollableScrollPhysics(),
                               itemCount: activeVolunteers.length,
-                              separatorBuilder: (context, index) => const Divider(height: 1),
+                              separatorBuilder: (context, index) =>
+                                  const Divider(height: 1),
                               itemBuilder: (context, index) {
                                 final volunteer = activeVolunteers[index];
-                                final profile = getProfile(volunteer.publicKey, profiles);
+                                final profile = getProfile(
+                                  volunteer.publicKey,
+                                  profiles,
+                                );
 
                                 return ListTile(
                                   leading: CircleAvatar(
@@ -157,7 +182,9 @@ class CommandTab extends ConsumerWidget {
                                   ),
                                   title: Text(
                                     profile?.name ?? 'Unknown User',
-                                    style: const TextStyle(fontWeight: FontWeight.w600),
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                    ),
                                   ),
                                   subtitle: Text(
                                     'Key: ${volunteer.publicKey.substring(0, 12)}...',
@@ -168,13 +195,16 @@ class CommandTab extends ConsumerWidget {
                                       showDialog(
                                         context: context,
                                         builder: (dialogContext) => AlertDialog(
-                                          title: const Text('Revoke Volunteer?'),
+                                          title: const Text(
+                                            'Revoke Volunteer?',
+                                          ),
                                           content: Text(
                                             'Are you sure you want to revoke volunteer status for ${profile?.name ?? 'this user'}? Their reports will be downgraded.',
                                           ),
                                           actions: [
                                             TextButton(
-                                              onPressed: () => Navigator.pop(dialogContext),
+                                              onPressed: () =>
+                                                  Navigator.pop(dialogContext),
                                               child: const Text('Cancel'),
                                             ),
                                             FilledButton(
@@ -183,12 +213,24 @@ class CommandTab extends ConsumerWidget {
                                               ),
                                               onPressed: () async {
                                                 Navigator.pop(dialogContext);
-                                                await ref.read(govApiServiceProvider.notifier).revokeAdminTrust(volunteer.publicKey);
+                                                await ref
+                                                    .read(
+                                                      govApiServiceProvider
+                                                          .notifier,
+                                                    )
+                                                    .revokeAdminTrust(
+                                                      volunteer.publicKey,
+                                                    );
                                                 if (context.mounted) {
-                                                  ScaffoldMessenger.of(context).showSnackBar(
+                                                  ScaffoldMessenger.of(
+                                                    context,
+                                                  ).showSnackBar(
                                                     const SnackBar(
-                                                      content: Text('Volunteer status revoked.'),
-                                                      behavior: SnackBarBehavior.floating,
+                                                      content: Text(
+                                                        'Volunteer status revoked.',
+                                                      ),
+                                                      behavior: SnackBarBehavior
+                                                          .floating,
                                                     ),
                                                   );
                                                 }
@@ -199,7 +241,10 @@ class CommandTab extends ConsumerWidget {
                                         ),
                                       );
                                     },
-                                    icon: const Icon(Icons.remove_moderator, size: 16),
+                                    icon: const Icon(
+                                      Icons.remove_moderator,
+                                      size: 16,
+                                    ),
                                     label: const Text('Revoke'),
                                     style: FilledButton.styleFrom(
                                       foregroundColor: Colors.red.shade700,
@@ -212,7 +257,7 @@ class CommandTab extends ConsumerWidget {
                           ),
                       ],
                     );
-                  }
+                  },
                 ),
               ],
             ),
@@ -229,7 +274,8 @@ class CommandTab extends ConsumerWidget {
     String lastSyncText = 'Never';
     if (cloudState.lastSyncTime != null) {
       final dt = cloudState.lastSyncTime!.toLocal();
-      lastSyncText = '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+      lastSyncText =
+          '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
     }
 
     return Card(
@@ -248,7 +294,9 @@ class CommandTab extends ConsumerWidget {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: cloudState.hasInternet ? Colors.green.withValues(alpha: 0.1) : Colors.red.withValues(alpha: 0.1),
+                    color: cloudState.hasInternet
+                        ? Colors.green.withValues(alpha: 0.1)
+                        : Colors.red.withValues(alpha: 0.1),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
@@ -259,11 +307,15 @@ class CommandTab extends ConsumerWidget {
                 ),
                 const SizedBox(width: 12),
                 Text(
-                  cloudState.hasInternet ? 'Internet Connected' : 'No Internet Connection',
+                  cloudState.hasInternet
+                      ? 'Internet Connected'
+                      : 'No Internet Connection',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
-                    color: cloudState.hasInternet ? Colors.green.shade700 : Colors.red.shade700,
+                    color: cloudState.hasInternet
+                        ? Colors.green.shade700
+                        : Colors.red.shade700,
                   ),
                 ),
                 const Spacer(),
@@ -279,7 +331,9 @@ class CommandTab extends ConsumerWidget {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                color: Theme.of(
+                  context,
+                ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Column(
@@ -287,7 +341,12 @@ class CommandTab extends ConsumerWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text('Pending Uploads:', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                      Text(
+                        'Pending Uploads:',
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
                       Text(
                         '${cloudState.pendingUploads} items',
                         style: const TextStyle(fontWeight: FontWeight.bold),
@@ -298,7 +357,12 @@ class CommandTab extends ConsumerWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text('Last Sync:', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                      Text(
+                        'Last Sync:',
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
                       Text(
                         lastSyncText,
                         style: const TextStyle(fontWeight: FontWeight.bold),
@@ -311,21 +375,37 @@ class CommandTab extends ConsumerWidget {
             const SizedBox(height: 16),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
-              title: const Text('Sync Text Only', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-              subtitle: const Text('Skip uploading images to save bandwidth', style: TextStyle(fontSize: 12)),
+              title: const Text(
+                'Sync Text Only',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+              ),
+              subtitle: const Text(
+                'Skip uploading images to save bandwidth',
+                style: TextStyle(fontSize: 12),
+              ),
               value: cloudState.syncTextOnly,
-              onChanged: cloudState.isSyncing ? null : (val) {
-                cloudNotifier.setSyncTextOnly(val);
-              },
+              onChanged: cloudState.isSyncing
+                  ? null
+                  : (val) {
+                      cloudNotifier.setSyncTextOnly(val);
+                    },
             ),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
-              title: const Text('Only Upload Tier 1 & 2', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-              subtitle: const Text('Filter out unverified crowdsourced reports', style: TextStyle(fontSize: 12)),
+              title: const Text(
+                'Only Upload Tier 1 & 2',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+              ),
+              subtitle: const Text(
+                'Filter out unverified crowdsourced reports',
+                style: TextStyle(fontSize: 12),
+              ),
               value: cloudState.onlyTier1And2,
-              onChanged: cloudState.isSyncing ? null : (val) {
-                cloudNotifier.setOnlyTier1And2(val);
-              },
+              onChanged: cloudState.isSyncing
+                  ? null
+                  : (val) {
+                      cloudNotifier.setOnlyTier1And2(val);
+                    },
             ),
             const SizedBox(height: 20),
             SizedBox(
@@ -352,7 +432,9 @@ class CommandTab extends ConsumerWidget {
                           } else {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
-                                content: Text('Cloud sync failed. Check connection.'),
+                                content: Text(
+                                  'Cloud sync failed. Check connection.',
+                                ),
                                 behavior: SnackBarBehavior.floating,
                               ),
                             );
@@ -376,7 +458,9 @@ class CommandTab extends ConsumerWidget {
     final offlineRegionsAsync = ref.watch(offlineRegionsProvider);
     final offlineRegions = offlineRegionsAsync.value ?? [];
     final p2pState = ref.watch(uiP2pServiceProvider);
-    final isConnected = (p2pState.isHosting && p2pState.hostState?.isActive == true) || p2pState.clientState?.isActive == true;
+    final isConnected =
+        (p2pState.isHosting && p2pState.hostState?.isActive == true) ||
+        p2pState.clientState?.isActive == true;
 
     return Card(
       elevation: 0,
@@ -414,7 +498,9 @@ class CommandTab extends ConsumerWidget {
                         );
                       },
                 icon: const Icon(Icons.sync, size: 18),
-                label: Text(p2pState.isSyncing ? 'Syncing...' : 'Force Mesh Sync Now'),
+                label: Text(
+                  p2pState.isSyncing ? 'Syncing...' : 'Force Mesh Sync Now',
+                ),
                 style: FilledButton.styleFrom(
                   backgroundColor: Colors.green.shade600,
                 ),
@@ -429,12 +515,16 @@ class CommandTab extends ConsumerWidget {
               ),
               child: Row(
                 children: [
-                  Icon(Icons.access_time, size: 16, color: Colors.grey.shade700),
+                  Icon(
+                    Icons.access_time,
+                    size: 16,
+                    color: Colors.grey.shade700,
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      p2pState.lastSyncTime != null 
-                          ? 'Last mesh sync: ${formatTimestamp(p2pState.lastSyncTime!.millisecondsSinceEpoch)}' 
+                      p2pState.lastSyncTime != null
+                          ? 'Last mesh sync: ${formatTimestamp(p2pState.lastSyncTime!.millisecondsSinceEpoch)}'
                           : 'Never synced with mesh',
                       style: TextStyle(
                         fontSize: 13,
@@ -487,7 +577,11 @@ class CommandTab extends ConsumerWidget {
     );
   }
 
-  void _showBroadcastMapDialog(BuildContext context, WidgetRef ref, List<OfflineRegion> regions) {
+  void _showBroadcastMapDialog(
+    BuildContext context,
+    WidgetRef ref,
+    List<OfflineRegion> regions,
+  ) {
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -502,14 +596,18 @@ class CommandTab extends ConsumerWidget {
               final region = regions[index];
               return ListTile(
                 leading: const Icon(Icons.map_outlined, color: Colors.orange),
-                title: Text('Region ${index + 1} (Zoom ${region.minZoom}-${region.maxZoom})'),
+                title: Text(
+                  'Region ${index + 1} (Zoom ${region.minZoom}-${region.maxZoom})',
+                ),
                 subtitle: Text(
                   'Bounds: ${region.bounds.north.toStringAsFixed(2)}, ${region.bounds.west.toStringAsFixed(2)} to ${region.bounds.south.toStringAsFixed(2)}, ${region.bounds.east.toStringAsFixed(2)}',
                   style: const TextStyle(fontSize: 12),
                 ),
                 onTap: () {
                   Navigator.pop(dialogContext);
-                  ref.read(uiP2pServiceProvider.notifier).broadcastMapRegion(region);
+                  ref
+                      .read(uiP2pServiceProvider.notifier)
+                      .broadcastMapRegion(region);
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
                       content: Text('Packing and broadcasting map...'),

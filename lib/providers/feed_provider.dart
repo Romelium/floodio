@@ -163,17 +163,19 @@ Stream<List<PathEntity>> filteredPaths(Ref ref) {
   return query.watch();
 }
 
-@Riverpod(dependencies: [
-  FeedFilterController,
-  filteredHazardMarkers,
-  filteredNewsItems,
-  filteredAreas,
-  filteredPaths,
-  FeedLimit
-])
+@Riverpod(
+  dependencies: [
+    FeedFilterController,
+    filteredHazardMarkers,
+    filteredNewsItems,
+    filteredAreas,
+    filteredPaths,
+    FeedLimit,
+  ],
+)
 List<dynamic> combinedFeed(Ref ref) {
   final filter = ref.watch(feedFilterControllerProvider);
-  
+
   final markers = ref.watch(filteredHazardMarkersProvider).value ?? [];
   final news = ref.watch(filteredNewsItemsProvider).value ?? [];
   final areas = ref.watch(filteredAreasProvider).value ?? [];
@@ -195,7 +197,7 @@ List<dynamic> combinedFeed(Ref ref) {
   }
 
   combined.sort((a, b) => (b.timestamp as int).compareTo(a.timestamp as int));
-  
+
   final limit = ref.watch(feedLimitProvider);
   return combined.take(limit).toList();
 }

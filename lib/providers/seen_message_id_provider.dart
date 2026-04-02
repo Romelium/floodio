@@ -17,12 +17,14 @@ class SeenMessageIdsController extends _$SeenMessageIdsController {
 
   Future<void> addSeenMessageId(SeenMessageIdEntity seenMessageId) async {
     final db = ref.read(databaseProvider);
-    await db.into(db.seenMessageIds).insert(
-      SeenMessageIdsCompanion.insert(
-        messageId: seenMessageId.messageId,
-        timestamp: seenMessageId.timestamp,
-      ),
-      mode: InsertMode.insertOrReplace,
-    );
+    await db
+        .into(db.seenMessageIds)
+        .insert(
+          SeenMessageIdsCompanion.insert(
+            messageId: seenMessageId.messageId,
+            timestamp: seenMessageId.timestamp,
+          ),
+          mode: InsertMode.insertOrReplace,
+        );
   }
 }

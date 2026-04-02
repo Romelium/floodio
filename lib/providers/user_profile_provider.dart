@@ -18,23 +18,27 @@ class UserProfilesController extends _$UserProfilesController {
   Future<void> saveProfile(UserProfileEntity profile) async {
     final db = ref.read(databaseProvider);
     await db.transaction(() async {
-      await db.into(db.userProfiles).insert(
-        UserProfilesCompanion.insert(
-          publicKey: profile.publicKey,
-          name: profile.name,
-          contactInfo: profile.contactInfo,
-          timestamp: profile.timestamp,
-          signature: profile.signature,
-        ),
-        mode: InsertMode.insertOrReplace,
-      );
-      await db.into(db.seenMessageIds).insert(
-        SeenMessageIdsCompanion.insert(
-          messageId: '${profile.publicKey}_${profile.timestamp}',
-          timestamp: DateTime.now().millisecondsSinceEpoch,
-        ),
-        mode: InsertMode.insertOrReplace,
-      );
+      await db
+          .into(db.userProfiles)
+          .insert(
+            UserProfilesCompanion.insert(
+              publicKey: profile.publicKey,
+              name: profile.name,
+              contactInfo: profile.contactInfo,
+              timestamp: profile.timestamp,
+              signature: profile.signature,
+            ),
+            mode: InsertMode.insertOrReplace,
+          );
+      await db
+          .into(db.seenMessageIds)
+          .insert(
+            SeenMessageIdsCompanion.insert(
+              messageId: '${profile.publicKey}_${profile.timestamp}',
+              timestamp: DateTime.now().millisecondsSinceEpoch,
+            ),
+            mode: InsertMode.insertOrReplace,
+          );
     });
   }
 }

@@ -88,7 +88,9 @@ class _SearchBarState extends ConsumerState<_SearchBar> {
                 icon: const Icon(Icons.clear),
                 onPressed: () {
                   _controller.clear();
-                  ref.read(feedFilterControllerProvider.notifier).updateSearchQuery('');
+                  ref
+                      .read(feedFilterControllerProvider.notifier)
+                      .updateSearchQuery('');
                   setState(() {});
                 },
               )
@@ -106,7 +108,9 @@ class _SearchBarState extends ConsumerState<_SearchBar> {
         if (_debounce?.isActive ?? false) _debounce!.cancel();
         _debounce = Timer(const Duration(milliseconds: 300), () {
           if (mounted) {
-            ref.read(feedFilterControllerProvider.notifier).updateSearchQuery(val);
+            ref
+                .read(feedFilterControllerProvider.notifier)
+                .updateSearchQuery(val);
           }
         });
       },
@@ -121,7 +125,8 @@ class HomeScreen extends ConsumerStatefulWidget {
   ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObserver {
+class _HomeScreenState extends ConsumerState<HomeScreen>
+    with WidgetsBindingObserver {
   int _tapCount = 0;
   DateTime? _lastTapTime;
   final MapController _mapController = MapController();
@@ -181,121 +186,132 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
     _isRequestingPermissions = true;
 
     try {
-    final alreadyGranted = await checkAppPermissions();
-    if (!alreadyGranted) {
-      if (!mounted) return;
-      await showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => AlertDialog(
-          title: const Row(
-            children: [
-              Icon(Icons.security, color: Colors.blue),
-              SizedBox(width: 8),
-              Text('Permissions Required'),
+      final alreadyGranted = await checkAppPermissions();
+      if (!alreadyGranted) {
+        if (!mounted) return;
+        await showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => AlertDialog(
+            title: const Row(
+              children: [
+                Icon(Icons.security, color: Colors.blue),
+                SizedBox(width: 8),
+                Text('Permissions Required'),
+              ],
+            ),
+            content: const SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ListTile(
+                    leading: Icon(Icons.bluetooth),
+                    title: Text('Bluetooth & Nearby Devices'),
+                    subtitle: Text(
+                      'Used to discover and connect to nearby devices without internet.',
+                    ),
+                  ),
+                  ListTile(
+                    leading: Icon(Icons.location_on),
+                    title: Text('Location'),
+                    subtitle: Text(
+                      'Required by Android to scan for Bluetooth and Wi-Fi Direct devices.',
+                    ),
+                  ),
+                  ListTile(
+                    leading: Icon(Icons.notifications),
+                    title: Text('Notifications'),
+                    subtitle: Text(
+                      'Keeps the background sync service alive so you can receive alerts.',
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              FilledButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Grant Permissions'),
+              ),
             ],
           ),
-          content: const SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                ListTile(
-                  leading: Icon(Icons.bluetooth),
-                  title: Text('Bluetooth & Nearby Devices'),
-                  subtitle: Text('Used to discover and connect to nearby devices without internet.'),
-                ),
-                ListTile(
-                  leading: Icon(Icons.location_on),
-                  title: Text('Location'),
-                  subtitle: Text('Required by Android to scan for Bluetooth and Wi-Fi Direct devices.'),
-                ),
-                ListTile(
-                  leading: Icon(Icons.notifications),
-                  title: Text('Notifications'),
-                  subtitle: Text('Keeps the background sync service alive so you can receive alerts.'),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            FilledButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Grant Permissions'),
-            ),
-          ],
-        ),
-      );
-    }
+        );
+      }
 
-    final granted = await requestAppPermissions();
-    await Future.delayed(const Duration(milliseconds: 500));
+      final granted = await requestAppPermissions();
+      await Future.delayed(const Duration(milliseconds: 500));
 
-    if (!granted && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Permissions are required for offline syncing.'),
-          action: SnackBarAction(
-            label: 'Settings',
-            onPressed: () => openAppSettings(),
-          ),
-          duration: const Duration(seconds: 8),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    } else if (granted) {
-      if (mounted) {
-        final batteryExempt = await Permission.ignoreBatteryOptimizations.isGranted;
-        if (!batteryExempt && mounted) {
-          await showDialog(
-            context: context,
-            builder: (context) => AlertDialog(
-              title: const Text('Background Sync'),
-              content: const Text('To keep syncing while the app is closed, please allow Floodio to run in the background (ignore battery optimizations).'),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Skip'),
-                ),
-                FilledButton(
-                  onPressed: () async {
-                    Navigator.pop(context);
-                    await requestBatteryOptimizationExemption();
-                  },
-                  child: const Text('Allow'),
-                ),
-              ],
+      if (!granted && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text(
+              'Permissions are required for offline syncing.',
             ),
-          );
+            action: SnackBarAction(
+              label: 'Settings',
+              onPressed: () => openAppSettings(),
+            ),
+            duration: const Duration(seconds: 8),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      } else if (granted) {
+        if (mounted) {
+          final batteryExempt =
+              await Permission.ignoreBatteryOptimizations.isGranted;
+          if (!batteryExempt && mounted) {
+            await showDialog(
+              context: context,
+              builder: (context) => AlertDialog(
+                title: const Text('Background Sync'),
+                content: const Text(
+                  'To keep syncing while the app is closed, please allow Floodio to run in the background (ignore battery optimizations).',
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Skip'),
+                  ),
+                  FilledButton(
+                    onPressed: () async {
+                      Navigator.pop(context);
+                      await requestBatteryOptimizationExemption();
+                    },
+                    child: const Text('Allow'),
+                  ),
+                ],
+              ),
+            );
+          }
+        }
+
+        final service = FlutterBackgroundService();
+        if (!(await service.isRunning())) {
+          await service.startService();
+        }
+        if (mounted) {
+          ref.invalidate(locationControllerProvider);
         }
       }
 
-      final service = FlutterBackgroundService();
-      if (!(await service.isRunning())) {
-        await service.startService();
-      }
-      if (mounted) {
-        ref.invalidate(locationControllerProvider);
-      }
-    }
+      await Future.delayed(const Duration(milliseconds: 500));
 
-    await Future.delayed(const Duration(milliseconds: 500));
-
-    final locationEnabled = await checkLocationServices();
-    if (!locationEnabled && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text(
-            'Please enable Location Services (GPS) for Bluetooth discovery.',
+      final locationEnabled = await checkLocationServices();
+      if (!locationEnabled && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text(
+              'Please enable Location Services (GPS) for Bluetooth discovery.',
+            ),
+            action: SnackBarAction(
+              label: 'Enable',
+              onPressed: () => Geolocator.openLocationSettings(),
+            ),
+            duration: const Duration(seconds: 8),
+            behavior: SnackBarBehavior.floating,
           ),
-          action: SnackBarAction(
-            label: 'Enable',
-            onPressed: () => Geolocator.openLocationSettings(),
-          ),
-          duration: const Duration(seconds: 8),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    }
+        );
+      }
     } finally {
       _isRequestingPermissions = false;
     }
@@ -421,7 +437,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                   await ref
                       .read(appSettingsProvider.notifier)
                       .setOfficialMode(!current);
-                  
+
                   if (current && ref.read(navigationIndexProvider) == 4) {
                     ref.read(navigationIndexProvider.notifier).setIndex(3);
                   }
@@ -449,7 +465,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Block Sender?'),
-        content: const Text('Are you sure you want to block this sender? All their reports will be hidden and deleted from your device only.'),
+        content: const Text(
+          'Are you sure you want to block this sender? All their reports will be hidden and deleted from your device only.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
@@ -459,10 +477,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
             style: FilledButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () {
               Navigator.pop(dialogContext);
-              ref.read(untrustedSendersControllerProvider.notifier).addUntrustedSender(senderId);
+              ref
+                  .read(untrustedSendersControllerProvider.notifier)
+                  .addUntrustedSender(senderId);
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
-                  content: Text('Sender blocked. Their reports have been removed.'),
+                  content: Text(
+                    'Sender blocked. Their reports have been removed.',
+                  ),
                   behavior: SnackBarBehavior.floating,
                 ),
               );
@@ -496,9 +518,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                   .read(hazardMarkersControllerProvider.notifier)
                   .deleteMarker(id, timestamp: timestamp);
               final payload = pb.SyncPayload();
-              payload.deletedItems.add(pb.DeletedItem(id: id, timestamp: Int64(timestamp)));
+              payload.deletedItems.add(
+                pb.DeletedItem(id: id, timestamp: Int64(timestamp)),
+              );
               final encoded = base64Encode(payload.writeToBuffer());
-              ref.read(uiP2pServiceProvider.notifier).broadcastText(jsonEncode({'type': 'payload', 'data': encoded}));
+              ref
+                  .read(uiP2pServiceProvider.notifier)
+                  .broadcastText(
+                    jsonEncode({'type': 'payload', 'data': encoded}),
+                  );
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
                   content: Text('Hazard marked as resolved.'),
@@ -531,11 +559,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
             onPressed: () {
               Navigator.pop(dialogContext);
               final timestamp = DateTime.now().millisecondsSinceEpoch;
-              ref.read(areasControllerProvider.notifier).deleteArea(id, timestamp: timestamp);
+              ref
+                  .read(areasControllerProvider.notifier)
+                  .deleteArea(id, timestamp: timestamp);
               final payload = pb.SyncPayload();
-              payload.deletedItems.add(pb.DeletedItem(id: id, timestamp: Int64(timestamp)));
+              payload.deletedItems.add(
+                pb.DeletedItem(id: id, timestamp: Int64(timestamp)),
+              );
               final encoded = base64Encode(payload.writeToBuffer());
-              ref.read(uiP2pServiceProvider.notifier).broadcastText(jsonEncode({'type': 'payload', 'data': encoded}));
+              ref
+                  .read(uiP2pServiceProvider.notifier)
+                  .broadcastText(
+                    jsonEncode({'type': 'payload', 'data': encoded}),
+                  );
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
                   content: Text('Area marked as resolved.'),
@@ -568,11 +604,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
             onPressed: () {
               Navigator.pop(dialogContext);
               final timestamp = DateTime.now().millisecondsSinceEpoch;
-              ref.read(pathsControllerProvider.notifier).deletePath(id, timestamp: timestamp);
+              ref
+                  .read(pathsControllerProvider.notifier)
+                  .deletePath(id, timestamp: timestamp);
               final payload = pb.SyncPayload();
-              payload.deletedItems.add(pb.DeletedItem(id: id, timestamp: Int64(timestamp)));
+              payload.deletedItems.add(
+                pb.DeletedItem(id: id, timestamp: Int64(timestamp)),
+              );
               final encoded = base64Encode(payload.writeToBuffer());
-              ref.read(uiP2pServiceProvider.notifier).broadcastText(jsonEncode({'type': 'payload', 'data': encoded}));
+              ref
+                  .read(uiP2pServiceProvider.notifier)
+                  .broadcastText(
+                    jsonEncode({'type': 'payload', 'data': encoded}),
+                  );
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
                   content: Text('Path marked as resolved.'),
@@ -591,13 +635,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
     final timestamp = DateTime.now().millisecondsSinceEpoch;
 
     if (type == 'marker') {
-      await ref.read(hazardMarkersControllerProvider.notifier).deleteMarker(id, timestamp: timestamp);
+      await ref
+          .read(hazardMarkersControllerProvider.notifier)
+          .deleteMarker(id, timestamp: timestamp);
     } else if (type == 'news') {
-      await ref.read(newsItemsControllerProvider.notifier).deleteNewsItem(id, timestamp: timestamp);
+      await ref
+          .read(newsItemsControllerProvider.notifier)
+          .deleteNewsItem(id, timestamp: timestamp);
     } else if (type == 'area') {
-      await ref.read(areasControllerProvider.notifier).deleteArea(id, timestamp: timestamp);
+      await ref
+          .read(areasControllerProvider.notifier)
+          .deleteArea(id, timestamp: timestamp);
     } else if (type == 'path') {
-      await ref.read(pathsControllerProvider.notifier).deletePath(id, timestamp: timestamp);
+      await ref
+          .read(pathsControllerProvider.notifier)
+          .deletePath(id, timestamp: timestamp);
     }
 
     final payload = pb.SyncPayload();
@@ -664,17 +716,25 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
             onPressed: () {
               Navigator.pop(dialogContext);
               final timestamp = DateTime.now().millisecondsSinceEpoch;
-              ref.read(newsItemsControllerProvider.notifier).deleteNewsItem(id, timestamp: timestamp);
+              ref
+                  .read(newsItemsControllerProvider.notifier)
+                  .deleteNewsItem(id, timestamp: timestamp);
               final payload = pb.SyncPayload();
-              payload.deletedItems.add(pb.DeletedItem(id: id, timestamp: Int64(timestamp)));
+              payload.deletedItems.add(
+                pb.DeletedItem(id: id, timestamp: Int64(timestamp)),
+              );
               final encoded = base64Encode(payload.writeToBuffer());
-              ref.read(uiP2pServiceProvider.notifier).broadcastText(jsonEncode({'type': 'payload', 'data': encoded}));
-              ScaffoldMessenger.of(
-                context,
-              ).showSnackBar(const SnackBar(
-                content: Text('News deleted globally.'),
-                behavior: SnackBarBehavior.floating,
-              ));
+              ref
+                  .read(uiP2pServiceProvider.notifier)
+                  .broadcastText(
+                    jsonEncode({'type': 'payload', 'data': encoded}),
+                  );
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('News deleted globally.'),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
             },
             child: const Text('Delete'),
           ),
@@ -799,7 +859,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
     String signature;
 
     final isCriticalStr = area.isCritical ? "1" : "0";
-    final coordsStr = area.coordinates.map((c) => '${c['lat']},${c['lng']}').join('|');
+    final coordsStr = area.coordinates
+        .map((c) => '${c['lat']},${c['lng']}')
+        .join('|');
     final payloadToSign = utf8.encode(
       '${area.id}$coordsStr${area.type}${area.description}$timestamp${area.expiresAt ?? ""}$isCriticalStr',
     );
@@ -901,7 +963,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
     String signature;
 
     final isCriticalStr = path.isCritical ? "1" : "0";
-    final coordsStr = path.coordinates.map((c) => '${c['lat']},${c['lng']}').join('|');
+    final coordsStr = path.coordinates
+        .map((c) => '${c['lat']},${c['lng']}')
+        .join('|');
     final payloadToSign = utf8.encode(
       '${path.id}$coordsStr${path.type}${path.description}$timestamp${path.expiresAt ?? ""}$isCriticalStr',
     );
@@ -1162,7 +1226,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                   subtitle: const Text('Draw a polygon on the map'),
                   onTap: () async {
                     Navigator.pop(context);
-                    ref.read(drawingControllerProvider.notifier).startDrawingArea();
+                    ref
+                        .read(drawingControllerProvider.notifier)
+                        .startDrawingArea();
                     ref.read(navigationIndexProvider.notifier).setIndex(0);
                     final pos = await ref
                         .read(locationControllerProvider.notifier)
@@ -1196,7 +1262,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                   subtitle: const Text('Draw a line on the map'),
                   onTap: () async {
                     Navigator.pop(context);
-                    ref.read(drawingControllerProvider.notifier).startDrawingPath();
+                    ref
+                        .read(drawingControllerProvider.notifier)
+                        .startDrawingPath();
                     ref.read(navigationIndexProvider.notifier).setIndex(0);
                     final pos = await ref
                         .read(locationControllerProvider.notifier)
@@ -1413,9 +1481,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                 ),
                 const SizedBox(height: 16),
                 CheckboxListTile(
-                  title: const Text('Mark as Critical Emergency', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                  title: const Text(
+                    'Mark as Critical Emergency',
+                    style: TextStyle(
+                      color: Colors.red,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                   value: isCritical,
-                  onChanged: (val) => setInnerState(() => isCritical = val ?? false),
+                  onChanged: (val) =>
+                      setInnerState(() => isCritical = val ?? false),
                   controlAffinity: ListTileControlAffinity.leading,
                   activeColor: Colors.red,
                 ),
@@ -1432,7 +1507,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                   ),
                   Center(
                     child: TextButton.icon(
-                      onPressed: () => setInnerState(() => selectedImage = null),
+                      onPressed: () =>
+                          setInnerState(() => selectedImage = null),
                       icon: const Icon(Icons.delete, color: Colors.red),
                       label: const Text(
                         'Remove Image',
@@ -1593,7 +1669,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                   ),
                 );
                 final encoded = base64Encode(payload.writeToBuffer());
-                ref.read(uiP2pServiceProvider.notifier).broadcastText(jsonEncode({'type': 'payload', 'data': encoded}));
+                ref
+                    .read(uiP2pServiceProvider.notifier)
+                    .broadcastText(
+                      jsonEncode({'type': 'payload', 'data': encoded}),
+                    );
               },
               icon: const Icon(Icons.send, size: 18),
               label: const Text('Report'),
@@ -1604,7 +1684,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
     );
   }
 
-  void _showAddAreaDialog({AreaEntity? existingArea, required List<LatLng> points}) {
+  void _showAddAreaDialog({
+    AreaEntity? existingArea,
+    required List<LatLng> points,
+  }) {
     final validTypes = [
       'Flooded Area',
       'Evacuation Zone',
@@ -1709,9 +1792,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
               ),
               const SizedBox(height: 16),
               CheckboxListTile(
-                title: const Text('Mark as Critical Emergency', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                title: const Text(
+                  'Mark as Critical Emergency',
+                  style: TextStyle(
+                    color: Colors.red,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
                 value: isCritical,
-                onChanged: (val) => setInnerState(() => isCritical = val ?? false),
+                onChanged: (val) =>
+                    setInnerState(() => isCritical = val ?? false),
                 controlAffinity: ListTileControlAffinity.leading,
                 activeColor: Colors.red,
               ),
@@ -1744,7 +1834,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                     await cryptoService.getPublicKeyString();
 
                 final isCriticalStr = isCritical ? "1" : "0";
-                final coordsStr = points.map((p) => '${p.latitude},${p.longitude}').join('|');
+                final coordsStr = points
+                    .map((p) => '${p.latitude},${p.longitude}')
+                    .join('|');
                 final payloadToSign = utf8.encode(
                   '$id$coordsStr$type$description$timestamp${expiresAt ?? ""}$isCriticalStr',
                 );
@@ -1824,12 +1916,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                 );
                 for (final coord in newArea.coordinates) {
                   areaMarker.coordinates.add(
-                    pb.Coordinate(latitude: coord['lat']!, longitude: coord['lng']!),
+                    pb.Coordinate(
+                      latitude: coord['lat']!,
+                      longitude: coord['lng']!,
+                    ),
                   );
                 }
                 payload.areas.add(areaMarker);
                 final encoded = base64Encode(payload.writeToBuffer());
-                ref.read(uiP2pServiceProvider.notifier).broadcastText(jsonEncode({'type': 'payload', 'data': encoded}));
+                ref
+                    .read(uiP2pServiceProvider.notifier)
+                    .broadcastText(
+                      jsonEncode({'type': 'payload', 'data': encoded}),
+                    );
 
                 if (!mounted) return;
                 ref.read(drawingControllerProvider.notifier).cancel();
@@ -1843,7 +1942,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
     );
   }
 
-  void _showAddPathDialog({PathEntity? existingPath, required List<LatLng> points}) {
+  void _showAddPathDialog({
+    PathEntity? existingPath,
+    required List<LatLng> points,
+  }) {
     final validTypes = [
       'Evacuation Route',
       'Safe Path',
@@ -1940,9 +2042,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
               ),
               const SizedBox(height: 16),
               CheckboxListTile(
-                title: const Text('Mark as Critical Emergency', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                title: const Text(
+                  'Mark as Critical Emergency',
+                  style: TextStyle(
+                    color: Colors.red,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
                 value: isCritical,
-                onChanged: (val) => setInnerState(() => isCritical = val ?? false),
+                onChanged: (val) =>
+                    setInnerState(() => isCritical = val ?? false),
                 controlAffinity: ListTileControlAffinity.leading,
                 activeColor: Colors.red,
               ),
@@ -1975,7 +2084,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                     await cryptoService.getPublicKeyString();
 
                 final isCriticalStr = isCritical ? "1" : "0";
-                final coordsStr = points.map((p) => '${p.latitude},${p.longitude}').join('|');
+                final coordsStr = points
+                    .map((p) => '${p.latitude},${p.longitude}')
+                    .join('|');
                 final payloadToSign = utf8.encode(
                   '$id$coordsStr$type$description$timestamp${expiresAt ?? ""}$isCriticalStr',
                 );
@@ -2055,12 +2166,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                 );
                 for (final coord in newPath.coordinates) {
                   pathMarker.coordinates.add(
-                    pb.Coordinate(latitude: coord['lat']!, longitude: coord['lng']!),
+                    pb.Coordinate(
+                      latitude: coord['lat']!,
+                      longitude: coord['lng']!,
+                    ),
                   );
                 }
                 payload.paths.add(pathMarker);
                 final encoded = base64Encode(payload.writeToBuffer());
-                ref.read(uiP2pServiceProvider.notifier).broadcastText(jsonEncode({'type': 'payload', 'data': encoded}));
+                ref
+                    .read(uiP2pServiceProvider.notifier)
+                    .broadcastText(
+                      jsonEncode({'type': 'payload', 'data': encoded}),
+                    );
 
                 if (!mounted) return;
                 ref.read(drawingControllerProvider.notifier).cancel();
@@ -2127,12 +2245,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(
-          content: Text('Failed to share APK: $e'),
-          behavior: SnackBarBehavior.floating,
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to share APK: $e'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
       }
     }
   }
@@ -2156,7 +2274,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
       },
       {
         'title': 'Boil Water Advisory',
-        'content': 'Tap water is unsafe to drink. Boil water for at least 1 minute before consumption.',
+        'content':
+            'Tap water is unsafe to drink. Boil water for at least 1 minute before consumption.',
         'critical': false,
       },
       {
@@ -2192,25 +2311,34 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
               children: [
                 const Text(
                   'Quick Templates:',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey),
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: Row(
-                    children: templates.map((t) => Padding(
-                      padding: const EdgeInsets.only(right: 8.0),
-                      child: ActionChip(
-                        label: Text(t['title'] as String),
-                        onPressed: () {
-                          setInnerState(() {
-                            titleController.text = t['title'] as String;
-                            contentController.text = t['content'] as String;
-                            isCritical = t['critical'] as bool;
-                          });
-                        },
-                      ),
-                    )).toList(),
+                    children: templates
+                        .map(
+                          (t) => Padding(
+                            padding: const EdgeInsets.only(right: 8.0),
+                            child: ActionChip(
+                              label: Text(t['title'] as String),
+                              onPressed: () {
+                                setInnerState(() {
+                                  titleController.text = t['title'] as String;
+                                  contentController.text =
+                                      t['content'] as String;
+                                  isCritical = t['critical'] as bool;
+                                });
+                              },
+                            ),
+                          ),
+                        )
+                        .toList(),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -2256,9 +2384,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                 ),
                 const SizedBox(height: 16),
                 CheckboxListTile(
-                  title: const Text('Mark as Critical Emergency', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                  title: const Text(
+                    'Mark as Critical Emergency',
+                    style: TextStyle(
+                      color: Colors.red,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                   value: isCritical,
-                  onChanged: (val) => setInnerState(() => isCritical = val ?? false),
+                  onChanged: (val) =>
+                      setInnerState(() => isCritical = val ?? false),
                   controlAffinity: ListTileControlAffinity.leading,
                   activeColor: Colors.red,
                 ),
@@ -2426,7 +2561,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                   ),
                 );
                 final encoded = base64Encode(payload.writeToBuffer());
-                ref.read(uiP2pServiceProvider.notifier).broadcastText(jsonEncode({'type': 'payload', 'data': encoded}));
+                ref
+                    .read(uiP2pServiceProvider.notifier)
+                    .broadcastText(
+                      jsonEncode({'type': 'payload', 'data': encoded}),
+                    );
               },
               icon: const Icon(Icons.broadcast_on_personal, size: 18),
               label: const Text('Broadcast'),
@@ -2483,13 +2622,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
           }
         });
 
-        ref.listen<AsyncValue<Position?>>(locationControllerProvider, (prev, next) {
+        ref.listen<AsyncValue<Position?>>(locationControllerProvider, (
+          prev,
+          next,
+        ) {
           if (next.value != null) {
             if (!_hasCenteredOnLocation || _isTrackingLocation) {
-              final zoom = _hasCenteredOnLocation ? _mapController.camera.zoom : 15.0;
+              final zoom = _hasCenteredOnLocation
+                  ? _mapController.camera.zoom
+                  : 15.0;
               _hasCenteredOnLocation = true;
               try {
-                _mapController.move(LatLng(next.value!.latitude, next.value!.longitude), zoom);
+                _mapController.move(
+                  LatLng(next.value!.latitude, next.value!.longitude),
+                  zoom,
+                );
               } catch (e) {
                 debugPrint('Map not ready yet: $e');
               }
@@ -2519,9 +2666,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                 onTap: (tapPosition, point) {
                   final drawingState = ref.read(drawingControllerProvider);
                   if (drawingState.mode == DrawingMode.area) {
-                    ref.read(drawingControllerProvider.notifier).addPoint(point);
+                    ref
+                        .read(drawingControllerProvider.notifier)
+                        .addPoint(point);
                   } else if (drawingState.mode == DrawingMode.path) {
-                    ref.read(drawingControllerProvider.notifier).addPoint(point);
+                    ref
+                        .read(drawingControllerProvider.notifier)
+                        .addPoint(point);
                   } else {
                     _showAddHazardDialog(point);
                   }
@@ -2555,11 +2706,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                       final points = a.coordinates
                           .map((c) => LatLng(c['lat']!, c['lng']!))
                           .toList();
-                      final color = a.isCritical ? Colors.red : (
-                          a.type.toLowerCase().contains('safe') ||
-                              a.type.toLowerCase().contains('evacuation')
-                          ? Colors.green
-                          : Colors.orange);
+                      final color = a.isCritical
+                          ? Colors.red
+                          : (a.type.toLowerCase().contains('safe') ||
+                                    a.type.toLowerCase().contains('evacuation')
+                                ? Colors.green
+                                : Colors.orange);
                       return Polygon(
                         points: points,
                         color: color.withValues(alpha: 0.3),
@@ -2571,10 +2723,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                           fontWeight: FontWeight.bold,
                           backgroundColor: Colors.white.withValues(alpha: 0.8),
                         ),
-                        labelPlacementCalculator: const PolygonLabelPlacementCalculator.polylabel(),
+                        labelPlacementCalculator:
+                            const PolygonLabelPlacementCalculator.polylabel(),
                       );
                     }),
-                    if (drawingState.mode == DrawingMode.area && drawingState.points.length >= 3)
+                    if (drawingState.mode == DrawingMode.area &&
+                        drawingState.points.length >= 3)
                       Polygon(
                         points: drawingState.points,
                         color: Colors.blue.withValues(alpha: 0.3),
@@ -2589,11 +2743,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                       final points = p.coordinates
                           .map((c) => LatLng(c['lat']!, c['lng']!))
                           .toList();
-                      final color = p.isCritical ? Colors.red : (
-                          p.type.toLowerCase().contains('safe') ||
-                              p.type.toLowerCase().contains('evacuation')
-                          ? Colors.green
-                          : Colors.orange);
+                      final color = p.isCritical
+                          ? Colors.red
+                          : (p.type.toLowerCase().contains('safe') ||
+                                    p.type.toLowerCase().contains('evacuation')
+                                ? Colors.green
+                                : Colors.orange);
                       return Polyline(
                         points: points,
                         color: color,
@@ -2603,26 +2758,41 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                             : const StrokePattern.solid(),
                       );
                     }),
-                    if (drawingState.mode != DrawingMode.none && drawingState.points.isNotEmpty)
+                    if (drawingState.mode != DrawingMode.none &&
+                        drawingState.points.isNotEmpty)
                       Polyline(
                         points: drawingState.mode == DrawingMode.area
-                            ? (drawingState.points.length > 1 ? [...drawingState.points, drawingState.points.first] : drawingState.points)
+                            ? (drawingState.points.length > 1
+                                  ? [
+                                      ...drawingState.points,
+                                      drawingState.points.first,
+                                    ]
+                                  : drawingState.points)
                             : drawingState.points,
-                        color: drawingState.mode == DrawingMode.area ? Colors.blue : Colors.teal,
+                        color: drawingState.mode == DrawingMode.area
+                            ? Colors.blue
+                            : Colors.teal,
                         strokeWidth: 4.0,
                         pattern: StrokePattern.dashed(segments: [10.0, 10.0]),
                       ),
                   ],
                 ),
-                if (drawingState.mode != DrawingMode.none && drawingState.points.isNotEmpty)
+                if (drawingState.mode != DrawingMode.none &&
+                    drawingState.points.isNotEmpty)
                   CircleLayer(
-                    circles: drawingState.points.map((p) => CircleMarker(
-                      point: p,
-                      radius: 6,
-                      color: Colors.white,
-                      borderColor: drawingState.mode == DrawingMode.area ? Colors.blue : Colors.teal,
-                      borderStrokeWidth: 2,
-                    )).toList(),
+                    circles: drawingState.points
+                        .map(
+                          (p) => CircleMarker(
+                            point: p,
+                            radius: 6,
+                            color: Colors.white,
+                            borderColor: drawingState.mode == DrawingMode.area
+                                ? Colors.blue
+                                : Colors.teal,
+                            borderStrokeWidth: 2,
+                          ),
+                        )
+                        .toList(),
                   ),
                 CircleLayer(
                   circles: markers
@@ -2646,14 +2816,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                       final points = p.coordinates
                           .map((c) => LatLng(c['lat']!, c['lng']!))
                           .toList();
-                      final color = p.isCritical ? Colors.red : (
-                          p.type.toLowerCase().contains('safe') ||
-                              p.type.toLowerCase().contains('evacuation')
-                          ? Colors.green
-                          : Colors.orange);
-                      
+                      final color = p.isCritical
+                          ? Colors.red
+                          : (p.type.toLowerCase().contains('safe') ||
+                                    p.type.toLowerCase().contains('evacuation')
+                                ? Colors.green
+                                : Colors.orange);
+
                       final midPoint = points[points.length ~/ 2];
-                      
+
                       return Marker(
                         point: midPoint,
                         width: 120,
@@ -2661,7 +2832,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                         alignment: Alignment.center,
                         child: IgnorePointer(
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
                             decoration: BoxDecoration(
                               color: Colors.white.withValues(alpha: 0.8),
                               borderRadius: BorderRadius.circular(4),
@@ -2669,7 +2843,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                             ),
                             child: Text(
                               p.type,
-                              style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 12),
+                              style: TextStyle(
+                                color: color,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                              ),
                               textAlign: TextAlign.center,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -2687,186 +2865,205 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                         child: GestureDetector(
                           behavior: HitTestBehavior.opaque,
                           onTap: () {
-                          final canEndorse =
-                              isAdmin && (m.trustTier == 3 || m.trustTier == 4);
-    
-                          showDialog(
-                            context: context,
-                            builder: (dialogContext) => AlertDialog(
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              title: Row(
-                                children: [
-                                  Icon(getHazardIcon(m.type), color: color),
-                                  const SizedBox(width: 8),
-                                  Text(m.type),
-                                ],
-                              ),
-                              content: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  buildTrustBadge(m.trustTier),
-                                  const SizedBox(height: 16),
-                                  Text(
-                                    m.description,
-                                    style: const TextStyle(fontSize: 16),
-                                  ),
-                                  if (m.imageId != null && m.imageId!.isNotEmpty)
-                                    LocalImageDisplay(imageId: m.imageId!),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    'Reported: ${formatTimestamp(m.timestamp)}',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.grey.shade600,
-                                    ),
-                                  ),
-                                  Builder(
-                                    builder: (context) {
-                                      final profile = getProfile(
-                                        m.senderId,
-                                        profiles,
-                                      );
-                                      if (profile != null) {
-                                        return Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            const Divider(),
-                                            Text('Reported by: ${profile.name}'),
-                                            if (profile.contactInfo.isNotEmpty)
-                                              Text(
-                                                'Contact: ${profile.contactInfo}',
-                                              ),
-                                          ],
-                                        );
-                                      } else {
-                                        return const Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Divider(),
-                                            Text('Reported by: Unknown User'),
-                                          ],
-                                        );
-                                      }
-                                    },
-                                  ),
-                                ],
-                              ),
-                              actions: [
-                                if (canEndorse)
-                                  TextButton.icon(
-                                    onPressed: () {
-                                      Navigator.pop(dialogContext);
-                                      _endorseHazard(m);
-                                    },
-                                    icon: const Icon(Icons.verified, size: 18),
-                                    label: const Text('Verify & Endorse'),
-                                    style: TextButton.styleFrom(
-                                      foregroundColor: Colors.purple,
-                                    ),
-                                  ),
-                                if (canEndorse)
-                                  TextButton.icon(
-                                    onPressed: () {
-                                      Navigator.pop(dialogContext);
-                                      _confirmDebunkReport(m.id, 'marker');
-                                    },
-                                    icon: const Icon(Icons.gavel, size: 18),
-                                    label: const Text('Debunk'),
-                                    style: TextButton.styleFrom(
-                                      foregroundColor: Colors.red,
-                                    ),
-                                  ),
-                                TextButton.icon(
-                                  onPressed: () {
-                                    Navigator.pop(dialogContext);
-                                    _resolveMarker(m.id);
-                                  },
-                                  icon: const Icon(
-                                    Icons.check_circle_outline,
-                                    size: 18,
-                                  ),
-                                  label: const Text('Resolve'),
-                                  style: TextButton.styleFrom(
-                                    foregroundColor: Colors.green,
-                                  ),
+                            final canEndorse =
+                                isAdmin &&
+                                (m.trustTier == 3 || m.trustTier == 4);
+
+                            showDialog(
+                              context: context,
+                              builder: (dialogContext) => AlertDialog(
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
                                 ),
-                                if (m.trustTier == 4 || m.trustTier == 3)
-                                  TextButton.icon(
-                                    onPressed: () {
-                                      Navigator.pop(dialogContext);
-                                      _blockSender(m.senderId);
-                                    },
-                                    icon: const Icon(Icons.block, size: 18),
-                                    label: const Text('Block'),
-                                    style: TextButton.styleFrom(
-                                      foregroundColor: Colors.red,
+                                title: Row(
+                                  children: [
+                                    Icon(getHazardIcon(m.type), color: color),
+                                    const SizedBox(width: 8),
+                                    Text(m.type),
+                                  ],
+                                ),
+                                content: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    buildTrustBadge(m.trustTier),
+                                    const SizedBox(height: 16),
+                                    Text(
+                                      m.description,
+                                      style: const TextStyle(fontSize: 16),
                                     ),
-                                  ),
-                                if (m.trustTier == 4 ||
-                                    (settings.isOfficialMode && m.trustTier == 3))
+                                    if (m.imageId != null &&
+                                        m.imageId!.isNotEmpty)
+                                      LocalImageDisplay(imageId: m.imageId!),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      'Reported: ${formatTimestamp(m.timestamp)}',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey.shade600,
+                                      ),
+                                    ),
+                                    Builder(
+                                      builder: (context) {
+                                        final profile = getProfile(
+                                          m.senderId,
+                                          profiles,
+                                        );
+                                        if (profile != null) {
+                                          return Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              const Divider(),
+                                              Text(
+                                                'Reported by: ${profile.name}',
+                                              ),
+                                              if (profile
+                                                  .contactInfo
+                                                  .isNotEmpty)
+                                                Text(
+                                                  'Contact: ${profile.contactInfo}',
+                                                ),
+                                            ],
+                                          );
+                                        } else {
+                                          return const Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Divider(),
+                                              Text('Reported by: Unknown User'),
+                                            ],
+                                          );
+                                        }
+                                      },
+                                    ),
+                                  ],
+                                ),
+                                actions: [
+                                  if (canEndorse)
+                                    TextButton.icon(
+                                      onPressed: () {
+                                        Navigator.pop(dialogContext);
+                                        _endorseHazard(m);
+                                      },
+                                      icon: const Icon(
+                                        Icons.verified,
+                                        size: 18,
+                                      ),
+                                      label: const Text('Verify & Endorse'),
+                                      style: TextButton.styleFrom(
+                                        foregroundColor: Colors.purple,
+                                      ),
+                                    ),
+                                  if (canEndorse)
+                                    TextButton.icon(
+                                      onPressed: () {
+                                        Navigator.pop(dialogContext);
+                                        _confirmDebunkReport(m.id, 'marker');
+                                      },
+                                      icon: const Icon(Icons.gavel, size: 18),
+                                      label: const Text('Debunk'),
+                                      style: TextButton.styleFrom(
+                                        foregroundColor: Colors.red,
+                                      ),
+                                    ),
                                   TextButton.icon(
                                     onPressed: () {
                                       Navigator.pop(dialogContext);
-                                      if (settings.isOfficialMode) {
-                                        _makeOfficialVolunteer(m.senderId);
-                                      } else {
-                                        _markAsTrusted(m.senderId);
-                                      }
+                                      _resolveMarker(m.id);
                                     },
-                                    icon: Icon(
-                                      settings.isOfficialMode
-                                          ? Icons.admin_panel_settings
-                                          : Icons.verified_user,
+                                    icon: const Icon(
+                                      Icons.check_circle_outline,
                                       size: 18,
                                     ),
-                                    label: Text(
-                                      settings.isOfficialMode
-                                          ? 'Make Volunteer'
-                                          : 'Trust',
-                                    ),
+                                    label: const Text('Resolve'),
                                     style: TextButton.styleFrom(
-                                      foregroundColor: settings.isOfficialMode
-                                          ? Colors.purple
-                                          : Colors.green,
+                                      foregroundColor: Colors.green,
                                     ),
                                   ),
-                                TextButton(
-                                  onPressed: () => Navigator.pop(dialogContext),
-                                  child: const Text('Close'),
+                                  if (m.trustTier == 4 || m.trustTier == 3)
+                                    TextButton.icon(
+                                      onPressed: () {
+                                        Navigator.pop(dialogContext);
+                                        _blockSender(m.senderId);
+                                      },
+                                      icon: const Icon(Icons.block, size: 18),
+                                      label: const Text('Block'),
+                                      style: TextButton.styleFrom(
+                                        foregroundColor: Colors.red,
+                                      ),
+                                    ),
+                                  if (m.trustTier == 4 ||
+                                      (settings.isOfficialMode &&
+                                          m.trustTier == 3))
+                                    TextButton.icon(
+                                      onPressed: () {
+                                        Navigator.pop(dialogContext);
+                                        if (settings.isOfficialMode) {
+                                          _makeOfficialVolunteer(m.senderId);
+                                        } else {
+                                          _markAsTrusted(m.senderId);
+                                        }
+                                      },
+                                      icon: Icon(
+                                        settings.isOfficialMode
+                                            ? Icons.admin_panel_settings
+                                            : Icons.verified_user,
+                                        size: 18,
+                                      ),
+                                      label: Text(
+                                        settings.isOfficialMode
+                                            ? 'Make Volunteer'
+                                            : 'Trust',
+                                      ),
+                                      style: TextButton.styleFrom(
+                                        foregroundColor: settings.isOfficialMode
+                                            ? Colors.purple
+                                            : Colors.green,
+                                      ),
+                                    ),
+                                  TextButton(
+                                    onPressed: () =>
+                                        Navigator.pop(dialogContext),
+                                    child: const Text('Close'),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                          child: Stack(
+                            alignment: Alignment.center,
+                            clipBehavior: Clip.none,
+                            children: [
+                              Icon(
+                                Icons.location_on,
+                                color: color,
+                                size: m.isCritical ? 50 : 40,
+                              ),
+                              Positioned(
+                                top: m.isCritical ? 8 : 6,
+                                child: Icon(
+                                  getHazardIcon(m.type),
+                                  color: Colors.white,
+                                  size: m.isCritical ? 20 : 16,
                                 ),
-                              ],
-                            ),
-                          );
-                        },
-                        child: Stack(
-                          alignment: Alignment.center,
-                          clipBehavior: Clip.none,
-                          children: [
-                            Icon(Icons.location_on, color: color, size: m.isCritical ? 50 : 40),
-                            Positioned(
-                              top: m.isCritical ? 8 : 6,
-                              child: Icon(
-                                getHazardIcon(m.type),
-                                color: Colors.white,
-                                size: m.isCritical ? 20 : 16,
                               ),
-                            ),
-                            if (m.isCritical)
-                              const Positioned(
-                                right: -4,
-                                top: -4,
-                                child: Icon(Icons.warning, color: Colors.red, size: 20),
-                              ),
-                          ],
+                              if (m.isCritical)
+                                const Positioned(
+                                  right: -4,
+                                  top: -4,
+                                  child: Icon(
+                                    Icons.warning,
+                                    color: Colors.red,
+                                    size: 20,
+                                  ),
+                                ),
+                            ],
+                          ),
                         ),
-                      ),
-                    );
-                  }),
+                      );
+                    }),
                   ],
                 ),
                 Consumer(
@@ -2937,15 +3134,25 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
               left: 16,
               right: 16,
               child: IgnorePointer(
-                ignoring: !ref.watch(uiP2pServiceProvider.select((s) => s.isSyncing)),
+                ignoring: !ref.watch(
+                  uiP2pServiceProvider.select((s) => s.isSyncing),
+                ),
                 child: AnimatedOpacity(
-                  opacity: ref.watch(uiP2pServiceProvider.select((s) => s.isSyncing)) ? 1.0 : 0.0,
+                  opacity:
+                      ref.watch(uiP2pServiceProvider.select((s) => s.isSyncing))
+                      ? 1.0
+                      : 0.0,
                   duration: const Duration(milliseconds: 300),
                   child: Center(
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
                       decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.9),
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.primaryContainer.withValues(alpha: 0.9),
                         borderRadius: BorderRadius.circular(20),
                         boxShadow: [
                           BoxShadow(
@@ -2962,25 +3169,36 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                             width: 14,
                             height: 14,
                             child: CircularProgressIndicator(
-                              value: ref.watch(uiP2pServiceProvider.select((s) => s.syncProgress)),
+                              value: ref.watch(
+                                uiP2pServiceProvider.select(
+                                  (s) => s.syncProgress,
+                                ),
+                              ),
                               strokeWidth: 2,
-                              color: Theme.of(context).colorScheme.onPrimaryContainer,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onPrimaryContainer,
                             ),
                           ),
                           const SizedBox(width: 8),
                           Flexible(
                             child: Text(
-                              ref.watch(uiP2pServiceProvider.select((s) {
-                                final msg = s.syncMessage ?? 'Syncing data...';
-                                if (s.syncEstimatedSeconds != null) {
-                                  return '$msg (~${s.syncEstimatedSeconds}s left)';
-                                }
-                                return msg;
-                              })),
+                              ref.watch(
+                                uiP2pServiceProvider.select((s) {
+                                  final msg =
+                                      s.syncMessage ?? 'Syncing data...';
+                                  if (s.syncEstimatedSeconds != null) {
+                                    return '$msg (~${s.syncEstimatedSeconds}s left)';
+                                  }
+                                  return msg;
+                                }),
+                              ),
                               style: TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.bold,
-                                color: Theme.of(context).colorScheme.onPrimaryContainer,
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onPrimaryContainer,
                               ),
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -3011,21 +3229,35 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
             Container(
               padding: const EdgeInsets.all(32),
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.5),
+                color: Theme.of(
+                  context,
+                ).colorScheme.primaryContainer.withValues(alpha: 0.5),
                 shape: BoxShape.circle,
               ),
-              child: Icon(Icons.inbox_outlined, size: 72, color: Theme.of(context).colorScheme.primary),
+              child: Icon(
+                Icons.inbox_outlined,
+                size: 72,
+                color: Theme.of(context).colorScheme.primary,
+              ),
             ),
             const SizedBox(height: 24),
             Text(
               'No reports found',
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface),
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
             ),
             const SizedBox(height: 12),
             Text(
               'Try adjusting your filters, or sync with nearby devices to receive the latest updates.',
               textAlign: TextAlign.center,
-              style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 16, height: 1.4),
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                fontSize: 16,
+                height: 1.4,
+              ),
             ),
             const SizedBox(height: 32),
             FilledButton.icon(
@@ -3040,9 +3272,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
               icon: const Icon(Icons.sync),
               label: const Text('Open Sync Menu'),
               style: FilledButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 16,
+                ),
               ),
-            )
+            ),
           ],
         ),
       ),
@@ -3063,7 +3298,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
             children: [
               const Text(
                 'Live Reports',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.grey),
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                  color: Colors.grey,
+                ),
               ),
               const Spacer(),
               TextButton.icon(
@@ -3071,7 +3310,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                   ref.read(navigationIndexProvider.notifier).setIndex(2);
                 },
                 icon: const Icon(Icons.help_outline, size: 14),
-                label: const Text('Trust Model', style: TextStyle(fontSize: 12)),
+                label: const Text(
+                  'Trust Model',
+                  style: TextStyle(fontSize: 12),
+                ),
                 style: TextButton.styleFrom(
                   visualDensity: VisualDensity.compact,
                 ),
@@ -3082,7 +3324,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
         Consumer(
           builder: (context, ref, child) {
             final filter = ref.watch(feedFilterControllerProvider);
-            final filterNotifier = ref.read(feedFilterControllerProvider.notifier);
+            final filterNotifier = ref.read(
+              feedFilterControllerProvider.notifier,
+            );
             return _buildFilterBar(filter, filterNotifier);
           },
         ),
@@ -3092,7 +3336,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
               ? Container(
                   width: double.infinity,
                   color: Theme.of(context).colorScheme.primaryContainer,
-                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 8,
+                    horizontal: 16,
+                  ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -3100,25 +3347,33 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                         width: 14,
                         height: 14,
                         child: CircularProgressIndicator(
-                          value: ref.watch(uiP2pServiceProvider.select((s) => s.syncProgress)),
+                          value: ref.watch(
+                            uiP2pServiceProvider.select((s) => s.syncProgress),
+                          ),
                           strokeWidth: 2,
-                          color: Theme.of(context).colorScheme.onPrimaryContainer,
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.onPrimaryContainer,
                         ),
                       ),
                       const SizedBox(width: 8),
                       Flexible(
                         child: Text(
-                          ref.watch(uiP2pServiceProvider.select((s) {
-                            final msg = s.syncMessage ?? 'Syncing data...';
-                            if (s.syncEstimatedSeconds != null) {
-                              return '$msg (~${s.syncEstimatedSeconds}s left)';
-                            }
-                            return msg;
-                          })),
+                          ref.watch(
+                            uiP2pServiceProvider.select((s) {
+                              final msg = s.syncMessage ?? 'Syncing data...';
+                              if (s.syncEstimatedSeconds != null) {
+                                return '$msg (~${s.syncEstimatedSeconds}s left)';
+                              }
+                              return msg;
+                            }),
+                          ),
                           style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.bold,
-                            color: Theme.of(context).colorScheme.onPrimaryContainer,
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onPrimaryContainer,
                           ),
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -3137,7 +3392,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
             },
             child: NotificationListener<ScrollNotification>(
               onNotification: (ScrollNotification scrollInfo) {
-                if (scrollInfo.metrics.pixels >= scrollInfo.metrics.maxScrollExtent - 200) {
+                if (scrollInfo.metrics.pixels >=
+                    scrollInfo.metrics.maxScrollExtent - 200) {
                   ref.read(feedLimitProvider.notifier).loadMore();
                 }
                 return false;
@@ -3147,7 +3403,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                   final localUserAsync = ref.watch(localUserControllerProvider);
                   final myPublicKey = localUserAsync.value?.publicKey;
                   final combined = ref.watch(combinedFeedProvider);
-                  final profiles = ref.watch(userProfilesControllerProvider).value ?? [];
+                  final profiles =
+                      ref.watch(userProfilesControllerProvider).value ?? [];
                   final settings = ref.watch(appSettingsProvider);
 
                   final isLoading =
@@ -3158,10 +3415,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                   final adminTrustedAsync = ref.watch(
                     adminTrustedSendersControllerProvider,
                   );
-                  final revokedAsync = ref.watch(revokedDelegationsControllerProvider);
+                  final revokedAsync = ref.watch(
+                    revokedDelegationsControllerProvider,
+                  );
                   final adminTrusted = adminTrustedAsync.value ?? [];
                   final revoked = revokedAsync.value ?? [];
-                  final revokedKeys = revoked.map((e) => e.delegateePublicKey).toSet();
+                  final revokedKeys = revoked
+                      .map((e) => e.delegateePublicKey)
+                      .toSet();
                   final isTier2 =
                       myPublicKey != null &&
                       adminTrusted.any(
@@ -3203,263 +3464,31 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                           isAdmin &&
                           (item.trustTier == 3 || item.trustTier == 4);
 
-                        if (item is HazardMarkerEntity) {
-                          final color = getHazardColor(
-                            item.type,
-                            item.trustTier,
-                          );
-                          return Card(
-                            margin: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 8,
+                      if (item is HazardMarkerEntity) {
+                        final color = getHazardColor(item.type, item.trustTier);
+                        return Card(
+                          margin: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            side: BorderSide(
+                              color: color.withValues(alpha: 0.3),
+                              width: item.trustTier == 1 ? 2 : 1,
                             ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              side: BorderSide(
-                                color: color.withValues(alpha: 0.3),
-                                width: item.trustTier == 1 ? 2 : 1,
-                              ),
-                            ),
-                            child: InkWell(
-                              onTap: () {
-                                ref.read(navigationIndexProvider.notifier).setIndex(0);
-                                ref.read(mapTargetProvider.notifier).setTarget(LatLng(item.latitude, item.longitude));
-                              },
-                              child: Padding(
-                                padding: const EdgeInsets.all(16.0),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        CircleAvatar(
-                                          backgroundColor: color.withValues(
-                                            alpha: 0.2,
-                                          ),
-                                          child: Icon(
-                                            getHazardIcon(item.type),
-                                            color: color,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 12),
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                '${item.type}${item.isCritical ? ' (CRITICAL)' : ''}',
-                                                style: TextStyle(
-                                                  fontWeight: FontWeight.bold,
-                                                  fontSize: 16,
-                                                  color: item.isCritical ? Colors.red : null,
-                                                ),
-                                              ),
-                                              Text(
-                                                formatTimestamp(item.timestamp),
-                                                style: TextStyle(
-                                                  fontSize: 12,
-                                                  color: Colors.grey.shade600,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                        buildTrustBadge(item.trustTier),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 12),
-                                    Text(
-                                      item.description,
-                                      style: const TextStyle(
-                                        fontSize: 14,
-                                        height: 1.4,
-                                      ),
-                                    ),
-                                    if (item.imageId != null &&
-                                        item.imageId!.isNotEmpty)
-                                      LocalImageDisplay(imageId: item.imageId!),
-                                    Builder(
-                                      builder: (context) {
-                                        final profile = getProfile(
-                                          item.senderId,
-                                          profiles,
-                                        );
-                                        if (profile != null) {
-                                          return Padding(
-                                            padding: const EdgeInsets.only(
-                                              top: 8.0,
-                                            ),
-                                            child: Text(
-                                              'By: ${profile.name}${profile.contactInfo.isNotEmpty ? ' (${profile.contactInfo})' : ''}',
-                                              style: TextStyle(
-                                                fontSize: 12,
-                                                color: Colors.grey.shade700,
-                                                fontStyle: FontStyle.italic,
-                                              ),
-                                            ),
-                                          );
-                                        } else {
-                                          return Padding(
-                                            padding: const EdgeInsets.only(
-                                              top: 8.0,
-                                            ),
-                                            child: Text(
-                                              'By: Unknown User',
-                                              style: TextStyle(
-                                                fontSize: 12,
-                                                color: Colors.grey.shade700,
-                                                fontStyle: FontStyle.italic,
-                                              ),
-                                            ),
-                                          );
-                                        }
-                                      },
-                                    ),
-                                    const SizedBox(height: 12),
-                                    Wrap(
-                                      alignment: WrapAlignment.end,
-                                      spacing: 8,
-                                      runSpacing: 8,
-                                      children: [
-                                        if (canEndorse)
-                                          FilledButton.tonalIcon(
-                                            onPressed: () =>
-                                                _endorseHazard(item),
-                                            icon: const Icon(
-                                              Icons.verified,
-                                              size: 16,
-                                            ),
-                                            label: const Text(
-                                              'Verify & Endorse',
-                                            ),
-                                            style: FilledButton.styleFrom(
-                                              foregroundColor:
-                                                  Colors.purple.shade700,
-                                              backgroundColor:
-                                                  Colors.purple.shade50,
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                    horizontal: 12,
-                                                    vertical: 8,
-                                                  ),
-                                            ),
-                                          ),
-                                        if (canEndorse)
-                                          FilledButton.tonalIcon(
-                                            onPressed: () =>
-                                                _confirmDebunkReport(
-                                                  item.id,
-                                                  'marker',
-                                                ),
-                                            icon: const Icon(
-                                              Icons.gavel,
-                                              size: 16,
-                                            ),
-                                            label: const Text('Debunk'),
-                                            style: FilledButton.styleFrom(
-                                              foregroundColor:
-                                                  Colors.red.shade700,
-                                              backgroundColor:
-                                                  Colors.red.shade50,
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                    horizontal: 12,
-                                                    vertical: 8,
-                                                  ),
-                                            ),
-                                          ),
-                                        TextButton.icon(
-                                          onPressed: () =>
-                                              _resolveMarker(item.id),
-                                          icon: const Icon(
-                                            Icons.check_circle_outline,
-                                            size: 16,
-                                          ),
-                                          label: const Text('Resolve'),
-                                          style: TextButton.styleFrom(
-                                            foregroundColor: Colors.green,
-                                          ),
-                                        ),
-                                        if (item.trustTier == 4 ||
-                                            item.trustTier == 3)
-                                          TextButton.icon(
-                                            onPressed: () =>
-                                                _blockSender(item.senderId),
-                                            icon: const Icon(
-                                              Icons.block,
-                                              size: 16,
-                                            ),
-                                            label: const Text('Block'),
-                                            style: TextButton.styleFrom(
-                                              foregroundColor: Colors.red,
-                                            ),
-                                          ),
-                                        if (item.trustTier == 4 ||
-                                            (settings.isOfficialMode &&
-                                                item.trustTier == 3))
-                                          FilledButton.tonalIcon(
-                                            onPressed: () {
-                                              if (settings.isOfficialMode) {
-                                                _makeOfficialVolunteer(
-                                                  item.senderId,
-                                                );
-                                              } else {
-                                                _markAsTrusted(item.senderId);
-                                              }
-                                            },
-                                            icon: Icon(
-                                              settings.isOfficialMode
-                                                  ? Icons.admin_panel_settings
-                                                  : Icons.verified_user,
-                                              size: 16,
-                                            ),
-                                            label: Text(
-                                              settings.isOfficialMode
-                                                  ? 'Make Volunteer'
-                                                  : 'Trust',
-                                            ),
-                                            style: FilledButton.styleFrom(
-                                              foregroundColor:
-                                                  settings.isOfficialMode
-                                                  ? Colors.purple.shade700
-                                                  : Colors.green.shade700,
-                                              backgroundColor:
-                                                  settings.isOfficialMode
-                                                  ? Colors.purple.shade50
-                                                  : Colors.green.shade50,
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                    horizontal: 12,
-                                                    vertical: 8,
-                                                  ),
-                                            ),
-                                          ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          );
-                        } else if (item is NewsItemEntity) {
-                          return Card(
-                            margin: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 8,
-                            ),
-                            color: item.trustTier == 1
-                                ? const Color(0xFFFFF3E0)
-                                : null,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              side: BorderSide(
-                                color: getTierColor(
-                                  item.trustTier,
-                                ).withValues(alpha: 0.3),
-                                width: item.trustTier == 1 ? 2 : 1,
-                              ),
-                            ),
+                          ),
+                          child: InkWell(
+                            onTap: () {
+                              ref
+                                  .read(navigationIndexProvider.notifier)
+                                  .setIndex(0);
+                              ref
+                                  .read(mapTargetProvider.notifier)
+                                  .setTarget(
+                                    LatLng(item.latitude, item.longitude),
+                                  );
+                            },
                             child: Padding(
                               padding: const EdgeInsets.all(16.0),
                               child: Column(
@@ -3468,22 +3497,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                                   Row(
                                     children: [
                                       CircleAvatar(
-                                        backgroundColor: item.trustTier == 1
-                                            ? Colors.blue.shade100
-                                            : item.trustTier == 2
-                                            ? Colors.purple.shade100
-                                            : item.trustTier == 3
-                                            ? Colors.green.shade100
-                                            : Colors.grey.shade200,
+                                        backgroundColor: color.withValues(
+                                          alpha: 0.2,
+                                        ),
                                         child: Icon(
-                                          Icons.campaign,
-                                          color: item.trustTier == 1
-                                              ? Colors.blue
-                                              : item.trustTier == 2
-                                              ? Colors.purple
-                                              : item.trustTier == 3
-                                              ? Colors.green
-                                              : Colors.grey.shade700,
+                                          getHazardIcon(item.type),
+                                          color: color,
                                         ),
                                       ),
                                       const SizedBox(width: 12),
@@ -3493,11 +3512,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                                               CrossAxisAlignment.start,
                                           children: [
                                             Text(
-                                              '${item.title}${item.isCritical ? ' (CRITICAL)' : ''}',
+                                              '${item.type}${item.isCritical ? ' (CRITICAL)' : ''}',
                                               style: TextStyle(
                                                 fontWeight: FontWeight.bold,
                                                 fontSize: 16,
-                                                color: item.isCritical ? Colors.red : null,
+                                                color: item.isCritical
+                                                    ? Colors.red
+                                                    : null,
                                               ),
                                             ),
                                             Text(
@@ -3515,7 +3536,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                                   ),
                                   const SizedBox(height: 12),
                                   Text(
-                                    item.content,
+                                    item.description,
                                     style: const TextStyle(
                                       fontSize: 14,
                                       height: 1.4,
@@ -3569,7 +3590,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                                     children: [
                                       if (canEndorse)
                                         FilledButton.tonalIcon(
-                                          onPressed: () => _endorseNews(item),
+                                          onPressed: () => _endorseHazard(item),
                                           icon: const Icon(
                                             Icons.verified,
                                             size: 16,
@@ -3590,7 +3611,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                                         FilledButton.tonalIcon(
                                           onPressed: () => _confirmDebunkReport(
                                             item.id,
-                                            'news',
+                                            'marker',
                                           ),
                                           icon: const Icon(
                                             Icons.gavel,
@@ -3608,11 +3629,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                                           ),
                                         ),
                                       TextButton.icon(
-                                        onPressed: () => _dismissNews(item.id),
-                                        icon: const Icon(Icons.delete_forever, size: 16),
-                                        label: const Text('Delete (Global)'),
+                                        onPressed: () =>
+                                            _resolveMarker(item.id),
+                                        icon: const Icon(
+                                          Icons.check_circle_outline,
+                                          size: 16,
+                                        ),
+                                        label: const Text('Resolve'),
                                         style: TextButton.styleFrom(
-                                          foregroundColor: Colors.red,
+                                          foregroundColor: Colors.green,
                                         ),
                                       ),
                                       if (item.trustTier == 4 ||
@@ -3673,511 +3698,742 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                                 ],
                               ),
                             ),
-                          );
-                        } else if (item is AreaEntity) {
-                          return Card(
-                            margin: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 8,
+                          ),
+                        );
+                      } else if (item is NewsItemEntity) {
+                        return Card(
+                          margin: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
+                          color: item.trustTier == 1
+                              ? const Color(0xFFFFF3E0)
+                              : null,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            side: BorderSide(
+                              color: getTierColor(
+                                item.trustTier,
+                              ).withValues(alpha: 0.3),
+                              width: item.trustTier == 1 ? 2 : 1,
                             ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              side: BorderSide(
-                                color: getTierColor(
-                                  item.trustTier,
-                                ).withValues(alpha: 0.3),
-                              ),
-                            ),
-                            clipBehavior: Clip.antiAlias,
-                            child: InkWell(
-                              onTap: () {
-                                if (item.coordinates.isNotEmpty) {
-                                  ref.read(navigationIndexProvider.notifier).setIndex(0);
-                                  ref.read(mapTargetProvider.notifier).setTarget(LatLng(
-                                    item.coordinates.first['lat']!,
-                                    item.coordinates.first['lng']!,
-                                  ));
-                                }
-                              },
-                              child: Padding(
-                                padding: const EdgeInsets.all(16.0),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
                                   children: [
-                                    Row(
-                                      children: [
-                                        CircleAvatar(
-                                          backgroundColor: item.trustTier == 1
-                                              ? Colors.blue.shade100
-                                              : item.trustTier == 2
-                                              ? Colors.purple.shade100
-                                              : item.trustTier == 3
-                                              ? Colors.green.shade100
-                                              : Colors.grey.shade200,
-                                          child: Icon(
-                                            Icons.format_shapes,
-                                            color: item.trustTier == 1
-                                                ? Colors.blue
-                                                : item.trustTier == 2
-                                                ? Colors.purple
-                                                : item.trustTier == 3
-                                                ? Colors.green
-                                                : Colors.grey.shade700,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 12),
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                '${item.type}${item.isCritical ? ' (CRITICAL)' : ''}',
-                                                style: TextStyle(
-                                                  fontWeight: FontWeight.bold,
-                                                  fontSize: 16,
-                                                  color: item.isCritical ? Colors.red : null,
-                                                ),
-                                              ),
-                                              Text(
-                                                formatTimestamp(item.timestamp),
-                                                style: TextStyle(
-                                                  fontSize: 12,
-                                                  color: Colors.grey.shade600,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                        buildTrustBadge(item.trustTier),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 12),
-                                    Text(
-                                      item.description,
-                                      style: const TextStyle(
-                                        fontSize: 14,
-                                        height: 1.4,
+                                    CircleAvatar(
+                                      backgroundColor: item.trustTier == 1
+                                          ? Colors.blue.shade100
+                                          : item.trustTier == 2
+                                          ? Colors.purple.shade100
+                                          : item.trustTier == 3
+                                          ? Colors.green.shade100
+                                          : Colors.grey.shade200,
+                                      child: Icon(
+                                        Icons.campaign,
+                                        color: item.trustTier == 1
+                                            ? Colors.blue
+                                            : item.trustTier == 2
+                                            ? Colors.purple
+                                            : item.trustTier == 3
+                                            ? Colors.green
+                                            : Colors.grey.shade700,
                                       ),
                                     ),
-                                    Builder(
-                                      builder: (context) {
-                                        final profile = getProfile(
-                                          item.senderId,
-                                          profiles,
-                                        );
-                                        if (profile != null) {
-                                          return Padding(
-                                            padding: const EdgeInsets.only(
-                                              top: 8.0,
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            '${item.title}${item.isCritical ? ' (CRITICAL)' : ''}',
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 16,
+                                              color: item.isCritical
+                                                  ? Colors.red
+                                                  : null,
                                             ),
-                                            child: Text(
-                                              'By: ${profile.name}${profile.contactInfo.isNotEmpty ? ' (${profile.contactInfo})' : ''}',
-                                              style: TextStyle(
-                                                fontSize: 12,
-                                                color: Colors.grey.shade700,
-                                                fontStyle: FontStyle.italic,
-                                              ),
+                                          ),
+                                          Text(
+                                            formatTimestamp(item.timestamp),
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: Colors.grey.shade600,
                                             ),
-                                          );
-                                        } else {
-                                          return Padding(
-                                            padding: const EdgeInsets.only(
-                                              top: 8.0,
-                                            ),
-                                            child: Text(
-                                              'By: Unknown User',
-                                              style: TextStyle(
-                                                fontSize: 12,
-                                                color: Colors.grey.shade700,
-                                                fontStyle: FontStyle.italic,
-                                              ),
-                                            ),
-                                          );
-                                        }
-                                      },
+                                          ),
+                                        ],
+                                      ),
                                     ),
-                                    const SizedBox(height: 12),
-                                    Wrap(
-                                      alignment: WrapAlignment.end,
-                                      spacing: 8,
-                                      runSpacing: 8,
-                                      children: [
-                                        if (canEndorse)
-                                          FilledButton.tonalIcon(
-                                            onPressed: () => _endorseArea(item),
-                                            icon: const Icon(
-                                              Icons.verified,
-                                              size: 16,
-                                            ),
-                                            label: const Text(
-                                              'Verify & Endorse',
-                                            ),
-                                            style: FilledButton.styleFrom(
-                                              foregroundColor:
-                                                  Colors.purple.shade700,
-                                              backgroundColor:
-                                                  Colors.purple.shade50,
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                    horizontal: 12,
-                                                    vertical: 8,
-                                                  ),
-                                            ),
-                                          ),
-                                        if (canEndorse)
-                                          FilledButton.tonalIcon(
-                                            onPressed: () =>
-                                                _confirmDebunkReport(
-                                                  item.id,
-                                                  'area',
-                                                ),
-                                            icon: const Icon(
-                                              Icons.gavel,
-                                              size: 16,
-                                            ),
-                                            label: const Text('Debunk'),
-                                            style: FilledButton.styleFrom(
-                                              foregroundColor:
-                                                  Colors.red.shade700,
-                                              backgroundColor:
-                                                  Colors.red.shade50,
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                    horizontal: 12,
-                                                    vertical: 8,
-                                                  ),
-                                            ),
-                                          ),
-                                        TextButton.icon(
-                                          onPressed: () =>
-                                              _resolveArea(item.id),
-                                          icon: const Icon(
-                                            Icons.check_circle_outline,
-                                            size: 16,
-                                          ),
-                                          label: const Text('Resolve'),
-                                          style: TextButton.styleFrom(
-                                            foregroundColor: Colors.green,
-                                          ),
-                                        ),
-                                        if (item.trustTier == 4 ||
-                                            item.trustTier == 3)
-                                          TextButton.icon(
-                                            onPressed: () =>
-                                                _blockSender(item.senderId),
-                                            icon: const Icon(
-                                              Icons.block,
-                                              size: 16,
-                                            ),
-                                            label: const Text('Block'),
-                                            style: TextButton.styleFrom(
-                                              foregroundColor: Colors.red,
-                                            ),
-                                          ),
-                                        if (item.trustTier == 4 ||
-                                            (settings.isOfficialMode &&
-                                                item.trustTier == 3))
-                                          FilledButton.tonalIcon(
-                                            onPressed: () {
-                                              if (settings.isOfficialMode) {
-                                                _makeOfficialVolunteer(
-                                                  item.senderId,
-                                                );
-                                              } else {
-                                                _markAsTrusted(item.senderId);
-                                              }
-                                            },
-                                            icon: Icon(
-                                              settings.isOfficialMode
-                                                  ? Icons.admin_panel_settings
-                                                  : Icons.verified_user,
-                                              size: 16,
-                                            ),
-                                            label: Text(
-                                              settings.isOfficialMode
-                                                  ? 'Make Volunteer'
-                                                  : 'Trust',
-                                            ),
-                                            style: FilledButton.styleFrom(
-                                              foregroundColor:
-                                                  settings.isOfficialMode
-                                                  ? Colors.purple.shade700
-                                                  : Colors.green.shade700,
-                                              backgroundColor:
-                                                  settings.isOfficialMode
-                                                  ? Colors.purple.shade50
-                                                  : Colors.green.shade50,
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                    horizontal: 12,
-                                                    vertical: 8,
-                                                  ),
-                                            ),
-                                          ),
-                                      ],
-                                    ),
+                                    buildTrustBadge(item.trustTier),
                                   ],
                                 ),
-                              ),
-                            ),
-                          );
-                        } else if (item is PathEntity) {
-                          return Card(
-                            margin: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 8,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              side: BorderSide(
-                                color: getTierColor(
-                                  item.trustTier,
-                                ).withValues(alpha: 0.3),
-                              ),
-                            ),
-                            clipBehavior: Clip.antiAlias,
-                            child: InkWell(
-                              onTap: () {
-                                if (item.coordinates.isNotEmpty) {
-                                  ref.read(navigationIndexProvider.notifier).setIndex(0);
-                                  ref.read(mapTargetProvider.notifier).setTarget(LatLng(
-                                    item.coordinates.first['lat']!,
-                                    item.coordinates.first['lng']!,
-                                  ));
-                                }
-                              },
-                              child: Padding(
-                                padding: const EdgeInsets.all(16.0),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        CircleAvatar(
-                                          backgroundColor: item.trustTier == 1
-                                              ? Colors.blue.shade100
-                                              : item.trustTier == 2
-                                              ? Colors.purple.shade100
-                                              : item.trustTier == 3
-                                              ? Colors.green.shade100
-                                              : Colors.grey.shade200,
-                                          child: Icon(
-                                            Icons.route,
-                                            color: item.trustTier == 1
-                                                ? Colors.blue
-                                                : item.trustTier == 2
-                                                ? Colors.purple
-                                                : item.trustTier == 3
-                                                ? Colors.green
-                                                : Colors.grey.shade700,
+                                const SizedBox(height: 12),
+                                Text(
+                                  item.content,
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    height: 1.4,
+                                  ),
+                                ),
+                                if (item.imageId != null &&
+                                    item.imageId!.isNotEmpty)
+                                  LocalImageDisplay(imageId: item.imageId!),
+                                Builder(
+                                  builder: (context) {
+                                    final profile = getProfile(
+                                      item.senderId,
+                                      profiles,
+                                    );
+                                    if (profile != null) {
+                                      return Padding(
+                                        padding: const EdgeInsets.only(
+                                          top: 8.0,
+                                        ),
+                                        child: Text(
+                                          'By: ${profile.name}${profile.contactInfo.isNotEmpty ? ' (${profile.contactInfo})' : ''}',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.grey.shade700,
+                                            fontStyle: FontStyle.italic,
                                           ),
                                         ),
-                                        const SizedBox(width: 12),
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
+                                      );
+                                    } else {
+                                      return Padding(
+                                        padding: const EdgeInsets.only(
+                                          top: 8.0,
+                                        ),
+                                        child: Text(
+                                          'By: Unknown User',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.grey.shade700,
+                                            fontStyle: FontStyle.italic,
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                  },
+                                ),
+                                const SizedBox(height: 12),
+                                Wrap(
+                                  alignment: WrapAlignment.end,
+                                  spacing: 8,
+                                  runSpacing: 8,
+                                  children: [
+                                    if (canEndorse)
+                                      FilledButton.tonalIcon(
+                                        onPressed: () => _endorseNews(item),
+                                        icon: const Icon(
+                                          Icons.verified,
+                                          size: 16,
+                                        ),
+                                        label: const Text('Verify & Endorse'),
+                                        style: FilledButton.styleFrom(
+                                          foregroundColor:
+                                              Colors.purple.shade700,
+                                          backgroundColor:
+                                              Colors.purple.shade50,
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 12,
+                                            vertical: 8,
+                                          ),
+                                        ),
+                                      ),
+                                    if (canEndorse)
+                                      FilledButton.tonalIcon(
+                                        onPressed: () => _confirmDebunkReport(
+                                          item.id,
+                                          'news',
+                                        ),
+                                        icon: const Icon(Icons.gavel, size: 16),
+                                        label: const Text('Debunk'),
+                                        style: FilledButton.styleFrom(
+                                          foregroundColor: Colors.red.shade700,
+                                          backgroundColor: Colors.red.shade50,
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 12,
+                                            vertical: 8,
+                                          ),
+                                        ),
+                                      ),
+                                    TextButton.icon(
+                                      onPressed: () => _dismissNews(item.id),
+                                      icon: const Icon(
+                                        Icons.delete_forever,
+                                        size: 16,
+                                      ),
+                                      label: const Text('Delete (Global)'),
+                                      style: TextButton.styleFrom(
+                                        foregroundColor: Colors.red,
+                                      ),
+                                    ),
+                                    if (item.trustTier == 4 ||
+                                        item.trustTier == 3)
+                                      TextButton.icon(
+                                        onPressed: () =>
+                                            _blockSender(item.senderId),
+                                        icon: const Icon(Icons.block, size: 16),
+                                        label: const Text('Block'),
+                                        style: TextButton.styleFrom(
+                                          foregroundColor: Colors.red,
+                                        ),
+                                      ),
+                                    if (item.trustTier == 4 ||
+                                        (settings.isOfficialMode &&
+                                            item.trustTier == 3))
+                                      FilledButton.tonalIcon(
+                                        onPressed: () {
+                                          if (settings.isOfficialMode) {
+                                            _makeOfficialVolunteer(
+                                              item.senderId,
+                                            );
+                                          } else {
+                                            _markAsTrusted(item.senderId);
+                                          }
+                                        },
+                                        icon: Icon(
+                                          settings.isOfficialMode
+                                              ? Icons.admin_panel_settings
+                                              : Icons.verified_user,
+                                          size: 16,
+                                        ),
+                                        label: Text(
+                                          settings.isOfficialMode
+                                              ? 'Make Volunteer'
+                                              : 'Trust',
+                                        ),
+                                        style: FilledButton.styleFrom(
+                                          foregroundColor:
+                                              settings.isOfficialMode
+                                              ? Colors.purple.shade700
+                                              : Colors.green.shade700,
+                                          backgroundColor:
+                                              settings.isOfficialMode
+                                              ? Colors.purple.shade50
+                                              : Colors.green.shade50,
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 12,
+                                            vertical: 8,
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      } else if (item is AreaEntity) {
+                        return Card(
+                          margin: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            side: BorderSide(
+                              color: getTierColor(
+                                item.trustTier,
+                              ).withValues(alpha: 0.3),
+                            ),
+                          ),
+                          clipBehavior: Clip.antiAlias,
+                          child: InkWell(
+                            onTap: () {
+                              if (item.coordinates.isNotEmpty) {
+                                ref
+                                    .read(navigationIndexProvider.notifier)
+                                    .setIndex(0);
+                                ref
+                                    .read(mapTargetProvider.notifier)
+                                    .setTarget(
+                                      LatLng(
+                                        item.coordinates.first['lat']!,
+                                        item.coordinates.first['lng']!,
+                                      ),
+                                    );
+                              }
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.all(16.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      CircleAvatar(
+                                        backgroundColor: item.trustTier == 1
+                                            ? Colors.blue.shade100
+                                            : item.trustTier == 2
+                                            ? Colors.purple.shade100
+                                            : item.trustTier == 3
+                                            ? Colors.green.shade100
+                                            : Colors.grey.shade200,
+                                        child: Icon(
+                                          Icons.format_shapes,
+                                          color: item.trustTier == 1
+                                              ? Colors.blue
+                                              : item.trustTier == 2
+                                              ? Colors.purple
+                                              : item.trustTier == 3
+                                              ? Colors.green
+                                              : Colors.grey.shade700,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
                                               '${item.type}${item.isCritical ? ' (CRITICAL)' : ''}',
-                                                style: TextStyle(
-                                                  fontWeight: FontWeight.bold,
-                                                  fontSize: 16,
-                                                  color: item.isCritical ? Colors.red : null,
-                                                ),
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 16,
+                                                color: item.isCritical
+                                                    ? Colors.red
+                                                    : null,
                                               ),
-                                              Text(
-                                                formatTimestamp(item.timestamp),
-                                                style: TextStyle(
-                                                  fontSize: 12,
-                                                  color: Colors.grey.shade600,
-                                                ),
+                                            ),
+                                            Text(
+                                              formatTimestamp(item.timestamp),
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: Colors.grey.shade600,
                                               ),
-                                            ],
-                                          ),
+                                            ),
+                                          ],
                                         ),
-                                        buildTrustBadge(item.trustTier),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 12),
-                                    Text(
-                                      item.description,
-                                      style: const TextStyle(
-                                        fontSize: 14,
-                                        height: 1.4,
                                       ),
+                                      buildTrustBadge(item.trustTier),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    item.description,
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      height: 1.4,
                                     ),
-                                    Builder(
-                                      builder: (context) {
-                                        final profile = getProfile(
-                                          item.senderId,
-                                          profiles,
+                                  ),
+                                  Builder(
+                                    builder: (context) {
+                                      final profile = getProfile(
+                                        item.senderId,
+                                        profiles,
+                                      );
+                                      if (profile != null) {
+                                        return Padding(
+                                          padding: const EdgeInsets.only(
+                                            top: 8.0,
+                                          ),
+                                          child: Text(
+                                            'By: ${profile.name}${profile.contactInfo.isNotEmpty ? ' (${profile.contactInfo})' : ''}',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: Colors.grey.shade700,
+                                              fontStyle: FontStyle.italic,
+                                            ),
+                                          ),
                                         );
-                                        if (profile != null) {
-                                          return Padding(
-                                            padding: const EdgeInsets.only(
-                                              top: 8.0,
-                                            ),
-                                            child: Text(
-                                              'By: ${profile.name}${profile.contactInfo.isNotEmpty ? ' (${profile.contactInfo})' : ''}',
-                                              style: TextStyle(
-                                                fontSize: 12,
-                                                color: Colors.grey.shade700,
-                                                fontStyle: FontStyle.italic,
-                                              ),
-                                            ),
-                                          );
-                                        } else {
-                                          return Padding(
-                                            padding: const EdgeInsets.only(
-                                              top: 8.0,
-                                            ),
-                                            child: Text(
-                                              'By: Unknown User',
-                                              style: TextStyle(
-                                                fontSize: 12,
-                                                color: Colors.grey.shade700,
-                                                fontStyle: FontStyle.italic,
-                                              ),
-                                            ),
-                                          );
-                                        }
-                                      },
-                                    ),
-                                    const SizedBox(height: 12),
-                                    Wrap(
-                                      alignment: WrapAlignment.end,
-                                      spacing: 8,
-                                      runSpacing: 8,
-                                      children: [
-                                        if (canEndorse)
-                                          FilledButton.tonalIcon(
-                                            onPressed: () => _endorsePath(item),
-                                            icon: const Icon(
-                                              Icons.verified,
-                                              size: 16,
-                                            ),
-                                            label: const Text(
-                                              'Verify & Endorse',
-                                            ),
-                                            style: FilledButton.styleFrom(
-                                              foregroundColor:
-                                                  Colors.purple.shade700,
-                                              backgroundColor:
-                                                  Colors.purple.shade50,
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                    horizontal: 12,
-                                                    vertical: 8,
-                                                  ),
+                                      } else {
+                                        return Padding(
+                                          padding: const EdgeInsets.only(
+                                            top: 8.0,
+                                          ),
+                                          child: Text(
+                                            'By: Unknown User',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: Colors.grey.shade700,
+                                              fontStyle: FontStyle.italic,
                                             ),
                                           ),
-                                        if (canEndorse)
-                                          FilledButton.tonalIcon(
-                                            onPressed: () =>
-                                                _confirmDebunkReport(
-                                                  item.id,
-                                                  'path',
-                                                ),
-                                            icon: const Icon(
-                                              Icons.gavel,
-                                              size: 16,
-                                            ),
-                                            label: const Text('Debunk'),
-                                            style: FilledButton.styleFrom(
-                                              foregroundColor:
-                                                  Colors.red.shade700,
-                                              backgroundColor:
-                                                  Colors.red.shade50,
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                    horizontal: 12,
-                                                    vertical: 8,
-                                                  ),
-                                            ),
-                                          ),
-                                        TextButton.icon(
-                                          onPressed: () =>
-                                              _resolvePath(item.id),
+                                        );
+                                      }
+                                    },
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Wrap(
+                                    alignment: WrapAlignment.end,
+                                    spacing: 8,
+                                    runSpacing: 8,
+                                    children: [
+                                      if (canEndorse)
+                                        FilledButton.tonalIcon(
+                                          onPressed: () => _endorseArea(item),
                                           icon: const Icon(
-                                            Icons.check_circle_outline,
+                                            Icons.verified,
                                             size: 16,
                                           ),
-                                          label: const Text('Resolve'),
-                                          style: TextButton.styleFrom(
-                                            foregroundColor: Colors.green,
+                                          label: const Text('Verify & Endorse'),
+                                          style: FilledButton.styleFrom(
+                                            foregroundColor:
+                                                Colors.purple.shade700,
+                                            backgroundColor:
+                                                Colors.purple.shade50,
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 12,
+                                              vertical: 8,
+                                            ),
                                           ),
                                         ),
-                                        if (item.trustTier == 4 ||
-                                            item.trustTier == 3)
-                                          TextButton.icon(
-                                            onPressed: () =>
-                                                _blockSender(item.senderId),
-                                            icon: const Icon(
-                                              Icons.block,
-                                              size: 16,
-                                            ),
-                                            label: const Text('Block'),
-                                            style: TextButton.styleFrom(
-                                              foregroundColor: Colors.red,
+                                      if (canEndorse)
+                                        FilledButton.tonalIcon(
+                                          onPressed: () => _confirmDebunkReport(
+                                            item.id,
+                                            'area',
+                                          ),
+                                          icon: const Icon(
+                                            Icons.gavel,
+                                            size: 16,
+                                          ),
+                                          label: const Text('Debunk'),
+                                          style: FilledButton.styleFrom(
+                                            foregroundColor:
+                                                Colors.red.shade700,
+                                            backgroundColor: Colors.red.shade50,
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 12,
+                                              vertical: 8,
                                             ),
                                           ),
-                                        if (item.trustTier == 4 ||
-                                            (settings.isOfficialMode &&
-                                                item.trustTier == 3))
-                                          FilledButton.tonalIcon(
-                                            onPressed: () {
-                                              if (settings.isOfficialMode) {
-                                                _makeOfficialVolunteer(
-                                                  item.senderId,
-                                                );
-                                              } else {
-                                                _markAsTrusted(item.senderId);
-                                              }
-                                            },
-                                            icon: Icon(
-                                              settings.isOfficialMode
-                                                  ? Icons.admin_panel_settings
-                                                  : Icons.verified_user,
-                                              size: 16,
-                                            ),
-                                            label: Text(
-                                              settings.isOfficialMode
-                                                  ? 'Make Volunteer'
-                                                  : 'Trust',
-                                            ),
-                                            style: FilledButton.styleFrom(
-                                              foregroundColor:
-                                                  settings.isOfficialMode
-                                                  ? Colors.purple.shade700
-                                                  : Colors.green.shade700,
-                                              backgroundColor:
-                                                  settings.isOfficialMode
-                                                  ? Colors.purple.shade50
-                                                  : Colors.green.shade50,
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                    horizontal: 12,
-                                                    vertical: 8,
-                                                  ),
+                                        ),
+                                      TextButton.icon(
+                                        onPressed: () => _resolveArea(item.id),
+                                        icon: const Icon(
+                                          Icons.check_circle_outline,
+                                          size: 16,
+                                        ),
+                                        label: const Text('Resolve'),
+                                        style: TextButton.styleFrom(
+                                          foregroundColor: Colors.green,
+                                        ),
+                                      ),
+                                      if (item.trustTier == 4 ||
+                                          item.trustTier == 3)
+                                        TextButton.icon(
+                                          onPressed: () =>
+                                              _blockSender(item.senderId),
+                                          icon: const Icon(
+                                            Icons.block,
+                                            size: 16,
+                                          ),
+                                          label: const Text('Block'),
+                                          style: TextButton.styleFrom(
+                                            foregroundColor: Colors.red,
+                                          ),
+                                        ),
+                                      if (item.trustTier == 4 ||
+                                          (settings.isOfficialMode &&
+                                              item.trustTier == 3))
+                                        FilledButton.tonalIcon(
+                                          onPressed: () {
+                                            if (settings.isOfficialMode) {
+                                              _makeOfficialVolunteer(
+                                                item.senderId,
+                                              );
+                                            } else {
+                                              _markAsTrusted(item.senderId);
+                                            }
+                                          },
+                                          icon: Icon(
+                                            settings.isOfficialMode
+                                                ? Icons.admin_panel_settings
+                                                : Icons.verified_user,
+                                            size: 16,
+                                          ),
+                                          label: Text(
+                                            settings.isOfficialMode
+                                                ? 'Make Volunteer'
+                                                : 'Trust',
+                                          ),
+                                          style: FilledButton.styleFrom(
+                                            foregroundColor:
+                                                settings.isOfficialMode
+                                                ? Colors.purple.shade700
+                                                : Colors.green.shade700,
+                                            backgroundColor:
+                                                settings.isOfficialMode
+                                                ? Colors.purple.shade50
+                                                : Colors.green.shade50,
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 12,
+                                              vertical: 8,
                                             ),
                                           ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
+                                        ),
+                                    ],
+                                  ),
+                                ],
                               ),
                             ),
-                          );
-                        }
-                        return const SizedBox.shrink();
-                      },
-                );
-              },
+                          ),
+                        );
+                      } else if (item is PathEntity) {
+                        return Card(
+                          margin: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            side: BorderSide(
+                              color: getTierColor(
+                                item.trustTier,
+                              ).withValues(alpha: 0.3),
+                            ),
+                          ),
+                          clipBehavior: Clip.antiAlias,
+                          child: InkWell(
+                            onTap: () {
+                              if (item.coordinates.isNotEmpty) {
+                                ref
+                                    .read(navigationIndexProvider.notifier)
+                                    .setIndex(0);
+                                ref
+                                    .read(mapTargetProvider.notifier)
+                                    .setTarget(
+                                      LatLng(
+                                        item.coordinates.first['lat']!,
+                                        item.coordinates.first['lng']!,
+                                      ),
+                                    );
+                              }
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.all(16.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      CircleAvatar(
+                                        backgroundColor: item.trustTier == 1
+                                            ? Colors.blue.shade100
+                                            : item.trustTier == 2
+                                            ? Colors.purple.shade100
+                                            : item.trustTier == 3
+                                            ? Colors.green.shade100
+                                            : Colors.grey.shade200,
+                                        child: Icon(
+                                          Icons.route,
+                                          color: item.trustTier == 1
+                                              ? Colors.blue
+                                              : item.trustTier == 2
+                                              ? Colors.purple
+                                              : item.trustTier == 3
+                                              ? Colors.green
+                                              : Colors.grey.shade700,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              '${item.type}${item.isCritical ? ' (CRITICAL)' : ''}',
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 16,
+                                                color: item.isCritical
+                                                    ? Colors.red
+                                                    : null,
+                                              ),
+                                            ),
+                                            Text(
+                                              formatTimestamp(item.timestamp),
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: Colors.grey.shade600,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      buildTrustBadge(item.trustTier),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    item.description,
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      height: 1.4,
+                                    ),
+                                  ),
+                                  Builder(
+                                    builder: (context) {
+                                      final profile = getProfile(
+                                        item.senderId,
+                                        profiles,
+                                      );
+                                      if (profile != null) {
+                                        return Padding(
+                                          padding: const EdgeInsets.only(
+                                            top: 8.0,
+                                          ),
+                                          child: Text(
+                                            'By: ${profile.name}${profile.contactInfo.isNotEmpty ? ' (${profile.contactInfo})' : ''}',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: Colors.grey.shade700,
+                                              fontStyle: FontStyle.italic,
+                                            ),
+                                          ),
+                                        );
+                                      } else {
+                                        return Padding(
+                                          padding: const EdgeInsets.only(
+                                            top: 8.0,
+                                          ),
+                                          child: Text(
+                                            'By: Unknown User',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: Colors.grey.shade700,
+                                              fontStyle: FontStyle.italic,
+                                            ),
+                                          ),
+                                        );
+                                      }
+                                    },
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Wrap(
+                                    alignment: WrapAlignment.end,
+                                    spacing: 8,
+                                    runSpacing: 8,
+                                    children: [
+                                      if (canEndorse)
+                                        FilledButton.tonalIcon(
+                                          onPressed: () => _endorsePath(item),
+                                          icon: const Icon(
+                                            Icons.verified,
+                                            size: 16,
+                                          ),
+                                          label: const Text('Verify & Endorse'),
+                                          style: FilledButton.styleFrom(
+                                            foregroundColor:
+                                                Colors.purple.shade700,
+                                            backgroundColor:
+                                                Colors.purple.shade50,
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 12,
+                                              vertical: 8,
+                                            ),
+                                          ),
+                                        ),
+                                      if (canEndorse)
+                                        FilledButton.tonalIcon(
+                                          onPressed: () => _confirmDebunkReport(
+                                            item.id,
+                                            'path',
+                                          ),
+                                          icon: const Icon(
+                                            Icons.gavel,
+                                            size: 16,
+                                          ),
+                                          label: const Text('Debunk'),
+                                          style: FilledButton.styleFrom(
+                                            foregroundColor:
+                                                Colors.red.shade700,
+                                            backgroundColor: Colors.red.shade50,
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 12,
+                                              vertical: 8,
+                                            ),
+                                          ),
+                                        ),
+                                      TextButton.icon(
+                                        onPressed: () => _resolvePath(item.id),
+                                        icon: const Icon(
+                                          Icons.check_circle_outline,
+                                          size: 16,
+                                        ),
+                                        label: const Text('Resolve'),
+                                        style: TextButton.styleFrom(
+                                          foregroundColor: Colors.green,
+                                        ),
+                                      ),
+                                      if (item.trustTier == 4 ||
+                                          item.trustTier == 3)
+                                        TextButton.icon(
+                                          onPressed: () =>
+                                              _blockSender(item.senderId),
+                                          icon: const Icon(
+                                            Icons.block,
+                                            size: 16,
+                                          ),
+                                          label: const Text('Block'),
+                                          style: TextButton.styleFrom(
+                                            foregroundColor: Colors.red,
+                                          ),
+                                        ),
+                                      if (item.trustTier == 4 ||
+                                          (settings.isOfficialMode &&
+                                              item.trustTier == 3))
+                                        FilledButton.tonalIcon(
+                                          onPressed: () {
+                                            if (settings.isOfficialMode) {
+                                              _makeOfficialVolunteer(
+                                                item.senderId,
+                                              );
+                                            } else {
+                                              _markAsTrusted(item.senderId);
+                                            }
+                                          },
+                                          icon: Icon(
+                                            settings.isOfficialMode
+                                                ? Icons.admin_panel_settings
+                                                : Icons.verified_user,
+                                            size: 16,
+                                          ),
+                                          label: Text(
+                                            settings.isOfficialMode
+                                                ? 'Make Volunteer'
+                                                : 'Trust',
+                                          ),
+                                          style: FilledButton.styleFrom(
+                                            foregroundColor:
+                                                settings.isOfficialMode
+                                                ? Colors.purple.shade700
+                                                : Colors.green.shade700,
+                                            backgroundColor:
+                                                settings.isOfficialMode
+                                                ? Colors.purple.shade50
+                                                : Colors.green.shade50,
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 12,
+                                              vertical: 8,
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        );
+                      }
+                      return const SizedBox.shrink();
+                    },
+                  );
+                },
+              ),
             ),
           ),
-        ),
         ),
       ],
     );
@@ -4188,7 +4444,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
       padding: const EdgeInsets.only(bottom: 8, top: 4),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
-        border: Border(bottom: BorderSide(color: Theme.of(context).dividerColor.withValues(alpha: 0.1))),
+        border: Border(
+          bottom: BorderSide(
+            color: Theme.of(context).dividerColor.withValues(alpha: 0.1),
+          ),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -4207,10 +4467,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                         onSelected: (selected) =>
                             filterNotifier.updateTypeFilter(type),
                         showCheckmark: false,
-                        selectedColor: Theme.of(context).colorScheme.primaryContainer,
+                        selectedColor: Theme.of(
+                          context,
+                        ).colorScheme.primaryContainer,
                         side: BorderSide(
-                          color: filter.typeFilter == type 
-                              ? Colors.transparent 
+                          color: filter.typeFilter == type
+                              ? Colors.transparent
                               : Theme.of(context).colorScheme.outlineVariant,
                         ),
                         shape: RoundedRectangleBorder(
@@ -4257,8 +4519,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                   showCheckmark: false,
                   selectedColor: Theme.of(context).colorScheme.primaryContainer,
                   side: BorderSide(
-                    color: filter.trustFilter == null 
-                        ? Colors.transparent 
+                    color: filter.trustFilter == null
+                        ? Colors.transparent
                         : Theme.of(context).colorScheme.outlineVariant,
                   ),
                   shape: RoundedRectangleBorder(
@@ -4277,11 +4539,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                       showCheckmark: false,
                       selectedColor: getTierColor(tier).withValues(alpha: 0.2),
                       labelStyle: TextStyle(
-                        color: filter.trustFilter == tier ? getTierColor(tier) : null,
-                        fontWeight: filter.trustFilter == tier ? FontWeight.bold : null,
+                        color: filter.trustFilter == tier
+                            ? getTierColor(tier)
+                            : null,
+                        fontWeight: filter.trustFilter == tier
+                            ? FontWeight.bold
+                            : null,
                       ),
                       side: BorderSide(
-                        color: filter.trustFilter == tier ? getTierColor(tier) : Theme.of(context).colorScheme.outlineVariant,
+                        color: filter.trustFilter == tier
+                            ? getTierColor(tier)
+                            : Theme.of(context).colorScheme.outlineVariant,
                       ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(20),
@@ -4302,7 +4570,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Trust Sender?'),
-        content: const Text('Are you sure you want to trust this sender? Their reports will be prioritized and marked as Trusted on your device only.'),
+        content: const Text(
+          'Are you sure you want to trust this sender? Their reports will be prioritized and marked as Trusted on your device only.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
@@ -4312,12 +4582,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
             style: FilledButton.styleFrom(backgroundColor: Colors.green),
             onPressed: () {
               Navigator.pop(dialogContext);
-              ref.read(trustedSendersControllerProvider.notifier).addTrustedSender(senderId, 'Trusted User');
+              ref
+                  .read(trustedSendersControllerProvider.notifier)
+                  .addTrustedSender(senderId, 'Trusted User');
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
                   content: Text('Sender marked as trusted!'),
                   behavior: SnackBarBehavior.floating,
-                )
+                ),
               );
             },
             child: const Text('Trust'),
@@ -4332,7 +4604,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Make Official Volunteer?'),
-        content: const Text('Are you sure you want to promote this user to an Official Volunteer? Their reports will be marked as Verified for everyone in the mesh network.'),
+        content: const Text(
+          'Are you sure you want to promote this user to an Official Volunteer? Their reports will be marked as Verified for everyone in the mesh network.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
@@ -4342,7 +4616,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
             style: FilledButton.styleFrom(backgroundColor: Colors.purple),
             onPressed: () async {
               Navigator.pop(dialogContext);
-              await ref.read(govApiServiceProvider.notifier).delegateAdminTrust(senderId);
+              await ref
+                  .read(govApiServiceProvider.notifier)
+                  .delegateAdminTrust(senderId);
               if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
@@ -4377,455 +4653,547 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
       child: TutorialOverlay(
         onComplete: () => setState(() => _showTutorial = false),
         child: Scaffold(
-        appBar: AppBar(
-          title: downloadProgress.isDownloading
-              ? Row(
-                  children: [
-                    const Text(
-                      'FLOODIO',
-                      style: TextStyle(letterSpacing: 2, fontWeight: FontWeight.w900),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        'Downloading map: ${(downloadProgress.percentage * 100).toStringAsFixed(1)}%',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.normal,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                )
-              : const Text(
-                  'FLOODIO',
-                  style: TextStyle(letterSpacing: 2, fontWeight: FontWeight.w900),
-                ),
-          bottom: downloadProgress.isDownloading
-              ? PreferredSize(
-                  preferredSize: const Size.fromHeight(4.0),
-                  child: LinearProgressIndicator(
-                    value: downloadProgress.percentage,
-                  ),
-                )
-              : null,
-          actions: [
-            Consumer(
-              builder: (context, ref, child) {
-                final p2pState = ref.watch(uiP2pServiceProvider);
-                final isConnected = p2pState.hostState?.isActive == true || p2pState.clientState?.isActive == true;
-                
-                if (!isConnected) return const SizedBox.shrink();
-                
-                return IconButton(
-                  icon: const Icon(Icons.sync),
-                  tooltip: 'Manual Mesh Sync',
-                  onPressed: p2pState.isSyncing ? null : () {
-                    ref.read(uiP2pServiceProvider.notifier).triggerSync();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Triggered manual mesh sync...'),
-                        behavior: SnackBarBehavior.floating,
-                      ),
-                    );
-                  },
-                );
-              },
-            ),
-            Consumer(
-              builder: (context, ref, child) {
-                final hasInternet = ref.watch(cloudSyncServiceProvider.select((s) => s.hasInternet));
-                final isSyncing = ref.watch(cloudSyncServiceProvider.select((s) => s.isSyncing));
-                final pendingUploads = ref.watch(cloudSyncServiceProvider.select((s) => s.pendingUploads));
-                
-                if (isSyncing) {
-                  return const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 12.0),
-                    child: Center(
-                      child: SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                      ),
-                    ),
-                  );
-                }
-                
-                return Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    IconButton(
-                      icon: Icon(
-                        hasInternet ? Icons.cloud_done : Icons.cloud_off,
-                        color: hasInternet ? Colors.white : Colors.white54,
-                      ),
-                      tooltip: hasInternet ? 'Cloud Connected' : 'Cloud Offline',
-                      onPressed: () {
-                        if (hasInternet) {
-                          ref.read(cloudSyncServiceProvider.notifier).syncWithCloud();
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Syncing with cloud...'),
-                              behavior: SnackBarBehavior.floating,
-                            ),
-                          );
-                        } else {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('No internet connection available.'),
-                              behavior: SnackBarBehavior.floating,
-                            ),
-                          );
-                        }
-                      },
-                    ),
-                    if (pendingUploads > 0)
-                      Positioned(
-                        right: 8,
-                        top: 8,
-                        child: Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: const BoxDecoration(
-                            color: Colors.red,
-                            shape: BoxShape.circle,
-                          ),
-                          constraints: const BoxConstraints(
-                            minWidth: 16,
-                            minHeight: 16,
-                          ),
-                          child: Center(
-                            child: Text(
-                              pendingUploads > 99 ? '99+' : '$pendingUploads',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 9,
-                                fontWeight: FontWeight.bold,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ),
-                        ),
-                      ),
-                  ],
-                );
-              },
-            ),
-            IconButton(
-              icon: const Icon(Icons.share),
-              tooltip: 'Share App (APK)',
-              onPressed: _shareApk,
-            ),
-            if (downloadProgress.isDownloading)
-              IconButton(
-                icon: const Icon(Icons.cancel),
-                tooltip: 'Cancel Download',
-                onPressed: () {
-                  ref.read(mapDownloaderProvider.notifier).cancelDownload();
-                },
-              )
-            else
-              IconButton(
-                icon: const Icon(Icons.download),
-                tooltip: 'Download Offline Map',
-                onPressed: _showDownloadMapDialog,
-              ),
-            const Padding(
-              padding: EdgeInsets.only(right: 8),
-              child: MeshStatusChip(),
-            ),
-          ],
-        ),
-        body: IndexedStack(
-          index: displayIndex,
-          children: [
-            _buildMap(),
-            _buildFeed(),
-            const GuideTab(),
-            ProfileTab(
-              onEditAreaShape: (area) {
-                ref.read(navigationIndexProvider.notifier).setIndex(0);
-                ref.read(drawingControllerProvider.notifier).startDrawingArea(
-                  area.id,
-                  area.coordinates.map((c) => LatLng(c['lat']!, c['lng']!)).toList(),
-                );
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Edit the area shape on the map.'),
-                  ),
-                );
-              },
-              onEditPathShape: (path) {
-                ref.read(navigationIndexProvider.notifier).setIndex(0);
-                ref.read(drawingControllerProvider.notifier).startDrawingPath(
-                  path.id,
-                  path.coordinates.map((c) => LatLng(c['lat']!, c['lng']!)).toList(),
-                );
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Edit the path shape on the map.'),
-                  ),
-                );
-              },
-              onNavigateToMap: (point) {
-                ref.read(navigationIndexProvider.notifier).setIndex(0);
-                ref.read(mapTargetProvider.notifier).setTarget(point);
-              },
-            ),
-            if (settings.isOfficialMode) const CommandTab(),
-          ],
-        ),
-        bottomNavigationBar: NavigationBar(
-          selectedIndex: displayIndex,
-          onDestinationSelected: (index) =>
-              ref.read(navigationIndexProvider.notifier).setIndex(index),
-          destinations: [
-            const NavigationDestination(
-              icon: Icon(Icons.map_outlined),
-              selectedIcon: Icon(Icons.map),
-              label: 'Map',
-            ),
-            const NavigationDestination(
-              icon: Icon(Icons.view_list_outlined),
-              selectedIcon: Icon(Icons.view_list),
-              label: 'Feed',
-            ),
-            const NavigationDestination(
-              icon: Icon(Icons.help_outline),
-              selectedIcon: Icon(Icons.help),
-              label: 'Guide',
-            ),
-            const NavigationDestination(
-              icon: Icon(Icons.person_outline),
-              selectedIcon: Icon(Icons.person),
-              label: 'Profile',
-            ),
-            if (settings.isOfficialMode)
-              const NavigationDestination(
-                icon: Icon(Icons.admin_panel_settings_outlined),
-                selectedIcon: Icon(Icons.admin_panel_settings),
-                label: 'Command',
-              ),
-          ],
-        ),
-        floatingActionButton: (displayIndex >= 2)
-            ? null
-            : cryptoState.when(
-                data: (_) {
-                  final drawingState = ref.watch(drawingControllerProvider);
-                  if (drawingState.mode != DrawingMode.none) {
-                    return Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        FloatingActionButton.extended(
-                          heroTag: 'cancel_draw',
-                          onPressed: () {
-                            ref.read(drawingControllerProvider.notifier).cancel();
-                          },
-                          backgroundColor: Colors.red,
-                          icon: const Icon(Icons.close, color: Colors.white),
-                          label: const Text(
-                            'Cancel',
-                            style: TextStyle(color: Colors.white),
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        if (drawingState.points.isNotEmpty)
-                          FloatingActionButton.extended(
-                            heroTag: 'undo_draw',
-                            onPressed: () {
-                              ref.read(drawingControllerProvider.notifier).removeLastPoint();
-                            },
-                            backgroundColor: Colors.orange,
-                            icon: const Icon(Icons.undo, color: Colors.white),
-                            label: const Text(
-                              'Undo',
-                              style: TextStyle(color: Colors.white),
-                            ),
-                          ),
-                        const SizedBox(width: 16),
-                        if ((drawingState.mode == DrawingMode.area &&
-                                drawingState.points.length >= 3) ||
-                            (drawingState.mode == DrawingMode.path && drawingState.points.length >= 2))
-                          FloatingActionButton.extended(
-                            heroTag: 'done_draw',
-                            onPressed: () async {
-                              if (drawingState.mode == DrawingMode.area) {
-                                AreaEntity? existingArea;
-                                if (drawingState.editingId != null) {
-                                  final areas =
-                                      ref.read(areasControllerProvider).value ??
-                                      [];
-                                  try {
-                                    existingArea = areas.firstWhere(
-                                      (a) => a.id == drawingState.editingId,
-                                    );
-                                  } catch (_) {}
-                                }
-                                _showAddAreaDialog(existingArea: existingArea, points: drawingState.points);
-                              } else {
-                                PathEntity? existingPath;
-                                if (drawingState.editingId != null) {
-                                  final paths =
-                                      ref.read(pathsControllerProvider).value ??
-                                      [];
-                                  try {
-                                    existingPath = paths.firstWhere(
-                                      (p) => p.id == drawingState.editingId,
-                                    );
-                                  } catch (_) {}
-                                }
-                                _showAddPathDialog(existingPath: existingPath, points: drawingState.points);
-                              }
-                            },
-                            backgroundColor: Colors.green,
-                            icon: const Icon(Icons.check, color: Colors.white),
-                            label: const Text(
-                              'Done',
-                              style: TextStyle(color: Colors.white),
-                            ),
-                          ),
-                      ],
-                    );
-                  }
-
-                  final locationState = ref.watch(locationControllerProvider);
-                  final isLocationLoading = locationState.isLoading && locationState.value == null;
-
-                  return Column(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.end,
+          appBar: AppBar(
+            title: downloadProgress.isDownloading
+                ? Row(
                     children: [
-                      if (displayIndex == 0) ...[
-                        if (_mapRotation != 0.0) ...[
-                          FloatingActionButton.small(
-                            heroTag: 'reset_rotation',
-                            onPressed: () {
-                              _mapController.rotate(0);
-                            },
-                            backgroundColor: Theme.of(context).colorScheme.surface,
-                            foregroundColor: Theme.of(context).colorScheme.primary,
-                            child: const Icon(Icons.explore),
+                      const Text(
+                        'FLOODIO',
+                        style: TextStyle(
+                          letterSpacing: 2,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'Downloading map: ${(downloadProgress.percentage * 100).toStringAsFixed(1)}%',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.normal,
                           ),
-                          const SizedBox(height: 16),
-                        ],
-                        FloatingActionButton.small(
-                          heroTag: 'zoom_in',
-                          onPressed: () {
-                            try {
-                              final currentZoom = _mapController.camera.zoom;
-                              _mapController.move(_mapController.camera.center, currentZoom + 1);
-                            } catch (e) {
-                              debugPrint('Map not ready: $e');
-                            }
-                          },
-                          backgroundColor: Theme.of(context).colorScheme.surface,
-                          foregroundColor: Theme.of(context).colorScheme.primary,
-                          child: const Icon(Icons.add),
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        const SizedBox(height: 8),
-                        FloatingActionButton.small(
-                          heroTag: 'zoom_out',
-                          onPressed: () {
-                            try {
-                              final currentZoom = _mapController.camera.zoom;
-                              _mapController.move(_mapController.camera.center, currentZoom - 1);
-                            } catch (e) {
-                              debugPrint('Map not ready: $e');
-                            }
-                          },
-                          backgroundColor: Theme.of(context).colorScheme.surface,
-                          foregroundColor: Theme.of(context).colorScheme.primary,
-                          child: const Icon(Icons.remove),
-                        ),
-                        const SizedBox(height: 16),
-                        FloatingActionButton.small(
-                          heroTag: 'layers',
-                          onPressed: () {
-                            ref.read(showOfflineRegionsProvider.notifier).toggle();
-                            final show = ref.read(showOfflineRegionsProvider);
+                      ),
+                    ],
+                  )
+                : const Text(
+                    'FLOODIO',
+                    style: TextStyle(
+                      letterSpacing: 2,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+            bottom: downloadProgress.isDownloading
+                ? PreferredSize(
+                    preferredSize: const Size.fromHeight(4.0),
+                    child: LinearProgressIndicator(
+                      value: downloadProgress.percentage,
+                    ),
+                  )
+                : null,
+            actions: [
+              Consumer(
+                builder: (context, ref, child) {
+                  final p2pState = ref.watch(uiP2pServiceProvider);
+                  final isConnected =
+                      p2pState.hostState?.isActive == true ||
+                      p2pState.clientState?.isActive == true;
+
+                  if (!isConnected) return const SizedBox.shrink();
+
+                  return IconButton(
+                    icon: const Icon(Icons.sync),
+                    tooltip: 'Manual Mesh Sync',
+                    onPressed: p2pState.isSyncing
+                        ? null
+                        : () {
+                            ref
+                                .read(uiP2pServiceProvider.notifier)
+                                .triggerSync();
                             ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  show
-                                      ? 'Showing offline regions'
-                                      : 'Hiding offline regions',
-                                ),
+                              const SnackBar(
+                                content: Text('Triggered manual mesh sync...'),
                                 behavior: SnackBarBehavior.floating,
                               ),
                             );
                           },
-                          backgroundColor: Theme.of(context).colorScheme.surface,
-                          foregroundColor: Theme.of(context).colorScheme.primary,
-                          child: const Icon(Icons.layers),
+                  );
+                },
+              ),
+              Consumer(
+                builder: (context, ref, child) {
+                  final hasInternet = ref.watch(
+                    cloudSyncServiceProvider.select((s) => s.hasInternet),
+                  );
+                  final isSyncing = ref.watch(
+                    cloudSyncServiceProvider.select((s) => s.isSyncing),
+                  );
+                  final pendingUploads = ref.watch(
+                    cloudSyncServiceProvider.select((s) => s.pendingUploads),
+                  );
+
+                  if (isSyncing) {
+                    return const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 12.0),
+                      child: Center(
+                        child: SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
                         ),
-                        const SizedBox(height: 16),
-                        FloatingActionButton.small(
-                          heroTag: 'center_map',
-                          onPressed: () async {
-                            setState(() {
-                              _isTrackingLocation = true;
-                            });
-                            try {
-                              final pos = await ref
-                                  .read(locationControllerProvider.notifier)
-                                  .getCurrentPosition();
-                              if (pos != null) {
-                                final zoom = _mapController.camera.zoom < 10.0 ? 15.0 : _mapController.camera.zoom;
-                                _mapController.move(
-                                  LatLng(pos.latitude, pos.longitude),
-                                  zoom,
-                                );
-                              } else {
-                                if (mounted) {
-                                  ScaffoldMessenger.of(
-                                    this.context,
-                                  ).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Location not available. Please check permissions.'),
-                                      behavior: SnackBarBehavior.floating,
-                                    ),
-                                  );
-                                }
-                              }
-                            } catch (e) {
-                              debugPrint('Map not ready yet: $e');
-                            }
-                          },
-                          backgroundColor: _isTrackingLocation ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.surface,
-                          foregroundColor: _isTrackingLocation ? Theme.of(context).colorScheme.onPrimary : Theme.of(context).colorScheme.primary,
-                          child: isLocationLoading
-                              ? Padding(
-                                  padding: const EdgeInsets.all(8.0),
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: _isTrackingLocation ? Theme.of(context).colorScheme.onPrimary : Theme.of(context).colorScheme.primary,
-                                  ),
-                                )
-                              : const Icon(Icons.my_location),
-                        ),
-                        const SizedBox(height: 16),
-                      ],
-                      FloatingActionButton.extended(
-                        heroTag: 'create_report',
-                        onPressed: _showReportOptions,
-                        icon: const Icon(Icons.add),
-                        label: const Text('Create Report'),
                       ),
+                    );
+                  }
+
+                  return Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      IconButton(
+                        icon: Icon(
+                          hasInternet ? Icons.cloud_done : Icons.cloud_off,
+                          color: hasInternet ? Colors.white : Colors.white54,
+                        ),
+                        tooltip: hasInternet
+                            ? 'Cloud Connected'
+                            : 'Cloud Offline',
+                        onPressed: () {
+                          if (hasInternet) {
+                            ref
+                                .read(cloudSyncServiceProvider.notifier)
+                                .syncWithCloud();
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Syncing with cloud...'),
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'No internet connection available.',
+                                ),
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                          }
+                        },
+                      ),
+                      if (pendingUploads > 0)
+                        Positioned(
+                          right: 8,
+                          top: 8,
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: const BoxDecoration(
+                              color: Colors.red,
+                              shape: BoxShape.circle,
+                            ),
+                            constraints: const BoxConstraints(
+                              minWidth: 16,
+                              minHeight: 16,
+                            ),
+                            child: Center(
+                              child: Text(
+                                pendingUploads > 99 ? '99+' : '$pendingUploads',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          ),
+                        ),
                     ],
                   );
                 },
-                loading: () => const FloatingActionButton(
-                  onPressed: null,
-                  child: CircularProgressIndicator(),
-                ),
-                error: (e, st) => const FloatingActionButton(
-                  onPressed: null,
-                  child: Icon(Icons.error),
-                ),
               ),
-      ),
+              IconButton(
+                icon: const Icon(Icons.share),
+                tooltip: 'Share App (APK)',
+                onPressed: _shareApk,
+              ),
+              if (downloadProgress.isDownloading)
+                IconButton(
+                  icon: const Icon(Icons.cancel),
+                  tooltip: 'Cancel Download',
+                  onPressed: () {
+                    ref.read(mapDownloaderProvider.notifier).cancelDownload();
+                  },
+                )
+              else
+                IconButton(
+                  icon: const Icon(Icons.download),
+                  tooltip: 'Download Offline Map',
+                  onPressed: _showDownloadMapDialog,
+                ),
+              const Padding(
+                padding: EdgeInsets.only(right: 8),
+                child: MeshStatusChip(),
+              ),
+            ],
+          ),
+          body: IndexedStack(
+            index: displayIndex,
+            children: [
+              _buildMap(),
+              _buildFeed(),
+              const GuideTab(),
+              ProfileTab(
+                onEditAreaShape: (area) {
+                  ref.read(navigationIndexProvider.notifier).setIndex(0);
+                  ref
+                      .read(drawingControllerProvider.notifier)
+                      .startDrawingArea(
+                        area.id,
+                        area.coordinates
+                            .map((c) => LatLng(c['lat']!, c['lng']!))
+                            .toList(),
+                      );
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Edit the area shape on the map.'),
+                    ),
+                  );
+                },
+                onEditPathShape: (path) {
+                  ref.read(navigationIndexProvider.notifier).setIndex(0);
+                  ref
+                      .read(drawingControllerProvider.notifier)
+                      .startDrawingPath(
+                        path.id,
+                        path.coordinates
+                            .map((c) => LatLng(c['lat']!, c['lng']!))
+                            .toList(),
+                      );
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Edit the path shape on the map.'),
+                    ),
+                  );
+                },
+                onNavigateToMap: (point) {
+                  ref.read(navigationIndexProvider.notifier).setIndex(0);
+                  ref.read(mapTargetProvider.notifier).setTarget(point);
+                },
+              ),
+              if (settings.isOfficialMode) const CommandTab(),
+            ],
+          ),
+          bottomNavigationBar: NavigationBar(
+            selectedIndex: displayIndex,
+            onDestinationSelected: (index) =>
+                ref.read(navigationIndexProvider.notifier).setIndex(index),
+            destinations: [
+              const NavigationDestination(
+                icon: Icon(Icons.map_outlined),
+                selectedIcon: Icon(Icons.map),
+                label: 'Map',
+              ),
+              const NavigationDestination(
+                icon: Icon(Icons.view_list_outlined),
+                selectedIcon: Icon(Icons.view_list),
+                label: 'Feed',
+              ),
+              const NavigationDestination(
+                icon: Icon(Icons.help_outline),
+                selectedIcon: Icon(Icons.help),
+                label: 'Guide',
+              ),
+              const NavigationDestination(
+                icon: Icon(Icons.person_outline),
+                selectedIcon: Icon(Icons.person),
+                label: 'Profile',
+              ),
+              if (settings.isOfficialMode)
+                const NavigationDestination(
+                  icon: Icon(Icons.admin_panel_settings_outlined),
+                  selectedIcon: Icon(Icons.admin_panel_settings),
+                  label: 'Command',
+                ),
+            ],
+          ),
+          floatingActionButton: (displayIndex >= 2)
+              ? null
+              : cryptoState.when(
+                  data: (_) {
+                    final drawingState = ref.watch(drawingControllerProvider);
+                    if (drawingState.mode != DrawingMode.none) {
+                      return Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          FloatingActionButton.extended(
+                            heroTag: 'cancel_draw',
+                            onPressed: () {
+                              ref
+                                  .read(drawingControllerProvider.notifier)
+                                  .cancel();
+                            },
+                            backgroundColor: Colors.red,
+                            icon: const Icon(Icons.close, color: Colors.white),
+                            label: const Text(
+                              'Cancel',
+                              style: TextStyle(color: Colors.white),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          if (drawingState.points.isNotEmpty)
+                            FloatingActionButton.extended(
+                              heroTag: 'undo_draw',
+                              onPressed: () {
+                                ref
+                                    .read(drawingControllerProvider.notifier)
+                                    .removeLastPoint();
+                              },
+                              backgroundColor: Colors.orange,
+                              icon: const Icon(Icons.undo, color: Colors.white),
+                              label: const Text(
+                                'Undo',
+                                style: TextStyle(color: Colors.white),
+                              ),
+                            ),
+                          const SizedBox(width: 16),
+                          if ((drawingState.mode == DrawingMode.area &&
+                                  drawingState.points.length >= 3) ||
+                              (drawingState.mode == DrawingMode.path &&
+                                  drawingState.points.length >= 2))
+                            FloatingActionButton.extended(
+                              heroTag: 'done_draw',
+                              onPressed: () async {
+                                if (drawingState.mode == DrawingMode.area) {
+                                  AreaEntity? existingArea;
+                                  if (drawingState.editingId != null) {
+                                    final areas =
+                                        ref
+                                            .read(areasControllerProvider)
+                                            .value ??
+                                        [];
+                                    try {
+                                      existingArea = areas.firstWhere(
+                                        (a) => a.id == drawingState.editingId,
+                                      );
+                                    } catch (_) {}
+                                  }
+                                  _showAddAreaDialog(
+                                    existingArea: existingArea,
+                                    points: drawingState.points,
+                                  );
+                                } else {
+                                  PathEntity? existingPath;
+                                  if (drawingState.editingId != null) {
+                                    final paths =
+                                        ref
+                                            .read(pathsControllerProvider)
+                                            .value ??
+                                        [];
+                                    try {
+                                      existingPath = paths.firstWhere(
+                                        (p) => p.id == drawingState.editingId,
+                                      );
+                                    } catch (_) {}
+                                  }
+                                  _showAddPathDialog(
+                                    existingPath: existingPath,
+                                    points: drawingState.points,
+                                  );
+                                }
+                              },
+                              backgroundColor: Colors.green,
+                              icon: const Icon(
+                                Icons.check,
+                                color: Colors.white,
+                              ),
+                              label: const Text(
+                                'Done',
+                                style: TextStyle(color: Colors.white),
+                              ),
+                            ),
+                        ],
+                      );
+                    }
+
+                    final locationState = ref.watch(locationControllerProvider);
+                    final isLocationLoading =
+                        locationState.isLoading && locationState.value == null;
+
+                    return Column(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        if (displayIndex == 0) ...[
+                          if (_mapRotation != 0.0) ...[
+                            FloatingActionButton.small(
+                              heroTag: 'reset_rotation',
+                              onPressed: () {
+                                _mapController.rotate(0);
+                              },
+                              backgroundColor: Theme.of(
+                                context,
+                              ).colorScheme.surface,
+                              foregroundColor: Theme.of(
+                                context,
+                              ).colorScheme.primary,
+                              child: const Icon(Icons.explore),
+                            ),
+                            const SizedBox(height: 16),
+                          ],
+                          FloatingActionButton.small(
+                            heroTag: 'zoom_in',
+                            onPressed: () {
+                              try {
+                                final currentZoom = _mapController.camera.zoom;
+                                _mapController.move(
+                                  _mapController.camera.center,
+                                  currentZoom + 1,
+                                );
+                              } catch (e) {
+                                debugPrint('Map not ready: $e');
+                              }
+                            },
+                            backgroundColor: Theme.of(
+                              context,
+                            ).colorScheme.surface,
+                            foregroundColor: Theme.of(
+                              context,
+                            ).colorScheme.primary,
+                            child: const Icon(Icons.add),
+                          ),
+                          const SizedBox(height: 8),
+                          FloatingActionButton.small(
+                            heroTag: 'zoom_out',
+                            onPressed: () {
+                              try {
+                                final currentZoom = _mapController.camera.zoom;
+                                _mapController.move(
+                                  _mapController.camera.center,
+                                  currentZoom - 1,
+                                );
+                              } catch (e) {
+                                debugPrint('Map not ready: $e');
+                              }
+                            },
+                            backgroundColor: Theme.of(
+                              context,
+                            ).colorScheme.surface,
+                            foregroundColor: Theme.of(
+                              context,
+                            ).colorScheme.primary,
+                            child: const Icon(Icons.remove),
+                          ),
+                          const SizedBox(height: 16),
+                          FloatingActionButton.small(
+                            heroTag: 'layers',
+                            onPressed: () {
+                              ref
+                                  .read(showOfflineRegionsProvider.notifier)
+                                  .toggle();
+                              final show = ref.read(showOfflineRegionsProvider);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    show
+                                        ? 'Showing offline regions'
+                                        : 'Hiding offline regions',
+                                  ),
+                                  behavior: SnackBarBehavior.floating,
+                                ),
+                              );
+                            },
+                            backgroundColor: Theme.of(
+                              context,
+                            ).colorScheme.surface,
+                            foregroundColor: Theme.of(
+                              context,
+                            ).colorScheme.primary,
+                            child: const Icon(Icons.layers),
+                          ),
+                          const SizedBox(height: 16),
+                          FloatingActionButton.small(
+                            heroTag: 'center_map',
+                            onPressed: () async {
+                              setState(() {
+                                _isTrackingLocation = true;
+                              });
+                              try {
+                                final pos = await ref
+                                    .read(locationControllerProvider.notifier)
+                                    .getCurrentPosition();
+                                if (pos != null) {
+                                  final zoom = _mapController.camera.zoom < 10.0
+                                      ? 15.0
+                                      : _mapController.camera.zoom;
+                                  _mapController.move(
+                                    LatLng(pos.latitude, pos.longitude),
+                                    zoom,
+                                  );
+                                } else {
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(
+                                      this.context,
+                                    ).showSnackBar(
+                                      const SnackBar(
+                                        content: Text(
+                                          'Location not available. Please check permissions.',
+                                        ),
+                                        behavior: SnackBarBehavior.floating,
+                                      ),
+                                    );
+                                  }
+                                }
+                              } catch (e) {
+                                debugPrint('Map not ready yet: $e');
+                              }
+                            },
+                            backgroundColor: _isTrackingLocation
+                                ? Theme.of(context).colorScheme.primary
+                                : Theme.of(context).colorScheme.surface,
+                            foregroundColor: _isTrackingLocation
+                                ? Theme.of(context).colorScheme.onPrimary
+                                : Theme.of(context).colorScheme.primary,
+                            child: isLocationLoading
+                                ? Padding(
+                                    padding: const EdgeInsets.all(8.0),
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: _isTrackingLocation
+                                          ? Theme.of(
+                                              context,
+                                            ).colorScheme.onPrimary
+                                          : Theme.of(
+                                              context,
+                                            ).colorScheme.primary,
+                                    ),
+                                  )
+                                : const Icon(Icons.my_location),
+                          ),
+                          const SizedBox(height: 16),
+                        ],
+                        FloatingActionButton.extended(
+                          heroTag: 'create_report',
+                          onPressed: _showReportOptions,
+                          icon: const Icon(Icons.add),
+                          label: const Text('Create Report'),
+                        ),
+                      ],
+                    );
+                  },
+                  loading: () => const FloatingActionButton(
+                    onPressed: null,
+                    child: CircularProgressIndicator(),
+                  ),
+                  error: (e, st) => const FloatingActionButton(
+                    onPressed: null,
+                    child: Icon(Icons.error),
+                  ),
+                ),
+        ),
       ),
     );
   }

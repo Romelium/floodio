@@ -28,7 +28,12 @@ class ProfileTab extends ConsumerStatefulWidget {
   final Function(AreaEntity) onEditAreaShape;
   final Function(PathEntity) onEditPathShape;
   final Function(LatLng) onNavigateToMap;
-  const ProfileTab({super.key, required this.onEditAreaShape, required this.onEditPathShape, required this.onNavigateToMap});
+  const ProfileTab({
+    super.key,
+    required this.onEditAreaShape,
+    required this.onEditPathShape,
+    required this.onNavigateToMap,
+  });
 
   @override
   ConsumerState<ProfileTab> createState() => _ProfileTabState();
@@ -75,9 +80,15 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                   .read(hazardMarkersControllerProvider.notifier)
                   .deleteMarker(id, timestamp: timestamp);
               final payload = pb.SyncPayload();
-              payload.deletedItems.add(pb.DeletedItem(id: id, timestamp: Int64(timestamp)));
+              payload.deletedItems.add(
+                pb.DeletedItem(id: id, timestamp: Int64(timestamp)),
+              );
               final encoded = base64Encode(payload.writeToBuffer());
-              ref.read(uiP2pServiceProvider.notifier).broadcastText(jsonEncode({'type': 'payload', 'data': encoded}));
+              ref
+                  .read(uiP2pServiceProvider.notifier)
+                  .broadcastText(
+                    jsonEncode({'type': 'payload', 'data': encoded}),
+                  );
             },
             child: const Text('Delete'),
           ),
@@ -102,11 +113,19 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
             onPressed: () {
               Navigator.pop(dialogContext);
               final timestamp = DateTime.now().millisecondsSinceEpoch;
-              ref.read(newsItemsControllerProvider.notifier).deleteNewsItem(id, timestamp: timestamp);
+              ref
+                  .read(newsItemsControllerProvider.notifier)
+                  .deleteNewsItem(id, timestamp: timestamp);
               final payload = pb.SyncPayload();
-              payload.deletedItems.add(pb.DeletedItem(id: id, timestamp: Int64(timestamp)));
+              payload.deletedItems.add(
+                pb.DeletedItem(id: id, timestamp: Int64(timestamp)),
+              );
               final encoded = base64Encode(payload.writeToBuffer());
-              ref.read(uiP2pServiceProvider.notifier).broadcastText(jsonEncode({'type': 'payload', 'data': encoded}));
+              ref
+                  .read(uiP2pServiceProvider.notifier)
+                  .broadcastText(
+                    jsonEncode({'type': 'payload', 'data': encoded}),
+                  );
             },
             child: const Text('Delete'),
           ),
@@ -133,11 +152,19 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
             onPressed: () {
               Navigator.pop(dialogContext);
               final timestamp = DateTime.now().millisecondsSinceEpoch;
-              ref.read(areasControllerProvider.notifier).deleteArea(id, timestamp: timestamp);
+              ref
+                  .read(areasControllerProvider.notifier)
+                  .deleteArea(id, timestamp: timestamp);
               final payload = pb.SyncPayload();
-              payload.deletedItems.add(pb.DeletedItem(id: id, timestamp: Int64(timestamp)));
+              payload.deletedItems.add(
+                pb.DeletedItem(id: id, timestamp: Int64(timestamp)),
+              );
               final encoded = base64Encode(payload.writeToBuffer());
-              ref.read(uiP2pServiceProvider.notifier).broadcastText(jsonEncode({'type': 'payload', 'data': encoded}));
+              ref
+                  .read(uiP2pServiceProvider.notifier)
+                  .broadcastText(
+                    jsonEncode({'type': 'payload', 'data': encoded}),
+                  );
             },
             child: const Text('Delete'),
           ),
@@ -164,11 +191,19 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
             onPressed: () {
               Navigator.pop(dialogContext);
               final timestamp = DateTime.now().millisecondsSinceEpoch;
-              ref.read(pathsControllerProvider.notifier).deletePath(id, timestamp: timestamp);
+              ref
+                  .read(pathsControllerProvider.notifier)
+                  .deletePath(id, timestamp: timestamp);
               final payload = pb.SyncPayload();
-              payload.deletedItems.add(pb.DeletedItem(id: id, timestamp: Int64(timestamp)));
+              payload.deletedItems.add(
+                pb.DeletedItem(id: id, timestamp: Int64(timestamp)),
+              );
               final encoded = base64Encode(payload.writeToBuffer());
-              ref.read(uiP2pServiceProvider.notifier).broadcastText(jsonEncode({'type': 'payload', 'data': encoded}));
+              ref
+                  .read(uiP2pServiceProvider.notifier)
+                  .broadcastText(
+                    jsonEncode({'type': 'payload', 'data': encoded}),
+                  );
             },
             child: const Text('Delete'),
           ),
@@ -180,7 +215,9 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
   void _editProfile() {
     final localUser = ref.read(localUserControllerProvider).value;
     final nameController = TextEditingController(text: localUser?.name ?? '');
-    final contactController = TextEditingController(text: localUser?.contact ?? '');
+    final contactController = TextEditingController(
+      text: localUser?.contact ?? '',
+    );
 
     showDialog(
       context: context,
@@ -246,7 +283,9 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                   .read(userProfilesControllerProvider.notifier)
                   .saveProfile(profile);
 
-              await ref.read(localUserControllerProvider.notifier).updateProfile(newName, newContact);
+              await ref
+                  .read(localUserControllerProvider.notifier)
+                  .updateProfile(newName, newContact);
 
               final payload = pb.SyncPayload();
               payload.profiles.add(
@@ -259,7 +298,11 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                 ),
               );
               final encoded = base64Encode(payload.writeToBuffer());
-              ref.read(uiP2pServiceProvider.notifier).broadcastText(jsonEncode({'type': 'payload', 'data': encoded}));
+              ref
+                  .read(uiP2pServiceProvider.notifier)
+                  .broadcastText(
+                    jsonEncode({'type': 'payload', 'data': encoded}),
+                  );
 
               if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -334,13 +377,21 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                     DropdownMenuItem(value: 168, child: Text('7 Days')),
                     DropdownMenuItem(value: null, child: Text('No Expiration')),
                   ],
-                  onChanged: (val) => setInnerState(() => selectedTtlHours = val),
+                  onChanged: (val) =>
+                      setInnerState(() => selectedTtlHours = val),
                 ),
                 const SizedBox(height: 16),
                 CheckboxListTile(
-                  title: const Text('Mark as Critical Emergency', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                  title: const Text(
+                    'Mark as Critical Emergency',
+                    style: TextStyle(
+                      color: Colors.red,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                   value: isCritical,
-                  onChanged: (val) => setInnerState(() => isCritical = val ?? false),
+                  onChanged: (val) =>
+                      setInnerState(() => isCritical = val ?? false),
                   controlAffinity: ListTileControlAffinity.leading,
                   activeColor: Colors.red,
                 ),
@@ -405,7 +456,11 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                   ),
                 );
                 final encoded = base64Encode(payload.writeToBuffer());
-                ref.read(uiP2pServiceProvider.notifier).broadcastText(jsonEncode({'type': 'payload', 'data': encoded}));
+                ref
+                    .read(uiP2pServiceProvider.notifier)
+                    .broadcastText(
+                      jsonEncode({'type': 'payload', 'data': encoded}),
+                    );
 
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -463,13 +518,21 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                     DropdownMenuItem(value: 168, child: Text('7 Days')),
                     DropdownMenuItem(value: null, child: Text('No Expiration')),
                   ],
-                  onChanged: (val) => setInnerState(() => selectedTtlHours = val),
+                  onChanged: (val) =>
+                      setInnerState(() => selectedTtlHours = val),
                 ),
                 const SizedBox(height: 16),
                 CheckboxListTile(
-                  title: const Text('Mark as Critical Emergency', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                  title: const Text(
+                    'Mark as Critical Emergency',
+                    style: TextStyle(
+                      color: Colors.red,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                   value: isCritical,
-                  onChanged: (val) => setInnerState(() => isCritical = val ?? false),
+                  onChanged: (val) =>
+                      setInnerState(() => isCritical = val ?? false),
                   controlAffinity: ListTileControlAffinity.leading,
                   activeColor: Colors.red,
                 ),
@@ -530,15 +593,19 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                   ),
                 );
                 final encoded = base64Encode(payload.writeToBuffer());
-                ref.read(uiP2pServiceProvider.notifier).broadcastText(jsonEncode({'type': 'payload', 'data': encoded}));
+                ref
+                    .read(uiP2pServiceProvider.notifier)
+                    .broadcastText(
+                      jsonEncode({'type': 'payload', 'data': encoded}),
+                    );
 
                 if (mounted) {
-                  ScaffoldMessenger.of(
-                    context,
-                  ).showSnackBar(const SnackBar(
-                    content: Text('News updated'),
-                    behavior: SnackBarBehavior.floating,
-                  ));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('News updated'),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
                 }
               },
               child: const Text('Save'),
@@ -615,13 +682,21 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                     DropdownMenuItem(value: 168, child: Text('7 Days')),
                     DropdownMenuItem(value: null, child: Text('No Expiration')),
                   ],
-                  onChanged: (val) => setInnerState(() => selectedTtlHours = val),
+                  onChanged: (val) =>
+                      setInnerState(() => selectedTtlHours = val),
                 ),
                 const SizedBox(height: 16),
                 CheckboxListTile(
-                  title: const Text('Mark as Critical Emergency', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                  title: const Text(
+                    'Mark as Critical Emergency',
+                    style: TextStyle(
+                      color: Colors.red,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                   value: isCritical,
-                  onChanged: (val) => setInnerState(() => isCritical = val ?? false),
+                  onChanged: (val) =>
+                      setInnerState(() => isCritical = val ?? false),
                   controlAffinity: ListTileControlAffinity.leading,
                   activeColor: Colors.red,
                 ),
@@ -644,7 +719,9 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                     : null;
 
                 final isCriticalStr = isCritical ? "1" : "0";
-                final coordsStr = area.coordinates.map((c) => '${c['lat']},${c['lng']}').join('|');
+                final coordsStr = area.coordinates
+                    .map((c) => '${c['lat']},${c['lng']}')
+                    .join('|');
                 final payloadToSign = utf8.encode(
                   '$newId$coordsStr$selectedType${descController.text}$timestamp${expiresAt ?? ""}$isCriticalStr',
                 );
@@ -681,20 +758,27 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                 );
                 for (final coord in updatedArea.coordinates) {
                   areaMarker.coordinates.add(
-                    pb.Coordinate(latitude: coord['lat']!, longitude: coord['lng']!),
+                    pb.Coordinate(
+                      latitude: coord['lat']!,
+                      longitude: coord['lng']!,
+                    ),
                   );
                 }
                 payload.areas.add(areaMarker);
                 final encoded = base64Encode(payload.writeToBuffer());
-                ref.read(uiP2pServiceProvider.notifier).broadcastText(jsonEncode({'type': 'payload', 'data': encoded}));
+                ref
+                    .read(uiP2pServiceProvider.notifier)
+                    .broadcastText(
+                      jsonEncode({'type': 'payload', 'data': encoded}),
+                    );
 
                 if (mounted) {
-                  ScaffoldMessenger.of(
-                    context,
-                  ).showSnackBar(const SnackBar(
-                    content: Text('Area updated'),
-                    behavior: SnackBarBehavior.floating,
-                  ));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Area updated'),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
                 }
               },
               child: const Text('Save'),
@@ -732,12 +816,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                       : 'Other',
                   decoration: const InputDecoration(labelText: 'Path Type'),
                   items:
-                      [
-                            'Evacuation Route',
-                            'Safe Path',
-                            'Blocked Road',
-                            'Other',
-                          ]
+                      ['Evacuation Route', 'Safe Path', 'Blocked Road', 'Other']
                           .map(
                             (type) => DropdownMenuItem(
                               value: type,
@@ -769,13 +848,21 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                     DropdownMenuItem(value: 168, child: Text('7 Days')),
                     DropdownMenuItem(value: null, child: Text('No Expiration')),
                   ],
-                  onChanged: (val) => setInnerState(() => selectedTtlHours = val),
+                  onChanged: (val) =>
+                      setInnerState(() => selectedTtlHours = val),
                 ),
                 const SizedBox(height: 16),
                 CheckboxListTile(
-                  title: const Text('Mark as Critical Emergency', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                  title: const Text(
+                    'Mark as Critical Emergency',
+                    style: TextStyle(
+                      color: Colors.red,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                   value: isCritical,
-                  onChanged: (val) => setInnerState(() => isCritical = val ?? false),
+                  onChanged: (val) =>
+                      setInnerState(() => isCritical = val ?? false),
                   controlAffinity: ListTileControlAffinity.leading,
                   activeColor: Colors.red,
                 ),
@@ -798,7 +885,9 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                     : null;
 
                 final isCriticalStr = isCritical ? "1" : "0";
-                final coordsStr = path.coordinates.map((c) => '${c['lat']},${c['lng']}').join('|');
+                final coordsStr = path.coordinates
+                    .map((c) => '${c['lat']},${c['lng']}')
+                    .join('|');
                 final payloadToSign = utf8.encode(
                   '$newId$coordsStr$selectedType${descController.text}$timestamp${expiresAt ?? ""}$isCriticalStr',
                 );
@@ -835,20 +924,27 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                 );
                 for (final coord in updatedPath.coordinates) {
                   pathMarker.coordinates.add(
-                    pb.Coordinate(latitude: coord['lat']!, longitude: coord['lng']!),
+                    pb.Coordinate(
+                      latitude: coord['lat']!,
+                      longitude: coord['lng']!,
+                    ),
                   );
                 }
                 payload.paths.add(pathMarker);
                 final encoded = base64Encode(payload.writeToBuffer());
-                ref.read(uiP2pServiceProvider.notifier).broadcastText(jsonEncode({'type': 'payload', 'data': encoded}));
+                ref
+                    .read(uiP2pServiceProvider.notifier)
+                    .broadcastText(
+                      jsonEncode({'type': 'payload', 'data': encoded}),
+                    );
 
                 if (mounted) {
-                  ScaffoldMessenger.of(
-                    context,
-                  ).showSnackBar(const SnackBar(
-                    content: Text('Path updated'),
-                    behavior: SnackBarBehavior.floating,
-                  ));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Path updated'),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
                 }
               },
               child: const Text('Save'),
@@ -898,8 +994,12 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                       children: [
                         CircleAvatar(
                           radius: 48,
-                          backgroundColor: Theme.of(context).colorScheme.primary,
-                          foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                          backgroundColor: Theme.of(
+                            context,
+                          ).colorScheme.primary,
+                          foregroundColor: Theme.of(
+                            context,
+                          ).colorScheme.onPrimary,
                           child: Text(
                             myName.isNotEmpty ? myName[0].toUpperCase() : '?',
                             style: const TextStyle(
@@ -922,11 +1022,22 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(Icons.phone, size: 16, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                              Icon(
+                                Icons.phone,
+                                size: 16,
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant,
+                              ),
                               const SizedBox(width: 8),
                               Text(
                                 myContact,
-                                style: TextStyle(fontSize: 16, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurfaceVariant,
+                                ),
                               ),
                             ],
                           ),
@@ -936,36 +1047,57 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                           borderRadius: BorderRadius.circular(8),
                           onTap: () {
                             if (myPublicKey != null) {
-                              Clipboard.setData(ClipboardData(text: myPublicKey));
+                              Clipboard.setData(
+                                ClipboardData(text: myPublicKey),
+                              );
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
-                                  content: Text('Public Key copied to clipboard'),
+                                  content: Text(
+                                    'Public Key copied to clipboard',
+                                  ),
                                   behavior: SnackBarBehavior.floating,
                                 ),
                               );
                             }
                           },
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
                             decoration: BoxDecoration(
-                              color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.5),
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.surface.withValues(alpha: 0.5),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(Icons.key, size: 16, color: Theme.of(context).colorScheme.primary),
+                                Icon(
+                                  Icons.key,
+                                  size: 16,
+                                  color: Theme.of(context).colorScheme.primary,
+                                ),
                                 const SizedBox(width: 8),
                                 Text(
-                                  myPublicKey != null ? '${myPublicKey.substring(0, 16)}...' : 'Loading key...',
+                                  myPublicKey != null
+                                      ? '${myPublicKey.substring(0, 16)}...'
+                                      : 'Loading key...',
                                   style: TextStyle(
                                     fontSize: 14,
-                                    color: Theme.of(context).colorScheme.primary,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.primary,
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),
                                 const SizedBox(width: 8),
-                                Icon(Icons.copy, size: 14, color: Theme.of(context).colorScheme.primary),
+                                Icon(
+                                  Icons.copy,
+                                  size: 14,
+                                  color: Theme.of(context).colorScheme.primary,
+                                ),
                               ],
                             ),
                           ),
@@ -983,7 +1115,9 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                             FilledButton.tonalIcon(
                               onPressed: () => Navigator.push(
                                 context,
-                                MaterialPageRoute(builder: (_) => const SettingsScreen()),
+                                MaterialPageRoute(
+                                  builder: (_) => const SettingsScreen(),
+                                ),
                               ),
                               icon: const Icon(Icons.settings, size: 18),
                               label: const Text('Settings'),
@@ -999,14 +1133,19 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                 // Trusted Senders
                 Consumer(
                   builder: (context, ref, child) {
-                    final trustedSendersAsync = ref.watch(trustedSendersControllerProvider);
+                    final trustedSendersAsync = ref.watch(
+                      trustedSendersControllerProvider,
+                    );
                     final trustedSenders = trustedSendersAsync.value ?? [];
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
                           children: [
-                            const Icon(Icons.verified_user, color: Colors.green),
+                            const Icon(
+                              Icons.verified_user,
+                              color: Colors.green,
+                            ),
                             const SizedBox(width: 8),
                             const Text(
                               'Trusted Senders',
@@ -1033,12 +1172,18 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                             ),
                             child: Row(
                               children: [
-                                Icon(Icons.verified_user_outlined, color: Colors.green.shade300, size: 32),
+                                Icon(
+                                  Icons.verified_user_outlined,
+                                  color: Colors.green.shade300,
+                                  size: 32,
+                                ),
                                 const SizedBox(width: 16),
                                 Expanded(
                                   child: Text(
                                     'You have not trusted any senders yet. Trust senders from the feed to prioritize their reports.',
-                                    style: TextStyle(color: Colors.green.shade800),
+                                    style: TextStyle(
+                                      color: Colors.green.shade800,
+                                    ),
                                   ),
                                 ),
                               ],
@@ -1069,7 +1214,9 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                                   ),
                                   title: Text(
                                     sender.name,
-                                    style: const TextStyle(fontWeight: FontWeight.w600),
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                    ),
                                   ),
                                   subtitle: Text(
                                     'Key: ${sender.publicKey.substring(0, 12)}...',
@@ -1085,13 +1232,16 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                                       showDialog(
                                         context: context,
                                         builder: (dialogContext) => AlertDialog(
-                                          title: const Text('Remove Trusted Sender?'),
+                                          title: const Text(
+                                            'Remove Trusted Sender?',
+                                          ),
                                           content: Text(
                                             'Are you sure you want to remove ${sender.name} from your trusted senders? Their future reports will be marked as Crowdsourced.',
                                           ),
                                           actions: [
                                             TextButton(
-                                              onPressed: () => Navigator.pop(dialogContext),
+                                              onPressed: () =>
+                                                  Navigator.pop(dialogContext),
                                               child: const Text('Cancel'),
                                             ),
                                             FilledButton(
@@ -1100,7 +1250,9 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                                               ),
                                               onPressed: () {
                                                 Navigator.pop(dialogContext);
-                                                _removeTrustedSender(sender.publicKey);
+                                                _removeTrustedSender(
+                                                  sender.publicKey,
+                                                );
                                               },
                                               child: const Text('Remove'),
                                             ),
@@ -1115,14 +1267,16 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                           ),
                       ],
                     );
-                  }
+                  },
                 ),
                 const SizedBox(height: 32),
 
                 // Blocked Senders
                 Consumer(
                   builder: (context, ref, child) {
-                    final untrustedSendersAsync = ref.watch(untrustedSendersControllerProvider);
+                    final untrustedSendersAsync = ref.watch(
+                      untrustedSendersControllerProvider,
+                    );
                     final untrustedSenders = untrustedSendersAsync.value ?? [];
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1156,12 +1310,18 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                             ),
                             child: Row(
                               children: [
-                                Icon(Icons.block_outlined, color: Colors.red.shade300, size: 32),
+                                Icon(
+                                  Icons.block_outlined,
+                                  color: Colors.red.shade300,
+                                  size: 32,
+                                ),
                                 const SizedBox(width: 16),
                                 Expanded(
                                   child: Text(
                                     'You have not blocked any senders.',
-                                    style: TextStyle(color: Colors.red.shade800),
+                                    style: TextStyle(
+                                      color: Colors.red.shade800,
+                                    ),
                                   ),
                                 ),
                               ],
@@ -1192,30 +1352,50 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                                   ),
                                   title: Text(
                                     'Key: ${sender.publicKey.substring(0, 12)}...',
-                                    style: const TextStyle(fontWeight: FontWeight.w600),
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                    ),
                                   ),
                                   trailing: IconButton(
-                                    icon: const Icon(Icons.restore, color: Colors.blue),
+                                    icon: const Icon(
+                                      Icons.restore,
+                                      color: Colors.blue,
+                                    ),
                                     tooltip: 'Unblock',
                                     onPressed: () {
                                       showDialog(
                                         context: context,
                                         builder: (dialogContext) => AlertDialog(
                                           title: const Text('Unblock Sender?'),
-                                          content: const Text('Are you sure you want to unblock this sender?'),
+                                          content: const Text(
+                                            'Are you sure you want to unblock this sender?',
+                                          ),
                                           actions: [
                                             TextButton(
-                                              onPressed: () => Navigator.pop(dialogContext),
+                                              onPressed: () =>
+                                                  Navigator.pop(dialogContext),
                                               child: const Text('Cancel'),
                                             ),
                                             FilledButton(
                                               onPressed: () {
                                                 Navigator.pop(dialogContext);
-                                                ref.read(untrustedSendersControllerProvider.notifier).removeUntrustedSender(sender.publicKey);
-                                                ScaffoldMessenger.of(context).showSnackBar(
+                                                ref
+                                                    .read(
+                                                      untrustedSendersControllerProvider
+                                                          .notifier,
+                                                    )
+                                                    .removeUntrustedSender(
+                                                      sender.publicKey,
+                                                    );
+                                                ScaffoldMessenger.of(
+                                                  context,
+                                                ).showSnackBar(
                                                   const SnackBar(
-                                                    content: Text('Sender unblocked.'),
-                                                    behavior: SnackBarBehavior.floating,
+                                                    content: Text(
+                                                      'Sender unblocked.',
+                                                    ),
+                                                    behavior: SnackBarBehavior
+                                                        .floating,
                                                   ),
                                                 );
                                               },
@@ -1232,16 +1412,20 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                           ),
                       ],
                     );
-                  }
+                  },
                 ),
                 const SizedBox(height: 32),
 
                 // Map Storage
                 Consumer(
                   builder: (context, ref, child) {
-                    final mapCacheSizeAsync = ref.watch(mapCacheSizeControllerProvider);
+                    final mapCacheSizeAsync = ref.watch(
+                      mapCacheSizeControllerProvider,
+                    );
                     final mapCacheSize = mapCacheSizeAsync.value ?? 0;
-                    final offlineRegionsAsync = ref.watch(offlineRegionsProvider);
+                    final offlineRegionsAsync = ref.watch(
+                      offlineRegionsProvider,
+                    );
                     final offlineRegions = offlineRegionsAsync.value ?? [];
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1271,7 +1455,10 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                               ListTile(
                                 leading: const CircleAvatar(
                                   backgroundColor: Colors.orangeAccent,
-                                  child: Icon(Icons.storage, color: Colors.white),
+                                  child: Icon(
+                                    Icons.storage,
+                                    color: Colors.white,
+                                  ),
                                 ),
                                 title: const Text('Storage Used'),
                                 subtitle: Text(_formatBytes(mapCacheSize)),
@@ -1285,7 +1472,9 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                                     showDialog(
                                       context: context,
                                       builder: (dialogContext) => AlertDialog(
-                                        title: const Text('Clear All Offline Maps?'),
+                                        title: const Text(
+                                          'Clear All Offline Maps?',
+                                        ),
                                         content: const Text(
                                           'This will delete all downloaded map tiles.',
                                         ),
@@ -1305,16 +1494,27 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                                                   .read(mapCacheServiceProvider)
                                                   .clearCache();
                                               await ref
-                                                  .read(offlineRegionsProvider.notifier)
+                                                  .read(
+                                                    offlineRegionsProvider
+                                                        .notifier,
+                                                  )
                                                   .clearRegions();
-                                              ref.read(mapCacheSizeControllerProvider.notifier).refresh();
+                                              ref
+                                                  .read(
+                                                    mapCacheSizeControllerProvider
+                                                        .notifier,
+                                                  )
+                                                  .refresh();
                                               if (!context.mounted) return;
                                               ScaffoldMessenger.of(
                                                 context,
                                               ).showSnackBar(
                                                 const SnackBar(
-                                                  content: Text('Offline maps cleared'),
-                                                  behavior: SnackBarBehavior.floating,
+                                                  content: Text(
+                                                    'Offline maps cleared',
+                                                  ),
+                                                  behavior:
+                                                      SnackBarBehavior.floating,
                                                 ),
                                               );
                                             },
@@ -1358,14 +1558,18 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                                           showDialog(
                                             context: context,
                                             builder: (dialogContext) => AlertDialog(
-                                              title: const Text('Delete Region?'),
+                                              title: const Text(
+                                                'Delete Region?',
+                                              ),
                                               content: const Text(
                                                 'This will delete the map tiles for this region. Overlapping regions may lose some tiles.',
                                               ),
                                               actions: [
                                                 TextButton(
                                                   onPressed: () =>
-                                                      Navigator.pop(dialogContext),
+                                                      Navigator.pop(
+                                                        dialogContext,
+                                                      ),
                                                   child: const Text('Cancel'),
                                                 ),
                                                 FilledButton(
@@ -1373,7 +1577,9 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                                                     backgroundColor: Colors.red,
                                                   ),
                                                   onPressed: () async {
-                                                    Navigator.pop(dialogContext);
+                                                    Navigator.pop(
+                                                      dialogContext,
+                                                    );
                                                     await ref
                                                         .read(
                                                           offlineRegionsProvider
@@ -1381,16 +1587,30 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                                                         )
                                                         .removeRegion(region);
                                                     await ref
-                                                        .read(mapCacheServiceProvider)
-                                                        .deleteRegionTiles(region);
-                                                    ref.read(mapCacheSizeControllerProvider.notifier).refresh();
-                                                    if (!context.mounted) return;
+                                                        .read(
+                                                          mapCacheServiceProvider,
+                                                        )
+                                                        .deleteRegionTiles(
+                                                          region,
+                                                        );
+                                                    ref
+                                                        .read(
+                                                          mapCacheSizeControllerProvider
+                                                              .notifier,
+                                                        )
+                                                        .refresh();
+                                                    if (!context.mounted)
+                                                      return;
                                                     ScaffoldMessenger.of(
                                                       context,
                                                     ).showSnackBar(
                                                       const SnackBar(
-                                                        content: Text('Region deleted'),
-                                                        behavior: SnackBarBehavior.floating,
+                                                        content: Text(
+                                                          'Region deleted',
+                                                        ),
+                                                        behavior:
+                                                            SnackBarBehavior
+                                                                .floating,
                                                       ),
                                                     );
                                                   },
@@ -1410,34 +1630,57 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                         ),
                       ],
                     );
-                  }
+                  },
                 ),
                 const SizedBox(height: 32),
 
                 // My Reports
                 Consumer(
                   builder: (context, ref, child) {
-                    final markersAsync = ref.watch(hazardMarkersControllerProvider);
+                    final markersAsync = ref.watch(
+                      hazardMarkersControllerProvider,
+                    );
                     final newsAsync = ref.watch(newsItemsControllerProvider);
                     final areasAsync = ref.watch(areasControllerProvider);
                     final pathsAsync = ref.watch(pathsControllerProvider);
-                    final localUserAsync = ref.watch(localUserControllerProvider);
+                    final localUserAsync = ref.watch(
+                      localUserControllerProvider,
+                    );
                     final myPublicKey = localUserAsync.value?.publicKey;
 
-                    final myMarkers = (markersAsync.value ?? []).where((m) => m.senderId == myPublicKey).toList();
-                    final myNews = (newsAsync.value ?? []).where((n) => n.senderId == myPublicKey).toList();
-                    final myAreas = (areasAsync.value ?? []).where((a) => a.senderId == myPublicKey).toList();
-                    final myPaths = (pathsAsync.value ?? []).where((p) => p.senderId == myPublicKey).toList();
+                    final myMarkers = (markersAsync.value ?? [])
+                        .where((m) => m.senderId == myPublicKey)
+                        .toList();
+                    final myNews = (newsAsync.value ?? [])
+                        .where((n) => n.senderId == myPublicKey)
+                        .toList();
+                    final myAreas = (areasAsync.value ?? [])
+                        .where((a) => a.senderId == myPublicKey)
+                        .toList();
+                    final myPaths = (pathsAsync.value ?? [])
+                        .where((p) => p.senderId == myPublicKey)
+                        .toList();
 
-                    final myReports = <dynamic>[...myMarkers, ...myNews, ...myAreas, ...myPaths];
-                    myReports.sort((a, b) => (b.timestamp as int).compareTo(a.timestamp as int));
+                    final myReports = <dynamic>[
+                      ...myMarkers,
+                      ...myNews,
+                      ...myAreas,
+                      ...myPaths,
+                    ];
+                    myReports.sort(
+                      (a, b) =>
+                          (b.timestamp as int).compareTo(a.timestamp as int),
+                    );
 
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
                           children: [
-                            const Icon(Icons.my_library_books, color: Colors.blue),
+                            const Icon(
+                              Icons.my_library_books,
+                              color: Colors.blue,
+                            ),
                             const SizedBox(width: 8),
                             const Text(
                               'My Reports',
@@ -1464,12 +1707,18 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                             ),
                             child: Row(
                               children: [
-                                Icon(Icons.my_library_books_outlined, color: Colors.blue.shade300, size: 32),
+                                Icon(
+                                  Icons.my_library_books_outlined,
+                                  color: Colors.blue.shade300,
+                                  size: 32,
+                                ),
                                 const SizedBox(width: 16),
                                 Expanded(
                                   child: Text(
                                     'You have not made any reports yet.',
-                                    style: TextStyle(color: Colors.blue.shade800),
+                                    style: TextStyle(
+                                      color: Colors.blue.shade800,
+                                    ),
                                   ),
                                 ),
                               ],
@@ -1487,12 +1736,16 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                                   elevation: 0,
                                   margin: const EdgeInsets.only(bottom: 8),
                                   shape: RoundedRectangleBorder(
-                                    side: BorderSide(color: Colors.grey.shade300),
+                                    side: BorderSide(
+                                      color: Colors.grey.shade300,
+                                    ),
                                     borderRadius: BorderRadius.circular(12),
                                   ),
                                   child: ListTile(
                                     onTap: () {
-                                      widget.onNavigateToMap(LatLng(item.latitude, item.longitude));
+                                      widget.onNavigateToMap(
+                                        LatLng(item.latitude, item.longitude),
+                                      );
                                     },
                                     leading: CircleAvatar(
                                       backgroundColor: Colors.orange.shade100,
@@ -1505,11 +1758,14 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                                       '${item.type}${item.isCritical ? ' (CRITICAL)' : ''}',
                                       style: TextStyle(
                                         fontWeight: FontWeight.w600,
-                                        color: item.isCritical ? Colors.red : null,
+                                        color: item.isCritical
+                                            ? Colors.red
+                                            : null,
                                       ),
                                     ),
                                     subtitle: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         const SizedBox(height: 4),
                                         Text(
@@ -1567,7 +1823,8 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                                             Icons.delete_outline,
                                             color: Colors.red,
                                           ),
-                                          onPressed: () => _deleteMarker(item.id),
+                                          onPressed: () =>
+                                              _deleteMarker(item.id),
                                         ),
                                       ],
                                     ),
@@ -1578,7 +1835,9 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                                   elevation: 0,
                                   margin: const EdgeInsets.only(bottom: 8),
                                   shape: RoundedRectangleBorder(
-                                    side: BorderSide(color: Colors.grey.shade300),
+                                    side: BorderSide(
+                                      color: Colors.grey.shade300,
+                                    ),
                                     borderRadius: BorderRadius.circular(12),
                                   ),
                                   child: ListTile(
@@ -1596,11 +1855,14 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                                       '${item.title}${item.isCritical ? ' (CRITICAL)' : ''}',
                                       style: TextStyle(
                                         fontWeight: FontWeight.w600,
-                                        color: item.isCritical ? Colors.red : null,
+                                        color: item.isCritical
+                                            ? Colors.red
+                                            : null,
                                       ),
                                     ),
                                     subtitle: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         const SizedBox(height: 4),
                                         Text(
@@ -1669,16 +1931,20 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                                   elevation: 0,
                                   margin: const EdgeInsets.only(bottom: 8),
                                   shape: RoundedRectangleBorder(
-                                    side: BorderSide(color: Colors.grey.shade300),
+                                    side: BorderSide(
+                                      color: Colors.grey.shade300,
+                                    ),
                                     borderRadius: BorderRadius.circular(12),
                                   ),
                                   child: ListTile(
                                     onTap: () {
                                       if (item.coordinates.isNotEmpty) {
-                                        widget.onNavigateToMap(LatLng(
-                                          item.coordinates.first['lat']!,
-                                          item.coordinates.first['lng']!,
-                                        ));
+                                        widget.onNavigateToMap(
+                                          LatLng(
+                                            item.coordinates.first['lat']!,
+                                            item.coordinates.first['lng']!,
+                                          ),
+                                        );
                                       }
                                     },
                                     leading: CircleAvatar(
@@ -1692,11 +1958,14 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                                       '${item.type}${item.isCritical ? ' (CRITICAL)' : ''}',
                                       style: TextStyle(
                                         fontWeight: FontWeight.w600,
-                                        color: item.isCritical ? Colors.red : null,
+                                        color: item.isCritical
+                                            ? Colors.red
+                                            : null,
                                       ),
                                     ),
                                     subtitle: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         const SizedBox(height: 4),
                                         Text(
@@ -1752,7 +2021,9 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                                   elevation: 0,
                                   margin: const EdgeInsets.only(bottom: 8),
                                   shape: RoundedRectangleBorder(
-                                    side: BorderSide(color: Colors.grey.shade300),
+                                    side: BorderSide(
+                                      color: Colors.grey.shade300,
+                                    ),
                                     borderRadius: BorderRadius.circular(12),
                                   ),
                                   child: ListTile(
@@ -1767,11 +2038,14 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                                       '${item.type}${item.isCritical ? ' (CRITICAL)' : ''}',
                                       style: TextStyle(
                                         fontWeight: FontWeight.w600,
-                                        color: item.isCritical ? Colors.red : null,
+                                        color: item.isCritical
+                                            ? Colors.red
+                                            : null,
                                       ),
                                     ),
                                     subtitle: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         const SizedBox(height: 4),
                                         Text(
@@ -1828,7 +2102,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                           ),
                       ],
                     );
-                  }
+                  },
                 ),
               ],
             ),

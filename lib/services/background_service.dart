@@ -41,7 +41,8 @@ Future<void> initializeBackgroundService() async {
 
   await flutterLocalNotificationsPlugin
       .resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin>()
+        AndroidFlutterLocalNotificationsPlugin
+      >()
       ?.createNotificationChannel(channel);
 
   await service.configure(
@@ -140,14 +141,18 @@ void onStart(ServiceInstance service) async {
 
   service.on('requestMapRegion').listen((event) {
     if (event != null) {
-      p2pNotifier.requestMapRegion(OfflineRegion.fromJson(Map<String, dynamic>.from(event)));
+      p2pNotifier.requestMapRegion(
+        OfflineRegion.fromJson(Map<String, dynamic>.from(event)),
+      );
     }
   });
 
   service.on('broadcastMapRegion').listen((event) {
     OfflineRegion? region;
     if (event != null && event['region'] != null) {
-      region = OfflineRegion.fromJson(Map<String, dynamic>.from(event['region']));
+      region = OfflineRegion.fromJson(
+        Map<String, dynamic>.from(event['region']),
+      );
     }
     p2pNotifier.broadcastMapRegion(region);
   });
@@ -189,31 +194,28 @@ void onStart(ServiceInstance service) async {
     service.invoke('p2pStateUpdate', state.toMap());
   });
 
-  container.listen(
-    p2pServiceProvider,
-    (previous, next) async {
-      if (service is AndroidServiceInstance) {
-        if (await service.isForegroundService()) {
-          final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
-              FlutterLocalNotificationsPlugin();
-          
-          flutterLocalNotificationsPlugin.show(
-            id: 888,
-            title: 'Floodio Sync Active',
-            body: next.syncMessage ?? 'Running in background',
-            notificationDetails: const NotificationDetails(
-              android: AndroidNotificationDetails(
-                'floodio_bg_service',
-                'Floodio Background Sync',
-                icon: 'ic_bg_service_small',
-                ongoing: true,
-              ),
+  container.listen(p2pServiceProvider, (previous, next) async {
+    if (service is AndroidServiceInstance) {
+      if (await service.isForegroundService()) {
+        final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+            FlutterLocalNotificationsPlugin();
+
+        flutterLocalNotificationsPlugin.show(
+          id: 888,
+          title: 'Floodio Sync Active',
+          body: next.syncMessage ?? 'Running in background',
+          notificationDetails: const NotificationDetails(
+            android: AndroidNotificationDetails(
+              'floodio_bg_service',
+              'Floodio Background Sync',
+              icon: 'ic_bg_service_small',
+              ongoing: true,
             ),
-          );
-        }
+          ),
+        );
       }
-      
-      service.invoke('p2pStateUpdate', next.toMap());
-    },
-  );
+    }
+
+    service.invoke('p2pStateUpdate', next.toMap());
+  });
 }

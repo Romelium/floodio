@@ -97,10 +97,7 @@ class SeenMessageIdEntity {
   final String messageId;
   final int timestamp;
 
-  SeenMessageIdEntity({
-    required this.messageId,
-    required this.timestamp,
-  });
+  SeenMessageIdEntity({required this.messageId, required this.timestamp});
 }
 
 @UseRowClass(SeenMessageIdEntity)
@@ -116,10 +113,7 @@ class TrustedSenderEntity {
   final String publicKey;
   final String name;
 
-  TrustedSenderEntity({
-    required this.publicKey,
-    required this.name,
-  });
+  TrustedSenderEntity({required this.publicKey, required this.name});
 }
 
 @UseRowClass(TrustedSenderEntity)
@@ -135,10 +129,7 @@ class DeletedItemEntity {
   final String id;
   final int timestamp;
 
-  DeletedItemEntity({
-    required this.id,
-    required this.timestamp,
-  });
+  DeletedItemEntity({required this.id, required this.timestamp});
 }
 
 @UseRowClass(DeletedItemEntity)
@@ -153,9 +144,7 @@ class DeletedItems extends Table {
 class UntrustedSenderEntity {
   final String publicKey;
 
-  UntrustedSenderEntity({
-    required this.publicKey,
-  });
+  UntrustedSenderEntity({required this.publicKey});
 }
 
 @UseRowClass(UntrustedSenderEntity)
@@ -244,7 +233,8 @@ class UserProfiles extends Table {
   Set<Column> get primaryKey => {publicKey};
 }
 
-class CoordinateListConverter extends TypeConverter<List<Map<String, double>>, String> {
+class CoordinateListConverter
+    extends TypeConverter<List<Map<String, double>>, String> {
   const CoordinateListConverter();
 
   @override

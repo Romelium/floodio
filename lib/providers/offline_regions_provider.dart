@@ -14,25 +14,29 @@ class OfflineRegion {
   final int minZoom;
   final int maxZoom;
 
-  OfflineRegion({required this.bounds, required this.minZoom, required this.maxZoom});
+  OfflineRegion({
+    required this.bounds,
+    required this.minZoom,
+    required this.maxZoom,
+  });
 
   Map<String, dynamic> toJson() => {
-        'n': bounds.north,
-        's': bounds.south,
-        'e': bounds.east,
-        'w': bounds.west,
-        'minZ': minZoom,
-        'maxZ': maxZoom,
-      };
+    'n': bounds.north,
+    's': bounds.south,
+    'e': bounds.east,
+    'w': bounds.west,
+    'minZ': minZoom,
+    'maxZ': maxZoom,
+  };
 
   factory OfflineRegion.fromJson(Map<String, dynamic> json) => OfflineRegion(
-        bounds: LatLngBounds(
-          LatLng((json['s'] as num).toDouble(), (json['w'] as num).toDouble()),
-          LatLng((json['n'] as num).toDouble(), (json['e'] as num).toDouble()),
-        ),
-        minZoom: (json['minZ'] as num).toInt(),
-        maxZoom: (json['maxZ'] as num).toInt(),
-      );
+    bounds: LatLngBounds(
+      LatLng((json['s'] as num).toDouble(), (json['w'] as num).toDouble()),
+      LatLng((json['n'] as num).toDouble(), (json['e'] as num).toDouble()),
+    ),
+    minZoom: (json['minZ'] as num).toInt(),
+    maxZoom: (json['maxZ'] as num).toInt(),
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -47,7 +51,14 @@ class OfflineRegion {
           maxZoom == other.maxZoom;
 
   @override
-  int get hashCode => Object.hash(bounds.north, bounds.south, bounds.east, bounds.west, minZoom, maxZoom);
+  int get hashCode => Object.hash(
+    bounds.north,
+    bounds.south,
+    bounds.east,
+    bounds.west,
+    minZoom,
+    maxZoom,
+  );
 }
 
 @riverpod
@@ -67,26 +78,32 @@ class OfflineRegions extends _$OfflineRegions {
 
   Future<void> addRegion(OfflineRegion region) async {
     final current = state.value ?? [];
-    
-    final isDuplicate = current.any((r) => 
-      (r.bounds.north - region.bounds.north).abs() < 0.0001 &&
-      (r.bounds.south - region.bounds.south).abs() < 0.0001 &&
-      (r.bounds.east - region.bounds.east).abs() < 0.0001 &&
-      (r.bounds.west - region.bounds.west).abs() < 0.0001 &&
-      r.minZoom == region.minZoom &&
-      r.maxZoom == region.maxZoom
+
+    final isDuplicate = current.any(
+      (r) =>
+          (r.bounds.north - region.bounds.north).abs() < 0.0001 &&
+          (r.bounds.south - region.bounds.south).abs() < 0.0001 &&
+          (r.bounds.east - region.bounds.east).abs() < 0.0001 &&
+          (r.bounds.west - region.bounds.west).abs() < 0.0001 &&
+          r.minZoom == region.minZoom &&
+          r.maxZoom == region.maxZoom,
     );
-    
+
     if (isDuplicate) return;
 
     final updated = [...current, region];
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('offline_regions', jsonEncode(updated.map((e) => e.toJson()).toList()));
+    await prefs.setString(
+      'offline_regions',
+      jsonEncode(updated.map((e) => e.toJson()).toList()),
+    );
     state = AsyncData(updated);
     if (isBackgroundIsolate) {
       bgServiceInstance?.invoke('reloadOfflineRegions');
     } else {
-      try { FlutterBackgroundService().invoke('reloadOfflineRegions'); } catch (_) {}
+      try {
+        FlutterBackgroundService().invoke('reloadOfflineRegions');
+      } catch (_) {}
     }
   }
 
@@ -97,29 +114,38 @@ class OfflineRegions extends _$OfflineRegions {
     if (isBackgroundIsolate) {
       bgServiceInstance?.invoke('reloadOfflineRegions');
     } else {
-      try { FlutterBackgroundService().invoke('reloadOfflineRegions'); } catch (_) {}
+      try {
+        FlutterBackgroundService().invoke('reloadOfflineRegions');
+      } catch (_) {}
     }
   }
 
   Future<void> removeRegion(OfflineRegion region) async {
     final current = state.value ?? [];
-    final updated = current.where((r) =>
-      (r.bounds.north - region.bounds.north).abs() > 0.0001 ||
-      (r.bounds.south - region.bounds.south).abs() > 0.0001 ||
-      (r.bounds.east - region.bounds.east).abs() > 0.0001 ||
-      (r.bounds.west - region.bounds.west).abs() > 0.0001 ||
-      r.minZoom != region.minZoom ||
-      r.maxZoom != region.maxZoom
-    ).toList();
+    final updated = current
+        .where(
+          (r) =>
+              (r.bounds.north - region.bounds.north).abs() > 0.0001 ||
+              (r.bounds.south - region.bounds.south).abs() > 0.0001 ||
+              (r.bounds.east - region.bounds.east).abs() > 0.0001 ||
+              (r.bounds.west - region.bounds.west).abs() > 0.0001 ||
+              r.minZoom != region.minZoom ||
+              r.maxZoom != region.maxZoom,
+        )
+        .toList();
 
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('offline_regions', jsonEncode(updated.map((e) => e.toJson()).toList()));
+    await prefs.setString(
+      'offline_regions',
+      jsonEncode(updated.map((e) => e.toJson()).toList()),
+    );
     state = AsyncData(updated);
     if (isBackgroundIsolate) {
       bgServiceInstance?.invoke('reloadOfflineRegions');
     } else {
-      try { FlutterBackgroundService().invoke('reloadOfflineRegions'); } catch (_) {}
+      try {
+        FlutterBackgroundService().invoke('reloadOfflineRegions');
+      } catch (_) {}
     }
   }
 }
-

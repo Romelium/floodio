@@ -8,7 +8,9 @@ part 'location_provider.g.dart';
 class LocationController extends _$LocationController {
   @override
   Stream<Position?> build() async* {
-    final serviceStatusSub = Geolocator.getServiceStatusStream().listen((status) {
+    final serviceStatusSub = Geolocator.getServiceStatusStream().listen((
+      status,
+    ) {
       ref.invalidateSelf();
     });
     ref.onDispose(serviceStatusSub.cancel);
@@ -23,8 +25,9 @@ class LocationController extends _$LocationController {
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
     }
-    
-    if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
+
+    if (permission == LocationPermission.denied ||
+        permission == LocationPermission.deniedForever) {
       yield null;
       return;
     }
@@ -49,7 +52,7 @@ class LocationController extends _$LocationController {
     if (permission == LocationPermission.deniedForever) return null;
 
     return await Geolocator.getCurrentPosition(
-      locationSettings: const LocationSettings(accuracy: LocationAccuracy.high)
+      locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
     );
   }
 }

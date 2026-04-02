@@ -18,28 +18,32 @@ class AreasController extends _$AreasController {
   Future<void> addArea(AreaEntity area) async {
     final db = ref.read(databaseProvider);
     await db.transaction(() async {
-      await db.into(db.areas).insert(
-        AreasCompanion.insert(
-          id: area.id,
-          coordinates: area.coordinates,
-          type: area.type,
-          description: area.description,
-          timestamp: area.timestamp,
-          senderId: area.senderId,
-          signature: Value(area.signature),
-          trustTier: area.trustTier,
-          expiresAt: Value(area.expiresAt),
-          isCritical: Value(area.isCritical),
-        ),
-        mode: InsertMode.insertOrReplace,
-      );
-      await db.into(db.seenMessageIds).insert(
-        SeenMessageIdsCompanion.insert(
-          messageId: '${area.id}_${area.timestamp}',
-          timestamp: DateTime.now().millisecondsSinceEpoch,
-        ),
-        mode: InsertMode.insertOrReplace,
-      );
+      await db
+          .into(db.areas)
+          .insert(
+            AreasCompanion.insert(
+              id: area.id,
+              coordinates: area.coordinates,
+              type: area.type,
+              description: area.description,
+              timestamp: area.timestamp,
+              senderId: area.senderId,
+              signature: Value(area.signature),
+              trustTier: area.trustTier,
+              expiresAt: Value(area.expiresAt),
+              isCritical: Value(area.isCritical),
+            ),
+            mode: InsertMode.insertOrReplace,
+          );
+      await db
+          .into(db.seenMessageIds)
+          .insert(
+            SeenMessageIdsCompanion.insert(
+              messageId: '${area.id}_${area.timestamp}',
+              timestamp: DateTime.now().millisecondsSinceEpoch,
+            ),
+            mode: InsertMode.insertOrReplace,
+          );
     });
   }
 
@@ -48,13 +52,12 @@ class AreasController extends _$AreasController {
     final ts = timestamp ?? DateTime.now().millisecondsSinceEpoch;
     await db.transaction(() async {
       await (db.delete(db.areas)..where((t) => t.id.equals(id))).go();
-      await db.into(db.deletedItems).insert(
-        DeletedItemsCompanion.insert(
-          id: id,
-          timestamp: ts,
-        ),
-        mode: InsertMode.insertOrReplace,
-      );
+      await db
+          .into(db.deletedItems)
+          .insert(
+            DeletedItemsCompanion.insert(id: id, timestamp: ts),
+            mode: InsertMode.insertOrReplace,
+          );
     });
   }
 }

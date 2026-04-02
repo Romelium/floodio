@@ -7,7 +7,21 @@ import 'tables.dart';
 
 part 'database.g.dart';
 
-@DriftDatabase(tables: [HazardMarkers, NewsItems, DeletedItems, SeenMessageIds, TrustedSenders, UntrustedSenders, UserProfiles, Areas, Paths, AdminTrustedSenders, RevokedDelegations])
+@DriftDatabase(
+  tables: [
+    HazardMarkers,
+    NewsItems,
+    DeletedItems,
+    SeenMessageIds,
+    TrustedSenders,
+    UntrustedSenders,
+    UserProfiles,
+    Areas,
+    Paths,
+    AdminTrustedSenders,
+    RevokedDelegations,
+  ],
+)
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
@@ -16,43 +30,75 @@ class AppDatabase extends _$AppDatabase {
 
   Future<void> cleanupOldData() async {
     final now = DateTime.now().millisecondsSinceEpoch;
-    final cutoff = DateTime.now().subtract(const Duration(days: 7)).millisecondsSinceEpoch;
-    
-    final expiredMarkers = await (select(hazardMarkers)..where((t) =>
-        (t.expiresAt.isNotNull() & t.expiresAt.isSmallerThanValue(now)) |
-        (t.expiresAt.isNull() & t.timestamp.isSmallerThanValue(cutoff))
-    )).get();
-    
-    final expiredNews = await (select(newsItems)..where((t) =>
-        (t.expiresAt.isNotNull() & t.expiresAt.isSmallerThanValue(now)) |
-        (t.expiresAt.isNull() & t.timestamp.isSmallerThanValue(cutoff))
-    )).get();
+    final cutoff = DateTime.now()
+        .subtract(const Duration(days: 7))
+        .millisecondsSinceEpoch;
+
+    final expiredMarkers =
+        await (select(hazardMarkers)..where(
+              (t) =>
+                  (t.expiresAt.isNotNull() &
+                      t.expiresAt.isSmallerThanValue(now)) |
+                  (t.expiresAt.isNull() &
+                      t.timestamp.isSmallerThanValue(cutoff)),
+            ))
+            .get();
+
+    final expiredNews =
+        await (select(newsItems)..where(
+              (t) =>
+                  (t.expiresAt.isNotNull() &
+                      t.expiresAt.isSmallerThanValue(now)) |
+                  (t.expiresAt.isNull() &
+                      t.timestamp.isSmallerThanValue(cutoff)),
+            ))
+            .get();
 
     final imageIdsToDelete = [
-      ...expiredMarkers.map((m) => m.imageId).where((id) => id != null && id.isNotEmpty),
-      ...expiredNews.map((n) => n.imageId).where((id) => id != null && id.isNotEmpty),
+      ...expiredMarkers
+          .map((m) => m.imageId)
+          .where((id) => id != null && id.isNotEmpty),
+      ...expiredNews
+          .map((n) => n.imageId)
+          .where((id) => id != null && id.isNotEmpty),
       // Future-proofing: If areas or paths ever get images, add them here
     ];
 
     await transaction(() async {
-      await (delete(hazardMarkers)..where((t) => 
-          (t.expiresAt.isNotNull() & t.expiresAt.isSmallerThanValue(now)) |
-          (t.expiresAt.isNull() & t.timestamp.isSmallerThanValue(cutoff))
-      )).go();
-      await (delete(newsItems)..where((t) => 
-          (t.expiresAt.isNotNull() & t.expiresAt.isSmallerThanValue(now)) |
-          (t.expiresAt.isNull() & t.timestamp.isSmallerThanValue(cutoff))
-      )).go();
-      await (delete(areas)..where((t) => 
-          (t.expiresAt.isNotNull() & t.expiresAt.isSmallerThanValue(now)) |
-          (t.expiresAt.isNull() & t.timestamp.isSmallerThanValue(cutoff))
-      )).go();
-      await (delete(paths)..where((t) =>
-          (t.expiresAt.isNotNull() & t.expiresAt.isSmallerThanValue(now)) |
-          (t.expiresAt.isNull() & t.timestamp.isSmallerThanValue(cutoff))
-      )).go();
-      await (delete(deletedItems)..where((t) => t.timestamp.isSmallerThanValue(cutoff))).go();
-      await (delete(seenMessageIds)..where((t) => t.timestamp.isSmallerThanValue(cutoff))).go();
+      await (delete(hazardMarkers)..where(
+            (t) =>
+                (t.expiresAt.isNotNull() &
+                    t.expiresAt.isSmallerThanValue(now)) |
+                (t.expiresAt.isNull() & t.timestamp.isSmallerThanValue(cutoff)),
+          ))
+          .go();
+      await (delete(newsItems)..where(
+            (t) =>
+                (t.expiresAt.isNotNull() &
+                    t.expiresAt.isSmallerThanValue(now)) |
+                (t.expiresAt.isNull() & t.timestamp.isSmallerThanValue(cutoff)),
+          ))
+          .go();
+      await (delete(areas)..where(
+            (t) =>
+                (t.expiresAt.isNotNull() &
+                    t.expiresAt.isSmallerThanValue(now)) |
+                (t.expiresAt.isNull() & t.timestamp.isSmallerThanValue(cutoff)),
+          ))
+          .go();
+      await (delete(paths)..where(
+            (t) =>
+                (t.expiresAt.isNotNull() &
+                    t.expiresAt.isSmallerThanValue(now)) |
+                (t.expiresAt.isNull() & t.timestamp.isSmallerThanValue(cutoff)),
+          ))
+          .go();
+      await (delete(
+        deletedItems,
+      )..where((t) => t.timestamp.isSmallerThanValue(cutoff))).go();
+      await (delete(
+        seenMessageIds,
+      )..where((t) => t.timestamp.isSmallerThanValue(cutoff))).go();
     });
 
     if (imageIdsToDelete.isNotEmpty) {

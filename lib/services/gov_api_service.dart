@@ -22,7 +22,9 @@ class GovApiService extends _$GovApiService {
   Future<void> delegateAdminTrust(String delegateePublicKey) async {
     final timestamp = DateTime.now().millisecondsSinceEpoch;
     final payloadToSign = utf8.encode('$delegateePublicKey$timestamp');
-    final (delegatorId, signature) = await generateOfficialMarkerSignature(payloadToSign);
+    final (delegatorId, signature) = await generateOfficialMarkerSignature(
+      payloadToSign,
+    );
 
     final entity = AdminTrustedSenderEntity(
       publicKey: delegateePublicKey,
@@ -31,28 +33,38 @@ class GovApiService extends _$GovApiService {
       signature: signature,
     );
 
-    await ref.read(adminTrustedSendersControllerProvider.notifier).addAdminTrustedSender(entity);
+    await ref
+        .read(adminTrustedSendersControllerProvider.notifier)
+        .addAdminTrustedSender(entity);
 
     final payload = pb.SyncPayload();
-    payload.delegations.add(pb.TrustDelegation(
-      id: 'delg_$delegateePublicKey',
-      delegatorPublicKey: delegatorId,
-      delegateePublicKey: delegateePublicKey,
-      timestamp: Int64(timestamp),
-      signature: signature,
-    ));
+    payload.delegations.add(
+      pb.TrustDelegation(
+        id: 'delg_$delegateePublicKey',
+        delegatorPublicKey: delegatorId,
+        delegateePublicKey: delegateePublicKey,
+        timestamp: Int64(timestamp),
+        signature: signature,
+      ),
+    );
     final encoded = base64Encode(payload.writeToBuffer());
-    ref.read(uiP2pServiceProvider.notifier).broadcastText(jsonEncode({'type': 'payload', 'data': encoded}));
-    
+    ref
+        .read(uiP2pServiceProvider.notifier)
+        .broadcastText(jsonEncode({'type': 'payload', 'data': encoded}));
+
     try {
-      await Supabase.instance.client.from('sync_events').insert({'payload_base64': encoded});
+      await Supabase.instance.client.from('sync_events').insert({
+        'payload_base64': encoded,
+      });
     } catch (_) {}
   }
 
   Future<void> revokeAdminTrust(String delegateePublicKey) async {
     final timestamp = DateTime.now().millisecondsSinceEpoch;
     final payloadToSign = utf8.encode('revoke_$delegateePublicKey$timestamp');
-    final (delegatorId, signature) = await generateOfficialMarkerSignature(payloadToSign);
+    final (delegatorId, signature) = await generateOfficialMarkerSignature(
+      payloadToSign,
+    );
 
     final entity = RevokedDelegationEntity(
       delegateePublicKey: delegateePublicKey,
@@ -61,20 +73,28 @@ class GovApiService extends _$GovApiService {
       signature: signature,
     );
 
-    await ref.read(revokedDelegationsControllerProvider.notifier).addRevokedDelegation(entity);
+    await ref
+        .read(revokedDelegationsControllerProvider.notifier)
+        .addRevokedDelegation(entity);
 
     final payload = pb.SyncPayload();
-    payload.revokedDelegations.add(pb.RevokedDelegation(
-      delegateePublicKey: delegateePublicKey,
-      delegatorPublicKey: delegatorId,
-      timestamp: Int64(timestamp),
-      signature: signature,
-    ));
+    payload.revokedDelegations.add(
+      pb.RevokedDelegation(
+        delegateePublicKey: delegateePublicKey,
+        delegatorPublicKey: delegatorId,
+        timestamp: Int64(timestamp),
+        signature: signature,
+      ),
+    );
     final encoded = base64Encode(payload.writeToBuffer());
-    ref.read(uiP2pServiceProvider.notifier).broadcastText(jsonEncode({'type': 'payload', 'data': encoded}));
-    
+    ref
+        .read(uiP2pServiceProvider.notifier)
+        .broadcastText(jsonEncode({'type': 'payload', 'data': encoded}));
+
     try {
-      await Supabase.instance.client.from('sync_events').insert({'payload_base64': encoded});
+      await Supabase.instance.client.from('sync_events').insert({
+        'payload_base64': encoded,
+      });
     } catch (_) {}
   }
 }

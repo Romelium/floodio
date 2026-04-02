@@ -11,7 +11,8 @@ class MeshStatusChip extends ConsumerStatefulWidget {
   ConsumerState<MeshStatusChip> createState() => _MeshStatusChipState();
 }
 
-class _MeshStatusChipState extends ConsumerState<MeshStatusChip> with SingleTickerProviderStateMixin {
+class _MeshStatusChipState extends ConsumerState<MeshStatusChip>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _animation;
 
@@ -22,7 +23,10 @@ class _MeshStatusChipState extends ConsumerState<MeshStatusChip> with SingleTick
       vsync: this,
       duration: const Duration(milliseconds: 800),
     )..repeat(reverse: true);
-    _animation = Tween<double>(begin: 0.4, end: 1.0).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+    _animation = Tween<double>(
+      begin: 0.4,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
   }
 
   @override
@@ -64,27 +68,40 @@ class _MeshStatusChipState extends ConsumerState<MeshStatusChip> with SingleTick
               child: CircularProgressIndicator(
                 value: p2pState.syncProgress,
                 strokeWidth: 2,
-                color: isConnected || p2pState.isAutoSyncing ? Colors.white : Theme.of(context).colorScheme.onSurfaceVariant,
+                color: isConnected || p2pState.isAutoSyncing
+                    ? Colors.white
+                    : Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             )
           else
             Icon(
               isConnected ? Icons.hub : Icons.hub_outlined,
               size: 16,
-              color: isConnected || p2pState.isAutoSyncing ? Colors.white : Theme.of(context).colorScheme.onSurfaceVariant,
+              color: isConnected || p2pState.isAutoSyncing
+                  ? Colors.white
+                  : Theme.of(context).colorScheme.onSurfaceVariant,
             ),
           const SizedBox(width: 6),
           Flexible(
             child: Text(
               isSyncing
-                  ? (p2pState.syncProgress != null ? 'SYNCING (${(p2pState.syncProgress! * 100).toInt()}%${p2pState.syncEstimatedSeconds != null ? ' - ${p2pState.syncEstimatedSeconds}s' : ''})'  : 'SYNCING')
-                   : isConnected
-                       ? (p2pState.hostState?.isActive == true 
-                           ? (p2pState.connectedClients.isEmpty && p2pState.isAutoSyncing ? 'BROADCASTING' : 'HOST (${p2pState.connectedClients.length})') 
-                           : 'CONNECTED')
-                      : (p2pState.isAutoSyncing ? (p2pState.isScanning ? 'SCANNING' : 'STARTING...') : 'OFFLINE'),
+                  ? (p2pState.syncProgress != null
+                        ? 'SYNCING (${(p2pState.syncProgress! * 100).toInt()}%${p2pState.syncEstimatedSeconds != null ? ' - ${p2pState.syncEstimatedSeconds}s' : ''})'
+                        : 'SYNCING')
+                  : isConnected
+                  ? (p2pState.hostState?.isActive == true
+                        ? (p2pState.connectedClients.isEmpty &&
+                                  p2pState.isAutoSyncing
+                              ? 'BROADCASTING'
+                              : 'HOST (${p2pState.connectedClients.length})')
+                        : 'CONNECTED')
+                  : (p2pState.isAutoSyncing
+                        ? (p2pState.isScanning ? 'SCANNING' : 'STARTING...')
+                        : 'OFFLINE'),
               style: TextStyle(
-                color: isConnected || p2pState.isAutoSyncing ? Colors.white : Theme.of(context).colorScheme.onSurfaceVariant,
+                color: isConnected || p2pState.isAutoSyncing
+                    ? Colors.white
+                    : Theme.of(context).colorScheme.onSurfaceVariant,
                 fontSize: 11,
                 fontWeight: FontWeight.w900,
                 letterSpacing: 0.5,
@@ -105,7 +122,7 @@ class _MeshStatusChipState extends ConsumerState<MeshStatusChip> with SingleTick
           builder: (context) => const SyncBottomSheet(),
         );
       },
-      child: isSyncing 
+      child: isSyncing
           ? FadeTransition(opacity: _animation, child: chipContent)
           : chipContent,
     );

@@ -22,24 +22,29 @@ int _lon2tilex(double lon, int z) {
 }
 
 int _lat2tiley(double lat, int z) {
-  return ((1.0 - log(tan(lat * pi / 180.0) + 1.0 / cos(lat * pi / 180.0)) / pi) / 2.0 * pow(2.0, z)).floor();
+  return ((1.0 -
+              log(tan(lat * pi / 180.0) + 1.0 / cos(lat * pi / 180.0)) / pi) /
+          2.0 *
+          pow(2.0, z))
+      .floor();
 }
 
 Future<String> _isolatePackMap(MapPackData data) async {
   final mapDir = Directory('${data.dirPath}/map_tiles');
-  
+
   String fileName = 'offline_map.fmap';
   if (data.regionJson != null) {
-    fileName = 'map_${data.regionJson!['n']}_${data.regionJson!['s']}_${data.regionJson!['e']}_${data.regionJson!['w']}_${data.regionJson!['minZ']}_${data.regionJson!['maxZ']}.fmap';
+    fileName =
+        'map_${data.regionJson!['n']}_${data.regionJson!['s']}_${data.regionJson!['e']}_${data.regionJson!['w']}_${data.regionJson!['minZ']}_${data.regionJson!['maxZ']}.fmap';
   }
   final packFile = File('${data.dirPath}/$fileName');
-  
+
   if (!await mapDir.exists()) {
     await mapDir.create(recursive: true);
   }
 
   final sink = packFile.openWrite();
-  
+
   // Header: FLDMAP (6 bytes)
   sink.add(const [70, 76, 68, 77, 65, 80]);
   // Version: 1 (1 byte)
@@ -53,49 +58,52 @@ Future<String> _isolatePackMap(MapPackData data) async {
   await for (final entity in mapDir.list(recursive: true)) {
     if (entity is File && entity.path.endsWith('.png')) {
       final parts = entity.path.split(RegExp(r'[/\\]'));
-        if (parts.length >= 3) {
-          final yStr = parts.last.replaceAll('.png', '');
-          final xStr = parts[parts.length - 2];
-          final zStr = parts[parts.length - 3];
-  
-          final z = int.tryParse(zStr);
-          final x = int.tryParse(xStr);
-          final y = int.tryParse(yStr);
-  
-          if (z != null && x != null && y != null) {
-            if (data.regionJson != null) {
-              final n = (data.regionJson!['n'] as num).toDouble();
-              final s = (data.regionJson!['s'] as num).toDouble();
-              final e = (data.regionJson!['e'] as num).toDouble();
-              final w = (data.regionJson!['w'] as num).toDouble();
-              final minZ = (data.regionJson!['minZ'] as num).toInt();
-              final maxZ = (data.regionJson!['maxZ'] as num).toInt();
-  
-              if (z < minZ || z > maxZ) continue;
-              final minX = _lon2tilex(w, z);
-              final maxX = _lon2tilex(e, z);
-              final minY = _lat2tiley(n, z);
-              final maxY = _lat2tiley(s, z);
-              if (x < min(minX, maxX) || x > max(minX, maxX) || y < min(minY, maxY) || y > max(minY, maxY)) {
-                continue;
-              }
+      if (parts.length >= 3) {
+        final yStr = parts.last.replaceAll('.png', '');
+        final xStr = parts[parts.length - 2];
+        final zStr = parts[parts.length - 3];
+
+        final z = int.tryParse(zStr);
+        final x = int.tryParse(xStr);
+        final y = int.tryParse(yStr);
+
+        if (z != null && x != null && y != null) {
+          if (data.regionJson != null) {
+            final n = (data.regionJson!['n'] as num).toDouble();
+            final s = (data.regionJson!['s'] as num).toDouble();
+            final e = (data.regionJson!['e'] as num).toDouble();
+            final w = (data.regionJson!['w'] as num).toDouble();
+            final minZ = (data.regionJson!['minZ'] as num).toInt();
+            final maxZ = (data.regionJson!['maxZ'] as num).toInt();
+
+            if (z < minZ || z > maxZ) continue;
+            final minX = _lon2tilex(w, z);
+            final maxX = _lon2tilex(e, z);
+            final minY = _lat2tiley(n, z);
+            final maxY = _lat2tiley(s, z);
+            if (x < min(minX, maxX) ||
+                x > max(minX, maxX) ||
+                y < min(minY, maxY) ||
+                y > max(minY, maxY)) {
+              continue;
+            }
           }
 
           final fileData = await entity.readAsBytes();
-        
+
           final header = ByteData(13);
           header.setUint8(0, z);
           header.setUint32(1, x, Endian.big);
           header.setUint32(5, y, Endian.big);
           header.setUint32(9, fileData.length, Endian.big);
-        
+
           sink.add(header.buffer.asUint8List());
           sink.add(fileData);
         }
       }
     }
   }
-  
+
   await sink.close();
   return '${timestamp}_${packFile.path}';
 }
@@ -109,31 +117,32 @@ class MapUnpackData {
 Future<int> _isolateUnpackMap(MapUnpackData data) async {
   final mapDir = Directory('${data.dirPath}/map_tiles');
   final packFile = File(data.packFilePath);
-  
+
   final raf = await packFile.open(mode: FileMode.read);
   try {
     final header = await raf.read(7);
-    if (header.length < 7 || String.fromCharCodes(header.sublist(0, 6)) != 'FLDMAP') {
+    if (header.length < 7 ||
+        String.fromCharCodes(header.sublist(0, 6)) != 'FLDMAP') {
       throw Exception('Invalid map pack file');
     }
     // read timestamp
     final tsBytes = await raf.read(8);
     final tsData = ByteData.sublistView(tsBytes);
     final timestamp = tsData.getInt64(0, Endian.big);
-    
+
     while (true) {
       final tileHeader = await raf.read(13);
       if (tileHeader.length < 13) break; // EOF
-      
+
       final headerData = ByteData.sublistView(tileHeader);
       final z = headerData.getUint8(0);
       final x = headerData.getUint32(1, Endian.big);
       final y = headerData.getUint32(5, Endian.big);
       final length = headerData.getUint32(9, Endian.big);
-      
+
       final fileData = await raf.read(length);
       if (fileData.length < length) break; // Unexpected EOF
-      
+
       final tileFile = File('${mapDir.path}/$z/$x/$y.png');
       try {
         await tileFile.parent.create(recursive: true);
@@ -190,18 +199,18 @@ class MapCacheService {
       _addToMemoryCache(key, bytes);
       return bytes;
     }
-    
+
     final url = urlTemplate
         .replaceAll('{z}', z.toString())
         .replaceAll('{x}', x.toString())
         .replaceAll('{y}', y.toString());
-        
+
     try {
       final client = HttpClient();
       final request = await client.getUrl(Uri.parse(url));
       request.headers.set('User-Agent', 'FloodioApp/0.1.0');
       final response = await request.close();
-      
+
       if (response.statusCode == 200) {
         final bytes = await consolidateHttpClientResponseBytes(response);
         await file.parent.create(recursive: true);
@@ -226,7 +235,7 @@ class MapCacheService {
 
   Future<File> packMap({OfflineRegion? region}) async {
     final dir = await getApplicationDocumentsDirectory();
-    
+
     // Clean up old pack files
     final dirList = dir.listSync();
     for (var entity in dirList) {
@@ -237,18 +246,22 @@ class MapCacheService {
       }
     }
 
-    final result = await Isolate.run(() => _isolatePackMap(MapPackData(dir.path, region?.toJson())));
+    final result = await Isolate.run(
+      () => _isolatePackMap(MapPackData(dir.path, region?.toJson())),
+    );
     final parts = result.split('_');
     final path = result.substring(parts[0].length + 1);
-    
+
     return File(path);
   }
 
   Future<void> unpackMap(File packFile) async {
     final dir = await getApplicationDocumentsDirectory();
-    await Isolate.run(() => _isolateUnpackMap(MapUnpackData(dir.path, packFile.path)));
+    await Isolate.run(
+      () => _isolateUnpackMap(MapUnpackData(dir.path, packFile.path)),
+    );
   }
-  
+
   Future<int> getCacheSize() async {
     final dir = await getApplicationDocumentsDirectory();
     final mapDir = Directory('${dir.path}/map_tiles');

@@ -21,48 +21,53 @@ class HazardMarkersController extends _$HazardMarkersController {
   Future<void> addMarker(HazardMarkerEntity marker) async {
     final db = ref.read(databaseProvider);
     await db.transaction(() async {
-      await db.into(db.hazardMarkers).insert(
-        HazardMarkersCompanion.insert(
-          id: marker.id,
-          latitude: marker.latitude,
-          longitude: marker.longitude,
-          type: marker.type,
-          description: marker.description,
-          timestamp: marker.timestamp,
-          senderId: marker.senderId,
-          signature: Value(marker.signature),
-          trustTier: marker.trustTier,
-          imageId: Value(marker.imageId),
-          expiresAt: Value(marker.expiresAt),
-          isCritical: Value(marker.isCritical),
-        ),
-        mode: InsertMode.insertOrReplace,
-      );
-      await db.into(db.seenMessageIds).insert(
-        SeenMessageIdsCompanion.insert(
-          messageId: '${marker.id}_${marker.timestamp}',
-          timestamp: DateTime.now().millisecondsSinceEpoch,
-        ),
-        mode: InsertMode.insertOrReplace,
-      );
+      await db
+          .into(db.hazardMarkers)
+          .insert(
+            HazardMarkersCompanion.insert(
+              id: marker.id,
+              latitude: marker.latitude,
+              longitude: marker.longitude,
+              type: marker.type,
+              description: marker.description,
+              timestamp: marker.timestamp,
+              senderId: marker.senderId,
+              signature: Value(marker.signature),
+              trustTier: marker.trustTier,
+              imageId: Value(marker.imageId),
+              expiresAt: Value(marker.expiresAt),
+              isCritical: Value(marker.isCritical),
+            ),
+            mode: InsertMode.insertOrReplace,
+          );
+      await db
+          .into(db.seenMessageIds)
+          .insert(
+            SeenMessageIdsCompanion.insert(
+              messageId: '${marker.id}_${marker.timestamp}',
+              timestamp: DateTime.now().millisecondsSinceEpoch,
+            ),
+            mode: InsertMode.insertOrReplace,
+          );
     });
   }
 
   Future<void> deleteMarker(String id, {int? timestamp}) async {
     final db = ref.read(databaseProvider);
     final ts = timestamp ?? DateTime.now().millisecondsSinceEpoch;
-    
-    final marker = await (db.select(db.hazardMarkers)..where((t) => t.id.equals(id))).getSingleOrNull();
-    
+
+    final marker = await (db.select(
+      db.hazardMarkers,
+    )..where((t) => t.id.equals(id))).getSingleOrNull();
+
     await db.transaction(() async {
       await (db.delete(db.hazardMarkers)..where((t) => t.id.equals(id))).go();
-      await db.into(db.deletedItems).insert(
-        DeletedItemsCompanion.insert(
-          id: id,
-          timestamp: ts,
-        ),
-        mode: InsertMode.insertOrReplace,
-      );
+      await db
+          .into(db.deletedItems)
+          .insert(
+            DeletedItemsCompanion.insert(id: id, timestamp: ts),
+            mode: InsertMode.insertOrReplace,
+          );
     });
 
     if (marker?.imageId != null && marker!.imageId!.isNotEmpty) {
@@ -76,4 +81,3 @@ class HazardMarkersController extends _$HazardMarkersController {
     }
   }
 }
-

@@ -20,22 +20,34 @@ class UntrustedSendersController extends _$UntrustedSendersController {
 
   Future<void> addUntrustedSender(String publicKey) async {
     final db = ref.read(databaseProvider);
-    
-    final markers = await (db.select(db.hazardMarkers)..where((t) => t.senderId.equals(publicKey))).get();
-    final news = await (db.select(db.newsItems)..where((t) => t.senderId.equals(publicKey))).get();
-    
-    await db.transaction(() async {
-      await db.into(db.untrustedSenders).insert(
-        UntrustedSendersCompanion.insert(
-          publicKey: publicKey,
-        ),
-        mode: InsertMode.insertOrReplace,
-      );
 
-      await (db.delete(db.hazardMarkers)..where((t) => t.senderId.equals(publicKey))).go();
-      await (db.delete(db.newsItems)..where((t) => t.senderId.equals(publicKey))).go();
-      await (db.delete(db.areas)..where((t) => t.senderId.equals(publicKey))).go();
-      await (db.delete(db.paths)..where((t) => t.senderId.equals(publicKey))).go();
+    final markers = await (db.select(
+      db.hazardMarkers,
+    )..where((t) => t.senderId.equals(publicKey))).get();
+    final news = await (db.select(
+      db.newsItems,
+    )..where((t) => t.senderId.equals(publicKey))).get();
+
+    await db.transaction(() async {
+      await db
+          .into(db.untrustedSenders)
+          .insert(
+            UntrustedSendersCompanion.insert(publicKey: publicKey),
+            mode: InsertMode.insertOrReplace,
+          );
+
+      await (db.delete(
+        db.hazardMarkers,
+      )..where((t) => t.senderId.equals(publicKey))).go();
+      await (db.delete(
+        db.newsItems,
+      )..where((t) => t.senderId.equals(publicKey))).go();
+      await (db.delete(
+        db.areas,
+      )..where((t) => t.senderId.equals(publicKey))).go();
+      await (db.delete(
+        db.paths,
+      )..where((t) => t.senderId.equals(publicKey))).go();
     });
 
     try {
@@ -57,6 +69,8 @@ class UntrustedSendersController extends _$UntrustedSendersController {
 
   Future<void> removeUntrustedSender(String publicKey) async {
     final db = ref.read(databaseProvider);
-    await (db.delete(db.untrustedSenders)..where((t) => t.publicKey.equals(publicKey))).go();
+    await (db.delete(
+      db.untrustedSenders,
+    )..where((t) => t.publicKey.equals(publicKey))).go();
   }
 }

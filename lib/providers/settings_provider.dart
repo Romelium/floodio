@@ -7,7 +7,10 @@ part 'settings_provider.g.dart';
 
 enum MapStyle {
   street('Street', 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'),
-  satellite('Satellite', 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}');
+  satellite(
+    'Satellite',
+    'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+  );
 
   final String label;
   final String url;
@@ -47,7 +50,8 @@ class AppSettingsData {
           isOfficialMode == other.isOfficialMode;
 
   @override
-  int get hashCode => Object.hash(mapStyle, syncIntervalSeconds, isOfficialMode);
+  int get hashCode =>
+      Object.hash(mapStyle, syncIntervalSeconds, isOfficialMode);
 }
 
 @Riverpod(keepAlive: true)
@@ -69,7 +73,8 @@ class AppSettings extends _$AppSettings {
     final isOfficial = prefs.getBool(_keyIsOfficialMode) ?? false;
 
     return AppSettingsData(
-      mapStyle: MapStyle.values[styleIndex.clamp(0, MapStyle.values.length - 1)],
+      mapStyle:
+          MapStyle.values[styleIndex.clamp(0, MapStyle.values.length - 1)],
       syncIntervalSeconds: interval,
       isOfficialMode: isOfficial,
     );
@@ -82,7 +87,9 @@ class AppSettings extends _$AppSettings {
     if (isBackgroundIsolate) {
       bgServiceInstance?.invoke('reloadSettings');
     } else {
-      try { FlutterBackgroundService().invoke('reloadSettings'); } catch (_) {}
+      try {
+        FlutterBackgroundService().invoke('reloadSettings');
+      } catch (_) {}
     }
   }
 
@@ -93,7 +100,9 @@ class AppSettings extends _$AppSettings {
     if (isBackgroundIsolate) {
       bgServiceInstance?.invoke('reloadSettings');
     } else {
-      try { FlutterBackgroundService().invoke('reloadSettings'); } catch (_) {}
+      try {
+        FlutterBackgroundService().invoke('reloadSettings');
+      } catch (_) {}
     }
   }
 
@@ -104,8 +113,9 @@ class AppSettings extends _$AppSettings {
     if (isBackgroundIsolate) {
       bgServiceInstance?.invoke('reloadSettings');
     } else {
-      try { FlutterBackgroundService().invoke('reloadSettings'); } catch (_) {}
+      try {
+        FlutterBackgroundService().invoke('reloadSettings');
+      } catch (_) {}
     }
   }
 }
-

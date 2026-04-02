@@ -14,8 +14,12 @@ class DownloadProgress {
   final int downloaded;
   final bool isDownloading;
 
-  DownloadProgress({this.total = 0, this.downloaded = 0, this.isDownloading = false});
-  
+  DownloadProgress({
+    this.total = 0,
+    this.downloaded = 0,
+    this.isDownloading = false,
+  });
+
   double get percentage => total == 0 ? 0 : downloaded / total;
 
   @override
@@ -52,7 +56,11 @@ class MapDownloader extends _$MapDownloader {
   }
 
   int _lat2tiley(double lat, int z) {
-    return ((1.0 - log(tan(lat * pi / 180.0) + 1.0 / cos(lat * pi / 180.0)) / pi) / 2.0 * pow(2.0, z)).floor();
+    return ((1.0 -
+                log(tan(lat * pi / 180.0) + 1.0 / cos(lat * pi / 180.0)) / pi) /
+            2.0 *
+            pow(2.0, z))
+        .floor();
   }
 
   int estimateTileCount(LatLngBounds bounds, int minZoom, int maxZoom) {
@@ -63,57 +71,87 @@ class MapDownloader extends _$MapDownloader {
       final minY = _lat2tiley(bounds.north, z);
       final maxY = _lat2tiley(bounds.south, z);
 
-      count += ((max(minX, maxX) - min(minX, maxX) + 1) * (max(minY, maxY) - min(minY, maxY) + 1)).toInt();
+      count +=
+          ((max(minX, maxX) - min(minX, maxX) + 1) *
+                  (max(minY, maxY) - min(minY, maxY) + 1))
+              .toInt();
     }
     return count;
   }
 
-  Future<void> downloadRegion(LatLngBounds bounds, int minZoom, int maxZoom, String urlTemplate) async {
+  Future<void> downloadRegion(
+    LatLngBounds bounds,
+    int minZoom,
+    int maxZoom,
+    String urlTemplate,
+  ) async {
     if (state.isDownloading) return;
     _isCancelled = false;
-    
+
     final cacheService = ref.read(mapCacheServiceProvider);
-    
+
     List<MapTile> tilesToDownload = [];
-    
+
     for (int z = minZoom; z <= maxZoom; z++) {
       final minX = _lon2tilex(bounds.west, z);
       final maxX = _lon2tilex(bounds.east, z);
       final minY = _lat2tiley(bounds.north, z);
       final maxY = _lat2tiley(bounds.south, z);
-      
+
       for (int x = min(minX, maxX); x <= max(minX, maxX); x++) {
         for (int y = min(minY, maxY); y <= max(minY, maxY); y++) {
           tilesToDownload.add(MapTile(x, y, z));
         }
       }
     }
-    
-    state = DownloadProgress(total: tilesToDownload.length, downloaded: 0, isDownloading: true);
-    
+
+    state = DownloadProgress(
+      total: tilesToDownload.length,
+      downloaded: 0,
+      isDownloading: true,
+    );
+
     int downloaded = 0;
     const batchSize = 20;
     for (int i = 0; i < tilesToDownload.length; i += batchSize) {
       if (_isCancelled) break;
-      
+
       final batch = tilesToDownload.skip(i).take(batchSize);
-      await Future.wait(batch.map((tile) => cacheService.getTile(tile.z, tile.x, tile.y, urlTemplate)));
-      
+      await Future.wait(
+        batch.map(
+          (tile) => cacheService.getTile(tile.z, tile.x, tile.y, urlTemplate),
+        ),
+      );
+
       downloaded += batch.length;
-      state = DownloadProgress(total: tilesToDownload.length, downloaded: downloaded, isDownloading: true);
+      state = DownloadProgress(
+        total: tilesToDownload.length,
+        downloaded: downloaded,
+        isDownloading: true,
+      );
     }
 
     if (!_isCancelled) {
-      ref.read(offlineRegionsProvider.notifier).addRegion(
-        OfflineRegion(bounds: bounds, minZoom: minZoom, maxZoom: maxZoom),
-      );
+      ref
+          .read(offlineRegionsProvider.notifier)
+          .addRegion(
+            OfflineRegion(bounds: bounds, minZoom: minZoom, maxZoom: maxZoom),
+          );
     }
-    
-    state = DownloadProgress(total: tilesToDownload.length, downloaded: downloaded, isDownloading: false);
+
+    state = DownloadProgress(
+      total: tilesToDownload.length,
+      downloaded: downloaded,
+      isDownloading: false,
+    );
   }
-  
+
   void cancelDownload() {
     _isCancelled = true;
-    state = DownloadProgress(total: state.total, downloaded: state.downloaded, isDownloading: false);
+    state = DownloadProgress(
+      total: state.total,
+      downloaded: state.downloaded,
+      isDownloading: false,
+    );
   }
 }

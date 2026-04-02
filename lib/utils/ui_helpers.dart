@@ -34,7 +34,7 @@ Color getHazardColor(String type, int tier) {
   if (lowerType == 'supply') return Colors.indigo;
   if (lowerType == 'medical triage') return Colors.pink;
   if (lowerType == 'custom') return Colors.deepOrange;
-  
+
   return getTierColor(tier);
 }
 

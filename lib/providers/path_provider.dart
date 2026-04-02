@@ -18,28 +18,32 @@ class PathsController extends _$PathsController {
   Future<void> addPath(PathEntity path) async {
     final db = ref.read(databaseProvider);
     await db.transaction(() async {
-      await db.into(db.paths).insert(
-        PathsCompanion.insert(
-          id: path.id,
-          coordinates: path.coordinates,
-          type: path.type,
-          description: path.description,
-          timestamp: path.timestamp,
-          senderId: path.senderId,
-          signature: Value(path.signature),
-          trustTier: path.trustTier,
-          expiresAt: Value(path.expiresAt),
-          isCritical: Value(path.isCritical),
-        ),
-        mode: InsertMode.insertOrReplace,
-      );
-      await db.into(db.seenMessageIds).insert(
-        SeenMessageIdsCompanion.insert(
-          messageId: '${path.id}_${path.timestamp}',
-          timestamp: DateTime.now().millisecondsSinceEpoch,
-        ),
-        mode: InsertMode.insertOrReplace,
-      );
+      await db
+          .into(db.paths)
+          .insert(
+            PathsCompanion.insert(
+              id: path.id,
+              coordinates: path.coordinates,
+              type: path.type,
+              description: path.description,
+              timestamp: path.timestamp,
+              senderId: path.senderId,
+              signature: Value(path.signature),
+              trustTier: path.trustTier,
+              expiresAt: Value(path.expiresAt),
+              isCritical: Value(path.isCritical),
+            ),
+            mode: InsertMode.insertOrReplace,
+          );
+      await db
+          .into(db.seenMessageIds)
+          .insert(
+            SeenMessageIdsCompanion.insert(
+              messageId: '${path.id}_${path.timestamp}',
+              timestamp: DateTime.now().millisecondsSinceEpoch,
+            ),
+            mode: InsertMode.insertOrReplace,
+          );
     });
   }
 
@@ -48,13 +52,12 @@ class PathsController extends _$PathsController {
     final ts = timestamp ?? DateTime.now().millisecondsSinceEpoch;
     await db.transaction(() async {
       await (db.delete(db.paths)..where((t) => t.id.equals(id))).go();
-      await db.into(db.deletedItems).insert(
-        DeletedItemsCompanion.insert(
-          id: id,
-          timestamp: ts,
-        ),
-        mode: InsertMode.insertOrReplace,
-      );
+      await db
+          .into(db.deletedItems)
+          .insert(
+            DeletedItemsCompanion.insert(id: id, timestamp: ts),
+            mode: InsertMode.insertOrReplace,
+          );
     });
   }
 }

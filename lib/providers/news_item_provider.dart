@@ -21,46 +21,51 @@ class NewsItemsController extends _$NewsItemsController {
   Future<void> addNewsItem(NewsItemEntity item) async {
     final db = ref.read(databaseProvider);
     await db.transaction(() async {
-      await db.into(db.newsItems).insert(
-        NewsItemsCompanion.insert(
-          id: item.id,
-          title: item.title,
-          content: item.content,
-          timestamp: item.timestamp,
-          senderId: item.senderId,
-          signature: Value(item.signature),
-          trustTier: item.trustTier,
-          expiresAt: Value(item.expiresAt),
-          imageId: Value(item.imageId),
-          isCritical: Value(item.isCritical),
-        ),
-        mode: InsertMode.insertOrReplace,
-      );
-      await db.into(db.seenMessageIds).insert(
-        SeenMessageIdsCompanion.insert(
-          messageId: '${item.id}_${item.timestamp}',
-          timestamp: DateTime.now().millisecondsSinceEpoch,
-        ),
-        mode: InsertMode.insertOrReplace,
-      );
+      await db
+          .into(db.newsItems)
+          .insert(
+            NewsItemsCompanion.insert(
+              id: item.id,
+              title: item.title,
+              content: item.content,
+              timestamp: item.timestamp,
+              senderId: item.senderId,
+              signature: Value(item.signature),
+              trustTier: item.trustTier,
+              expiresAt: Value(item.expiresAt),
+              imageId: Value(item.imageId),
+              isCritical: Value(item.isCritical),
+            ),
+            mode: InsertMode.insertOrReplace,
+          );
+      await db
+          .into(db.seenMessageIds)
+          .insert(
+            SeenMessageIdsCompanion.insert(
+              messageId: '${item.id}_${item.timestamp}',
+              timestamp: DateTime.now().millisecondsSinceEpoch,
+            ),
+            mode: InsertMode.insertOrReplace,
+          );
     });
   }
 
   Future<void> deleteNewsItem(String id, {int? timestamp}) async {
     final db = ref.read(databaseProvider);
     final ts = timestamp ?? DateTime.now().millisecondsSinceEpoch;
-    
-    final newsItem = await (db.select(db.newsItems)..where((t) => t.id.equals(id))).getSingleOrNull();
+
+    final newsItem = await (db.select(
+      db.newsItems,
+    )..where((t) => t.id.equals(id))).getSingleOrNull();
 
     await db.transaction(() async {
       await (db.delete(db.newsItems)..where((t) => t.id.equals(id))).go();
-      await db.into(db.deletedItems).insert(
-        DeletedItemsCompanion.insert(
-          id: id,
-          timestamp: ts,
-        ),
-        mode: InsertMode.insertOrReplace,
-      );
+      await db
+          .into(db.deletedItems)
+          .insert(
+            DeletedItemsCompanion.insert(id: id, timestamp: ts),
+            mode: InsertMode.insertOrReplace,
+          );
     });
 
     if (newsItem?.imageId != null && newsItem!.imageId!.isNotEmpty) {
@@ -74,4 +79,3 @@ class NewsItemsController extends _$NewsItemsController {
     }
   }
 }
-

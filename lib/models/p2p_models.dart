@@ -4,7 +4,12 @@ class AppHostState {
   final String? preSharedKey;
   final String? hostIpAddress;
 
-  AppHostState({required this.isActive, this.ssid, this.preSharedKey, this.hostIpAddress});
+  AppHostState({
+    required this.isActive,
+    this.ssid,
+    this.preSharedKey,
+    this.hostIpAddress,
+  });
 
   factory AppHostState.fromMap(Map<String, dynamic> map) {
     return AppHostState(
@@ -35,7 +40,12 @@ class AppClientState {
   final String? hostGatewayIpAddress;
   final String? hostIpAddress;
 
-  AppClientState({required this.isActive, this.hostSsid, this.hostGatewayIpAddress, this.hostIpAddress});
+  AppClientState({
+    required this.isActive,
+    this.hostSsid,
+    this.hostGatewayIpAddress,
+    this.hostIpAddress,
+  });
 
   factory AppClientState.fromMap(Map<String, dynamic> map) {
     return AppClientState(
@@ -57,7 +67,8 @@ class AppClientState {
           hostIpAddress == other.hostIpAddress;
 
   @override
-  int get hashCode => Object.hash(isActive, hostSsid, hostGatewayIpAddress, hostIpAddress);
+  int get hashCode =>
+      Object.hash(isActive, hostSsid, hostGatewayIpAddress, hostIpAddress);
 }
 
 class AppDiscoveredDevice {
@@ -90,7 +101,11 @@ class AppClientInfo {
   final String username;
   final bool isHost;
 
-  AppClientInfo({required this.id, required this.username, required this.isHost});
+  AppClientInfo({
+    required this.id,
+    required this.username,
+    required this.isHost,
+  });
 
   factory AppClientInfo.fromMap(Map<String, dynamic> map) {
     return AppClientInfo(

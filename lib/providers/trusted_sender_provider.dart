@@ -18,28 +18,39 @@ class TrustedSendersController extends _$TrustedSendersController {
   Future<void> addTrustedSender(String publicKey, String name) async {
     final db = ref.read(databaseProvider);
     await db.transaction(() async {
-      await db.into(db.trustedSenders).insert(
-        TrustedSendersCompanion.insert(
-          publicKey: publicKey,
-          name: name,
-        ),
-        mode: InsertMode.insertOrReplace,
-      );
+      await db
+          .into(db.trustedSenders)
+          .insert(
+            TrustedSendersCompanion.insert(publicKey: publicKey, name: name),
+            mode: InsertMode.insertOrReplace,
+          );
 
       // Update existing hazard markers
-      await (db.update(db.hazardMarkers)..where((t) => t.senderId.equals(publicKey) & t.trustTier.isBiggerThanValue(3)))
+      await (db.update(db.hazardMarkers)..where(
+            (t) =>
+                t.senderId.equals(publicKey) & t.trustTier.isBiggerThanValue(3),
+          ))
           .write(const HazardMarkersCompanion(trustTier: Value(3)));
 
       // Update existing news items
-      await (db.update(db.newsItems)..where((t) => t.senderId.equals(publicKey) & t.trustTier.isBiggerThanValue(3)))
+      await (db.update(db.newsItems)..where(
+            (t) =>
+                t.senderId.equals(publicKey) & t.trustTier.isBiggerThanValue(3),
+          ))
           .write(const NewsItemsCompanion(trustTier: Value(3)));
 
       // Update existing areas
-      await (db.update(db.areas)..where((t) => t.senderId.equals(publicKey) & t.trustTier.isBiggerThanValue(3)))
+      await (db.update(db.areas)..where(
+            (t) =>
+                t.senderId.equals(publicKey) & t.trustTier.isBiggerThanValue(3),
+          ))
           .write(const AreasCompanion(trustTier: Value(3)));
 
       // Update existing paths
-      await (db.update(db.paths)..where((t) => t.senderId.equals(publicKey) & t.trustTier.isBiggerThanValue(3)))
+      await (db.update(db.paths)..where(
+            (t) =>
+                t.senderId.equals(publicKey) & t.trustTier.isBiggerThanValue(3),
+          ))
           .write(const PathsCompanion(trustTier: Value(3)));
     });
   }
@@ -47,24 +58,33 @@ class TrustedSendersController extends _$TrustedSendersController {
   Future<void> removeTrustedSender(String publicKey) async {
     final db = ref.read(databaseProvider);
     await db.transaction(() async {
-      await (db.delete(db.trustedSenders)..where((t) => t.publicKey.equals(publicKey))).go();
+      await (db.delete(
+        db.trustedSenders,
+      )..where((t) => t.publicKey.equals(publicKey))).go();
 
       // Downgrade existing hazard markers
-      await (db.update(db.hazardMarkers)..where((t) => t.senderId.equals(publicKey) & t.trustTier.equals(3)))
+      await (db.update(
+            db.hazardMarkers,
+          )..where((t) => t.senderId.equals(publicKey) & t.trustTier.equals(3)))
           .write(const HazardMarkersCompanion(trustTier: Value(4)));
 
       // Downgrade existing news items
-      await (db.update(db.newsItems)..where((t) => t.senderId.equals(publicKey) & t.trustTier.equals(3)))
+      await (db.update(
+            db.newsItems,
+          )..where((t) => t.senderId.equals(publicKey) & t.trustTier.equals(3)))
           .write(const NewsItemsCompanion(trustTier: Value(4)));
 
       // Downgrade existing areas
-      await (db.update(db.areas)..where((t) => t.senderId.equals(publicKey) & t.trustTier.equals(3)))
+      await (db.update(
+            db.areas,
+          )..where((t) => t.senderId.equals(publicKey) & t.trustTier.equals(3)))
           .write(const AreasCompanion(trustTier: Value(4)));
 
       // Downgrade existing paths
-      await (db.update(db.paths)..where((t) => t.senderId.equals(publicKey) & t.trustTier.equals(3)))
+      await (db.update(
+            db.paths,
+          )..where((t) => t.senderId.equals(publicKey) & t.trustTier.equals(3)))
           .write(const PathsCompanion(trustTier: Value(4)));
     });
   }
 }
-

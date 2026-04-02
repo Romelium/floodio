@@ -16,7 +16,7 @@ class UiP2pService extends _$UiP2pService {
   @override
   P2pState build() {
     final service = FlutterBackgroundService();
-    
+
     service.on('p2pStateUpdate').listen((event) {
       if (event != null) {
         state = P2pState.fromMap(Map<String, dynamic>.from(event));
@@ -65,7 +65,9 @@ class UiP2pService extends _$UiP2pService {
   }
 
   void connectToDevice(AppDiscoveredDevice device) {
-    FlutterBackgroundService().invoke('connectToDevice', {'deviceAddress': device.deviceAddress});
+    FlutterBackgroundService().invoke('connectToDevice', {
+      'deviceAddress': device.deviceAddress,
+    });
   }
 
   void requestMapRegion(OfflineRegion region) {
@@ -73,7 +75,9 @@ class UiP2pService extends _$UiP2pService {
   }
 
   void broadcastMapRegion(OfflineRegion? region) {
-    FlutterBackgroundService().invoke('broadcastMapRegion', {'region': region?.toJson()});
+    FlutterBackgroundService().invoke('broadcastMapRegion', {
+      'region': region?.toJson(),
+    });
   }
 
   void triggerSync() {

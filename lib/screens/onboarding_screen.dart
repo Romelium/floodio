@@ -25,12 +25,12 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     final contact = _contactController.text.trim();
 
     if (name.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(
-        content: Text('Name is required'),
-        behavior: SnackBarBehavior.floating,
-      ));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Name is required'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
       return;
     }
 
@@ -57,7 +57,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     await ref
         .read(userProfilesControllerProvider.notifier)
         .saveProfile(profile);
-        
+
     if (mounted) {
       ref.invalidate(localUserControllerProvider);
 
@@ -82,7 +82,11 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             const SizedBox(height: 24),
             const Text(
               'Welcome to Floodio',
-              style: TextStyle(fontSize: 32, fontWeight: FontWeight.w900, letterSpacing: 1.2),
+              style: TextStyle(
+                fontSize: 32,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 1.2,
+              ),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 16),

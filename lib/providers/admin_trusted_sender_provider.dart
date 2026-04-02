@@ -18,38 +18,61 @@ class AdminTrustedSendersController extends _$AdminTrustedSendersController {
   Future<void> addAdminTrustedSender(AdminTrustedSenderEntity entity) async {
     final db = ref.read(databaseProvider);
     await db.transaction(() async {
-      await db.into(db.adminTrustedSenders).insert(
-        AdminTrustedSendersCompanion.insert(
-          publicKey: entity.publicKey,
-          delegatorPublicKey: entity.delegatorPublicKey,
-          timestamp: entity.timestamp,
-          signature: entity.signature,
-        ),
-        mode: InsertMode.insertOrReplace,
-      );
+      await db
+          .into(db.adminTrustedSenders)
+          .insert(
+            AdminTrustedSendersCompanion.insert(
+              publicKey: entity.publicKey,
+              delegatorPublicKey: entity.delegatorPublicKey,
+              timestamp: entity.timestamp,
+              signature: entity.signature,
+            ),
+            mode: InsertMode.insertOrReplace,
+          );
 
-      await db.into(db.seenMessageIds).insert(
-        SeenMessageIdsCompanion.insert(
-          messageId: 'delg_${entity.publicKey}_${entity.timestamp}',
-          timestamp: DateTime.now().millisecondsSinceEpoch,
-        ),
-        mode: InsertMode.insertOrReplace,
-      );
+      await db
+          .into(db.seenMessageIds)
+          .insert(
+            SeenMessageIdsCompanion.insert(
+              messageId: 'delg_${entity.publicKey}_${entity.timestamp}',
+              timestamp: DateTime.now().millisecondsSinceEpoch,
+            ),
+            mode: InsertMode.insertOrReplace,
+          );
 
       // Do not upgrade markers if this key has already been revoked
-      final revoked = await (db.select(db.revokedDelegations)..where((t) => t.delegateePublicKey.equals(entity.publicKey))).getSingleOrNull();
+      final revoked =
+          await (db.select(db.revokedDelegations)
+                ..where((t) => t.delegateePublicKey.equals(entity.publicKey)))
+              .getSingleOrNull();
       if (revoked != null) return;
 
-      await (db.update(db.hazardMarkers)..where((t) => t.senderId.equals(entity.publicKey) & t.trustTier.isBiggerThanValue(2)))
+      await (db.update(db.hazardMarkers)..where(
+            (t) =>
+                t.senderId.equals(entity.publicKey) &
+                t.trustTier.isBiggerThanValue(2),
+          ))
           .write(const HazardMarkersCompanion(trustTier: Value(2)));
 
-      await (db.update(db.newsItems)..where((t) => t.senderId.equals(entity.publicKey) & t.trustTier.isBiggerThanValue(2)))
+      await (db.update(db.newsItems)..where(
+            (t) =>
+                t.senderId.equals(entity.publicKey) &
+                t.trustTier.isBiggerThanValue(2),
+          ))
           .write(const NewsItemsCompanion(trustTier: Value(2)));
 
-      await (db.update(db.areas)..where((t) => t.senderId.equals(entity.publicKey) & t.trustTier.isBiggerThanValue(2)))
+      await (db.update(db.areas)..where(
+            (t) =>
+                t.senderId.equals(entity.publicKey) &
+                t.trustTier.isBiggerThanValue(2),
+          ))
           .write(const AreasCompanion(trustTier: Value(2)));
 
-      await (db.update(db.paths)..where((t) => t.senderId.equals(entity.publicKey) & t.trustTier.isBiggerThanValue(2)))
+      await (db.update(db.paths)..where(
+            (t) =>
+                t.senderId.equals(entity.publicKey) &
+                t.trustTier.isBiggerThanValue(2),
+          ))
           .write(const PathsCompanion(trustTier: Value(2)));
     });
   }

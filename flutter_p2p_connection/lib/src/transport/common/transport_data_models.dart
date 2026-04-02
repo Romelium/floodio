@@ -265,7 +265,8 @@ class P2pFileProgressUpdate {
           bytesDownloaded == other.bytesDownloaded &&
           fileState == fileState;
   @override
-  int get hashCode => Object.hash(fileId, receiverId, bytesDownloaded, fileState);
+  int get hashCode =>
+      Object.hash(fileId, receiverId, bytesDownloaded, fileState);
 }
 
 /// Represents a generic P2P message exchanged between clients.

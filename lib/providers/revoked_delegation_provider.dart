@@ -18,37 +18,60 @@ class RevokedDelegationsController extends _$RevokedDelegationsController {
   Future<void> addRevokedDelegation(RevokedDelegationEntity entity) async {
     final db = ref.read(databaseProvider);
     await db.transaction(() async {
-      await db.into(db.revokedDelegations).insert(
-        RevokedDelegationsCompanion.insert(
-          delegateePublicKey: entity.delegateePublicKey,
-          delegatorPublicKey: entity.delegatorPublicKey,
-          timestamp: entity.timestamp,
-          signature: entity.signature,
-        ),
-        mode: InsertMode.insertOrReplace,
-      );
+      await db
+          .into(db.revokedDelegations)
+          .insert(
+            RevokedDelegationsCompanion.insert(
+              delegateePublicKey: entity.delegateePublicKey,
+              delegatorPublicKey: entity.delegatorPublicKey,
+              timestamp: entity.timestamp,
+              signature: entity.signature,
+            ),
+            mode: InsertMode.insertOrReplace,
+          );
 
-      await db.into(db.seenMessageIds).insert(
-        SeenMessageIdsCompanion.insert(
-          messageId: 'rev_${entity.delegateePublicKey}_${entity.timestamp}',
-          timestamp: DateTime.now().millisecondsSinceEpoch,
-        ),
-        mode: InsertMode.insertOrReplace,
-      );
+      await db
+          .into(db.seenMessageIds)
+          .insert(
+            SeenMessageIdsCompanion.insert(
+              messageId: 'rev_${entity.delegateePublicKey}_${entity.timestamp}',
+              timestamp: DateTime.now().millisecondsSinceEpoch,
+            ),
+            mode: InsertMode.insertOrReplace,
+          );
 
-      final trusted = await (db.select(db.trustedSenders)..where((t) => t.publicKey.equals(entity.delegateePublicKey))).getSingleOrNull();
+      final trusted =
+          await (db.select(db.trustedSenders)
+                ..where((t) => t.publicKey.equals(entity.delegateePublicKey)))
+              .getSingleOrNull();
       final fallbackTier = trusted != null ? 3 : 4;
 
-      await (db.update(db.hazardMarkers)..where((t) => t.senderId.equals(entity.delegateePublicKey) & t.trustTier.equals(2)))
+      await (db.update(db.hazardMarkers)..where(
+            (t) =>
+                t.senderId.equals(entity.delegateePublicKey) &
+                t.trustTier.equals(2),
+          ))
           .write(HazardMarkersCompanion(trustTier: Value(fallbackTier)));
 
-      await (db.update(db.newsItems)..where((t) => t.senderId.equals(entity.delegateePublicKey) & t.trustTier.equals(2)))
+      await (db.update(db.newsItems)..where(
+            (t) =>
+                t.senderId.equals(entity.delegateePublicKey) &
+                t.trustTier.equals(2),
+          ))
           .write(NewsItemsCompanion(trustTier: Value(fallbackTier)));
 
-      await (db.update(db.areas)..where((t) => t.senderId.equals(entity.delegateePublicKey) & t.trustTier.equals(2)))
+      await (db.update(db.areas)..where(
+            (t) =>
+                t.senderId.equals(entity.delegateePublicKey) &
+                t.trustTier.equals(2),
+          ))
           .write(AreasCompanion(trustTier: Value(fallbackTier)));
 
-      await (db.update(db.paths)..where((t) => t.senderId.equals(entity.delegateePublicKey) & t.trustTier.equals(2)))
+      await (db.update(db.paths)..where(
+            (t) =>
+                t.senderId.equals(entity.delegateePublicKey) &
+                t.trustTier.equals(2),
+          ))
           .write(PathsCompanion(trustTier: Value(fallbackTier)));
     });
   }

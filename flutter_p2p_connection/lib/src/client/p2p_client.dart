@@ -270,7 +270,8 @@ class FlutterP2pClient extends FlutterP2pConnectionBase {
       }
 
       // Give the hotspot a little more time to become visible to the Wi-Fi scanner.
-      debugPrint("Client: Waiting a moment for hotspot to become visible in scans...");
+      debugPrint(
+          "Client: Waiting a moment for hotspot to become visible in scans...");
       await Future.delayed(const Duration(milliseconds: 1500));
 
       debugPrint("Client: Attempting to connect to hotspot: $ssid");

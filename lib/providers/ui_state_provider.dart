@@ -36,9 +36,18 @@ class DrawingState {
   final String? editingId;
   final List<LatLng> points;
 
-  DrawingState({this.mode = DrawingMode.none, this.editingId, this.points = const []});
-  
-  DrawingState copyWith({DrawingMode? mode, String? editingId, List<LatLng>? points, bool clearEditingId = false}) {
+  DrawingState({
+    this.mode = DrawingMode.none,
+    this.editingId,
+    this.points = const [],
+  });
+
+  DrawingState copyWith({
+    DrawingMode? mode,
+    String? editingId,
+    List<LatLng>? points,
+    bool clearEditingId = false,
+  }) {
     return DrawingState(
       mode: mode ?? this.mode,
       editingId: clearEditingId ? null : (editingId ?? this.editingId),
@@ -53,11 +62,19 @@ class DrawingController extends _$DrawingController {
   DrawingState build() => DrawingState();
 
   void startDrawingArea([String? id, List<LatLng>? initialPoints]) {
-    state = DrawingState(mode: DrawingMode.area, editingId: id, points: initialPoints ?? []);
+    state = DrawingState(
+      mode: DrawingMode.area,
+      editingId: id,
+      points: initialPoints ?? [],
+    );
   }
 
   void startDrawingPath([String? id, List<LatLng>? initialPoints]) {
-    state = DrawingState(mode: DrawingMode.path, editingId: id, points: initialPoints ?? []);
+    state = DrawingState(
+      mode: DrawingMode.path,
+      editingId: id,
+      points: initialPoints ?? [],
+    );
   }
 
   void addPoint(LatLng point) {
@@ -66,7 +83,9 @@ class DrawingController extends _$DrawingController {
 
   void removeLastPoint() {
     if (state.points.isNotEmpty) {
-      state = state.copyWith(points: state.points.sublist(0, state.points.length - 1));
+      state = state.copyWith(
+        points: state.points.sublist(0, state.points.length - 1),
+      );
     }
   }
 

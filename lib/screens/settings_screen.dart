@@ -108,21 +108,30 @@ class SettingsScreen extends ConsumerWidget {
           ),
           ListTile(
             leading: const Icon(Icons.delete_forever, color: Colors.red),
-            title: const Text('Clear All Data', style: TextStyle(color: Colors.red)),
-            subtitle: const Text('Deletes all reports, maps, and profile data.'),
+            title: const Text(
+              'Clear All Data',
+              style: TextStyle(color: Colors.red),
+            ),
+            subtitle: const Text(
+              'Deletes all reports, maps, and profile data.',
+            ),
             onTap: () {
               showDialog(
                 context: context,
                 builder: (dialogContext) => AlertDialog(
                   title: const Text('Clear All Data?'),
-                  content: const Text('This action cannot be undone. All your reports, trusted senders, and offline maps will be deleted from THIS DEVICE ONLY. It will not remove your previously synced reports from the mesh network.'),
+                  content: const Text(
+                    'This action cannot be undone. All your reports, trusted senders, and offline maps will be deleted from THIS DEVICE ONLY. It will not remove your previously synced reports from the mesh network.',
+                  ),
                   actions: [
                     TextButton(
                       onPressed: () => Navigator.pop(dialogContext),
                       child: const Text('Cancel'),
                     ),
                     FilledButton(
-                      style: FilledButton.styleFrom(backgroundColor: Colors.red),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: Colors.red,
+                      ),
                       onPressed: () async {
                         Navigator.pop(dialogContext);
                         final db = ref.read(databaseProvider);

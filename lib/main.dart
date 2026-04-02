@@ -15,8 +15,14 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await Supabase.initialize(
-    url: const String.fromEnvironment('SUPABASE_URL', defaultValue: 'https://placeholder.supabase.co'),
-    anonKey: const String.fromEnvironment('SUPABASE_ANON_KEY', defaultValue: 'placeholder'),
+    url: const String.fromEnvironment(
+      'SUPABASE_URL',
+      defaultValue: 'https://placeholder.supabase.co',
+    ),
+    anonKey: const String.fromEnvironment(
+      'SUPABASE_ANON_KEY',
+      defaultValue: 'placeholder',
+    ),
   );
 
   final connection = await getSharedConnection();
@@ -48,9 +54,15 @@ class FloodioApp extends ConsumerWidget {
     final settings = ref.watch(appSettingsProvider);
     final isOfficial = settings.isOfficialMode;
 
-    final seedColor = isOfficial ? const Color(0xFFB71C1C) : const Color(0xFF0D47A1);
-    final primaryColor = isOfficial ? const Color(0xFFB71C1C) : const Color(0xFF0D47A1);
-    final secondaryColor = isOfficial ? const Color(0xFFFFD54F) : const Color(0xFFFF6D00);
+    final seedColor = isOfficial
+        ? const Color(0xFFB71C1C)
+        : const Color(0xFF0D47A1);
+    final primaryColor = isOfficial
+        ? const Color(0xFFB71C1C)
+        : const Color(0xFF0D47A1);
+    final secondaryColor = isOfficial
+        ? const Color(0xFFFFD54F)
+        : const Color(0xFFFF6D00);
 
     return MaterialApp(
       title: 'Floodio Mesh',
@@ -70,7 +82,10 @@ class FloodioApp extends ConsumerWidget {
             fontWeight: FontWeight.bold,
             color: primaryColor,
           ),
-          titleLarge: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+          titleLarge: const TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+          ),
           bodyMedium: const TextStyle(fontSize: 15, height: 1.4),
         ),
         appBarTheme: AppBarTheme(
@@ -105,7 +120,10 @@ class FloodioApp extends ConsumerWidget {
             borderRadius: BorderRadius.circular(12),
             borderSide: BorderSide(color: primaryColor, width: 2),
           ),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 16,
+          ),
         ),
       ),
       home: const InitializerScreen(),

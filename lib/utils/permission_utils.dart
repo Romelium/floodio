@@ -10,9 +10,7 @@ Future<bool> requestAppPermissions() async {
   final androidInfo = await DeviceInfoPlugin().androidInfo;
   final sdkInt = androidInfo.version.sdkInt;
 
-  List<Permission> permissions = [
-    Permission.location,
-  ];
+  List<Permission> permissions = [Permission.location];
 
   if (sdkInt >= 31) {
     permissions.addAll([
@@ -49,9 +47,7 @@ Future<bool> checkAppPermissions() async {
   final androidInfo = await DeviceInfoPlugin().androidInfo;
   final sdkInt = androidInfo.version.sdkInt;
 
-  List<Permission> permissions = [
-    Permission.location,
-  ];
+  List<Permission> permissions = [Permission.location];
 
   if (sdkInt >= 31) {
     permissions.addAll([
@@ -99,23 +95,28 @@ Future<bool> ensureServicesEnabled({bool isHosting = false}) async {
   final dummy = FlutterP2pHost();
   bool loc = await dummy.checkLocationEnabled();
   if (!loc) {
-    try { await dummy.enableLocationServices(); } catch (_) {}
+    try {
+      await dummy.enableLocationServices();
+    } catch (_) {}
     loc = await dummy.checkLocationEnabled();
   }
-  
+
   bool wifi = true;
   if (!isHosting) {
     wifi = await dummy.checkWifiEnabled();
     if (!wifi) {
-      try { await dummy.enableWifiServices(); } catch (_) {}
+      try {
+        await dummy.enableWifiServices();
+      } catch (_) {}
       wifi = await dummy.checkWifiEnabled();
     }
   }
   bool bt = await dummy.checkBluetoothEnabled();
   if (!bt) {
-    try { await dummy.enableBluetoothServices(); } catch (_) {}
+    try {
+      await dummy.enableBluetoothServices();
+    } catch (_) {}
     bt = await dummy.checkBluetoothEnabled();
   }
   return loc && wifi && bt;
 }
-
