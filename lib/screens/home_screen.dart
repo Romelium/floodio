@@ -50,6 +50,7 @@ import '../widgets/mesh_status_chip.dart';
 import 'command_tab.dart';
 import 'guide_tab.dart';
 import 'initializer_screen.dart';
+import 'mesh_topology_screen.dart';
 import 'profile_tab.dart';
 
 class _SearchBar extends ConsumerStatefulWidget {
@@ -4811,6 +4812,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                           ),
                         ),
                     ],
+                  );
+                },
+              ),
+              IconButton(
+                icon: const Icon(Icons.device_hub),
+                tooltip: 'Mesh Topology',
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const MeshTopologyScreen()),
                   );
                 },
               ),
