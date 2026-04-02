@@ -226,6 +226,37 @@ class P2pService extends _$P2pService {
   static const _systemChannel = MethodChannel('com.example.floodio/system');
   bool _isSwitchingRoles = false;
 
+  Future<void> _setBluetoothName(String prefix) async {
+    try {
+      if (!isBackgroundIsolate) {
+        final currentName = await _systemChannel.invokeMethod('getBluetoothName') as String?;
+        if (currentName != null && !currentName.startsWith('FLD-')) {
+          _originalBluetoothName = currentName;
+        }
+        final localUser = await ref.read(localUserControllerProvider.future);
+        final username = localUser.name.isNotEmpty ? localUser.name : "User";
+        
+        String safeName = username;
+        while (utf8.encode(safeName).length > 15 && safeName.isNotEmpty) {
+          safeName = safeName.substring(0, safeName.length - 1);
+        }
+        await _systemChannel.invokeMethod('setBluetoothName', {'name': '$prefix: $safeName'});
+      }
+    } catch (e) {
+      print("Failed to set BT name: $e");
+    }
+  }
+
+  Future<void> _restoreBluetoothName() async {
+    try {
+      if (!isBackgroundIsolate && _originalBluetoothName != null) {
+        await _systemChannel.invokeMethod('setBluetoothName', {'name': _originalBluetoothName});
+      }
+    } catch (e) {
+      print("Failed to restore BT name: $e");
+    }
+  }
+
   @override
   P2pState build() {
     ref.onDispose(() {
@@ -245,6 +276,7 @@ class P2pService extends _$P2pService {
         _host.dispose();
         _client.dispose();
       }
+      _restoreBluetoothName();
     });
     return const P2pState();
   }
@@ -462,14 +494,7 @@ class P2pService extends _$P2pService {
       return;
     }
 
-    try {
-      if (!isBackgroundIsolate) {
-        _originalBluetoothName ??= await _systemChannel.invokeMethod('getBluetoothName');
-        await _systemChannel.invokeMethod('setBluetoothName', {'name': 'FLD'});
-      }
-    } catch (e) {
-      print("Failed to set BT name: $e");
-    }
+    await _setBluetoothName('FLD-H');
 
     try {
       state = state.copyWith(syncMessage: 'Starting Hotspot...', clearSyncProgress: true);
@@ -506,13 +531,7 @@ class P2pService extends _$P2pService {
       clearSyncProgress: true
     );
 
-    try {
-      if (!isBackgroundIsolate && _originalBluetoothName != null) {
-        await _systemChannel.invokeMethod('setBluetoothName', {'name': _originalBluetoothName});
-      }
-    } catch (e) {
-      print("Failed to restore BT name: $e");
-    }
+    await _restoreBluetoothName();
   }
 
   Future<void> startScanning() async {
@@ -560,6 +579,8 @@ class P2pService extends _$P2pService {
       await disconnect();
       return;
     }
+
+    await _setBluetoothName('FLD-S');
 
     try {
       state = state.copyWith(syncMessage: 'Scanning for nearby devices...', clearSyncProgress: true);
@@ -638,6 +659,8 @@ class P2pService extends _$P2pService {
         return;
       }
       
+            await _setBluetoothName('FLD-C');
+      
       _clientTextSub?.cancel();
       _clientTextSub = _client.streamReceivedTexts().listen(_handleReceivedText);
 
@@ -684,6 +707,7 @@ class P2pService extends _$P2pService {
       syncMessage: 'Disconnected.',
       clearSyncProgress: true
     );
+    await _restoreBluetoothName();
   }
 
   void _handleReceivedText(String text) async {
@@ -1082,9 +1106,9 @@ class P2pService extends _$P2pService {
       final mapCache = ref.read(mapCacheServiceProvider);
       final packFile = await mapCache.packMap(region: region);
 
-      if (state.hostState?.isActive == true) {
+      if (state.isHosting) {
         await _host.broadcastFile(packFile);
-      } else if (state.clientState?.isActive == true) {
+      } else {
         await _client.broadcastFile(packFile);
       }
       state = state.copyWith(isSyncing: false, syncMessage: 'Map file sent.', clearSyncProgress: true);
@@ -1722,10 +1746,12 @@ class P2pService extends _$P2pService {
   Future<void> broadcastText(String text) async {
     try {
       _idleTicks = 0;
-      if (_isInitialized && state.hostState?.isActive == true) {
-        await _host.broadcastText(text);
-      } else if (_isInitialized && state.clientState?.isActive == true) {
-        await _client.broadcastText(text);
+      if (_isInitialized) {
+        if (state.isHosting) {
+          await _host.broadcastText(text);
+        } else {
+          await _client.broadcastText(text);
+        }
       }
     } catch (e) {
       print("Error broadcasting text: $e");
@@ -1735,10 +1761,12 @@ class P2pService extends _$P2pService {
   Future<void> broadcastFile(File file) async {
     try {
       _idleTicks = 0;
-      if (_isInitialized && state.hostState?.isActive == true) {
-        await _host.broadcastFile(file);
-      } else if (_isInitialized && state.clientState?.isActive == true) {
-        await _client.broadcastFile(file);
+      if (_isInitialized) {
+        if (state.isHosting) {
+          await _host.broadcastFile(file);
+        } else {
+          await _client.broadcastFile(file);
+        }
       }
     } catch (e) {
       print("Error broadcasting file: $e");
