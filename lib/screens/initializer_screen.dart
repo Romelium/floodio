@@ -27,6 +27,13 @@ class _InitializerScreenState extends State<InitializerScreen> {
     final name = prefs.getString('user_name');
     if (name != null && name.isNotEmpty) {
       _needsOnboarding = false;
+    } else {
+      final count = prefs.getInt('onboarding_shown_count') ?? 0;
+      if (count >= 2) {
+        _needsOnboarding = false;
+      } else {
+        await prefs.setInt('onboarding_shown_count', count + 1);
+      }
     }
     setState(() {
       _isInitialized = true;

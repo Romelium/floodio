@@ -145,6 +145,19 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               onPressed: _saveProfile,
               child: const Text('Continue', style: TextStyle(fontSize: 16)),
             ),
+            const SizedBox(height: 16),
+            TextButton(
+              onPressed: () async {
+                final prefs = await SharedPreferences.getInstance();
+                await prefs.setInt('onboarding_shown_count', 2);
+                if (mounted) {
+                  Navigator.of(context).pushReplacement(
+                    MaterialPageRoute(builder: (_) => const HomeScreen()),
+                  );
+                }
+              },
+              child: const Text('Skip for now', style: TextStyle(color: Colors.grey)),
+            ),
           ],
         ),
       ),
