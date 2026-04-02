@@ -89,3 +89,392 @@ Once the generated files are built and your device is listed in the connected de
 flutter run --dart-define-from-file=.env
 ```
 *(Or if you are using the Makefile, simply run `make run`)*
+
+## Charts
+
+*Note these would not render on README in GitHub mobile app. Only in web version of GitHub.*
+
+### High-Level System Architecture
+
+```mermaid
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#f4f4f4', 'edgeLabelBackground':'#ffffff', 'tertiaryColor': '#f4f4f4'}}}%%
+flowchart TB
+    subgraph FlutterLayer ["📱 Flutter Application Layer"]
+        direction TB
+        UI("🖼️ UI Layer<br/>(Screens & Widgets)")
+        State("🧠 State Management<br/>(Riverpod Providers)")
+        BG("⚙️ Background Service<br/>(flutter_background_service)")
+        
+        subgraph CoreServices ["Core Services"]
+            direction LR
+            Crypto("🔐 CryptoService<br/>(Ed25519)")
+            Cloud("☁️ CloudSyncService<br/>(Supabase)")
+            MapCache("🗺️ MapCacheService<br/>(Offline Tiles)")
+        end
+    end
+
+    subgraph LocalStorage ["💾 Local Persistence"]
+        direction LR
+        DB[("🗄️ Drift SQLite<br/>(AppDatabase)")]
+        Prefs[("⚙️ Shared Prefs<br/>(Settings)")]
+        FS[("📁 File System<br/>(Images/Maps)")]
+    end
+
+    subgraph NativeLayer ["🤖 Native Android Layer (Kotlin)"]
+        direction TB
+        P2PPlugin("🔌 flutter_p2p_connection<br/>(Native Plugin)")
+        
+        subgraph NativeManagers ["Hardware Managers"]
+            direction LR
+            BLE("📡 BLE Manager<br/>(Discovery)")
+            WiFi("📶 Wi-Fi Direct<br/>(Host/Client)")
+            Sockets("🔌 WebSockets/HTTP<br/>(Data Transfer)")
+        end
+    end
+
+    subgraph External ["🌍 External Systems"]
+        direction LR
+        Supabase[("☁️ Supabase Cloud<br/>(PostgreSQL/Storage)")]
+        Peers(("📱 Nearby Peer Devices"))
+    end
+
+    %% Relationships
+    UI <==>|Watches / Reads| State
+    State <==>|Queries / Mutates| DB
+    State <==>|Reads / Writes| Prefs
+    State <==> Crypto
+    
+    BG <==>|Triggers Sync| State
+    BG <==>|Listens to| P2PPlugin
+    
+    State <==>|Commands| P2PPlugin
+    P2PPlugin --- BLE & WiFi & Sockets
+    
+    Sockets <==>|Protobuf Payloads| Peers
+    BLE <==>|GATT Characteristics| Peers
+    
+    Cloud <==>|Upload / Download| Supabase
+    Cloud <==>|Reads / Writes| DB
+    
+    MapCache <==> FS
+    Sockets <==>|File Transfer| FS
+
+    %% Styling
+    classDef flutter fill:#E3F2FD,stroke:#1E88E5,stroke-width:2px,color:#0D47A1,rx:8px
+    classDef native fill:#F3E5F5,stroke:#8E24AA,stroke-width:2px,color:#4A148C,rx:8px
+    classDef storage fill:#FFF3E0,stroke:#F57C00,stroke-width:2px,color:#E65100,rx:8px
+    classDef external fill:#E8F5E9,stroke:#43A047,stroke-width:2px,color:#1B5E20,rx:8px
+    classDef core fill:#FFFFFF,stroke:#B0BEC5,stroke-width:2px,color:#37474F,stroke-dasharray: 5 5,rx:8px
+
+    class UI,State,BG flutter
+    class P2PPlugin,BLE,WiFi,Sockets native
+    class DB,Prefs,FS storage
+    class Supabase,Peers external
+    class Crypto,Cloud,MapCache core
+    
+    style FlutterLayer fill:#FAFAFA,stroke:#90CAF9,stroke-width:2px,rx:10px
+    style LocalStorage fill:#FAFAFA,stroke:#FFCC80,stroke-width:2px,rx:10px
+    style NativeLayer fill:#FAFAFA,stroke:#CE93D8,stroke-width:2px,rx:10px
+    style External fill:#FAFAFA,stroke:#A5D6A7,stroke-width:2px,rx:10px
+    style CoreServices fill:none,stroke:none
+    style NativeManagers fill:none,stroke:none
+```
+
+### P2P Mesh Synchronization Workflow
+
+```mermaid
+%%{init: {'theme': 'base', 'themeVariables': { 'actorBkg': '#1E88E5', 'actorTextColor': '#FFFFFF', 'actorLineColor': '#0D47A1', 'signalColor': '#333333', 'noteBkg': '#FFF9C4', 'noteBorderColor': '#FBC02D' }}}%%
+sequenceDiagram
+    autonumber
+    participant C as 📱 Device A<br/>(Scanner / Client)
+    participant H as 📱 Device B<br/>(Broadcaster / Host)
+    
+    rect rgb(227, 242, 253)
+        Note over C,H: Phase 1: Discovery & Connection (BLE)
+        H->>H: Create Wi-Fi Direct Group (Hotspot)
+        H->>H: Start BLE Advertising (UUID + SSID/PSK)
+        C->>C: Start BLE Scan
+        C->>H: Discover Device B & Connect via BLE
+        H-->>C: Send Wi-Fi SSID & PSK via Encrypted GATT
+        C->>H: Disconnect BLE
+    end
+    
+    rect rgb(243, 229, 245)
+        Note over C,H: Phase 2: Network & Transport (Wi-Fi Direct)
+        C->>H: Connect to Wi-Fi Direct Hotspot
+        H->>H: Start WebSocket & HTTP File Server
+        C->>C: Start HTTP File Server
+        C->>H: Connect to Host's WebSocket
+    end
+    
+    rect rgb(255, 243, 224)
+        Note over C,H: Phase 3: Data Synchronization (Bloom Filter)
+        C->>C: Generate Bloom Filter of local DB IDs
+        C->>H: Send Manifest (Bloom Filter + Offline Regions)
+        H->>H: Compare local DB against Client's Bloom Filter
+        H->>H: Serialize missing records to Protobuf
+        H-->>C: Send SyncPayload (Base64 Protobuf)
+    end
+    
+    rect rgb(232, 245, 233)
+        Note over C,H: Phase 4: Verification & Storage
+        C->>C: Decode Protobuf
+        C->>C: Verify Ed25519 Signatures & Assign Trust Tiers
+        C->>C: Save valid records to Drift DB
+        
+        opt If Host has multiple clients
+            H->>H: Forward new valid records to other peers
+        end
+    end
+    
+    rect rgb(255, 235, 238)
+        Note over C,H: Phase 5: File/Image Transfer (HTTP)
+        C->>H: Request missing images (HTTP GET)
+        H-->>C: Stream image bytes
+        C->>H: Disconnect & Switch Roles (Auto-Sync)
+    end
+```
+### 4-Tier Cryptographic Trust Strategy
+
+```mermaid
+flowchart LR
+    Start(["📥 Receive SyncPayload Record"]) --> Decode["⚙️ Decode Protobuf &<br/>Extract Signature"]
+    Decode --> VerifySig{"Is Ed25519<br/>Signature Valid?"}
+    
+    VerifySig -- "❌ No" --> Drop["🗑️ Drop Record / Ignore"]
+    VerifySig -- "✅ Yes" --> CheckRevoked{"Is Sender<br/>Revoked?"}
+    
+    CheckRevoked -- "✅ Yes" --> FallbackTier{"Is Sender<br/>Personally Trusted?"}
+    FallbackTier -- "✅ Yes" --> Tier3
+    FallbackTier -- "❌ No" --> Tier4
+    
+    CheckRevoked -- "❌ No" --> CheckOfficial{"Is Sender ID ==<br/>Official Server Key?"}
+    
+    CheckOfficial -- "✅ Yes" --> Tier1["🔵 Tier 1: OFFICIAL<br/>(Highest Priority)"]
+    CheckOfficial -- "❌ No" --> CheckAdmin{"Is Sender in<br/>Admin-Trusted DB?"}
+    
+    CheckAdmin -- "✅ Yes" --> Tier2["🟣 Tier 2: VERIFIED<br/>(Volunteer)"]
+    CheckAdmin -- "❌ No" --> CheckPersonal{"Is Sender in<br/>Personal Trusted DB?"}
+    
+    CheckPersonal -- "✅ Yes" --> Tier3["🟢 Tier 3: TRUSTED<br/>(Local Trust)"]
+    CheckPersonal -- "❌ No" --> CheckBlocked{"Is Sender in<br/>Blocked DB?"}
+    
+    CheckBlocked -- "✅ Yes" --> Drop
+    CheckBlocked -- "❌ No" --> Tier4["⚪ Tier 4: UNVERIFIED<br/>(Crowdsourced)"]
+    
+    Tier1 --> Save[("💾 Save to DB")]
+    Tier2 --> Save
+    Tier3 --> Save
+    Tier4 --> Save
+    
+    %% Styling
+    classDef start fill:#263238,color:#fff,stroke:#fff,stroke-width:2px,rx:20px
+    classDef process fill:#ECEFF1,color:#000,stroke:#B0BEC5,stroke-width:2px,rx:8px
+    classDef decision fill:#FFF9C4,color:#F57F17,stroke:#FBC02D,stroke-width:2px
+    classDef db fill:#FFCA28,color:#000,stroke:#FF8F00,stroke-width:2px,rx:8px
+    
+    classDef t1 fill:#1E88E5,color:#fff,stroke:#0D47A1,stroke-width:3px,rx:8px
+    classDef t2 fill:#8E24AA,color:#fff,stroke:#4A148C,stroke-width:3px,rx:8px
+    classDef t3 fill:#43A047,color:#fff,stroke:#1B5E20,stroke-width:3px,rx:8px
+    classDef t4 fill:#F5F5F5,color:#424242,stroke:#9E9E9E,stroke-width:3px,rx:8px
+    classDef drop fill:#E53935,color:#fff,stroke:#B71C1C,stroke-width:3px,rx:8px
+    
+    class Start start
+    class Decode process
+    class VerifySig,CheckRevoked,FallbackTier,CheckOfficial,CheckAdmin,CheckPersonal,CheckBlocked decision
+    class Save db
+    class Tier1 t1
+    class Tier2 t2
+    class Tier3 t3
+    class Tier4 t4
+    class Drop drop
+```
+
+### Cloud Gateway Sync Pipeline
+
+```mermaid
+flowchart LR
+    subgraph Trigger ["Trigger"]
+        direction TB
+        Start(["⏱️ Timer / Manual"]) --> CheckNet{"🌐 Internet<br/>Available?"}
+        CheckNet -- "❌ No" --> End(["🛑 Abort"])
+    end
+
+    subgraph Local ["📱 Local Device (Offline Data)"]
+        direction TB
+        Fetch[("🔍 Fetch records<br/>newer than last_sync")]
+        Filter("🎛️ Apply Filters<br/>(Text Only / Tier 1 & 2)")
+        Serialize("📦 Serialize to<br/>Protobuf (Base64)")
+        
+        Fetch --> Filter --> Serialize
+    end
+
+    subgraph Cloud ["☁️ Supabase Cloud"]
+        direction TB
+        Upload[("⬆️ Insert into<br/>'sync_events'")]
+        Download[("⬇️ Fetch 'sync_events'<br/>newer than last_sync")]
+        Images[("🖼️ Upload/Download<br/>'images' bucket")]
+    end
+
+    subgraph Process ["⚙️ Processing"]
+        direction TB
+        Decode("🔓 Decode Base64 &<br/>Verify Signatures")
+        Save[("💾 Save to Drift DB")]
+        Update("🕒 Update<br/>last_sync_time")
+        
+        Decode --> Save --> Update
+    end
+
+    %% Connections
+    CheckNet -- "✅ Yes" --> Fetch
+    Serialize --> Upload
+    Serialize -.->|If images enabled| Images
+    Upload --> Download
+    Download --> Decode
+    Images -.->|Fetch missing| Decode
+
+    %% Styling
+    classDef trigger fill:#ECEFF1,stroke:#90A4AE,stroke-width:2px,color:#37474F,rx:20px
+    classDef local fill:#E3F2FD,stroke:#42A5F5,stroke-width:2px,color:#0D47A1,rx:8px
+    classDef cloud fill:#E8F5E9,stroke:#66BB6A,stroke-width:2px,color:#1B5E20,rx:8px
+    classDef process fill:#FFF3E0,stroke:#FFA726,stroke-width:2px,color:#E65100,rx:8px
+    classDef decision fill:#FFF9C4,stroke:#FBC02D,stroke-width:2px,color:#F57F17
+
+    class Start,End trigger
+    class Fetch,Filter,Serialize local
+    class Upload,Download,Images cloud
+    class Decode,Save,Update process
+    class CheckNet decision
+    
+    style Trigger fill:none,stroke:none
+    style Local fill:#FAFAFA,stroke:#90CAF9,stroke-width:2px,stroke-dasharray: 5 5,rx:10px,color:#0D47A1
+    style Cloud fill:#FAFAFA,stroke:#A5D6A7,stroke-width:2px,stroke-dasharray: 5 5,rx:10px,color:#1B5E20
+    style Process fill:#FAFAFA,stroke:#FFCC80,stroke-width:2px,stroke-dasharray: 5 5,rx:10px,color:#E65100
+```
+
+### Native Android P2P Plugin Architecture
+
+```mermaid
+flowchart LR
+    subgraph Flutter ["📱 Flutter Engine (Dart)"]
+        direction TB
+        DartAPI("FlutterP2pConnectionPlatform<br/>(Method & Event Channels)")
+    end
+
+    subgraph Kotlin ["🤖 Native Android Plugin (Kotlin)"]
+        direction TB
+        Plugin{"FlutterP2pConnectionPlugin<br/>(Orchestrator)"}
+        
+        subgraph Managers ["Internal Managers"]
+            direction TB
+            Perms("🛡️ PermissionsManager<br/>(Location, Nearby, BT)")
+            Services("⚙️ ServiceManager<br/>(Hardware Toggles)")
+            BLE("📡 BleManager<br/>(GATT Server & Scanner)")
+            Host("🏠 HostManager<br/>(LocalOnlyHotspot)")
+            Client("🔗 ClientManager<br/>(WifiNetworkSpecifier)")
+        end
+    end
+
+    subgraph OS ["⚙️ Android OS APIs"]
+        direction TB
+        BTAdapter[("BluetoothAdapter<br/>(BLE)")]
+        WifiMgr[("WifiManager<br/>(Wi-Fi Direct)")]
+        ConnMgr[("ConnectivityManager<br/>(Network Routing)")]
+    end
+
+    %% Connections
+    DartAPI <==>|MethodCalls / Streams| Plugin
+    
+    Plugin --> Perms & Services
+    Plugin --> BLE & Host & Client
+    
+    BLE <--> BTAdapter
+    Host <--> WifiMgr
+    Client <--> WifiMgr
+    Client <--> ConnMgr
+    
+    Services -.->|Checks State| BTAdapter & WifiMgr
+
+    %% Styling
+    classDef flutter fill:#E1F5FE,stroke:#1E88E5,stroke-width:2px,color:#0D47A1,rx:8px
+    classDef kotlin fill:#F3E5F5,stroke:#8E24AA,stroke-width:2px,color:#4A148C,rx:8px
+    classDef orchestrator fill:#CE93D8,stroke:#6A1B9A,stroke-width:3px,color:#fff,rx:8px
+    classDef os fill:#E8F5E9,stroke:#43A047,stroke-width:2px,color:#1B5E20
+
+    class DartAPI flutter
+    class Perms,Services,BLE,Host,Client kotlin
+    class Plugin orchestrator
+    class BTAdapter,WifiMgr,ConnMgr os
+    
+    style Flutter fill:none,stroke:none,color:#0D47A1
+    style Kotlin fill:#FAFAFA,stroke:#BA68C8,stroke-width:2px,rx:10px,color:#4A148C
+    style Managers fill:none,stroke:none,color:#4A148C
+    style OS fill:#FAFAFA,stroke:#81C784,stroke-width:2px,rx:10px,color:#1B5E20
+```
+
+### Database Schema & LWW-CRDT Strategy
+
+```mermaid
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#E3F2FD', 'primaryBorderColor': '#1E88E5', 'lineColor': '#546E7A', 'textColor': '#263238', 'fontFamily': 'monospace'}}}%%
+erDiagram
+    HAZARD_MARKERS {
+        string id PK
+        double latitude
+        double longitude
+        string type
+        string description
+        int64 timestamp "⏱️ CRDT Clock"
+        string sender_id FK
+        string signature "🔐 Ed25519"
+        int32 trust_tier
+        string image_id
+        int64 expires_at
+        boolean is_critical
+    }
+    
+    NEWS_ITEMS {
+        string id PK
+        string title
+        string content
+        int64 timestamp "⏱️ CRDT Clock"
+        string sender_id FK
+        string signature "🔐 Ed25519"
+        int32 trust_tier
+        int64 expires_at
+        boolean is_critical
+    }
+
+    USER_PROFILES {
+        string public_key PK
+        string name
+        string contact_info
+        int64 timestamp "⏱️ CRDT Clock"
+        string signature "🔐 Ed25519"
+    }
+
+    DELETED_ITEMS {
+        string id PK "Tombstone ID"
+        int64 timestamp "⏱️ CRDT Clock"
+    }
+
+    ADMIN_TRUSTED_SENDERS {
+        string public_key PK
+        string delegator_public_key
+        int64 timestamp "⏱️ CRDT Clock"
+        string signature "🔐 Ed25519"
+    }
+
+    REVOKED_DELEGATIONS {
+        string delegatee_public_key PK
+        string delegator_public_key
+        int64 timestamp "⏱️ CRDT Clock"
+        string signature "🔐 Ed25519"
+    }
+
+    %% Relationships
+    USER_PROFILES ||--o{ HAZARD_MARKERS : "creates & signs"
+    USER_PROFILES ||--o{ NEWS_ITEMS : "creates & signs"
+    ADMIN_TRUSTED_SENDERS ||--o{ REVOKED_DELEGATIONS : "can be revoked by"
+    HAZARD_MARKERS ||--o| DELETED_ITEMS : "tombstoned by"
+    NEWS_ITEMS ||--o| DELETED_ITEMS : "tombstoned by"
+```
