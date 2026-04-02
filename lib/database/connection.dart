@@ -22,6 +22,7 @@ void _databaseIsolateEntry(_IsolateStartRequest request) {
     File(request.path),
     setup: (db) {
       db.execute('PRAGMA journal_mode=WAL;');
+      db.execute('PRAGMA busy_timeout=5000;');
     },
   );
   final driftIsolate = DriftIsolate.inCurrent(
@@ -52,8 +53,15 @@ Future<QueryExecutor> getSharedConnection() async {
   );
 
   final isolate = await receivePort.first as DriftIsolate;
-  IsolateNameServer.removePortNameMapping(_dbIsolateName);
-  IsolateNameServer.registerPortWithName(isolate.connectPort, _dbIsolateName);
+  
+  final registered = IsolateNameServer.registerPortWithName(isolate.connectPort, _dbIsolateName);
+  if (!registered) {
+    port = IsolateNameServer.lookupPortByName(_dbIsolateName);
+    if (port != null) {
+      final existingIsolate = DriftIsolate.fromConnectPort(port);
+      return await existingIsolate.connect();
+    }
+  }
 
   return await isolate.connect();
 }

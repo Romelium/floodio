@@ -2393,6 +2393,7 @@ class P2pService extends _$P2pService {
 
   Future<void> mockReceivedHazard() async {
     final db = ref.read(databaseProvider);
+    await ref.read(cryptoServiceProvider.future);
     final crypto = ref.read(cryptoServiceProvider.notifier);
     final myPubKey = await crypto.getPublicKeyString();
     
