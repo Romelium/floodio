@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 import 'package:flutter_ringtone_player/flutter_ringtone_player.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:vibration/vibration.dart';
+import 'package:audioplayers/audioplayers.dart';
 
 import '../database/tables.dart';
 import 'database_provider.dart';
@@ -15,6 +16,7 @@ class RedAlertController extends _$RedAlertController {
   List<AreaEntity> _areas = [];
   List<PathEntity> _paths = [];
   final Set<String> _notifiedIds = {};
+  final AudioPlayer _audioPlayer = AudioPlayer();
 
   @override
   bool build() {
@@ -86,6 +88,7 @@ class RedAlertController extends _$RedAlertController {
       nSub.cancel();
       aSub.cancel();
       pSub.cancel();
+      _audioPlayer.dispose();
     });
 
     return false;
@@ -98,13 +101,14 @@ class RedAlertController extends _$RedAlertController {
       }
     } catch (_) {}
     try {
-      FlutterRingtonePlayer.playAlarm(looping: false, volume: 1.0);
+      _audioPlayer.setReleaseMode(ReleaseMode.loop);
+      await _audioPlayer.play(UrlSource('https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg'));
     } catch (_) {}
   }
 
   void stopAlarm() {
     try {
-      FlutterRingtonePlayer.stop();
+      _audioPlayer.stop();
       Vibration.cancel();
     } catch (_) {}
   }

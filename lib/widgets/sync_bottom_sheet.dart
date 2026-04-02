@@ -6,12 +6,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
-import '../providers/ui_state_provider.dart';
 import '../providers/offline_regions_provider.dart';
 import '../providers/ui_p2p_provider.dart';
+import '../providers/ui_state_provider.dart';
 import '../services/cloud_sync_service.dart';
-import '../utils/ui_helpers.dart';
 import '../utils/permission_utils.dart';
+import '../utils/ui_helpers.dart';
+import 'radar_animation.dart';
 
 class SyncBottomSheet extends ConsumerWidget {
   const SyncBottomSheet({super.key});
@@ -26,8 +27,11 @@ class SyncBottomSheet extends ConsumerWidget {
     final isConnected =
         (p2pState.isHosting && p2pState.hostState?.isActive == true) ||
         p2pState.clientState?.isActive == true;
+    final hasPeers = (p2pState.isHosting && p2pState.connectedClients.isNotEmpty) ||
+        (p2pState.clientState?.isActive == true);
     final isBusy =
         p2pState.isSyncing || p2pState.isConnecting || p2pState.isScanning;
+    final isSyncingOrConnecting = p2pState.isSyncing || p2pState.isConnecting;
 
     return Container(
       margin: const EdgeInsets.all(16),
@@ -186,7 +190,7 @@ class SyncBottomSheet extends ConsumerWidget {
 
                 // 2. Network Status
                 Card(
-                  color: isConnected
+                  color: hasPeers
                       ? Colors.green.shade50
                       : (p2pState.isAutoSyncing
                             ? Colors.orange.shade50
@@ -198,7 +202,7 @@ class SyncBottomSheet extends ConsumerWidget {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(20),
                     side: BorderSide(
-                      color: isConnected
+                      color: hasPeers
                           ? Colors.green.shade200
                           : (p2pState.isAutoSyncing
                                 ? Colors.orange.shade200
@@ -210,9 +214,38 @@ class SyncBottomSheet extends ConsumerWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        if ((p2pState.isScanning || p2pState.isHosting) && !hasPeers) ...[
+                          Center(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 16.0),
+                              child: p2pState.isScanning 
+                                ? RadarAnimation(
+                                    size: 120,
+                                    color: Colors.orange.shade700,
+                                  )
+                                : RippleAnimation(
+                                    size: 120,
+                                    color: Colors.blue.shade700,
+                                  ),
+                            ),
+                          ),
+                          if (p2pState.isScanning && p2pState.discoveredDevices.isNotEmpty)
+                            Center(
+                              child: Padding(
+                                padding: const EdgeInsets.only(bottom: 16.0),
+                                child: Text(
+                                  'Found ${p2pState.discoveredDevices.length} device(s)',
+                                  style: TextStyle(
+                                    color: Colors.orange.shade900,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
                         Row(
                           children: [
-                            if (isBusy)
+                            if (isSyncingOrConnecting)
                               SizedBox(
                                 width: 24,
                                 height: 24,
@@ -221,31 +254,35 @@ class SyncBottomSheet extends ConsumerWidget {
                                   strokeWidth: 3,
                                 ),
                               )
-                            else
+                            else if (!p2pState.isScanning && !(p2pState.isHosting && !hasPeers))
                               Icon(
-                                isConnected
+                                hasPeers
                                     ? Icons.check_circle
                                     : (p2pState.isAutoSyncing
                                           ? Icons.radar
                                           : Icons.cloud_off),
-                                color: isConnected
+                                color: hasPeers
                                     ? Colors.green
                                     : (p2pState.isAutoSyncing
                                           ? Colors.orange
                                           : Colors.grey),
                                 size: 24,
                               ),
-                            const SizedBox(width: 12),
+                            if (!p2pState.isScanning && !(p2pState.isHosting && !hasPeers)) const SizedBox(width: 12),
                             Expanded(
                               child: Text(
-                                isConnected
+                                hasPeers
                                     ? 'Connected to Mesh'
-                                    : (p2pState.isAutoSyncing
-                                          ? 'Auto-Sync Active'
-                                          : 'Mesh Offline'),
+                                    : (p2pState.isScanning
+                                          ? 'Scanning for Peers...'
+                                          : (p2pState.isHosting
+                                                ? 'Broadcasting Presence...'
+                                                : (p2pState.isAutoSyncing
+                                                      ? 'Auto-Sync Active'
+                                                      : 'Mesh Offline'))),
                                 style: TextStyle(
                                   fontSize: 16,
-                                  color: isConnected
+                                  color: hasPeers
                                       ? Colors.green.shade800
                                       : (p2pState.isAutoSyncing
                                             ? Colors.orange.shade800
@@ -253,6 +290,7 @@ class SyncBottomSheet extends ConsumerWidget {
                                   fontWeight: FontWeight.bold,
                                   letterSpacing: 0.5,
                                 ),
+                                textAlign: (p2pState.isScanning || (p2pState.isHosting && !hasPeers)) ? TextAlign.center : TextAlign.left,
                               ),
                             ),
                           ],
