@@ -43,33 +43,47 @@ class _HeatmapPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     if (points.isEmpty) return;
 
-    canvas.saveLayer(Offset.zero & size, Paint());
+    // Use a blur filter to smoothly blend the overlapping points
+    canvas.saveLayer(
+      Offset.zero & size,
+      Paint()..imageFilter = ui.ImageFilter.blur(sigmaX: radius * 0.3, sigmaY: radius * 0.3),
+    );
 
-    final paint = Paint()..blendMode = BlendMode.screen;
+    // Create a single reusable shader for high performance
+    final shader = ui.Gradient.radial(
+      Offset.zero,
+      radius,
+      [
+        const Color(0xFFFFFFFF).withValues(alpha: 0.8), // White hot center
+        const Color(0xFFFFC107).withValues(alpha: 0.6), // Amber
+        const Color(0xFFF44336).withValues(alpha: 0.4), // Red
+        const Color(0xFF3F51B5).withValues(alpha: 0.2), // Indigo
+        const Color(0xFF3F51B5).withValues(alpha: 0.0), // Transparent
+      ],
+      [0.0, 0.2, 0.5, 0.8, 1.0],
+    );
+
+    final paint = Paint()
+      ..shader = shader
+      ..blendMode = BlendMode.screen;
+
+    final margin = radius * 2.0;
 
     for (final point in points) {
       final offset = camera.latLngToScreenOffset(point);
 
-      if (offset.dx < -radius ||
-          offset.dx > size.width + radius ||
-          offset.dy < -radius ||
-          offset.dy > size.height + radius) {
+      // Cull points outside the visible area (with margin for blur bleed)
+      if (offset.dx < -margin ||
+          offset.dx > size.width + margin ||
+          offset.dy < -margin ||
+          offset.dy > size.height + margin) {
         continue;
       }
 
-      paint.shader = ui.Gradient.radial(
-        offset,
-        radius,
-        [
-          Colors.red.withValues(alpha: 0.6),
-          Colors.orange.withValues(alpha: 0.3),
-          Colors.yellow.withValues(alpha: 0.1),
-          Colors.transparent,
-        ],
-        [0.0, 0.4, 0.7, 1.0],
-      );
-
-      canvas.drawCircle(offset, radius, paint);
+      canvas.save();
+      canvas.translate(offset.dx, offset.dy);
+      canvas.drawCircle(Offset.zero, radius, paint);
+      canvas.restore();
     }
 
     canvas.restore();
