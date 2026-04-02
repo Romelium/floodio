@@ -76,8 +76,28 @@ class _RadarPainter extends CustomPainter {
       ..color = color.withValues(alpha: 0.2)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.0;
-    canvas.drawLine(Offset(center.dx, 0), Offset(center.dx, size.height), crosshairPaint);
-    canvas.drawLine(Offset(0, center.dy), Offset(size.width, center.dy), crosshairPaint);
+
+    canvas.save();
+    canvas.clipPath(Path()..addOval(Rect.fromCircle(center: center, radius: radius)));
+
+    // Draw grid
+    final gridPaint = Paint()
+      ..color = color.withValues(alpha: 0.08)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.0;
+    
+    final double gridSize = radius / 4;
+    for (double x = center.dx % gridSize; x < size.width; x += gridSize) {
+      canvas.drawLine(Offset(x, 0), Offset(x, size.height), gridPaint);
+    }
+    for (double y = center.dy % gridSize; y < size.height; y += gridSize) {
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), gridPaint);
+    }
+
+    canvas.restore();
+
+    _drawDashedLine(canvas, Offset(center.dx, center.dy - radius), Offset(center.dx, center.dy + radius), crosshairPaint);
+    _drawDashedLine(canvas, Offset(center.dx - radius, center.dy), Offset(center.dx + radius, center.dy), crosshairPaint);
 
     // Draw concentric circles
     final circlePaint = Paint()
@@ -85,9 +105,8 @@ class _RadarPainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.0;
 
-    canvas.drawCircle(center, radius * 0.25, circlePaint);
-    canvas.drawCircle(center, radius * 0.50, circlePaint);
-    canvas.drawCircle(center, radius * 0.75, circlePaint);
+    canvas.drawCircle(center, radius * 0.33, circlePaint);
+    canvas.drawCircle(center, radius * 0.66, circlePaint);
     
     // Outer rim
     final rimPaint = Paint()
@@ -95,6 +114,18 @@ class _RadarPainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2.0;
     canvas.drawCircle(center, radius, rimPaint);
+
+    // Add some tick marks on the outer rim
+    final tickPaint = Paint()
+      ..color = color.withValues(alpha: 0.5)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.0;
+    for (int i = 0; i < 12; i++) {
+      final angle = i * pi / 6;
+      final start = center + Offset(cos(angle) * (radius - 6), sin(angle) * (radius - 6));
+      final end = center + Offset(cos(angle) * radius, sin(angle) * radius);
+      canvas.drawLine(start, end, tickPaint);
+    }
 
     // Draw blips
     final blips = [
@@ -114,8 +145,8 @@ class _RadarPainter extends CustomPainter {
       
       // Brightness spikes when sweep passes, then fades
       double opacity = 0.0;
-      if (angleDiff < 0.4) {
-        opacity = 1.0 - (angleDiff / 0.4);
+      if (angleDiff < 0.3) {
+        opacity = 1.0 - (angleDiff / 0.3);
       }
       
       if (opacity > 0) {
@@ -126,13 +157,20 @@ class _RadarPainter extends CustomPainter {
           ..color = color.withValues(alpha: opacity * 0.8)
           ..style = PaintingStyle.fill
           ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4.0);
-        canvas.drawCircle(blipPos, 4.0, glowPaint);
+        canvas.drawCircle(blipPos, 4.0 + (2.0 * opacity), glowPaint);
         
         // Core
         final corePaint = Paint()
           ..color = Colors.white.withValues(alpha: opacity)
           ..style = PaintingStyle.fill;
         canvas.drawCircle(blipPos, 2.0, corePaint);
+
+        // Expanding ring
+        final ringPaint = Paint()
+          ..color = color.withValues(alpha: opacity * 0.5)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.0;
+        canvas.drawCircle(blipPos, 8.0 * (1.0 - opacity), ringPaint);
       }
     }
 
@@ -143,7 +181,7 @@ class _RadarPainter extends CustomPainter {
           color.withValues(alpha: 0.0),
           color.withValues(alpha: 0.05),
           color.withValues(alpha: 0.2),
-          color.withValues(alpha: 0.6),
+          color.withValues(alpha: 0.8),
           color.withValues(alpha: 0.0),
         ],
         stops: const [0.0, 0.5, 0.85, 0.99, 1.0],
@@ -172,7 +210,7 @@ class _RadarPainter extends CustomPainter {
     canvas.drawLine(center, lineEnd, linePaint);
 
     final sharpLinePaint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.6)
+      ..color = Colors.white.withValues(alpha: 0.8)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.0;
     canvas.drawLine(center, lineEnd, sharpLinePaint);
@@ -188,6 +226,28 @@ class _RadarPainter extends CustomPainter {
       ..color = Colors.white
       ..style = PaintingStyle.fill;
     canvas.drawCircle(center, 2.5, centerDotPaint);
+  }
+
+  void _drawDashedLine(Canvas canvas, Offset p1, Offset p2, Paint paint) {
+    const int dashWidth = 4;
+    const int dashSpace = 4;
+    double distance = (p2 - p1).distance;
+    if (distance == 0) return;
+    double dx = (p2.dx - p1.dx) / distance;
+    double dy = (p2.dy - p1.dy) / distance;
+    double startX = p1.dx;
+    double startY = p1.dy;
+
+    while (distance >= 0) {
+      canvas.drawLine(
+        Offset(startX, startY),
+        Offset(startX + dx * dashWidth, startY + dy * dashWidth),
+        paint,
+      );
+      startX += dx * (dashWidth + dashSpace);
+      startY += dy * (dashWidth + dashSpace);
+      distance -= (dashWidth + dashSpace);
+    }
   }
 
   @override
@@ -277,24 +337,27 @@ class _RipplePainter extends CustomPainter {
       canvas.drawCircle(center, radius, paint);
       
       final fillPaint = Paint()
-        ..color = color.withValues(alpha: opacity * 0.2)
+        ..color = color.withValues(alpha: opacity * 0.15)
         ..style = PaintingStyle.fill;
         
       canvas.drawCircle(center, radius, fillPaint);
     }
 
     drawRipple(0.0);
-    drawRipple(0.25);
-    drawRipple(0.50);
-    drawRipple(0.75);
+    drawRipple(0.33);
+    drawRipple(0.66);
     
     // Center dot
     final centerDotPaint = Paint()
       ..color = color
       ..style = PaintingStyle.fill
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6.0);
-    canvas.drawCircle(center, maxRadius * 0.08, centerDotPaint);
-    canvas.drawCircle(center, maxRadius * 0.03, Paint()..color = Colors.white);
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8.0);
+    canvas.drawCircle(center, maxRadius * 0.1, centerDotPaint);
+    
+    final innerDotPaint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(center, maxRadius * 0.04, innerDotPaint);
   }
 
   @override
