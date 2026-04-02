@@ -553,10 +553,9 @@ packages:
   flutter_p2p_connection:
     dependency: "direct main"
     description:
-      name: flutter_p2p_connection
-      sha256: "38f2114c8189f3aa163404ef239133fe41a0f03896f76a9acea662bc1882a48e"
-      url: "https://pub.dev"
-    source: hosted
+      path: flutter_p2p_connection
+      relative: true
+    source: path
     version: "3.0.3"
   flutter_plugin_android_lifecycle:
     dependency: transitive
