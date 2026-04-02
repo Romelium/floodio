@@ -590,13 +590,26 @@ class SyncBottomSheet extends ConsumerWidget {
           children: [
             if ((p2pState.isScanning || p2pState.isHosting) && !hasPeers) ...[
               Center(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 16.0),
+                child: Container(
+                  margin: const EdgeInsets.symmetric(vertical: 16.0),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Theme.of(context).colorScheme.surface,
+                    boxShadow: [
+                      BoxShadow(
+                        color: (p2pState.isScanning ? Colors.teal : Colors.green).withValues(alpha: 0.2),
+                        blurRadius: 24,
+                        spreadRadius: 4,
+                      )
+                    ]
+                  ),
                   child: p2pState.isScanning
-                    ? RadarAnimation(size: 120, color: Colors.teal.shade700)
-                    : RippleAnimation(size: 120, color: Colors.green.shade700),
+                    ? RadarAnimation(size: 140, color: Colors.teal.shade600)
+                    : RippleAnimation(size: 140, color: Colors.green.shade600),
                 ),
               ),
+              const SizedBox(height: 8),
             ],
             Row(
               children: [

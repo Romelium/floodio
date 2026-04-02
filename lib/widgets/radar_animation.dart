@@ -65,14 +65,25 @@ class _RadarPainter extends CustomPainter {
     final center = Offset(size.width / 2, size.height / 2);
     final radius = min(size.width / 2, size.height / 2);
 
+    // Draw crosshairs
+    final crosshairPaint = Paint()
+      ..color = color.withValues(alpha: 0.15)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.0;
+    canvas.drawLine(Offset(center.dx, 0), Offset(center.dx, size.height), crosshairPaint);
+    canvas.drawLine(Offset(0, center.dy), Offset(size.width, center.dy), crosshairPaint);
+
     // Draw concentric circles
     final circlePaint = Paint()
-      ..color = color.withValues(alpha: 0.2)
+      ..color = color.withValues(alpha: 0.25)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.0;
 
+    canvas.drawCircle(center, radius * 0.25, circlePaint);
     canvas.drawCircle(center, radius * 0.33, circlePaint);
+    canvas.drawCircle(center, radius * 0.50, circlePaint);
     canvas.drawCircle(center, radius * 0.66, circlePaint);
+    canvas.drawCircle(center, radius * 0.75, circlePaint);
     canvas.drawCircle(center, radius, circlePaint);
 
     // Draw sweeping gradient
@@ -80,13 +91,15 @@ class _RadarPainter extends CustomPainter {
       ..shader = SweepGradient(
         colors: [
           color.withValues(alpha: 0.0),
-          color.withValues(alpha: 0.5),
-          color.withValues(alpha: 0.8),
+          color.withValues(alpha: 0.1),
+          color.withValues(alpha: 0.4),
+          color.withValues(alpha: 0.9),
           color.withValues(alpha: 0.0),
         ],
-        stops: const [0.0, 0.85, 0.95, 1.0],
-        transform: GradientRotation(progress * 2 * pi),
+        stops: const [0.0, 0.5, 0.85, 0.98, 1.0],
+        transform: GradientRotation(progress * 2 * pi - pi / 2),
       ).createShader(Rect.fromCircle(center: center, radius: radius))
+      ..blendMode = BlendMode.srcOver
       ..style = PaintingStyle.fill;
 
     canvas.drawArc(
@@ -101,14 +114,23 @@ class _RadarPainter extends CustomPainter {
     final linePaint = Paint()
       ..color = color
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.0;
+      ..strokeWidth = 2.5
+      ..strokeCap = StrokeCap.round;
       
-    final lineAngle = progress * 2 * pi + pi / 2;
+    final lineAngle = progress * 2 * pi;
     canvas.drawLine(
       center,
       center + Offset(cos(lineAngle) * radius, sin(lineAngle) * radius),
       linePaint,
     );
+
+    // Draw glowing center dot
+    final centerDotPaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4.0);
+    canvas.drawCircle(center, 4.0, centerDotPaint);
+    canvas.drawCircle(center, 2.0, Paint()..color = Colors.white);
   }
 
   @override
@@ -185,33 +207,37 @@ class _RipplePainter extends CustomPainter {
       double currentProgress = (progress - delay) % 1.0;
       if (currentProgress < 0) currentProgress += 1.0;
       
-      final radius = maxRadius * currentProgress;
-      final opacity = 1.0 - currentProgress;
+      // Use an ease-out curve for a more natural expanding ripple
+      double curvedProgress = Curves.easeOutQuad.transform(currentProgress);
+      final radius = maxRadius * curvedProgress;
+      final opacity = 1.0 - curvedProgress;
       
       final paint = Paint()
-        ..color = color.withValues(alpha: opacity * 0.6)
+        ..color = color.withValues(alpha: opacity * 0.8)
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 2.0 + (2.0 * (1.0 - currentProgress));
+        ..strokeWidth = 1.5 + (2.5 * (1.0 - curvedProgress));
         
       canvas.drawCircle(center, radius, paint);
       
       final fillPaint = Paint()
-        ..color = color.withValues(alpha: opacity * 0.2)
+        ..color = color.withValues(alpha: opacity * 0.15)
         ..style = PaintingStyle.fill;
         
       canvas.drawCircle(center, radius, fillPaint);
     }
 
     drawRipple(0.0);
-    drawRipple(0.33);
-    drawRipple(0.66);
+    drawRipple(0.25);
+    drawRipple(0.50);
+    drawRipple(0.75);
     
     // Center dot
-    canvas.drawCircle(
-      center, 
-      maxRadius * 0.1, 
-      Paint()..color = color
-    );
+    final centerDotPaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6.0);
+    canvas.drawCircle(center, maxRadius * 0.08, centerDotPaint);
+    canvas.drawCircle(center, maxRadius * 0.03, Paint()..color = Colors.white);
   }
 
   @override
