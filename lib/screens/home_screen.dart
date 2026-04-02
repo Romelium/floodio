@@ -45,6 +45,7 @@ import '../services/map_cache_service.dart';
 import '../utils/permission_utils.dart';
 import '../utils/ui_helpers.dart';
 import '../widgets/download_map_dialog.dart';
+import '../widgets/heatmap_layer.dart';
 import '../widgets/local_image_display.dart';
 import '../widgets/mesh_status_chip.dart';
 import 'command_tab.dart';
@@ -2688,6 +2689,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         final isAdmin = settings.isOfficialMode || isTier2;
         final drawingState = ref.watch(drawingControllerProvider);
         final showOfflineRegions = ref.watch(showOfflineRegionsProvider);
+        final showHeatmap = ref.watch(showHeatmapProvider);
 
         ref.listen<LatLng?>(mapTargetProvider, (prev, next) {
           if (next != null) {
@@ -2763,6 +2765,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     ref.read(mapCacheServiceProvider),
                   ),
                 ),
+                if (showHeatmap)
+                  HeatmapLayer(
+                    points: [
+                      ...markers.map((m) => LatLng(m.latitude, m.longitude)),
+                      ...areas.expand(
+                        (a) => a.coordinates.map(
+                          (c) => LatLng(c['lat']!, c['lng']!),
+                        ),
+                      ),
+                      ...paths.expand(
+                        (p) => p.coordinates.map(
+                          (c) => LatLng(c['lat']!, c['lng']!),
+                        ),
+                      ),
+                    ],
+                  ),
                 PolygonLayer(
                   polygons: [
                     if (showOfflineRegions)
@@ -4718,18 +4736,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     final downloadProgress = ref.watch(mapDownloaderProvider);
     final settings = ref.watch(appSettingsProvider);
     final effectiveIndex = ref.watch(navigationIndexProvider);
+    final showHeatmap = ref.watch(showHeatmapProvider);
 
     int displayIndex = effectiveIndex;
     if (!settings.isOfficialMode && displayIndex > 3) {
       displayIndex = 3;
     }
 
-    return Listener(
-      behavior: HitTestBehavior.translucent,
-      onPointerDown: _handlePointerDown,
-      child: TutorialOverlay(
-        onComplete: () => setState(() => _showTutorial = false),
-        child: Scaffold(
+    Widget content = Scaffold(
           appBar: AppBar(
             title: downloadProgress.isDownloading
                 ? Row(
@@ -5203,6 +5217,31 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                           ),
                           const SizedBox(height: 16),
                           FloatingActionButton.small(
+                            heroTag: 'heatmap',
+                            onPressed: () {
+                              ref.read(showHeatmapProvider.notifier).toggle();
+                              final show = ref.read(showHeatmapProvider);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    show
+                                        ? 'Showing heatmap'
+                                        : 'Hiding heatmap',
+                                  ),
+                                  behavior: SnackBarBehavior.floating,
+                                ),
+                              );
+                            },
+                            backgroundColor: showHeatmap
+                                ? Theme.of(context).colorScheme.primary
+                                : Theme.of(context).colorScheme.surface,
+                            foregroundColor: showHeatmap
+                                ? Theme.of(context).colorScheme.onPrimary
+                                : Theme.of(context).colorScheme.primary,
+                            child: const Icon(Icons.whatshot),
+                          ),
+                          const SizedBox(height: 16),
+                          FloatingActionButton.small(
                             heroTag: 'center_map',
                             onPressed: () async {
                               setState(() {
@@ -5280,8 +5319,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     child: Icon(Icons.error),
                   ),
                 ),
-        ),
-      ),
+    );
+
+    if (_showTutorial) {
+      content = TutorialOverlay(
+        onComplete: () => setState(() => _showTutorial = false),
+        child: content,
+      );
+    }
+
+    return Listener(
+      behavior: HitTestBehavior.translucent,
+      onPointerDown: _handlePointerDown,
+      child: content,
     );
   }
 }

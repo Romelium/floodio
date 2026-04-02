@@ -29,6 +29,14 @@ class ShowOfflineRegions extends _$ShowOfflineRegions {
   void toggle() => state = !state;
 }
 
+@riverpod
+class ShowHeatmap extends _$ShowHeatmap {
+  @override
+  bool build() => false;
+
+  void toggle() => state = !state;
+}
+
 enum DrawingMode { none, area, path }
 
 class DrawingState {

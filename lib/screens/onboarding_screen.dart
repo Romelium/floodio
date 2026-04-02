@@ -1,4 +1,5 @@
 import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -150,11 +151,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               onPressed: () async {
                 final prefs = await SharedPreferences.getInstance();
                 await prefs.setInt('onboarding_shown_count', 2);
-                if (mounted) {
-                  Navigator.of(context).pushReplacement(
-                    MaterialPageRoute(builder: (_) => const HomeScreen()),
-                  );
-                }
+                if (!context.mounted) return;
+                Navigator.of(context).pushReplacement(
+                  MaterialPageRoute(builder: (_) => const HomeScreen()),
+                );
               },
               child: const Text('Skip for now', style: TextStyle(color: Colors.grey)),
             ),

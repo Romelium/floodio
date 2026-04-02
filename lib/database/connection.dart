@@ -47,7 +47,7 @@ Future<QueryExecutor> getSharedConnection() async {
   final path = p.join(dir.path, 'floodio_db.sqlite');
 
   final receivePort = ReceivePort();
-  await Isolate.spawn(
+  final isolateObj = await Isolate.spawn(
     _databaseIsolateEntry,
     _IsolateStartRequest(receivePort.sendPort, path),
   );
@@ -56,6 +56,12 @@ Future<QueryExecutor> getSharedConnection() async {
   
   final registered = IsolateNameServer.registerPortWithName(isolate.connectPort, _dbIsolateName);
   if (!registered) {
+    try {
+      final redundantConnection = await isolate.connect();
+      await redundantConnection.close();
+    } catch (_) {}
+    isolateObj.kill();
+
     port = IsolateNameServer.lookupPortByName(_dbIsolateName);
     if (port != null) {
       final existingIsolate = DriftIsolate.fromConnectPort(port);
