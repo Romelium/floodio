@@ -1182,7 +1182,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       ),
       builder: (context) => SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+          padding: const EdgeInsets.symmetric(vertical: 8.0),
           child: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -1203,110 +1203,103 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                   ),
                 ),
-                GridView.count(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  crossAxisCount: 2,
-                  mainAxisSpacing: 12,
-                  crossAxisSpacing: 12,
-                  childAspectRatio: 1.2,
-                  children: [
-                    _buildReportOptionCard(
-                      context,
-                      icon: Icons.add_location_alt,
-                      color: Colors.blue,
-                      title: 'Hazard',
-                      subtitle: 'Mark a point',
-                      onTap: () async {
-                        Navigator.pop(context);
-                        LatLng point = await _getPointForReport();
-                        if (!mounted) return;
-                        _showAddHazardDialog(point);
-                      },
-                    ),
-                    _buildReportOptionCard(
-                      context,
-                      icon: Icons.format_shapes,
-                      color: Colors.purple,
-                      title: 'Area',
-                      subtitle: 'Draw a polygon',
-                      onTap: () async {
-                        Navigator.pop(context);
-                        ref
-                            .read(drawingControllerProvider.notifier)
-                            .startDrawingArea();
-                        ref.read(navigationIndexProvider.notifier).setIndex(0);
-                        final pos = await ref
-                            .read(locationControllerProvider.notifier)
-                            .getCurrentPosition();
-                        if (pos != null) {
-                          try {
-                            _mapController.move(
-                              LatLng(pos.latitude, pos.longitude),
-                              15.0,
-                            );
-                          } catch (_) {}
-                        }
-                        if (mounted) {
-                          ScaffoldMessenger.of(this.context).showSnackBar(
-                            const SnackBar(
-                              content: Text(
-                                'Tap on the map to draw an area polygon.',
-                              ),
-                              behavior: SnackBarBehavior.floating,
-                            ),
-                          );
-                        }
-                      },
-                    ),
-                    _buildReportOptionCard(
-                      context,
-                      icon: Icons.route,
-                      color: Colors.teal,
-                      title: 'Path',
-                      subtitle: 'Draw a line',
-                      onTap: () async {
-                        Navigator.pop(context);
-                        ref
-                            .read(drawingControllerProvider.notifier)
-                            .startDrawingPath();
-                        ref.read(navigationIndexProvider.notifier).setIndex(0);
-                        final pos = await ref
-                            .read(locationControllerProvider.notifier)
-                            .getCurrentPosition();
-                        if (pos != null) {
-                          try {
-                            _mapController.move(
-                              LatLng(pos.latitude, pos.longitude),
-                              15.0,
-                            );
-                          } catch (_) {}
-                        }
-                        if (mounted) {
-                          ScaffoldMessenger.of(this.context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Tap on the map to draw a path.'),
-                              behavior: SnackBarBehavior.floating,
-                            ),
-                          );
-                        }
-                      },
-                    ),
-                    _buildReportOptionCard(
-                      context,
-                      icon: Icons.campaign,
-                      color: Colors.orange,
-                      title: 'Alert',
-                      subtitle: 'Broadcast news',
-                      onTap: () {
-                        Navigator.pop(context);
-                        _showAddNewsDialog();
-                      },
-                    ),
-                  ],
+                ListTile(
+                  leading: const CircleAvatar(
+                    backgroundColor: Colors.blue,
+                    child: Icon(Icons.add_location_alt, color: Colors.white),
+                  ),
+                  title: const Text('Report Hazard'),
+                  subtitle: const Text('Mark a specific point on the map'),
+                  onTap: () async {
+                    Navigator.pop(context);
+                    LatLng point = await _getPointForReport();
+                    if (!mounted) return;
+                    _showAddHazardDialog(point);
+                  },
+                ),
+                ListTile(
+                  leading: const CircleAvatar(
+                    backgroundColor: Colors.purple,
+                    child: Icon(Icons.format_shapes, color: Colors.white),
+                  ),
+                  title: const Text('Report Area'),
+                  subtitle: const Text('Draw a polygon on the map'),
+                  onTap: () async {
+                    Navigator.pop(context);
+                    ref
+                        .read(drawingControllerProvider.notifier)
+                        .startDrawingArea();
+                    ref.read(navigationIndexProvider.notifier).setIndex(0);
+                    final pos = await ref
+                        .read(locationControllerProvider.notifier)
+                        .getCurrentPosition();
+                    if (pos != null) {
+                      try {
+                        _mapController.move(
+                          LatLng(pos.latitude, pos.longitude),
+                          15.0,
+                        );
+                      } catch (_) {}
+                    }
+                    if (mounted) {
+                      ScaffoldMessenger.of(this.context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'Tap on the map to draw an area polygon.',
+                          ),
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
+                    }
+                  },
+                ),
+                ListTile(
+                  leading: const CircleAvatar(
+                    backgroundColor: Colors.teal,
+                    child: Icon(Icons.route, color: Colors.white),
+                  ),
+                  title: const Text('Report Path'),
+                  subtitle: const Text('Draw a line on the map'),
+                  onTap: () async {
+                    Navigator.pop(context);
+                    ref
+                        .read(drawingControllerProvider.notifier)
+                        .startDrawingPath();
+                    ref.read(navigationIndexProvider.notifier).setIndex(0);
+                    final pos = await ref
+                        .read(locationControllerProvider.notifier)
+                        .getCurrentPosition();
+                    if (pos != null) {
+                      try {
+                        _mapController.move(
+                          LatLng(pos.latitude, pos.longitude),
+                          15.0,
+                        );
+                      } catch (_) {}
+                    }
+                    if (mounted) {
+                      ScaffoldMessenger.of(this.context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Tap on the map to draw a path.'),
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
+                    }
+                  },
+                ),
+                ListTile(
+                  leading: const CircleAvatar(
+                    backgroundColor: Colors.orange,
+                    child: Icon(Icons.campaign, color: Colors.white),
+                  ),
+                  title: const Text('Official Alert'),
+                  subtitle: const Text('Broadcast a general news or alert'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _showAddNewsDialog();
+                  },
                 ),
                 if (isOfficial) ...[
-                  const SizedBox(height: 16),
                   const Divider(),
                   const Padding(
                     padding: EdgeInsets.only(bottom: 8.0, top: 8.0),
@@ -1365,51 +1358,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     },
                   ),
                 ],
-                const SizedBox(height: 16),
               ],
             ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildReportOptionCard(
-    BuildContext context, {
-    required IconData icon,
-    required Color color,
-    required String title,
-    required String subtitle,
-    required VoidCallback onTap,
-  }) {
-    return Card(
-      elevation: 0,
-      color: color.withValues(alpha: 0.1),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: color.withValues(alpha: 0.3)),
-      ),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.all(12.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, color: color, size: 32),
-              const SizedBox(height: 8),
-              Text(
-                title,
-                style: TextStyle(fontWeight: FontWeight.bold, color: color),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                subtitle,
-                style: TextStyle(fontSize: 11, color: Colors.grey.shade700),
-                textAlign: TextAlign.center,
-              ),
-            ],
           ),
         ),
       ),
@@ -5078,169 +5028,150 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
                         if (displayIndex == 0) ...[
-                          Card(
-                            elevation: 4,
-                            margin: const EdgeInsets.only(bottom: 16, right: 0),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                          if (_mapRotation != 0.0) ...[
+                            FloatingActionButton.small(
+                              heroTag: 'reset_rotation',
+                              onPressed: () {
+                                _mapController.rotate(0);
+                              },
+                              backgroundColor: Theme.of(
+                                context,
+                              ).colorScheme.surface,
+                              foregroundColor: Theme.of(
+                                context,
+                              ).colorScheme.primary,
+                              child: const Icon(Icons.explore),
                             ),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                if (_mapRotation != 0.0) ...[
-                                  IconButton(
-                                    icon: const Icon(Icons.explore),
-                                    tooltip: 'Reset Rotation',
-                                    onPressed: () {
-                                      _mapController.rotate(0);
-                                    },
-                                    color:
-                                        Theme.of(context).colorScheme.primary,
+                            const SizedBox(height: 16),
+                          ],
+                          FloatingActionButton.small(
+                            heroTag: 'zoom_in',
+                            onPressed: () {
+                              try {
+                                final currentZoom = _mapController.camera.zoom;
+                                _mapController.move(
+                                  _mapController.camera.center,
+                                  currentZoom + 1,
+                                );
+                              } catch (e) {
+                                debugPrint('Map not ready: $e');
+                              }
+                            },
+                            backgroundColor: Theme.of(
+                              context,
+                            ).colorScheme.surface,
+                            foregroundColor: Theme.of(
+                              context,
+                            ).colorScheme.primary,
+                            child: const Icon(Icons.add),
+                          ),
+                          const SizedBox(height: 8),
+                          FloatingActionButton.small(
+                            heroTag: 'zoom_out',
+                            onPressed: () {
+                              try {
+                                final currentZoom = _mapController.camera.zoom;
+                                _mapController.move(
+                                  _mapController.camera.center,
+                                  currentZoom - 1,
+                                );
+                              } catch (e) {
+                                debugPrint('Map not ready: $e');
+                              }
+                            },
+                            backgroundColor: Theme.of(
+                              context,
+                            ).colorScheme.surface,
+                            foregroundColor: Theme.of(
+                              context,
+                            ).colorScheme.primary,
+                            child: const Icon(Icons.remove),
+                          ),
+                          const SizedBox(height: 16),
+                          FloatingActionButton.small(
+                            heroTag: 'layers',
+                            onPressed: () {
+                              ref
+                                  .read(showOfflineRegionsProvider.notifier)
+                                  .toggle();
+                              final show = ref.read(showOfflineRegionsProvider);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    show
+                                        ? 'Showing offline regions'
+                                        : 'Hiding offline regions',
                                   ),
-                                  const Divider(
-                                    height: 1,
-                                    indent: 8,
-                                    endIndent: 8,
-                                  ),
-                                ],
-                                IconButton(
-                                  icon: const Icon(Icons.add),
-                                  tooltip: 'Zoom In',
-                                  onPressed: () {
-                                    try {
-                                      final currentZoom =
-                                          _mapController.camera.zoom;
-                                      _mapController.move(
-                                        _mapController.camera.center,
-                                        currentZoom + 1,
-                                      );
-                                    } catch (e) {
-                                      debugPrint('Map not ready: $e');
-                                    }
-                                  },
-                                  color: Theme.of(context).colorScheme.primary,
+                                  behavior: SnackBarBehavior.floating,
                                 ),
-                                const Divider(
-                                  height: 1,
-                                  indent: 8,
-                                  endIndent: 8,
-                                ),
-                                IconButton(
-                                  icon: const Icon(Icons.remove),
-                                  tooltip: 'Zoom Out',
-                                  onPressed: () {
-                                    try {
-                                      final currentZoom =
-                                          _mapController.camera.zoom;
-                                      _mapController.move(
-                                        _mapController.camera.center,
-                                        currentZoom - 1,
-                                      );
-                                    } catch (e) {
-                                      debugPrint('Map not ready: $e');
-                                    }
-                                  },
-                                  color: Theme.of(context).colorScheme.primary,
-                                ),
-                                const Divider(
-                                  height: 1,
-                                  indent: 8,
-                                  endIndent: 8,
-                                ),
-                                IconButton(
-                                  icon: const Icon(Icons.layers),
-                                  tooltip: 'Toggle Offline Regions',
-                                  onPressed: () {
-                                    ref
-                                        .read(
-                                          showOfflineRegionsProvider.notifier,
-                                        )
-                                        .toggle();
-                                    final show = ref.read(
-                                      showOfflineRegionsProvider,
-                                    );
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
+                              );
+                            },
+                            backgroundColor: Theme.of(
+                              context,
+                            ).colorScheme.surface,
+                            foregroundColor: Theme.of(
+                              context,
+                            ).colorScheme.primary,
+                            child: const Icon(Icons.layers),
+                          ),
+                          const SizedBox(height: 16),
+                          FloatingActionButton.small(
+                            heroTag: 'center_map',
+                            onPressed: () async {
+                              setState(() {
+                                _isTrackingLocation = true;
+                              });
+                              try {
+                                final pos = await ref
+                                    .read(locationControllerProvider.notifier)
+                                    .getCurrentPosition();
+                                if (pos != null) {
+                                  final zoom = _mapController.camera.zoom < 10.0
+                                      ? 15.0
+                                      : _mapController.camera.zoom;
+                                  _mapController.move(
+                                    LatLng(pos.latitude, pos.longitude),
+                                    zoom,
+                                  );
+                                } else {
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(
+                                      this.context,
+                                    ).showSnackBar(
+                                      const SnackBar(
                                         content: Text(
-                                          show
-                                              ? 'Showing offline regions'
-                                              : 'Hiding offline regions',
+                                          'Location not available. Please check permissions.',
                                         ),
                                         behavior: SnackBarBehavior.floating,
                                       ),
                                     );
-                                  },
-                                  color:
-                                      ref.watch(showOfflineRegionsProvider)
+                                  }
+                                }
+                              } catch (e) {
+                                debugPrint('Map not ready yet: $e');
+                              }
+                            },
+                            backgroundColor: _isTrackingLocation
+                                ? Theme.of(context).colorScheme.primary
+                                : Theme.of(context).colorScheme.surface,
+                            foregroundColor: _isTrackingLocation
+                                ? Theme.of(context).colorScheme.onPrimary
+                                : Theme.of(context).colorScheme.primary,
+                            child: isLocationLoading
+                                ? Padding(
+                                    padding: const EdgeInsets.all(8.0),
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: _isTrackingLocation
                                           ? Theme.of(
                                               context,
-                                            ).colorScheme.primary
-                                          : Colors.grey,
-                                ),
-                                const Divider(
-                                  height: 1,
-                                  indent: 8,
-                                  endIndent: 8,
-                                ),
-                                IconButton(
-                                  icon:
-                                      isLocationLoading
-                                          ? const SizedBox(
-                                              width: 20,
-                                              height: 20,
-                                              child: CircularProgressIndicator(
-                                                strokeWidth: 2,
-                                              ),
-                                            )
-                                          : const Icon(Icons.my_location),
-                                  tooltip: 'Center on Location',
-                                  onPressed: () async {
-                                    setState(() {
-                                      _isTrackingLocation = true;
-                                    });
-                                    try {
-                                      final pos = await ref
-                                          .read(
-                                            locationControllerProvider.notifier,
-                                          )
-                                          .getCurrentPosition();
-                                      if (pos != null) {
-                                        final zoom =
-                                            _mapController.camera.zoom < 10.0
-                                                ? 15.0
-                                                : _mapController.camera.zoom;
-                                        _mapController.move(
-                                          LatLng(pos.latitude, pos.longitude),
-                                          zoom,
-                                        );
-                                      } else {
-                                        if (mounted) {
-                                          ScaffoldMessenger.of(
-                                            this.context,
-                                          ).showSnackBar(
-                                            const SnackBar(
-                                              content: Text(
-                                                'Location not available. Please check permissions.',
-                                              ),
-                                              behavior:
-                                                  SnackBarBehavior.floating,
-                                            ),
-                                          );
-                                        }
-                                      }
-                                    } catch (e) {
-                                      debugPrint('Map not ready yet: $e');
-                                    }
-                                  },
-                                  color:
-                                      _isTrackingLocation
-                                          ? Theme.of(
+                                            ).colorScheme.onPrimary
+                                          : Theme.of(
                                               context,
-                                            ).colorScheme.primary
-                                          : Colors.grey,
-                                ),
-                              ],
-                            ),
+                                            ).colorScheme.primary,
+                                    ),
+                                  )
+                                : const Icon(Icons.my_location),
                           ),
                           const SizedBox(height: 16),
                         ],
