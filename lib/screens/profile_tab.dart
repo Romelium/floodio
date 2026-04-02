@@ -23,6 +23,7 @@ import '../services/map_cache_service.dart';
 import '../providers/ui_p2p_provider.dart';
 import '../protos/models.pb.dart' as pb;
 import 'settings_screen.dart';
+import '../providers/hero_stats_provider.dart';
 
 class ProfileTab extends ConsumerStatefulWidget {
   final Function(AreaEntity) onEditAreaShape;
@@ -50,6 +51,30 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
     const suffixes = ["B", "KB", "MB", "GB", "TB"];
     var i = (log(bytes) / log(1024)).floor();
     return '${(bytes / pow(1024, i)).toStringAsFixed(2)} ${suffixes[i]}';
+  }
+
+  Widget _buildHeroStatItem(
+    BuildContext context, {
+    required IconData icon,
+    required String value,
+    required String label,
+    required Color color,
+  }) {
+    return Column(
+      children: [
+        Icon(icon, color: color, size: 28),
+        const SizedBox(height: 8),
+        Text(
+          value,
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: color),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.grey.shade700),
+        ),
+      ],
+    );
   }
 
   void _removeTrustedSender(String publicKey) {
@@ -1129,6 +1154,113 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                   ),
                 ),
                 const SizedBox(height: 24),
+
+                // Hero Stats Card
+                Consumer(
+                  builder: (context, ref, child) {
+                    final heroStatsAsync = ref.watch(heroStatsControllerProvider);
+                    final stats = heroStatsAsync.value;
+                    if (stats == null) return const SizedBox.shrink();
+
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.military_tech, color: Colors.amber),
+                            const SizedBox(width: 8),
+                            const Text(
+                              'Data Mule Stats',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Card(
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            side: BorderSide(color: Colors.amber.shade300, width: 1.5),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          color: Colors.amber.shade50,
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Column(
+                              children: [
+                                Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(8),
+                                      decoration: BoxDecoration(
+                                        color: Colors.amber.shade100,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: Icon(Icons.star, color: Colors.amber.shade800),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'Status: ${stats.status}',
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.w900,
+                                              fontSize: 18,
+                                              color: Colors.amber.shade900,
+                                            ),
+                                          ),
+                                          Text(
+                                            'You are actively helping your community stay connected.',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: Colors.amber.shade800,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 16),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                                  children: [
+                                    _buildHeroStatItem(
+                                      context,
+                                      icon: Icons.data_usage,
+                                      value: _formatBytes(stats.dataCarriedBytes),
+                                      label: 'Data Carried',
+                                      color: Colors.blue.shade700,
+                                    ),
+                                    _buildHeroStatItem(
+                                      context,
+                                      icon: Icons.people_alt,
+                                      value: '${stats.peersSyncedWith}',
+                                      label: 'Peers Synced',
+                                      color: Colors.green.shade700,
+                                    ),
+                                    _buildHeroStatItem(
+                                      context,
+                                      icon: Icons.forward_to_inbox,
+                                      value: '${stats.reportsRelayed}',
+                                      label: 'Reports Relayed',
+                                      color: Colors.purple.shade700,
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 32),
+                      ],
+                    );
+                  },
+                ),
 
                 // Trusted Senders
                 Consumer(

@@ -10,6 +10,7 @@ import 'package:floodio/providers/location_provider.dart';
 import 'package:floodio/services/background_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_p2p_connection/flutter_p2p_connection.dart';
@@ -317,6 +318,20 @@ class P2pService extends _$P2pService {
     }
   }
 
+  Future<void> _incrementHeroStat(String key, int amount) async {
+    final prefs = ref.read(sharedPreferencesProvider);
+    final current = prefs.getInt(key) ?? 0;
+    await prefs.setInt(key, current + amount);
+    
+    if (isBackgroundIsolate) {
+      bgServiceInstance?.invoke('reloadHeroStats');
+    } else {
+      try {
+        FlutterBackgroundService().invoke('reloadHeroStats');
+      } catch (_) {}
+    }
+  }
+
   @override
   P2pState build() {
     ref.onDispose(() {
@@ -387,6 +402,7 @@ class P2pService extends _$P2pService {
           .toList();
       state = state.copyWith(connectedClients: appClients);
       if (clients.length > previousCount) {
+        _incrementHeroStat('hero_peers_synced', clients.length - previousCount);
         state = state.copyWith(
           syncMessage: 'Client connected. Initiating 2-way sync...',
           clearSyncProgress: true,
@@ -426,6 +442,7 @@ class P2pService extends _$P2pService {
         ),
       );
       if (!wasActive && hotspotState.isActive) {
+        _incrementHeroStat('hero_peers_synced', 1);
         state = state.copyWith(
           syncMessage: 'Wi-Fi connected. Connecting to host...',
           clearSyncProgress: true,
@@ -1510,6 +1527,7 @@ class P2pService extends _$P2pService {
     );
     try {
       final data = base64Decode(base64Data);
+      _incrementHeroStat('hero_data_carried', data.length);
       final payload = pb.SyncPayload.fromBuffer(data);
 
       if (payload.markers.isEmpty &&
@@ -2303,6 +2321,10 @@ class P2pService extends _$P2pService {
         if (state.isHosting && state.connectedClients.length > 1) {
           final encoded = base64Encode(forwardPayload.writeToBuffer());
           await broadcastText(jsonEncode({'type': 'payload', 'data': encoded}));
+          
+          int relayedCount = forwardPayload.markers.length + forwardPayload.news.length + forwardPayload.areas.length + forwardPayload.paths.length;
+          _incrementHeroStat('hero_reports_relayed', relayedCount);
+          _incrementHeroStat('hero_data_carried', encoded.length);
         } else {
           await broadcastText(jsonEncode({'type': 'up_to_date'}));
         }

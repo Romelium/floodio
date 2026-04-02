@@ -8,6 +8,7 @@ import '../models/p2p_models.dart';
 import 'offline_regions_provider.dart';
 import 'p2p_provider.dart';
 import 'settings_provider.dart';
+import 'hero_stats_provider.dart';
 
 part 'ui_p2p_provider.g.dart';
 
@@ -33,6 +34,12 @@ class UiP2pService extends _$UiP2pService {
       final prefs = await SharedPreferences.getInstance();
       await prefs.reload();
       ref.invalidate(appSettingsProvider);
+    });
+
+    service.on('reloadHeroStats').listen((_) async {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.reload();
+      ref.invalidate(heroStatsControllerProvider);
     });
 
     service.invoke('requestState');
