@@ -430,9 +430,14 @@ class CloudSyncService extends _$CloudSyncService {
           .gt('created_at', lastSyncIso)
           .order('created_at', ascending: true);
 
-      for (final row in response) {
-        final encoded = row['payload_base64'] as String;
-        ref.read(uiP2pServiceProvider.notifier).processPayload(encoded);
+      if (response.isEmpty) {
+        print('CloudSync: No new data found in the cloud.');
+      } else {
+        for (final row in response) {
+          final encoded = row['payload_base64'] as String;
+          ref.read(uiP2pServiceProvider.notifier).processPayload(encoded);
+        }
+        print('CloudSync: Downloaded and processed new data from the cloud.');
       }
 
       print('CloudSync: Downloaded new data from the cloud.');
