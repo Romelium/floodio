@@ -564,8 +564,15 @@ class P2pService extends _$P2pService {
       final prefs = ref.read(sharedPreferencesProvider);
       final baseInterval = prefs.getInt('settings_sync_interval') ?? 15;
 
-      // Add a jitter (0-5s) to prevent perfect sync loops between two devices
-      final nextCycleSeconds = baseInterval + Random().nextInt(6);
+      // Large jitter to prevent perfect sync loops between two devices.
+      int nextCycleSeconds = baseInterval + Random().nextInt(20);
+      
+      if (state.isHosting) {
+        // Give the host extra time so clients have a chance to discover and 
+        // complete the connection process before the host tears down the group.
+        nextCycleSeconds += 15;
+      }
+
       _autoSyncTimer = Timer(
         Duration(seconds: nextCycleSeconds),
         _runAutoSyncCycle,
