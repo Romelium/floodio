@@ -389,7 +389,7 @@ class P2pService extends _$P2pService {
     if (isHostWithClients || isClientConnected || isHostWaitingForClients) {
       _idleTicks++;
       
-      int maxIdleTicks = isHostWaitingForClients ? 16 : 6; // 80s wait for new clients, 30s wait after sync
+      int maxIdleTicks = isHostWaitingForClients ? 8 : 6;
       
       if (_idleTicks >= maxIdleTicks) { 
         _idleTicks = 0;
