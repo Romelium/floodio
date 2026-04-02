@@ -36,6 +36,8 @@ dependencies:
   geolocator: ^14.0.2
   image_picker: ^1.2.1
   supabase_flutter: ^2.12.2
+  vibration: ^1.9.0
+  flutter_ringtone_player: ^3.2.0
 
 dev_dependencies:
   flutter_test:

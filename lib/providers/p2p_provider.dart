@@ -2420,6 +2420,35 @@ class P2pService extends _$P2pService {
     await db.into(db.hazardMarkers).insert(newMarker);
   }
 
+  Future<void> mockReceivedCriticalHazard() async {
+    final db = ref.read(databaseProvider);
+    await ref.read(cryptoServiceProvider.future);
+    final crypto = ref.read(cryptoServiceProvider.notifier);
+    final myPubKey = await crypto.getPublicKeyString();
+
+    final id = 'mock_critical_${DateTime.now().millisecondsSinceEpoch}';
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+
+    final loc = await ref.read(locationControllerProvider.notifier).getCurrentPosition();
+    final lat = loc?.latitude ?? 10.730185;
+    final lng = loc?.longitude ?? 122.559115;
+
+    final newMarker = HazardMarkersCompanion.insert(
+      id: id,
+      latitude: lat + (Random().nextDouble() - 0.5) * 0.02,
+      longitude: lng + (Random().nextDouble() - 0.5) * 0.02,
+      type: 'Evacuation Zone',
+      description: 'Mocked CRITICAL evacuation order from debug menu',
+      timestamp: timestamp,
+      senderId: myPubKey,
+      signature: const Value('mock_signature'),
+      trustTier: 1, // Tier 1
+      isCritical: const Value(true), // Critical
+    );
+
+    await db.into(db.hazardMarkers).insert(newMarker);
+  }
+
   void mockHostState() {
     state = state.copyWith(
       isHosting: true,

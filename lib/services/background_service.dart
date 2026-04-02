@@ -191,6 +191,10 @@ void onStart(ServiceInstance service) async {
     p2pNotifier.mockReceivedHazard();
   });
 
+  service.on('mockReceivedCriticalHazard').listen((_) {
+    p2pNotifier.mockReceivedCriticalHazard();
+  });
+
   service.on('mockHostState').listen((_) {
     p2pNotifier.mockHostState();
   });

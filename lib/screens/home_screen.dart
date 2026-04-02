@@ -39,6 +39,7 @@ import '../providers/ui_p2p_provider.dart';
 import '../providers/ui_state_provider.dart';
 import '../providers/untrusted_sender_provider.dart';
 import '../providers/user_profile_provider.dart';
+import '../providers/critical_alert_provider.dart';
 import '../services/cloud_sync_service.dart';
 import '../services/gov_api_service.dart';
 import '../services/map_cache_service.dart';
@@ -116,6 +117,68 @@ class _SearchBarState extends ConsumerState<_SearchBar> {
           }
         });
       },
+    );
+  }
+}
+
+class RedAlertBanner extends StatefulWidget {
+  const RedAlertBanner({super.key});
+  @override
+  State<RedAlertBanner> createState() => _RedAlertBannerState();
+}
+
+class _RedAlertBannerState extends State<RedAlertBanner> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<Color?> _colorAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(vsync: this, duration: const Duration(seconds: 1))..repeat(reverse: true);
+    _colorAnimation = ColorTween(begin: Colors.red.shade900, end: Colors.redAccent).animate(_controller);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _colorAnimation,
+      builder: (context, child) {
+        return Material(
+          color: _colorAnimation.value,
+          elevation: 4,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              children: [
+                const Icon(Icons.warning_amber_rounded, color: Colors.white, size: 28),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Text(
+                    'CRITICAL EMERGENCY ALERT ACTIVE',
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16, letterSpacing: 1.2),
+                  ),
+                ),
+                Consumer(
+                  builder: (context, ref, child) {
+                    return IconButton(
+                      icon: const Icon(Icons.volume_off, color: Colors.white),
+                      onPressed: () {
+                        ref.read(redAlertControllerProvider.notifier).stopAlarm();
+                      },
+                    );
+                  }
+                )
+              ],
+            ),
+          ),
+        );
+      }
     );
   }
 }
@@ -518,6 +581,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     ref.read(uiP2pServiceProvider.notifier).mockReceivedHazard();
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('Mock hazard added')),
+                    );
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.warning, color: Colors.red),
+                  title: const Text('Mock Critical Alert'),
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    ref.read(uiP2pServiceProvider.notifier).mockReceivedCriticalHazard();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Mock critical hazard added')),
                     );
                   },
                 ),
@@ -4758,6 +4832,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     final settings = ref.watch(appSettingsProvider);
     final effectiveIndex = ref.watch(navigationIndexProvider);
     final showHeatmap = ref.watch(showHeatmapProvider);
+    final isRedAlert = ref.watch(redAlertControllerProvider);
 
     int displayIndex = effectiveIndex;
     if (!settings.isOfficialMode && displayIndex > 3) {
@@ -4961,51 +5036,58 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               ),
             ],
           ),
-          body: IndexedStack(
-            index: displayIndex,
+          body: Column(
             children: [
-              _buildMap(),
-              _buildFeed(),
-              const GuideTab(),
-              ProfileTab(
-                onEditAreaShape: (area) {
-                  ref.read(navigationIndexProvider.notifier).setIndex(0);
-                  ref
-                      .read(drawingControllerProvider.notifier)
-                      .startDrawingArea(
-                        area.id,
-                        area.coordinates
-                            .map((c) => LatLng(c['lat']!, c['lng']!))
-                            .toList(),
-                      );
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Edit the area shape on the map.'),
+              if (isRedAlert) const RedAlertBanner(),
+              Expanded(
+                child: IndexedStack(
+                  index: displayIndex,
+                  children: [
+                    _buildMap(),
+                    _buildFeed(),
+                    const GuideTab(),
+                    ProfileTab(
+                      onEditAreaShape: (area) {
+                        ref.read(navigationIndexProvider.notifier).setIndex(0);
+                        ref
+                            .read(drawingControllerProvider.notifier)
+                            .startDrawingArea(
+                              area.id,
+                              area.coordinates
+                                  .map((c) => LatLng(c['lat']!, c['lng']!))
+                                  .toList(),
+                            );
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Edit the area shape on the map.'),
+                          ),
+                        );
+                      },
+                      onEditPathShape: (path) {
+                        ref.read(navigationIndexProvider.notifier).setIndex(0);
+                        ref
+                            .read(drawingControllerProvider.notifier)
+                            .startDrawingPath(
+                              path.id,
+                              path.coordinates
+                                  .map((c) => LatLng(c['lat']!, c['lng']!))
+                                  .toList(),
+                            );
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Edit the path shape on the map.'),
+                          ),
+                        );
+                      },
+                      onNavigateToMap: (point) {
+                        ref.read(navigationIndexProvider.notifier).setIndex(0);
+                        ref.read(mapTargetProvider.notifier).setTarget(point);
+                      },
                     ),
-                  );
-                },
-                onEditPathShape: (path) {
-                  ref.read(navigationIndexProvider.notifier).setIndex(0);
-                  ref
-                      .read(drawingControllerProvider.notifier)
-                      .startDrawingPath(
-                        path.id,
-                        path.coordinates
-                            .map((c) => LatLng(c['lat']!, c['lng']!))
-                            .toList(),
-                      );
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Edit the path shape on the map.'),
-                    ),
-                  );
-                },
-                onNavigateToMap: (point) {
-                  ref.read(navigationIndexProvider.notifier).setIndex(0);
-                  ref.read(mapTargetProvider.notifier).setTarget(point);
-                },
+                    if (settings.isOfficialMode) const CommandTab(),
+                  ],
+                ),
               ),
-              if (settings.isOfficialMode) const CommandTab(),
             ],
           ),
           bottomNavigationBar: NavigationBar(

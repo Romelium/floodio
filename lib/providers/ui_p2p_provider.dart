@@ -108,6 +108,10 @@ class UiP2pService extends _$UiP2pService {
     FlutterBackgroundService().invoke('mockReceivedHazard');
   }
 
+  void mockReceivedCriticalHazard() {
+    FlutterBackgroundService().invoke('mockReceivedCriticalHazard');
+  }
+
   void mockHostState() {
     FlutterBackgroundService().invoke('mockHostState');
   }
