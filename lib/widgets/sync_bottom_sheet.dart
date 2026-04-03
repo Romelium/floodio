@@ -9,6 +9,7 @@ import 'package:share_plus/share_plus.dart';
 
 import '../providers/offline_regions_provider.dart';
 import '../providers/ui_p2p_provider.dart';
+import '../providers/ui_state_provider.dart';
 import '../screens/mesh_topology_screen.dart';
 import '../services/cloud_sync_service.dart';
 import '../utils/permission_utils.dart';
@@ -119,6 +120,19 @@ class SyncBottomSheet extends ConsumerWidget {
                     ),
                     Row(
                       children: [
+                        IconButton(
+                          icon: const Icon(Icons.terminal),
+                          tooltip: 'Diagnostics Terminal',
+                          onPressed: () {
+                            Navigator.pop(context);
+                            ref.read(showTerminalOverlayProvider.notifier).toggle();
+                          },
+                          style: IconButton.styleFrom(
+                            backgroundColor: Colors.black87,
+                            foregroundColor: Colors.greenAccent,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
                         IconButton(
                           icon: const Icon(Icons.device_hub),
                           tooltip: 'View Mesh Topology',

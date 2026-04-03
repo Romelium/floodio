@@ -37,6 +37,14 @@ class ShowHeatmap extends _$ShowHeatmap {
   void toggle() => state = !state;
 }
 
+@riverpod
+class ShowTerminalOverlay extends _$ShowTerminalOverlay {
+  @override
+  bool build() => false;
+
+  void toggle() => state = !state;
+}
+
 enum DrawingMode { none, area, path }
 
 class DrawingState {

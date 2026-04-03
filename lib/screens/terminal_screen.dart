@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../providers/terminal_log_provider.dart';
 
 class TerminalScreen extends ConsumerStatefulWidget {
@@ -32,7 +33,15 @@ class _TerminalScreenState extends ConsumerState<TerminalScreen> {
       appBar: AppBar(
         backgroundColor: Colors.black,
         foregroundColor: Colors.greenAccent,
-        title: const Text('System Diagnostics', style: TextStyle(fontFamily: 'monospace', fontSize: 16, fontWeight: FontWeight.bold)),
+        title: const Text(
+          'System Diagnostics',
+          style: TextStyle(
+            fontFamily: 'monospace',
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            shadows: [Shadow(color: Colors.greenAccent, blurRadius: 4)],
+          ),
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.delete_sweep),
@@ -40,16 +49,38 @@ class _TerminalScreenState extends ConsumerState<TerminalScreen> {
           ),
         ],
       ),
-      body: ListView.builder(
-        controller: _scrollController,
-        padding: const EdgeInsets.all(12.0),
-        itemCount: logs.length,
-        itemBuilder: (context, index) {
-          return Padding(
-            padding: const EdgeInsets.symmetric(vertical: 2.0),
-            child: Text(logs[index], style: const TextStyle(color: Colors.greenAccent, fontFamily: 'monospace', fontSize: 12)),
-          );
-        },
+      body: Container(
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.greenAccent.withValues(alpha: 0.3), width: 2),
+        ),
+        margin: const EdgeInsets.all(8.0),
+        child: ListView.builder(
+          controller: _scrollController,
+          padding: const EdgeInsets.all(12.0),
+          itemCount: logs.length,
+          itemBuilder: (context, index) {
+            final log = logs[index];
+            final isError = log.contains('[-]');
+            final isInfo = log.contains('[*]');
+            
+            Color textColor = Colors.greenAccent;
+            if (isError) textColor = Colors.redAccent;
+            if (isInfo) textColor = Colors.cyanAccent;
+
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 2.0),
+              child: Text(
+                log,
+                style: TextStyle(
+                  color: textColor,
+                  fontFamily: 'monospace',
+                  fontSize: 12,
+                  shadows: [Shadow(color: textColor, blurRadius: 2)],
+                ),
+              ),
+            );
+          },
+        ),
       ),
     );
   }

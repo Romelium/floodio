@@ -193,7 +193,7 @@ PolygonLayer(
     Polygon(
       points: [LatLng(51.5, -0.09), LatLng(53.34, -6.26), LatLng(48.85, 2.35)],
       holePointsList: [ /* List of LatLng lists to cut out holes */ ],
-      color: Colors.purple.withOpacity(0.5),
+      color: Colors.purple.withValues(alpha: 0.5),
       borderColor: Colors.yellow,
       borderStrokeWidth: 4,
       label: 'My Polygon',
@@ -215,7 +215,7 @@ CircleLayer(
       point: const LatLng(51.5, -0.09),
       radius: 1000, // 1000 meters
       useRadiusInMeter: true, // If false, radius is in logical pixels
-      color: Colors.green.withOpacity(0.5),
+      color: Colors.green.withValues(alpha: 0.5),
       borderColor: Colors.black,
       borderStrokeWidth: 2,
     ),
@@ -569,7 +569,7 @@ PolygonLayer(
     Polygon(
       points: [LatLng(51.5, -0.09), LatLng(53.34, -6.26), LatLng(48.85, 2.35)],
       holePointsList: [ /* List of LatLng lists to cut out holes */ ],
-      color: Colors.purple.withOpacity(0.5),
+      color: Colors.purple.withValues(alpha: 0.5),
       borderColor: Colors.yellow,
       borderStrokeWidth: 4,
       label: 'My Polygon',
@@ -591,7 +591,7 @@ CircleLayer(
       point: const LatLng(51.5, -0.09),
       radius: 1000, // 1000 meters
       useRadiusInMeter: true, // If false, radius is in logical pixels
-      color: Colors.green.withOpacity(0.5),
+      color: Colors.green.withValues(alpha: 0.5),
       borderColor: Colors.black,
       borderStrokeWidth: 2,
     ),

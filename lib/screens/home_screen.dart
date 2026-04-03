@@ -50,11 +50,11 @@ import '../widgets/download_map_dialog.dart';
 import '../widgets/heatmap_layer.dart';
 import '../widgets/local_image_display.dart';
 import '../widgets/mesh_status_chip.dart';
+import '../widgets/terminal_overlay.dart';
 import 'command_tab.dart';
 import 'compass_screen.dart';
 import 'guide_tab.dart';
 import 'mesh_topology_screen.dart';
-import 'terminal_screen.dart';
 import 'profile_tab.dart';
 
 class _SearchBar extends ConsumerStatefulWidget {
@@ -5130,10 +5130,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 icon: const Icon(Icons.terminal),
                 tooltip: 'Diagnostics Terminal',
                 onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const TerminalScreen()),
-                  );
+                  ref.read(showTerminalOverlayProvider.notifier).toggle();
                 },
               ),
               IconButton(
@@ -5177,51 +5174,62 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             children: [
               if (isRedAlert) const RedAlertBanner(),
               Expanded(
-                child: IndexedStack(
-                  index: displayIndex,
+                child: Stack(
                   children: [
-                    _buildMap(),
-                    _buildFeed(),
-                    const GuideTab(),
-                    ProfileTab(
-                      onEditAreaShape: (area) {
-                        ref.read(navigationIndexProvider.notifier).setIndex(0);
-                        ref
-                            .read(drawingControllerProvider.notifier)
-                            .startDrawingArea(
-                              area.id,
-                              area.coordinates
-                                  .map((c) => LatLng(c['lat']!, c['lng']!))
-                                  .toList(),
+                    IndexedStack(
+                      index: displayIndex,
+                      children: [
+                        _buildMap(),
+                        _buildFeed(),
+                        const GuideTab(),
+                        ProfileTab(
+                          onEditAreaShape: (area) {
+                            ref.read(navigationIndexProvider.notifier).setIndex(0);
+                            ref
+                                .read(drawingControllerProvider.notifier)
+                                .startDrawingArea(
+                                  area.id,
+                                  area.coordinates
+                                      .map((c) => LatLng(c['lat']!, c['lng']!))
+                                      .toList(),
+                                );
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Edit the area shape on the map.'),
+                              ),
                             );
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Edit the area shape on the map.'),
-                          ),
-                        );
-                      },
-                      onEditPathShape: (path) {
-                        ref.read(navigationIndexProvider.notifier).setIndex(0);
-                        ref
-                            .read(drawingControllerProvider.notifier)
-                            .startDrawingPath(
-                              path.id,
-                              path.coordinates
-                                  .map((c) => LatLng(c['lat']!, c['lng']!))
-                                  .toList(),
+                          },
+                          onEditPathShape: (path) {
+                            ref.read(navigationIndexProvider.notifier).setIndex(0);
+                            ref
+                                .read(drawingControllerProvider.notifier)
+                                .startDrawingPath(
+                                  path.id,
+                                  path.coordinates
+                                      .map((c) => LatLng(c['lat']!, c['lng']!))
+                                      .toList(),
+                                );
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Edit the path shape on the map.'),
+                              ),
                             );
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Edit the path shape on the map.'),
-                          ),
-                        );
-                      },
-                      onNavigateToMap: (point) {
-                        ref.read(navigationIndexProvider.notifier).setIndex(0);
-                        ref.read(mapTargetProvider.notifier).setTarget(point);
-                      },
+                          },
+                          onNavigateToMap: (point) {
+                            ref.read(navigationIndexProvider.notifier).setIndex(0);
+                            ref.read(mapTargetProvider.notifier).setTarget(point);
+                          },
+                        ),
+                        if (settings.isOfficialMode) const CommandTab(),
+                      ],
                     ),
-                    if (settings.isOfficialMode) const CommandTab(),
+                    if (ref.watch(showTerminalOverlayProvider))
+                      const Positioned(
+                        bottom: 0,
+                        left: 0,
+                        right: 0,
+                        child: TerminalOverlay(),
+                      ),
                   ],
                 ),
               ),
