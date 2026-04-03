@@ -1444,6 +1444,14 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
+  sound_mode:
+    dependency: "direct main"
+    description:
+      name: sound_mode
+      sha256: ae2c7436750603cfc0d3c75e230c1fd8c69be04dd891d21418202cb9e5584a40
+      url: "https://pub.dev"
+    source: hosted
+    version: "3.1.1"
   source_gen:
     dependency: transitive
     description:
@@ -1724,6 +1732,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "15.0.2"
+  volume_controller:
+    dependency: "direct main"
+    description:
+      name: volume_controller
+      sha256: ce25d4e02dd6f0b6d5d02dc1daa8de11b2d42d0f5afab8b1eda6aa0ebab3937a
+      url: "https://pub.dev"
+    source: hosted
+    version: "3.4.4"
   watcher:
     dependency: transitive
     description:
