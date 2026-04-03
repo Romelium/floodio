@@ -243,6 +243,14 @@ class P2pState {
   }
 }
 
+Future<Map<String, dynamic>> _runVerifyPayloadInIsolate(Map<String, dynamic> args) {
+  return Isolate.run(() => _verifyPayloadInIsolate(args));
+}
+
+Future<String> _encodePayloadInIsolate(pb.SyncPayload payload) {
+  return Isolate.run(() => base64Encode(payload.writeToBuffer()));
+}
+
 Future<Map<String, dynamic>> _verifyPayloadInIsolate(Map<String, dynamic> args) async {
   final payload = args['payload'] as pb.SyncPayload;
   final trustedKeys = args['trustedKeys'] as List<String>;
@@ -1979,7 +1987,7 @@ class P2pService extends _$P2pService {
       'revocationTimestamps': revocationTimestamps,
     };
 
-    final result = await Isolate.run(() => _verifyPayloadInIsolate(args));
+    final result = await _runVerifyPayloadInIsolate(args);
 
     final validMarkersPb = result['validMarkers'] as List<pb.HazardMarker>;
     final validNewsPb = result['validNews'] as List<pb.NewsItem>;
@@ -2407,7 +2415,7 @@ class P2pService extends _$P2pService {
       if (isFromCloud) {
         // If we got new data from the cloud, and we are connected to peers, forward it to them.
         if ((state.isHosting && state.connectedClients.isNotEmpty) || state.clientState?.isActive == true) {
-          final encoded = await Isolate.run(() => base64Encode(forwardPayload.writeToBuffer()));
+          final encoded = await _encodePayloadInIsolate(forwardPayload);
           await broadcastText(jsonEncode({'type': 'payload', 'data': encoded}));
           int relayedCount = forwardPayload.markers.length + forwardPayload.news.length + forwardPayload.areas.length + forwardPayload.paths.length;
           _incrementHeroStat('hero_reports_relayed', relayedCount);
@@ -2416,7 +2424,7 @@ class P2pService extends _$P2pService {
       } else {
         // Prevent Echo Storm: Only forward the payload if we are a Host with MULTIPLE clients.
         if (state.isHosting && state.connectedClients.length > 1) {
-          final encoded = await Isolate.run(() => base64Encode(forwardPayload.writeToBuffer()));
+          final encoded = await _encodePayloadInIsolate(forwardPayload);
           await broadcastText(jsonEncode({'type': 'payload', 'data': encoded}));
 
           int relayedCount = forwardPayload.markers.length + forwardPayload.news.length + forwardPayload.areas.length + forwardPayload.paths.length;
