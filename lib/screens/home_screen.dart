@@ -4939,6 +4939,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<bool>(uiP2pServiceProvider.select((s) => s.isSyncing || s.isConnecting), (prev, next) {
+      if (next == true && (prev == false || prev == null)) {
+        final drawingState = ref.read(drawingControllerProvider);
+        if (!isMeshTopologyOpen && drawingState.mode == DrawingMode.none) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const MeshTopologyScreen()),
+          );
+        }
+      }
+    });
+
     final cryptoState = ref.watch(cryptoServiceProvider);
     final downloadProgress = ref.watch(mapDownloaderProvider);
     final settings = ref.watch(appSettingsProvider);
@@ -5117,10 +5129,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 icon: const Icon(Icons.device_hub),
                 tooltip: 'Mesh Topology',
                 onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const MeshTopologyScreen()),
-                  );
+                  if (!isMeshTopologyOpen) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const MeshTopologyScreen()),
+                    );
+                  }
                 },
               ),
               IconButton(

@@ -6,6 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/local_user_provider.dart';
 import '../providers/ui_p2p_provider.dart';
 
+bool isMeshTopologyOpen = false;
+
 enum NodeType { me, host, connectedClient, discovered }
 
 class MeshNode {
@@ -52,6 +54,7 @@ class _MeshTopologyScreenState extends ConsumerState<MeshTopologyScreen>
   @override
   void initState() {
     super.initState();
+    isMeshTopologyOpen = true;
     _pulseController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 2),
@@ -65,6 +68,7 @@ class _MeshTopologyScreenState extends ConsumerState<MeshTopologyScreen>
 
   @override
   void dispose() {
+    isMeshTopologyOpen = false;
     _pulseController.dispose();
     _flowController.dispose();
     _transformationController.dispose();

@@ -9,6 +9,7 @@ import 'package:share_plus/share_plus.dart';
 
 import '../providers/offline_regions_provider.dart';
 import '../providers/ui_p2p_provider.dart';
+import '../screens/mesh_topology_screen.dart';
 import '../services/cloud_sync_service.dart';
 import '../utils/permission_utils.dart';
 import '../utils/ui_helpers.dart';
@@ -118,6 +119,24 @@ class SyncBottomSheet extends ConsumerWidget {
                     ),
                     Row(
                       children: [
+                        IconButton(
+                          icon: const Icon(Icons.device_hub),
+                          tooltip: 'View Mesh Topology',
+                          onPressed: () {
+                            Navigator.pop(context);
+                            if (!isMeshTopologyOpen) {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (_) => const MeshTopologyScreen()),
+                              );
+                            }
+                          },
+                          style: IconButton.styleFrom(
+                            backgroundColor: Colors.purple.shade50,
+                            foregroundColor: Colors.purple.shade900,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
                         IconButton(
                           icon: const Icon(Icons.help_outline),
                           onPressed: () => _showSyncHelp(context),
