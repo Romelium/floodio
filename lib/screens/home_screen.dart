@@ -52,6 +52,7 @@ import '../widgets/local_image_display.dart';
 import '../widgets/mesh_status_chip.dart';
 import 'command_tab.dart';
 import 'guide_tab.dart';
+import 'compass_screen.dart';
 import 'mesh_topology_screen.dart';
 import 'profile_tab.dart';
 
@@ -3110,6 +3111,25 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                                   TextButton.icon(
                                     onPressed: () {
                                       Navigator.pop(dialogContext);
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => CompassScreen(
+                                            target: LatLng(m.latitude, m.longitude),
+                                            title: m.type,
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                    icon: const Icon(Icons.explore, size: 18),
+                                    label: const Text('Compass'),
+                                    style: TextButton.styleFrom(
+                                      foregroundColor: Colors.blue,
+                                    ),
+                                  ),
+                                  TextButton.icon(
+                                    onPressed: () {
+                                      Navigator.pop(dialogContext);
                                       _resolveMarker(m.id);
                                     },
                                     icon: const Icon(
@@ -3767,6 +3787,26 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                                             ),
                                           ),
                                         ),
+                                      FilledButton.tonalIcon(
+                                        onPressed: () {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (_) => CompassScreen(
+                                                target: LatLng(item.latitude, item.longitude),
+                                                title: item.type,
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                        icon: const Icon(Icons.explore, size: 16),
+                                        label: const Text('Compass'),
+                                        style: FilledButton.styleFrom(
+                                          foregroundColor: Colors.blue.shade700,
+                                          backgroundColor: Colors.blue.shade50,
+                                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                        ),
+                                      ),
                                       TextButton.icon(
                                         onPressed: () =>
                                             _resolveMarker(item.id),
@@ -4246,6 +4286,28 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                                             ),
                                           ),
                                         ),
+                                      FilledButton.tonalIcon(
+                                        onPressed: () {
+                                          if (item.coordinates.isNotEmpty) {
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (_) => CompassScreen(
+                                                  target: LatLng(item.coordinates.first['lat']!, item.coordinates.first['lng']!),
+                                                  title: item.type,
+                                                ),
+                                              ),
+                                            );
+                                          }
+                                        },
+                                        icon: const Icon(Icons.explore, size: 16),
+                                        label: const Text('Compass'),
+                                        style: FilledButton.styleFrom(
+                                          foregroundColor: Colors.blue.shade700,
+                                          backgroundColor: Colors.blue.shade50,
+                                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                        ),
+                                      ),
                                       TextButton.icon(
                                         onPressed: () => _resolveArea(item.id),
                                         icon: const Icon(
@@ -4494,6 +4556,28 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                                             ),
                                           ),
                                         ),
+                                      FilledButton.tonalIcon(
+                                        onPressed: () {
+                                          if (item.coordinates.isNotEmpty) {
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (_) => CompassScreen(
+                                                  target: LatLng(item.coordinates.first['lat']!, item.coordinates.first['lng']!),
+                                                  title: item.type,
+                                                ),
+                                              ),
+                                            );
+                                          }
+                                        },
+                                        icon: const Icon(Icons.explore, size: 16),
+                                        label: const Text('Compass'),
+                                        style: FilledButton.styleFrom(
+                                          foregroundColor: Colors.blue.shade700,
+                                          backgroundColor: Colors.blue.shade50,
+                                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                        ),
+                                      ),
                                       TextButton.icon(
                                         onPressed: () => _resolvePath(item.id),
                                         icon: const Icon(

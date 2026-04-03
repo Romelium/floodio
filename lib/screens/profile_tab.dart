@@ -23,6 +23,7 @@ import '../services/map_cache_service.dart';
 import '../providers/ui_p2p_provider.dart';
 import '../protos/models.pb.dart' as pb;
 import 'settings_screen.dart';
+import 'compass_screen.dart';
 import '../providers/hero_stats_provider.dart';
 
 class ProfileTab extends ConsumerStatefulWidget {
@@ -1945,6 +1946,24 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                                       children: [
                                         IconButton(
                                           icon: const Icon(
+                                            Icons.explore,
+                                            color: Colors.teal,
+                                          ),
+                                          tooltip: 'Compass',
+                                          onPressed: () {
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (_) => CompassScreen(
+                                                  target: LatLng(item.latitude, item.longitude),
+                                                  title: item.type,
+                                                ),
+                                              ),
+                                            );
+                                          },
+                                        ),
+                                        IconButton(
+                                          icon: const Icon(
                                             Icons.edit,
                                             color: Colors.blue,
                                           ),
@@ -2123,6 +2142,26 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                                       children: [
                                         IconButton(
                                           icon: const Icon(
+                                            Icons.explore,
+                                            color: Colors.teal,
+                                          ),
+                                          tooltip: 'Compass',
+                                          onPressed: () {
+                                            if (item.coordinates.isNotEmpty) {
+                                              Navigator.push(
+                                                context,
+                                                MaterialPageRoute(
+                                                  builder: (_) => CompassScreen(
+                                                    target: LatLng(item.coordinates.first['lat']!, item.coordinates.first['lng']!),
+                                                    title: item.type,
+                                                  ),
+                                                ),
+                                              );
+                                            }
+                                          },
+                                        ),
+                                        IconButton(
+                                          icon: const Icon(
                                             Icons.edit_location_alt,
                                             color: Colors.purple,
                                           ),
@@ -2201,6 +2240,26 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                                     trailing: Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
+                                        IconButton(
+                                          icon: const Icon(
+                                            Icons.explore,
+                                            color: Colors.teal,
+                                          ),
+                                          tooltip: 'Compass',
+                                          onPressed: () {
+                                            if (item.coordinates.isNotEmpty) {
+                                              Navigator.push(
+                                                context,
+                                                MaterialPageRoute(
+                                                  builder: (_) => CompassScreen(
+                                                    target: LatLng(item.coordinates.first['lat']!, item.coordinates.first['lng']!),
+                                                    title: item.type,
+                                                  ),
+                                                ),
+                                              );
+                                            }
+                                          },
+                                        ),
                                         IconButton(
                                           icon: const Icon(
                                             Icons.edit_location_alt,
