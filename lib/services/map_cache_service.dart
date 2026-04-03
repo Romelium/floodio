@@ -180,6 +180,7 @@ class MapCacheSizeController extends _$MapCacheSizeController {
 class MapCacheService {
   final _memoryCache = <String, Uint8List>{};
   final int _maxMemoryCacheSize = 200; // Cache up to 200 tiles in memory
+  final HttpClient _httpClient = HttpClient();
 
   Future<File> getTileFile(int z, int x, int y) async {
     final dir = await getApplicationDocumentsDirectory();
@@ -208,8 +209,7 @@ class MapCacheService {
         .replaceAll('{y}', y.toString());
 
     try {
-      final client = HttpClient();
-      final request = await client.getUrl(Uri.parse(url));
+      final request = await _httpClient.getUrl(Uri.parse(url));
       request.headers.set('User-Agent', 'FloodioApp/0.1.0');
       final response = await request.close();
 

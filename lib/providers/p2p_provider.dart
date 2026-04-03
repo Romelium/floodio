@@ -2208,9 +2208,9 @@ class P2pService extends _$P2pService {
     final payloadMarkerIds = payload.markers.map((m) => m.id).toList();
     for (var i = 0; i < payloadMarkerIds.length; i += 900) {
       final chunk = payloadMarkerIds.skip(i).take(900).toList();
-      final existing = await (db.select(db.hazardMarkers)..where((t) => t.id.isIn(chunk))).get();
+      final existing = await (db.selectOnly(db.hazardMarkers)..addColumns([db.hazardMarkers.id, db.hazardMarkers.timestamp])..where(db.hazardMarkers.id.isIn(chunk))).get();
       for (final m in existing) {
-        markerTimestamps[m.id] = m.timestamp;
+        markerTimestamps[m.read(db.hazardMarkers.id)!] = m.read(db.hazardMarkers.timestamp)!;
       }
     }
 
@@ -2218,9 +2218,9 @@ class P2pService extends _$P2pService {
     final payloadNewsIds = payload.news.map((n) => n.id).toList();
     for (var i = 0; i < payloadNewsIds.length; i += 900) {
       final chunk = payloadNewsIds.skip(i).take(900).toList();
-      final existing = await (db.select(db.newsItems)..where((t) => t.id.isIn(chunk))).get();
+      final existing = await (db.selectOnly(db.newsItems)..addColumns([db.newsItems.id, db.newsItems.timestamp])..where(db.newsItems.id.isIn(chunk))).get();
       for (final n in existing) {
-        newsTimestamps[n.id] = n.timestamp;
+        newsTimestamps[n.read(db.newsItems.id)!] = n.read(db.newsItems.timestamp)!;
       }
     }
 
@@ -2228,9 +2228,9 @@ class P2pService extends _$P2pService {
     final payloadProfileKeys = payload.profiles.map((p) => p.publicKey).toList();
     for (var i = 0; i < payloadProfileKeys.length; i += 900) {
       final chunk = payloadProfileKeys.skip(i).take(900).toList();
-      final existing = await (db.select(db.userProfiles)..where((t) => t.publicKey.isIn(chunk))).get();
+      final existing = await (db.selectOnly(db.userProfiles)..addColumns([db.userProfiles.publicKey, db.userProfiles.timestamp])..where(db.userProfiles.publicKey.isIn(chunk))).get();
       for (final p in existing) {
-        profileTimestamps[p.publicKey] = p.timestamp;
+        profileTimestamps[p.read(db.userProfiles.publicKey)!] = p.read(db.userProfiles.timestamp)!;
       }
     }
 
@@ -2238,9 +2238,9 @@ class P2pService extends _$P2pService {
     final payloadAreaIds = payload.areas.map((a) => a.id).toList();
     for (var i = 0; i < payloadAreaIds.length; i += 900) {
       final chunk = payloadAreaIds.skip(i).take(900).toList();
-      final existing = await (db.select(db.areas)..where((t) => t.id.isIn(chunk))).get();
+      final existing = await (db.selectOnly(db.areas)..addColumns([db.areas.id, db.areas.timestamp])..where(db.areas.id.isIn(chunk))).get();
       for (final a in existing) {
-        areaTimestamps[a.id] = a.timestamp;
+        areaTimestamps[a.read(db.areas.id)!] = a.read(db.areas.timestamp)!;
       }
     }
 
@@ -2248,9 +2248,9 @@ class P2pService extends _$P2pService {
     final payloadPathIds = payload.paths.map((p) => p.id).toList();
     for (var i = 0; i < payloadPathIds.length; i += 900) {
       final chunk = payloadPathIds.skip(i).take(900).toList();
-      final existing = await (db.select(db.paths)..where((t) => t.id.isIn(chunk))).get();
+      final existing = await (db.selectOnly(db.paths)..addColumns([db.paths.id, db.paths.timestamp])..where(db.paths.id.isIn(chunk))).get();
       for (final p in existing) {
-        pathTimestamps[p.id] = p.timestamp;
+        pathTimestamps[p.read(db.paths.id)!] = p.read(db.paths.timestamp)!;
       }
     }
 
