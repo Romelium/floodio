@@ -214,6 +214,8 @@ class CloudSyncService extends _$CloudSyncService {
   }
 
   Future<bool> syncWithCloud() async {
+    final totalSyncStopwatch = Stopwatch()..start();
+    final syncStopwatch = Stopwatch()..start();
     print("[CloudSyncService] Initiating syncWithCloud...");
     if (state.isSyncing) return false;
 
@@ -425,6 +427,9 @@ class CloudSyncService extends _$CloudSyncService {
         );
       }
 
+      print("[CloudSyncService] DB queries for upload took ${syncStopwatch.elapsedMilliseconds}ms");
+      syncStopwatch.reset();
+
       if (!state.syncTextOnly) {
         state = state.copyWith(
           syncMessage: 'Uploading images...',
@@ -456,6 +461,8 @@ class CloudSyncService extends _$CloudSyncService {
             }
           }
         }
+        print("[CloudSyncService] Image uploads took ${syncStopwatch.elapsedMilliseconds}ms");
+        syncStopwatch.reset();
       }
 
       if (payload.markers.isNotEmpty ||
@@ -502,6 +509,9 @@ class CloudSyncService extends _$CloudSyncService {
           }
         }
       });
+      
+      print("[CloudSyncService] Upload to cloud took ${syncStopwatch.elapsedMilliseconds}ms");
+      syncStopwatch.reset();
 
       // 2. "Download" new data from cloud
       state = state.copyWith(
@@ -515,6 +525,15 @@ class CloudSyncService extends _$CloudSyncService {
       final tempDir = await getTemporaryDirectory();
       final tempFile = File('${tempDir.path}/cloud_sync_payload_${DateTime.now().millisecondsSinceEpoch}.dat');
       final combinedPayload = pb.SyncPayload();
+
+      final seenMarkerIds = <String>{};
+      final seenNewsIds = <String>{};
+      final seenProfileKeys = <String>{};
+      final seenDeletedIds = <String>{};
+      final seenAreaIds = <String>{};
+      final seenPathIds = <String>{};
+      final seenDelegationIds = <String>{};
+      final seenRevocationIds = <String>{};
 
       int downloadBatches = 0;
       while (hasMore && downloadBatches < 10) { // Limit to 10 batches (500 events) per sync to avoid OOM/timeouts
@@ -546,14 +565,46 @@ class CloudSyncService extends _$CloudSyncService {
                     payload.paths.isNotEmpty ||
                     payload.delegations.isNotEmpty ||
                     payload.revokedDelegations.isNotEmpty) {
-                  combinedPayload.markers.addAll(payload.markers);
-                  combinedPayload.news.addAll(payload.news);
-                  combinedPayload.profiles.addAll(payload.profiles);
-                  combinedPayload.deletedItems.addAll(payload.deletedItems);
-                  combinedPayload.areas.addAll(payload.areas);
-                  combinedPayload.paths.addAll(payload.paths);
-                  combinedPayload.delegations.addAll(payload.delegations);
-                  combinedPayload.revokedDelegations.addAll(payload.revokedDelegations);
+                  for (final m in payload.markers) {
+                    if (seenMarkerIds.add('${m.id}_${m.timestamp}')) {
+                      combinedPayload.markers.add(m);
+                    }
+                  }
+                  for (final n in payload.news) {
+                    if (seenNewsIds.add('${n.id}_${n.timestamp}')) {
+                      combinedPayload.news.add(n);
+                    }
+                  }
+                  for (final p in payload.profiles) {
+                    if (seenProfileKeys.add('${p.publicKey}_${p.timestamp}')) {
+                      combinedPayload.profiles.add(p);
+                    }
+                  }
+                  for (final d in payload.deletedItems) {
+                    if (seenDeletedIds.add('${d.id}_${d.timestamp}')) {
+                      combinedPayload.deletedItems.add(d);
+                    }
+                  }
+                  for (final a in payload.areas) {
+                    if (seenAreaIds.add('${a.id}_${a.timestamp}')) {
+                      combinedPayload.areas.add(a);
+                    }
+                  }
+                  for (final p in payload.paths) {
+                    if (seenPathIds.add('${p.id}_${p.timestamp}')) {
+                      combinedPayload.paths.add(p);
+                    }
+                  }
+                  for (final d in payload.delegations) {
+                    if (seenDelegationIds.add('${d.delegateePublicKey}_${d.timestamp}')) {
+                      combinedPayload.delegations.add(d);
+                    }
+                  }
+                  for (final r in payload.revokedDelegations) {
+                    if (seenRevocationIds.add('${r.delegateePublicKey}_${r.timestamp}')) {
+                      combinedPayload.revokedDelegations.add(r);
+                    }
+                  }
                 }
               } catch (e) {
                 print('[CloudSyncService] Error decoding payload from cloud: $e');
@@ -569,6 +620,9 @@ class CloudSyncService extends _$CloudSyncService {
           }
         }
       }
+      
+      print("[CloudSyncService] Download from cloud took ${syncStopwatch.elapsedMilliseconds}ms");
+      syncStopwatch.reset();
 
       bool hasCombinedData = combinedPayload.markers.isNotEmpty ||
           combinedPayload.news.isNotEmpty ||
@@ -611,6 +665,9 @@ class CloudSyncService extends _$CloudSyncService {
         if (!processSuccess) {
           throw Exception('Failed to process downloaded payload');
         }
+        
+        print("[CloudSyncService] Waiting for payload processing took ${syncStopwatch.elapsedMilliseconds}ms");
+        syncStopwatch.reset();
       } else {
         print('[CloudSyncService] No new data found in the cloud.');
       }
@@ -631,6 +688,7 @@ class CloudSyncService extends _$CloudSyncService {
         clearSyncMessage: true,
         clearSyncProgress: true,
       );
+      print("[CloudSyncService] Total cloud sync took ${totalSyncStopwatch.elapsedMilliseconds}ms");
       return true;
     } catch (e) {
       print('[CloudSyncService] Error syncing with cloud: $e');
@@ -640,6 +698,7 @@ class CloudSyncService extends _$CloudSyncService {
         clearSyncProgress: true,
       );
       Future.delayed(const Duration(seconds: 3), () => state = state.copyWith(clearSyncMessage: true));
+      print("[CloudSyncService] Total cloud sync (failed) took ${totalSyncStopwatch.elapsedMilliseconds}ms");
       return false;
     }
   }

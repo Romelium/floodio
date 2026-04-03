@@ -255,6 +255,7 @@ Future<Map<String, dynamic>> _runVerifyPayloadInIsolate(
 ) async {
   final receivePort = ReceivePort();
   args['sendPort'] = receivePort.sendPort;
+  args['rootToken'] = RootIsolateToken.instance;
 
   final isolate = await Isolate.spawn(_verifyPayloadInIsolateWithProgress, args);
 
@@ -295,6 +296,10 @@ Future<Map<String, dynamic>> _runVerifyPayloadInIsolate(
 Future<void> _verifyPayloadInIsolateWithProgress(Map<String, dynamic> args) async {
   final sendPort = args['sendPort'] as SendPort;
   try {
+    final token = args['rootToken'] as RootIsolateToken?;
+    if (token != null) {
+      BackgroundIsolateBinaryMessenger.ensureInitialized(token);
+    }
     await _verifyPayloadInIsolate(args, sendPort);
   } catch (e, st) {
     sendPort.send(Exception('$e\n$st'));
@@ -302,6 +307,7 @@ Future<void> _verifyPayloadInIsolateWithProgress(Map<String, dynamic> args) asyn
 }
 
 Future<void> _verifyPayloadInIsolate(Map<String, dynamic> args, [SendPort? sendPort]) async {
+  final isolateStopwatch = Stopwatch()..start();
   final payload = args['payload'] as pb.SyncPayload;
   final trustedKeys = (args['trustedKeys'] as List<String>).toSet();
   final adminTrustedKeys = (args['adminTrustedKeys'] as List<String>).toSet();
@@ -392,6 +398,7 @@ Future<void> _verifyPayloadInIsolate(Map<String, dynamic> args, [SendPort? sendP
   for (var i = 0; i < payload.delegations.length; i += _verifyBatchSize) {
     final chunk = payload.delegations.skip(i).take(_verifyBatchSize);
     final results = await Future.wait(chunk.map((d) async {
+      final itemSw = Stopwatch()..start();
       final existingTs = delegationTimestamps[d.delegateePublicKey] ?? 0;
       if (d.timestamp.toInt() <= existingTs) return null;
       final isValid = await verifyDelegationLogic(
@@ -401,6 +408,7 @@ Future<void> _verifyPayloadInIsolate(Map<String, dynamic> args, [SendPort? sendP
         d.delegatorPublicKey,
         serverPubKeyBytes,
       );
+      print("[P2pService Isolate] Verified delegation ${d.delegateePublicKey} in ${itemSw.elapsedMilliseconds}ms");
       if (isValid) return d;
       return null;
     }));
@@ -414,11 +422,14 @@ Future<void> _verifyPayloadInIsolate(Map<String, dynamic> args, [SendPort? sendP
     reportProgress();
     sendBatchIfNeeded();
   }
+  print("[P2pService Isolate] Delegations processed in ${isolateStopwatch.elapsedMilliseconds}ms");
+  isolateStopwatch.reset();
 
   // Process revocations
   for (var i = 0; i < payload.revokedDelegations.length; i += _verifyBatchSize) {
     final chunk = payload.revokedDelegations.skip(i).take(_verifyBatchSize);
     final results = await Future.wait(chunk.map((r) async {
+      final itemSw = Stopwatch()..start();
       final existingTs = revocationTimestamps[r.delegateePublicKey] ?? 0;
       if (r.timestamp.toInt() <= existingTs) return null;
       final isValid = await verifyRevocationLogic(
@@ -428,6 +439,7 @@ Future<void> _verifyPayloadInIsolate(Map<String, dynamic> args, [SendPort? sendP
         r.delegatorPublicKey,
         serverPubKeyBytes,
       );
+      print("[P2pService Isolate] Verified revocation ${r.delegateePublicKey} in ${itemSw.elapsedMilliseconds}ms");
       if (isValid) return r;
       return null;
     }));
@@ -441,11 +453,14 @@ Future<void> _verifyPayloadInIsolate(Map<String, dynamic> args, [SendPort? sendP
     reportProgress();
     sendBatchIfNeeded();
   }
+  print("[P2pService Isolate] Revocations processed in ${isolateStopwatch.elapsedMilliseconds}ms");
+  isolateStopwatch.reset();
 
   // Process markers
   for (var i = 0; i < payload.markers.length; i += _verifyBatchSize) {
     final chunk = payload.markers.skip(i).take(_verifyBatchSize);
     final results = await Future.wait(chunk.map((m) async {
+      final itemSw = Stopwatch()..start();
       if (deletedIds.contains(m.id)) return null;
       final existingTs = markerTimestamps[m.id] ?? 0;
       if (m.timestamp.toInt() <= existingTs) return null;
@@ -465,6 +480,7 @@ Future<void> _verifyPayloadInIsolate(Map<String, dynamic> args, [SendPort? sendP
         adminTrustedKeys,
         untrustedKeys,
       );
+      print("[P2pService Isolate] Verified marker ${m.id} in ${itemSw.elapsedMilliseconds}ms");
       if (trustTier != 5) return MapEntry(m, trustTier);
       return null;
     }));
@@ -478,11 +494,14 @@ Future<void> _verifyPayloadInIsolate(Map<String, dynamic> args, [SendPort? sendP
     reportProgress();
     sendBatchIfNeeded();
   }
+  print("[P2pService Isolate] Markers processed in ${isolateStopwatch.elapsedMilliseconds}ms");
+  isolateStopwatch.reset();
 
   // Process news
   for (var i = 0; i < payload.news.length; i += _verifyBatchSize) {
     final chunk = payload.news.skip(i).take(_verifyBatchSize);
     final results = await Future.wait(chunk.map((n) async {
+      final itemSw = Stopwatch()..start();
       if (deletedIds.contains(n.id)) return null;
       final existingTs = newsTimestamps[n.id] ?? 0;
       if (n.timestamp.toInt() <= existingTs) return null;
@@ -502,6 +521,7 @@ Future<void> _verifyPayloadInIsolate(Map<String, dynamic> args, [SendPort? sendP
         adminTrustedKeys,
         untrustedKeys,
       );
+      print("[P2pService Isolate] Verified news ${n.id} in ${itemSw.elapsedMilliseconds}ms");
       if (trustTier != 5) return MapEntry(n, trustTier);
       return null;
     }));
@@ -515,11 +535,14 @@ Future<void> _verifyPayloadInIsolate(Map<String, dynamic> args, [SendPort? sendP
     reportProgress();
     sendBatchIfNeeded();
   }
+  print("[P2pService Isolate] News processed in ${isolateStopwatch.elapsedMilliseconds}ms");
+  isolateStopwatch.reset();
 
   // Process profiles
   for (var i = 0; i < payload.profiles.length; i += _verifyBatchSize) {
     final chunk = payload.profiles.skip(i).take(_verifyBatchSize);
     final results = await Future.wait(chunk.map((p) async {
+      final itemSw = Stopwatch()..start();
       final existingTs = profileTimestamps[p.publicKey] ?? 0;
       if (p.timestamp.toInt() <= existingTs) return null;
 
@@ -535,6 +558,7 @@ Future<void> _verifyPayloadInIsolate(Map<String, dynamic> args, [SendPort? sendP
         adminTrustedKeys,
         untrustedKeys,
       );
+      print("[P2pService Isolate] Verified profile ${p.publicKey} in ${itemSw.elapsedMilliseconds}ms");
       if (trustTier != 5) return p;
       return null;
     }));
@@ -545,11 +569,14 @@ Future<void> _verifyPayloadInIsolate(Map<String, dynamic> args, [SendPort? sendP
     reportProgress();
     sendBatchIfNeeded();
   }
+  print("[P2pService Isolate] Profiles processed in ${isolateStopwatch.elapsedMilliseconds}ms");
+  isolateStopwatch.reset();
 
   // Process areas
   for (var i = 0; i < payload.areas.length; i += _verifyBatchSize) {
     final chunk = payload.areas.skip(i).take(_verifyBatchSize);
     final results = await Future.wait(chunk.map((a) async {
+      final itemSw = Stopwatch()..start();
       if (deletedIds.contains(a.id)) return null;
       final existingTs = areaTimestamps[a.id] ?? 0;
       if (a.timestamp.toInt() <= existingTs) return null;
@@ -571,6 +598,7 @@ Future<void> _verifyPayloadInIsolate(Map<String, dynamic> args, [SendPort? sendP
         adminTrustedKeys,
         untrustedKeys,
       );
+      print("[P2pService Isolate] Verified area ${a.id} in ${itemSw.elapsedMilliseconds}ms");
       if (trustTier != 5) return MapEntry(a, trustTier);
       return null;
     }));
@@ -584,11 +612,14 @@ Future<void> _verifyPayloadInIsolate(Map<String, dynamic> args, [SendPort? sendP
     reportProgress();
     sendBatchIfNeeded();
   }
+  print("[P2pService Isolate] Areas processed in ${isolateStopwatch.elapsedMilliseconds}ms");
+  isolateStopwatch.reset();
 
   // Process paths
   for (var i = 0; i < payload.paths.length; i += _verifyBatchSize) {
     final chunk = payload.paths.skip(i).take(_verifyBatchSize);
     final results = await Future.wait(chunk.map((p) async {
+      final itemSw = Stopwatch()..start();
       if (deletedIds.contains(p.id)) return null;
       final existingTs = pathTimestamps[p.id] ?? 0;
       if (p.timestamp.toInt() <= existingTs) return null;
@@ -610,6 +641,7 @@ Future<void> _verifyPayloadInIsolate(Map<String, dynamic> args, [SendPort? sendP
         adminTrustedKeys,
         untrustedKeys,
       );
+      print("[P2pService Isolate] Verified path ${p.id} in ${itemSw.elapsedMilliseconds}ms");
       if (trustTier != 5) return MapEntry(p, trustTier);
       return null;
     }));
@@ -623,6 +655,8 @@ Future<void> _verifyPayloadInIsolate(Map<String, dynamic> args, [SendPort? sendP
     reportProgress();
     sendBatchIfNeeded();
   }
+  print("[P2pService Isolate] Paths processed in ${isolateStopwatch.elapsedMilliseconds}ms");
+  isolateStopwatch.reset();
 
   sendBatchIfNeeded(force: true);
   if (sendPort != null) {
@@ -1938,6 +1972,7 @@ class P2pService extends _$P2pService {
   }
 
   Future<void> processPayloadFromFile(String filePath) async {
+    final stopwatch = Stopwatch()..start();
     _idleTicks = 0;
     print("[P2pService] Processing payload from file: $filePath");
     state = state.copyWith(
@@ -1953,8 +1988,11 @@ class P2pService extends _$P2pService {
 
       state = state.copyWith(syncMessage: 'Decoding payload...', clearSyncProgress: true);
       _incrementHeroStat('hero_data_carried', data.length);
+      
       final payload = await Isolate.run(() => pb.SyncPayload.fromBuffer(data));
+      print("[P2pService] Payload decoded in ${stopwatch.elapsedMilliseconds}ms");
 
+      stopwatch.reset();
       await _processDecodedPayload(payload, isFromCloud: true);
       success = true;
     } catch (e) {
@@ -1968,10 +2006,12 @@ class P2pService extends _$P2pService {
       if (isBackgroundIsolate) {
         bgServiceInstance?.invoke('processPayloadComplete', {'success': success});
       }
+      print("[P2pService] processPayloadFromFile completed in ${stopwatch.elapsedMilliseconds}ms");
     }
   }
 
   Future<void> processPayload(String base64Data) async {
+    final stopwatch = Stopwatch()..start();
     _idleTicks = 0;
     print("[P2pService] Processing base64 payload...");
     state = state.copyWith(
@@ -1983,8 +2023,11 @@ class P2pService extends _$P2pService {
       state = state.copyWith(syncMessage: 'Decoding payload...', clearSyncProgress: true);
       final data = await Isolate.run(() => base64Decode(base64Data));
       _incrementHeroStat('hero_data_carried', data.length);
+      
       final payload = await Isolate.run(() => pb.SyncPayload.fromBuffer(data));
+      print("[P2pService] Payload decoded in ${stopwatch.elapsedMilliseconds}ms");
 
+      stopwatch.reset();
       await _processDecodedPayload(payload, isFromCloud: false);
     } catch (e) {
       print("[P2pService] Error handling payload: $e");
@@ -1994,10 +2037,94 @@ class P2pService extends _$P2pService {
       );
     } finally {
       state = state.copyWith(isSyncing: false, clearSyncProgress: true);
+      print("[P2pService] processPayload completed in ${stopwatch.elapsedMilliseconds}ms");
     }
   }
 
   Future<void> _processDecodedPayload(pb.SyncPayload payload, {required bool isFromCloud}) async {
+    final processStopwatch = Stopwatch()..start();
+
+    // Deduplicate payload items to prevent redundant signature verification
+    final uniqueMarkers = <String, pb.HazardMarker>{};
+    for (final m in payload.markers) {
+      final existing = uniqueMarkers[m.id];
+      if (existing == null || m.timestamp > existing.timestamp) {
+        uniqueMarkers[m.id] = m;
+      }
+    }
+    payload.markers.clear();
+    payload.markers.addAll(uniqueMarkers.values);
+
+    final uniqueNews = <String, pb.NewsItem>{};
+    for (final n in payload.news) {
+      final existing = uniqueNews[n.id];
+      if (existing == null || n.timestamp > existing.timestamp) {
+        uniqueNews[n.id] = n;
+      }
+    }
+    payload.news.clear();
+    payload.news.addAll(uniqueNews.values);
+
+    final uniqueProfiles = <String, pb.UserProfile>{};
+    for (final p in payload.profiles) {
+      final existing = uniqueProfiles[p.publicKey];
+      if (existing == null || p.timestamp > existing.timestamp) {
+        uniqueProfiles[p.publicKey] = p;
+      }
+    }
+    payload.profiles.clear();
+    payload.profiles.addAll(uniqueProfiles.values);
+
+    final uniqueAreas = <String, pb.AreaMarker>{};
+    for (final a in payload.areas) {
+      final existing = uniqueAreas[a.id];
+      if (existing == null || a.timestamp > existing.timestamp) {
+        uniqueAreas[a.id] = a;
+      }
+    }
+    payload.areas.clear();
+    payload.areas.addAll(uniqueAreas.values);
+
+    final uniquePaths = <String, pb.PathMarker>{};
+    for (final p in payload.paths) {
+      final existing = uniquePaths[p.id];
+      if (existing == null || p.timestamp > existing.timestamp) {
+        uniquePaths[p.id] = p;
+      }
+    }
+    payload.paths.clear();
+    payload.paths.addAll(uniquePaths.values);
+
+    final uniqueDelegations = <String, pb.TrustDelegation>{};
+    for (final d in payload.delegations) {
+      final existing = uniqueDelegations[d.delegateePublicKey];
+      if (existing == null || d.timestamp > existing.timestamp) {
+        uniqueDelegations[d.delegateePublicKey] = d;
+      }
+    }
+    payload.delegations.clear();
+    payload.delegations.addAll(uniqueDelegations.values);
+
+    final uniqueRevocations = <String, pb.RevokedDelegation>{};
+    for (final r in payload.revokedDelegations) {
+      final existing = uniqueRevocations[r.delegateePublicKey];
+      if (existing == null || r.timestamp > existing.timestamp) {
+        uniqueRevocations[r.delegateePublicKey] = r;
+      }
+    }
+    payload.revokedDelegations.clear();
+    payload.revokedDelegations.addAll(uniqueRevocations.values);
+
+    final uniqueDeleted = <String, pb.DeletedItem>{};
+    for (final d in payload.deletedItems) {
+      final existing = uniqueDeleted[d.id];
+      if (existing == null || d.timestamp > existing.timestamp) {
+        uniqueDeleted[d.id] = d;
+      }
+    }
+    payload.deletedItems.clear();
+    payload.deletedItems.addAll(uniqueDeleted.values);
+
     if (payload.markers.isEmpty &&
         payload.news.isEmpty &&
         payload.profiles.isEmpty &&
@@ -2131,6 +2258,9 @@ class P2pService extends _$P2pService {
         batch.insertAll(db.seenMessageIds, seenIds, mode: InsertMode.insertOrReplace);
       });
     }
+    
+    print("[P2pService] DB queries for existing timestamps took ${processStopwatch.elapsedMilliseconds}ms");
+    processStopwatch.reset();
 
     state = state.copyWith(
       syncMessage: 'Verifying signatures in background...',
@@ -2176,6 +2306,7 @@ class P2pService extends _$P2pService {
       );
     }, (batchData) async {
       // Process batch
+      final batchStopwatch = Stopwatch()..start();
       final validMarkersPb = batchData['validMarkers'] as List<pb.HazardMarker>;
       final validNewsPb = batchData['validNews'] as List<pb.NewsItem>;
       final validProfilesPb = batchData['validProfiles'] as List<pb.UserProfile>;
@@ -2400,7 +2531,11 @@ class P2pService extends _$P2pService {
               .write(PathsCompanion(trustTier: Value(fallbackTier)));
         }
       });
+      print("[P2pService] Batch processed and saved to DB in ${batchStopwatch.elapsedMilliseconds}ms");
     });
+
+    print("[P2pService] Isolate verification completed in ${processStopwatch.elapsedMilliseconds}ms");
+    processStopwatch.reset();
 
     state = state.copyWith(
       syncMessage: 'Cleaning up old records...',
@@ -2497,6 +2632,9 @@ class P2pService extends _$P2pService {
         }
       }
     }
+    
+    print("[P2pService] Cleanup and image requests took ${processStopwatch.elapsedMilliseconds}ms");
+    processStopwatch.reset();
 
     state = state.copyWith(
       syncMessage: 'Forwarding data to peers...',
@@ -2584,6 +2722,7 @@ class P2pService extends _$P2pService {
       syncMessage: 'Successfully synced data.',
       clearSyncProgress: true,
     );
+    print("[P2pService] Forwarding data took ${processStopwatch.elapsedMilliseconds}ms");
     print(
       "[P2pService] Successfully synced ${payload.markers.length} markers, ${payload.news.length} news, ${payload.profiles.length} profiles, ${payload.areas.length} areas, ${payload.paths.length} paths, ${payload.deletedItems.length} deletions, ${payload.delegations.length} delegations, ${payload.revokedDelegations.length} revocations.",
     );
