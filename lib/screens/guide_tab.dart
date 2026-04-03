@@ -221,6 +221,16 @@ class GuideTab extends ConsumerWidget {
                         '• Send it to them via Bluetooth, Nearby Share, or Wi-Fi Direct.\n'
                         '• Once they install it, they can immediately join the mesh network.',
                   ),
+                  _buildGuideExpansionTile(
+                    context,
+                    icon: Icons.sos,
+                    title: 'SOS Flashlight Beacon',
+                    content:
+                        'If you are trapped or need immediate physical assistance, use the SOS Beacon.\n\n'
+                        '• Tap the red "SOS" button on the Map tab.\n'
+                        '• Your phone\'s camera flash will automatically blink the universal Morse code for S-O-S (... --- ...).\n'
+                        '• This is highly visible at night and can help rescue teams locate you even if your phone has no signal.',
+                  ),
                   const SizedBox(height: 24),
                 ],
 

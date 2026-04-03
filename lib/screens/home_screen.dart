@@ -36,6 +36,7 @@ import '../providers/revoked_delegation_provider.dart';
 import '../providers/settings_provider.dart';
 import '../providers/trusted_sender_provider.dart';
 import '../providers/ui_p2p_provider.dart';
+import '../providers/sos_flashlight_provider.dart';
 import '../providers/ui_state_provider.dart';
 import '../providers/untrusted_sender_provider.dart';
 import '../providers/user_profile_provider.dart';
@@ -5349,6 +5350,52 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                                     ),
                                   )
                                 : const Icon(Icons.my_location),
+                          ),
+                          const SizedBox(height: 16),
+                          FloatingActionButton.small(
+                            heroTag: 'sos_beacon',
+                            onPressed: () async {
+                              final notifier = ref.read(sosFlashlightControllerProvider.notifier);
+                              final wasActive = ref.read(sosFlashlightControllerProvider);
+                              
+                              if (wasActive) {
+                                await notifier.toggle();
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('SOS Beacon Deactivated'),
+                                      behavior: SnackBarBehavior.floating,
+                                    ),
+                                  );
+                                }
+                              } else {
+                                final success = await notifier.toggle();
+                                if (context.mounted) {
+                                  if (success) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('SOS Beacon Activated'),
+                                        behavior: SnackBarBehavior.floating,
+                                      ),
+                                    );
+                                  } else {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Flashlight not available on this device.'),
+                                        behavior: SnackBarBehavior.floating,
+                                      ),
+                                    );
+                                  }
+                                }
+                              }
+                            },
+                            backgroundColor: ref.watch(sosFlashlightControllerProvider)
+                                ? Colors.red
+                                : Theme.of(context).colorScheme.surface,
+                            foregroundColor: ref.watch(sosFlashlightControllerProvider)
+                                ? Colors.white
+                                : Colors.red,
+                            child: const Icon(Icons.sos),
                           ),
                           const SizedBox(height: 16),
                         ],
