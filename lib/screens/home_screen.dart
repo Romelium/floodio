@@ -54,6 +54,7 @@ import 'command_tab.dart';
 import 'compass_screen.dart';
 import 'guide_tab.dart';
 import 'mesh_topology_screen.dart';
+import 'terminal_screen.dart';
 import 'profile_tab.dart';
 
 class _SearchBar extends ConsumerStatefulWidget {
@@ -5122,6 +5123,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                           ),
                         ),
                     ],
+                  );
+                },
+              ),
+              IconButton(
+                icon: const Icon(Icons.terminal),
+                tooltip: 'Diagnostics Terminal',
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const TerminalScreen()),
                   );
                 },
               ),

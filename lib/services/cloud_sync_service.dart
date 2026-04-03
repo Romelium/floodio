@@ -15,6 +15,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../protos/models.pb.dart' as pb;
 import '../providers/database_provider.dart';
 import '../providers/ui_p2p_provider.dart';
+import 'background_service.dart';
 
 part 'cloud_sync_service.g.dart';
 
@@ -144,7 +145,7 @@ class CloudSyncService extends _$CloudSyncService {
   }
 
   Future<void> _updateStatus() async {
-    print("[CloudSyncService] Updating status...");
+    terminalLog("[*] Updating cloud status...");
     if (state.isSyncing) return;
 
     final internet = await _hasInternet();
@@ -197,7 +198,7 @@ class CloudSyncService extends _$CloudSyncService {
       pending = recentSeenSet.difference(skippedMessageIds).length;
     } catch (_) {}
 
-    print("[CloudSyncService] Status updated. HasInternet: $internet, PendingUploads: $pending");
+    terminalLog("[+] Cloud status updated. HasInternet: $internet, PendingUploads: $pending");
     state = state.copyWith(hasInternet: internet, pendingUploads: pending);
   }
 
@@ -216,7 +217,7 @@ class CloudSyncService extends _$CloudSyncService {
   Future<bool> syncWithCloud() async {
     final totalSyncStopwatch = Stopwatch()..start();
     final syncStopwatch = Stopwatch()..start();
-    print("[CloudSyncService] Initiating syncWithCloud...");
+    terminalLog("[*] Initiating syncWithCloud...");
     if (state.isSyncing) return false;
 
     final hasInternet = await _hasInternet();
@@ -469,7 +470,7 @@ class CloudSyncService extends _$CloudSyncService {
       
       uploadedMessageIds.addAll(orphanedIds);
 
-      print("[CloudSyncService] DB queries for upload took ${syncStopwatch.elapsedMilliseconds}ms");
+      terminalLog("[+] DB queries for upload took ${syncStopwatch.elapsedMilliseconds}ms");
       syncStopwatch.reset();
 
       if (!state.syncTextOnly) {
@@ -496,14 +497,14 @@ class CloudSyncService extends _$CloudSyncService {
                   .upload(imageId!, file)
                   .timeout(const Duration(seconds: 30));
             } catch (e) {
-              print('[CloudSyncService] Image upload error (might already exist): $e');
+              terminalLog('[-] Image upload error (might already exist): $e');
               // We don't throw here. If an image fails to upload (e.g. due to size limits, 
               // network blip, or it already exists), we still want the text payload to sync.
               // The image will just be missing on the other end, which the app handles gracefully.
             }
           }
         }
-        print("[CloudSyncService] Image uploads took ${syncStopwatch.elapsedMilliseconds}ms");
+        terminalLog("[+] Image uploads took ${syncStopwatch.elapsedMilliseconds}ms");
         syncStopwatch.reset();
       }
 
@@ -526,11 +527,11 @@ class CloudSyncService extends _$CloudSyncService {
           await Supabase.instance.client.from('sync_events').insert({
             'payload_base64': encoded,
           }).timeout(const Duration(seconds: 30));
-          print(
-            '[CloudSyncService] Uploaded ${payload.markers.length} markers, ${payload.news.length} news, ${payload.areas.length} areas, ${payload.paths.length} paths to the cloud.',
+          terminalLog(
+            '[+] Uploaded ${payload.markers.length} markers, ${payload.news.length} news, ${payload.areas.length} areas, ${payload.paths.length} paths to the cloud.',
           );
         } catch (e) {
-          print('[CloudSyncService] Failed to upload payload to Supabase: $e');
+          terminalLog('[-] Failed to upload payload to Supabase: $e');
           throw Exception('Failed to upload payload to cloud: $e');
         }
       }
@@ -552,7 +553,7 @@ class CloudSyncService extends _$CloudSyncService {
         }
       });
       
-      print("[CloudSyncService] Upload to cloud took ${syncStopwatch.elapsedMilliseconds}ms");
+      terminalLog("[+] Upload to cloud took ${syncStopwatch.elapsedMilliseconds}ms");
       syncStopwatch.reset();
 
       // 2. "Download" new data from cloud
@@ -649,13 +650,13 @@ class CloudSyncService extends _$CloudSyncService {
                   }
                 }
               } catch (e) {
-                print('[CloudSyncService] Error decoding payload from cloud: $e');
+                terminalLog('[-] Error decoding payload from cloud: $e');
               }
               currentLastId = row['id'] as int;
             }
           }
         } catch (e) {
-          print('[CloudSyncService] Error downloading from cloud: $e');
+          terminalLog('[-] Error downloading from cloud: $e');
           hasMore = false; // Stop downloading, but process what we have so far
           if (!downloadedAny) {
             throw Exception('Failed to download from cloud: $e');
@@ -663,7 +664,7 @@ class CloudSyncService extends _$CloudSyncService {
         }
       }
       
-      print("[CloudSyncService] Download from cloud took ${syncStopwatch.elapsedMilliseconds}ms");
+      terminalLog("[+] Download from cloud took ${syncStopwatch.elapsedMilliseconds}ms");
       syncStopwatch.reset();
 
       bool hasCombinedData = combinedPayload.markers.isNotEmpty ||
@@ -693,13 +694,13 @@ class CloudSyncService extends _$CloudSyncService {
 
         ref.read(uiP2pServiceProvider.notifier).processPayloadFromFile(tempFile.path);
 
-        print('[CloudSyncService] Downloaded and sent new data to background service. Waiting for processing...');
+        terminalLog('[*] Downloaded and sent new data to background service. Waiting for processing...');
         
         bool processSuccess = false;
         try {
           processSuccess = await completer.future.timeout(const Duration(minutes: 5));
         } catch (e) {
-          print('[CloudSyncService] Timeout waiting for payload processing.');
+          terminalLog('[-] Timeout waiting for payload processing.');
         } finally {
           sub.cancel();
         }
@@ -708,10 +709,10 @@ class CloudSyncService extends _$CloudSyncService {
           throw Exception('Failed to process downloaded payload');
         }
         
-        print("[CloudSyncService] Waiting for payload processing took ${syncStopwatch.elapsedMilliseconds}ms");
+        terminalLog("[+] Waiting for payload processing took ${syncStopwatch.elapsedMilliseconds}ms");
         syncStopwatch.reset();
       } else {
-        print('[CloudSyncService] No new data found in the cloud.');
+        terminalLog('[*] No new data found in the cloud.');
       }
 
       final prefs = await SharedPreferences.getInstance();
@@ -730,17 +731,17 @@ class CloudSyncService extends _$CloudSyncService {
         clearSyncMessage: true,
         clearSyncProgress: true,
       );
-      print("[CloudSyncService] Total cloud sync took ${totalSyncStopwatch.elapsedMilliseconds}ms");
+      terminalLog("[+] Total cloud sync took ${totalSyncStopwatch.elapsedMilliseconds}ms");
       return true;
     } catch (e) {
-      print('[CloudSyncService] Error syncing with cloud: $e');
+      terminalLog('[-] Error syncing with cloud: $e');
       state = state.copyWith(
         isSyncing: false,
         syncMessage: 'Error: $e',
         clearSyncProgress: true,
       );
       Future.delayed(const Duration(seconds: 3), () => state = state.copyWith(clearSyncMessage: true));
-      print("[CloudSyncService] Total cloud sync (failed) took ${totalSyncStopwatch.elapsedMilliseconds}ms");
+      terminalLog("[-] Total cloud sync (failed) took ${totalSyncStopwatch.elapsedMilliseconds}ms");
       return false;
     }
   }

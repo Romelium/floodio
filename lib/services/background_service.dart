@@ -18,6 +18,17 @@ import '../providers/settings_provider.dart';
 bool isBackgroundIsolate = false;
 ServiceInstance? bgServiceInstance;
 
+void terminalLog(String message) {
+  print(message);
+  if (isBackgroundIsolate) {
+    bgServiceInstance?.invoke('terminalLog', {'log': message});
+  } else {
+    try {
+      FlutterBackgroundService().invoke('terminalLog', {'log': message});
+    } catch (_) {}
+  }
+}
+
 Future<void> initializeBackgroundService() async {
   final service = FlutterBackgroundService();
 
@@ -76,7 +87,7 @@ Future<bool> onIosBackground(ServiceInstance service) async {
 
 @pragma('vm:entry-point')
 void onStart(ServiceInstance service) async {
-  print("[BackgroundService] Service started in isolate.");
+  terminalLog("[*] BackgroundService started in isolate.");
   isBackgroundIsolate = true;
   bgServiceInstance = service;
   DartPluginRegistrant.ensureInitialized();

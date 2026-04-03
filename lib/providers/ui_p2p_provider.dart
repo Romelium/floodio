@@ -9,6 +9,7 @@ import 'offline_regions_provider.dart';
 import 'p2p_provider.dart';
 import 'settings_provider.dart';
 import 'hero_stats_provider.dart';
+import 'terminal_log_provider.dart';
 
 part 'ui_p2p_provider.g.dart';
 
@@ -21,6 +22,12 @@ class UiP2pService extends _$UiP2pService {
     service.on('p2pStateUpdate').listen((event) {
       if (event != null) {
         state = P2pState.fromMap(Map<String, dynamic>.from(event));
+      }
+    });
+
+    service.on('terminalLog').listen((event) {
+      if (event != null && event['log'] != null) {
+        ref.read(terminalLogControllerProvider.notifier).addLog(event['log']);
       }
     });
 

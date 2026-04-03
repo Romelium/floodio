@@ -271,9 +271,11 @@ Future<Map<String, dynamic>> _runVerifyPayloadInIsolate(
         try {
           await onBatch(message['data']);
         } catch (e, st) {
-          print("Error processing batch: $e\n$st");
+          terminalLog("[-] Error processing batch: $e\n$st");
         }
         sub?.resume();
+      } else if (message['type'] == 'log') {
+        terminalLog(message['message']);
       } else if (message['type'] == 'done') {
         completer.complete({});
         receivePort.close();
@@ -308,6 +310,15 @@ Future<void> _verifyPayloadInIsolateWithProgress(Map<String, dynamic> args) asyn
 
 Future<void> _verifyPayloadInIsolate(Map<String, dynamic> args, [SendPort? sendPort]) async {
   final isolateStopwatch = Stopwatch()..start();
+
+  void log(String msg) {
+    if (sendPort != null) {
+      sendPort.send({'type': 'log', 'message': msg});
+    } else {
+      print(msg);
+    }
+  }
+
   final payload = args['payload'] as pb.SyncPayload;
   final trustedKeys = (args['trustedKeys'] as List<String>).toSet();
   final adminTrustedKeys = (args['adminTrustedKeys'] as List<String>).toSet();
@@ -408,7 +419,7 @@ Future<void> _verifyPayloadInIsolate(Map<String, dynamic> args, [SendPort? sendP
         d.delegatorPublicKey,
         serverPubKeyBytes,
       );
-      print("[P2pService Isolate] Verified delegation ${d.delegateePublicKey} in ${itemSw.elapsedMilliseconds}ms");
+      log("[+] Verified delegation ${d.delegateePublicKey} in ${itemSw.elapsedMilliseconds}ms");
       if (isValid) return d;
       return null;
     }));
@@ -422,7 +433,7 @@ Future<void> _verifyPayloadInIsolate(Map<String, dynamic> args, [SendPort? sendP
     reportProgress();
     sendBatchIfNeeded();
   }
-  print("[P2pService Isolate] Delegations processed in ${isolateStopwatch.elapsedMilliseconds}ms");
+  log("[*] Delegations processed in ${isolateStopwatch.elapsedMilliseconds}ms");
   isolateStopwatch.reset();
 
   // Process revocations
@@ -439,7 +450,7 @@ Future<void> _verifyPayloadInIsolate(Map<String, dynamic> args, [SendPort? sendP
         r.delegatorPublicKey,
         serverPubKeyBytes,
       );
-      print("[P2pService Isolate] Verified revocation ${r.delegateePublicKey} in ${itemSw.elapsedMilliseconds}ms");
+      log("[+] Verified revocation ${r.delegateePublicKey} in ${itemSw.elapsedMilliseconds}ms");
       if (isValid) return r;
       return null;
     }));
@@ -453,7 +464,7 @@ Future<void> _verifyPayloadInIsolate(Map<String, dynamic> args, [SendPort? sendP
     reportProgress();
     sendBatchIfNeeded();
   }
-  print("[P2pService Isolate] Revocations processed in ${isolateStopwatch.elapsedMilliseconds}ms");
+  log("[*] Revocations processed in ${isolateStopwatch.elapsedMilliseconds}ms");
   isolateStopwatch.reset();
 
   // Process markers
@@ -480,7 +491,7 @@ Future<void> _verifyPayloadInIsolate(Map<String, dynamic> args, [SendPort? sendP
         adminTrustedKeys,
         untrustedKeys,
       );
-      print("[P2pService Isolate] Verified marker ${m.id} in ${itemSw.elapsedMilliseconds}ms");
+      log("[+] Verified Ed25519 signature for marker ${m.id} in ${itemSw.elapsedMilliseconds}ms");
       if (trustTier != 5) return MapEntry(m, trustTier);
       return null;
     }));
@@ -494,7 +505,7 @@ Future<void> _verifyPayloadInIsolate(Map<String, dynamic> args, [SendPort? sendP
     reportProgress();
     sendBatchIfNeeded();
   }
-  print("[P2pService Isolate] Markers processed in ${isolateStopwatch.elapsedMilliseconds}ms");
+  log("[*] Markers processed in ${isolateStopwatch.elapsedMilliseconds}ms");
   isolateStopwatch.reset();
 
   // Process news
@@ -521,7 +532,7 @@ Future<void> _verifyPayloadInIsolate(Map<String, dynamic> args, [SendPort? sendP
         adminTrustedKeys,
         untrustedKeys,
       );
-      print("[P2pService Isolate] Verified news ${n.id} in ${itemSw.elapsedMilliseconds}ms");
+      log("[+] Verified Ed25519 signature for news ${n.id} in ${itemSw.elapsedMilliseconds}ms");
       if (trustTier != 5) return MapEntry(n, trustTier);
       return null;
     }));
@@ -535,7 +546,7 @@ Future<void> _verifyPayloadInIsolate(Map<String, dynamic> args, [SendPort? sendP
     reportProgress();
     sendBatchIfNeeded();
   }
-  print("[P2pService Isolate] News processed in ${isolateStopwatch.elapsedMilliseconds}ms");
+  log("[*] News processed in ${isolateStopwatch.elapsedMilliseconds}ms");
   isolateStopwatch.reset();
 
   // Process profiles
@@ -558,7 +569,7 @@ Future<void> _verifyPayloadInIsolate(Map<String, dynamic> args, [SendPort? sendP
         adminTrustedKeys,
         untrustedKeys,
       );
-      print("[P2pService Isolate] Verified profile ${p.publicKey} in ${itemSw.elapsedMilliseconds}ms");
+      log("[+] Verified Ed25519 signature for profile ${p.publicKey} in ${itemSw.elapsedMilliseconds}ms");
       if (trustTier != 5) return p;
       return null;
     }));
@@ -569,7 +580,7 @@ Future<void> _verifyPayloadInIsolate(Map<String, dynamic> args, [SendPort? sendP
     reportProgress();
     sendBatchIfNeeded();
   }
-  print("[P2pService Isolate] Profiles processed in ${isolateStopwatch.elapsedMilliseconds}ms");
+  log("[*] Profiles processed in ${isolateStopwatch.elapsedMilliseconds}ms");
   isolateStopwatch.reset();
 
   // Process areas
@@ -598,7 +609,7 @@ Future<void> _verifyPayloadInIsolate(Map<String, dynamic> args, [SendPort? sendP
         adminTrustedKeys,
         untrustedKeys,
       );
-      print("[P2pService Isolate] Verified area ${a.id} in ${itemSw.elapsedMilliseconds}ms");
+      log("[+] Verified Ed25519 signature for area ${a.id} in ${itemSw.elapsedMilliseconds}ms");
       if (trustTier != 5) return MapEntry(a, trustTier);
       return null;
     }));
@@ -612,7 +623,7 @@ Future<void> _verifyPayloadInIsolate(Map<String, dynamic> args, [SendPort? sendP
     reportProgress();
     sendBatchIfNeeded();
   }
-  print("[P2pService Isolate] Areas processed in ${isolateStopwatch.elapsedMilliseconds}ms");
+  log("[*] Areas processed in ${isolateStopwatch.elapsedMilliseconds}ms");
   isolateStopwatch.reset();
 
   // Process paths
@@ -641,7 +652,7 @@ Future<void> _verifyPayloadInIsolate(Map<String, dynamic> args, [SendPort? sendP
         adminTrustedKeys,
         untrustedKeys,
       );
-      print("[P2pService Isolate] Verified path ${p.id} in ${itemSw.elapsedMilliseconds}ms");
+      log("[+] Verified Ed25519 signature for path ${p.id} in ${itemSw.elapsedMilliseconds}ms");
       if (trustTier != 5) return MapEntry(p, trustTier);
       return null;
     }));
@@ -655,7 +666,7 @@ Future<void> _verifyPayloadInIsolate(Map<String, dynamic> args, [SendPort? sendP
     reportProgress();
     sendBatchIfNeeded();
   }
-  print("[P2pService Isolate] Paths processed in ${isolateStopwatch.elapsedMilliseconds}ms");
+  log("[*] Paths processed in ${isolateStopwatch.elapsedMilliseconds}ms");
   isolateStopwatch.reset();
 
   sendBatchIfNeeded(force: true);
@@ -721,9 +732,10 @@ class P2pService extends _$P2pService {
         await _systemChannel.invokeMethod('setBluetoothName', {
           'name': '$prefix: $safeName',
         });
+        terminalLog("[*] Set Bluetooth Name to: $prefix: $safeName");
       }
     } catch (e) {
-      print("Failed to set BT name: $e");
+      terminalLog("[-] Failed to set BT name: $e");
     }
   }
 
@@ -735,7 +747,7 @@ class P2pService extends _$P2pService {
         });
       }
     } catch (e) {
-      print("Failed to restore BT name: $e");
+      terminalLog("[-] Failed to restore BT name: $e");
     }
   }
 
@@ -779,7 +791,7 @@ class P2pService extends _$P2pService {
 
   Future<void> _initP2p() async {
     if (_isInitialized) return;
-    print("[P2pService] Initializing P2P Host and Client...");
+    terminalLog("[*] Initializing P2P Host and Client...");
     final localUser = await ref.read(localUserControllerProvider.future);
     final username = localUser.name.isNotEmpty
         ? localUser.name
@@ -798,7 +810,7 @@ class P2pService extends _$P2pService {
     await _client.initialize();
 
     _hostStateSub = _host.streamHotspotState().listen((hotspotState) {
-      print("[P2pService] Host state updated: isActive=${hotspotState.isActive}, ssid=${hotspotState.ssid}");
+      terminalLog("[+] Host state updated: isActive=${hotspotState.isActive}, ssid=${hotspotState.ssid}");
       state = state.copyWith(
         hostState: AppHostState(
           isActive: hotspotState.isActive,
@@ -824,7 +836,7 @@ class P2pService extends _$P2pService {
           )
           .toList();
       state = state.copyWith(connectedClients: appClients);
-      print("[P2pService] Host client list updated. Count: ${clients.length}");
+      terminalLog("[+] Host client list updated. Count: ${clients.length}");
       if (clients.length > previousCount) {
         _incrementHeroStat('hero_peers_synced', clients.length - previousCount);
         state = state.copyWith(
@@ -857,7 +869,7 @@ class P2pService extends _$P2pService {
 
     _clientStateSub = _client.streamHotspotState().listen((hotspotState) {
       final wasActive = state.clientState?.isActive ?? false;
-      print("[P2pService] Client state updated: isActive=${hotspotState.isActive}, hostSsid=${hotspotState.hostSsid}");
+      terminalLog("[+] Client state updated: isActive=${hotspotState.isActive}, hostSsid=${hotspotState.hostSsid}");
       state = state.copyWith(
         clientState: AppClientState(
           isActive: hotspotState.isActive,
@@ -898,7 +910,7 @@ class P2pService extends _$P2pService {
   Future<void> toggleAutoSync() async {
     if (_isToggling) return;
     _isToggling = true;
-    print("[P2pService] Toggling Auto-Sync. Current state: ${state.isAutoSyncing}");
+    terminalLog("[*] Toggling Auto-Sync. Current state: ${state.isAutoSyncing}");
     try {
       _autoSyncTimer?.cancel();
       if (state.isAutoSyncing) {
@@ -931,7 +943,7 @@ class P2pService extends _$P2pService {
   Future<void> _runAutoSyncCycle() async {
     _autoSyncTimer?.cancel();
     if (!state.isAutoSyncing || _disposed) return;
-    print("[P2pService] Running Auto-Sync cycle. Idle ticks: $_idleTicks");
+    terminalLog("[*] Running Auto-Sync cycle. Idle ticks: $_idleTicks");
 
     if (state.isSyncing || state.isConnecting) {
       _idleTicks = 0;
@@ -949,7 +961,7 @@ class P2pService extends _$P2pService {
 
       // If idle for 30 seconds (6 * 5s) while connected, disconnect to find new peers
       if (_idleTicks >= 6) {
-        print("[P2pService] Idle timeout reached while connected. Forcing role switch to find new peers.");
+        terminalLog("[-] Idle timeout reached while connected. Forcing role switch to find new peers.");
         _idleTicks = 0;
         _isSwitchingRoles = true;
         try {
@@ -974,7 +986,7 @@ class P2pService extends _$P2pService {
       // Alternate role
       if (_lastRoleWasHost) {
         _lastRoleWasHost = false;
-        print("[P2pService] Auto-Sync: Switching to Scanner role...");
+        terminalLog("[*] Auto-Sync: Switching to Scanner role...");
         state = state.copyWith(
           syncMessage: 'Switching to Scanner...',
           clearSyncProgress: true,
@@ -989,7 +1001,7 @@ class P2pService extends _$P2pService {
         await startScanning();
       } else {
         _lastRoleWasHost = true;
-        print("[P2pService] Auto-Sync: Switching to Broadcaster role...");
+        terminalLog("[*] Auto-Sync: Switching to Broadcaster role...");
         state = state.copyWith(
           syncMessage: 'Switching to Broadcaster...',
           clearSyncProgress: true,
@@ -1031,7 +1043,7 @@ class P2pService extends _$P2pService {
   Future<void> startHosting() async {
     await _initP2p();
     if (state.isHosting) return;
-    print("[P2pService] Starting Host mode...");
+    terminalLog("[*] Starting Host mode...");
     await disconnect(); // Ensure client is fully stopped before hosting
 
     state = state.copyWith(
@@ -1101,7 +1113,7 @@ class P2pService extends _$P2pService {
         clearSyncProgress: true,
       );
       try {
-        print("[P2pService] Removing existing group before creating new one...");
+        terminalLog("[*] Removing existing group before creating new one...");
         await _host.removeGroup();
         await Future.delayed(const Duration(milliseconds: 500));
       } catch (_) {}
@@ -1114,7 +1126,7 @@ class P2pService extends _$P2pService {
         _hostTextSub = _host.streamReceivedTexts().listen(_handleReceivedText);
       }
     } catch (e) {
-      print("Failed to create group: $e");
+      terminalLog("[-] Failed to create group: $e");
       state = state.copyWith(
         syncMessage: 'Failed to start host: $e',
         clearSyncProgress: true,
@@ -1125,7 +1137,7 @@ class P2pService extends _$P2pService {
 
   Future<void> stopHosting() async {
     _hostTextSub?.cancel();
-    print("[P2pService] Stopping Host mode...");
+    terminalLog("[-] Stopping Host mode...");
     if (_isInitialized) {
       await _host.removeGroup();
     }
@@ -1144,7 +1156,7 @@ class P2pService extends _$P2pService {
   Future<void> startScanning() async {
     await _initP2p();
     if (state.isScanning) return;
-    print("[P2pService] Starting Scanner mode...");
+    terminalLog("[*] Starting Scanner mode...");
     await stopHosting(); // Ensure host is fully stopped before scanning
 
     state = state.copyWith(
@@ -1232,7 +1244,7 @@ class P2pService extends _$P2pService {
       );
 
       _scanSub = FlutterBluePlus.onScanResults.listen((results) {
-        print("[P2pService] BLE Scan results: ${results.length} devices found.");
+        terminalLog("[+] BLE Scan results: ${results.length} devices found.");
         _rawDiscoveredDevices = results
             .map(
               (r) => BleDiscoveredDevice(
@@ -1256,7 +1268,7 @@ class P2pService extends _$P2pService {
             appDevices.isNotEmpty &&
             state.clientState?.isActive != true &&
             !state.isConnecting) {
-          print("[P2pService] Auto-Sync: Found device, attempting connection to ${appDevices.first.deviceAddress}");
+          terminalLog("[+] Auto-Sync: Found device, attempting connection to ${appDevices.first.deviceAddress}");
           connectToDeviceByAddress(appDevices.first.deviceAddress);
         }
       });
@@ -1265,7 +1277,7 @@ class P2pService extends _$P2pService {
         await stopScanning();
       }
     } catch (e) {
-      print("Failed to start scan: $e");
+      terminalLog("[-] Failed to start scan: $e");
       state = state.copyWith(
         isScanning: false,
         syncMessage: 'Scan failed: $e',
@@ -1276,7 +1288,7 @@ class P2pService extends _$P2pService {
 
   Future<void> connectToDeviceByAddress(String address) async {
     if (!_isInitialized || state.isConnecting) return;
-    print("[P2pService] Attempting to connect to BLE device: $address");
+    terminalLog("[*] Attempting to connect to BLE device: $address");
     try {
       final device = _rawDiscoveredDevices.firstWhere(
         (d) => d.deviceAddress == address,
@@ -1341,7 +1353,7 @@ class P2pService extends _$P2pService {
       );
       _sendManifest();
     } catch (e) {
-      print("Connection failed: $e");
+      terminalLog("[-] Connection failed: $e");
       await _client.disconnect(); // Ensure cleanup
       state = state.copyWith(
         isConnecting: false,
@@ -1357,7 +1369,7 @@ class P2pService extends _$P2pService {
   }
 
   Future<void> stopScanning() async {
-    print("[P2pService] Stopping BLE scan...");
+    terminalLog("[-] Stopping BLE scan...");
     await _scanSub?.cancel();
     _scanSub = null;
     try {
@@ -1370,7 +1382,7 @@ class P2pService extends _$P2pService {
   }
 
   Future<void> disconnect() async {
-    print("[P2pService] Disconnecting client...");
+    terminalLog("[-] Disconnecting client...");
     _clientTextSub?.cancel();
     await stopScanning();
     if (_isInitialized) {
@@ -1389,28 +1401,28 @@ class P2pService extends _$P2pService {
 
   void _handleReceivedText(String text) async {
     _idleTicks = 0;
-    print("[P2pService] Received text message. Length: ${text.length}");
+    terminalLog("[+] Received text message. Length: ${text.length}");
     try {
       final json = jsonDecode(text);
       if (json is Map<String, dynamic>) {
         if (json['type'] == 'manifest') {
-          print("[P2pService] Message type: manifest");
+          terminalLog("[*] Message type: manifest");
           await _handleManifest(json);
           return;
         } else if (json['type'] == 'payload') {
-          print("[P2pService] Message type: payload");
+          terminalLog("[*] Message type: payload");
           await processPayload(json['data']);
           return;
         } else if (json['type'] == 'request_map') {
-          print("[P2pService] Message type: request_map");
+          terminalLog("[*] Message type: request_map");
           await _handleRequestMap(json);
           return;
         } else if (json['type'] == 'request_image') {
-          print("[P2pService] Message type: request_image");
+          terminalLog("[*] Message type: request_image");
           await _handleRequestImage(json['imageId']);
           return;
         } else if (json['type'] == 'up_to_date') {
-          print("[P2pService] Message type: up_to_date");
+          terminalLog("[+] Message type: up_to_date");
           state = state.copyWith(
             isSyncing: false,
             lastSyncTime: DateTime.now(),
@@ -1422,7 +1434,7 @@ class P2pService extends _$P2pService {
       }
     } catch (e) {
       // Not JSON, ignore and treat as normal text
-      print("[P2pService] Failed to decode JSON or handle text: $e");
+      terminalLog("[-] Failed to decode JSON or handle text: $e");
     }
 
     state = state.copyWith(receivedTexts: [...state.receivedTexts, text]);
@@ -1433,11 +1445,11 @@ class P2pService extends _$P2pService {
       final dir = await getApplicationDocumentsDirectory();
       final file = File('${dir.path}/$imageId');
       if (await file.exists()) {
-        print("[P2pService] Fulfilling image request for $imageId");
+        terminalLog("[+] Fulfilling image request for $imageId");
         await broadcastFile(file);
       }
     } catch (e) {
-      print("[P2pService] Error handling request_image: $e");
+      terminalLog("[-] Error handling request_image: $e");
     }
   }
 
@@ -1448,7 +1460,7 @@ class P2pService extends _$P2pService {
     bool isDownloadingAny = false;
     for (final file in files) {
       if (file.state == ReceivableFileState.idle) {
-        print("[P2pService] Starting download for file: ${file.info.name}");
+        terminalLog("[*] Starting download for file: ${file.info.name}");
         isDownloadingAny = true;
         final dir = await getApplicationDocumentsDirectory();
 
@@ -1492,7 +1504,7 @@ class P2pService extends _$P2pService {
           },
         );
       } else if (file.state == ReceivableFileState.completed) {
-        print("[P2pService] Download completed for file: ${file.info.name}");
+        terminalLog("[+] Download completed for file: ${file.info.name}");
         _downloadStartTimes.remove(file.info.id);
         if (file.info.name.endsWith('.fmap')) {
           final dir = await getApplicationDocumentsDirectory();
@@ -1530,7 +1542,7 @@ class P2pService extends _$P2pService {
                     ref.read(offlineRegionsProvider.notifier).addRegion(region);
                   }
                 } catch (e) {
-                  print("Failed to parse region from map filename: $e");
+                  terminalLog("[-] Failed to parse region from map filename: $e");
                 }
               }
 
@@ -1543,7 +1555,7 @@ class P2pService extends _$P2pService {
               // Trigger a manifest sync so other connected peers know we have a new map
               _sendManifest();
             } catch (e) {
-              print("[P2pService] Error unpacking map: $e");
+              terminalLog("[-] Error unpacking map: $e");
               state = state.copyWith(
                 isSyncing: false,
                 syncMessage: 'Failed to unpack map.',
@@ -1561,7 +1573,7 @@ class P2pService extends _$P2pService {
       } else if (file.state == ReceivableFileState.downloading) {
         isDownloadingAny = true;
       } else if (file.state == ReceivableFileState.error) {
-        print("[P2pService] Failed to download file ${file.info.name}");
+        terminalLog("[-] Failed to download file ${file.info.name}");
       }
     }
 
@@ -1580,7 +1592,7 @@ class P2pService extends _$P2pService {
 
   Future<void> _sendManifest() async {
     _idleTicks = 0;
-    print("[P2pService] Generating and sending manifest...");
+    terminalLog("[*] Generating and sending manifest...");
     try {
       final (bloomBits, bloomSize) = await Isolate.run(() async {
         final connection = await getSharedConnection();
@@ -1623,7 +1635,7 @@ class P2pService extends _$P2pService {
         'offlineRegions': offlineRegions.map((r) => r.toJson()).toList(),
       };
 
-      print("[P2pService] Manifest generated. Bloom size: $bloomSize. Broadcasting...");
+      terminalLog("[+] Manifest generated. Bloom size: $bloomSize. Broadcasting...");
       await broadcastText(jsonEncode(manifest));
       state = state.copyWith(
         syncMessage: 'Sync data sent. Waiting for peer...',
@@ -1642,7 +1654,7 @@ class P2pService extends _$P2pService {
         }
       });
     } catch (e) {
-      print("[P2pService] Error sending manifest: $e");
+      terminalLog("[-] Error sending manifest: $e");
       state = state.copyWith(
         isSyncing: false,
         syncMessage: 'Error sending sync data.',
@@ -1653,7 +1665,7 @@ class P2pService extends _$P2pService {
 
   Future<void> _handleManifest(Map<String, dynamic> json) async {
     _idleTicks = 0;
-    print("[P2pService] Handling received manifest...");
+    terminalLog("[*] Handling received manifest...");
     state = state.copyWith(
       isSyncing: true,
       syncMessage: 'Comparing data...',
@@ -1776,7 +1788,7 @@ class P2pService extends _$P2pService {
           newPaths.isEmpty &&
           newDelegations.isEmpty &&
           newRevocations.isEmpty) {
-        print("[P2pService] No new data to send. Sending up_to_date.");
+        terminalLog("[+] No new data to send. Sending up_to_date.");
         await broadcastText(jsonEncode({'type': 'up_to_date'}));
         state = state.copyWith(
           isSyncing: false,
@@ -1787,7 +1799,7 @@ class P2pService extends _$P2pService {
         return;
       }
 
-      print("[P2pService] Preparing payload with ${newHazards.length} markers, ${newNews.length} news...");
+      terminalLog("[+] Preparing payload with ${newHazards.length} markers, ${newNews.length} news...");
       state = state.copyWith(
         syncMessage:
             'Sending ${newHazards.length} markers, ${newNews.length} news, ${newProfiles.length} profiles, ${newAreas.length} areas, ${newPaths.length} paths, ${newDeleted.length} deletions, ${newDelegations.length} delegations, ${newRevocations.length} revocations...',
@@ -1920,7 +1932,7 @@ class P2pService extends _$P2pService {
         clearSyncProgress: true,
       );
     } catch (e) {
-      print("[P2pService] Error handling manifest: $e");
+      terminalLog("[-] Error handling manifest: $e");
       state = state.copyWith(
         syncMessage: 'Error sending data.',
         clearSyncProgress: true,
@@ -1941,7 +1953,7 @@ class P2pService extends _$P2pService {
   }
 
   Future<void> broadcastMapRegion(OfflineRegion? region) async {
-    print("[P2pService] Packing and broadcasting map region...");
+    terminalLog("[*] Packing and broadcasting map region...");
     state = state.copyWith(
       isSyncing: true,
       syncMessage: 'Packing offline map for transfer...',
@@ -1962,7 +1974,7 @@ class P2pService extends _$P2pService {
         clearSyncProgress: true,
       );
     } catch (e) {
-      print("[P2pService] Error sending map: $e");
+      terminalLog("[-] Error sending map: $e");
       state = state.copyWith(
         isSyncing: false,
         syncMessage: 'Error sending map.',
@@ -1974,7 +1986,7 @@ class P2pService extends _$P2pService {
   Future<void> processPayloadFromFile(String filePath) async {
     final stopwatch = Stopwatch()..start();
     _idleTicks = 0;
-    print("[P2pService] Processing payload from file: $filePath");
+    terminalLog("[*] Processing payload from file: $filePath");
     state = state.copyWith(
       isSyncing: true,
       syncMessage: 'Receiving cloud data...',
@@ -1990,13 +2002,13 @@ class P2pService extends _$P2pService {
       _incrementHeroStat('hero_data_carried', data.length);
       
       final payload = await Isolate.run(() => pb.SyncPayload.fromBuffer(data));
-      print("[P2pService] Payload decoded in ${stopwatch.elapsedMilliseconds}ms");
+      terminalLog("[+] Payload decoded in ${stopwatch.elapsedMilliseconds}ms");
 
       stopwatch.reset();
       await _processDecodedPayload(payload, isFromCloud: true);
       success = true;
     } catch (e) {
-      print("[P2pService] Error handling payload from file: $e");
+      terminalLog("[-] Error handling payload from file: $e");
       state = state.copyWith(
         syncMessage: 'Error syncing data.',
         clearSyncProgress: true,
@@ -2006,14 +2018,14 @@ class P2pService extends _$P2pService {
       if (isBackgroundIsolate) {
         bgServiceInstance?.invoke('processPayloadComplete', {'success': success});
       }
-      print("[P2pService] processPayloadFromFile completed in ${stopwatch.elapsedMilliseconds}ms");
+      terminalLog("[+] processPayloadFromFile completed in ${stopwatch.elapsedMilliseconds}ms");
     }
   }
 
   Future<void> processPayload(String base64Data) async {
     final stopwatch = Stopwatch()..start();
     _idleTicks = 0;
-    print("[P2pService] Processing base64 payload...");
+    terminalLog("[*] Processing base64 payload...");
     state = state.copyWith(
       isSyncing: true,
       syncMessage: 'Receiving data...',
@@ -2025,19 +2037,19 @@ class P2pService extends _$P2pService {
       _incrementHeroStat('hero_data_carried', data.length);
       
       final payload = await Isolate.run(() => pb.SyncPayload.fromBuffer(data));
-      print("[P2pService] Payload decoded in ${stopwatch.elapsedMilliseconds}ms");
+      terminalLog("[+] Payload decoded in ${stopwatch.elapsedMilliseconds}ms");
 
       stopwatch.reset();
       await _processDecodedPayload(payload, isFromCloud: false);
     } catch (e) {
-      print("[P2pService] Error handling payload: $e");
+      terminalLog("[-] Error handling payload: $e");
       state = state.copyWith(
         syncMessage: 'Error syncing data.',
         clearSyncProgress: true,
       );
     } finally {
       state = state.copyWith(isSyncing: false, clearSyncProgress: true);
-      print("[P2pService] processPayload completed in ${stopwatch.elapsedMilliseconds}ms");
+      terminalLog("[+] processPayload completed in ${stopwatch.elapsedMilliseconds}ms");
     }
   }
 
@@ -2133,7 +2145,7 @@ class P2pService extends _$P2pService {
         payload.paths.isEmpty &&
         payload.delegations.isEmpty &&
         payload.revokedDelegations.isEmpty) {
-      print("[P2pService] Decoded payload is empty.");
+      terminalLog("[-] Decoded payload is empty.");
       state = state.copyWith(
         syncMessage: 'Empty payload received.',
         clearSyncProgress: true,
@@ -2141,7 +2153,7 @@ class P2pService extends _$P2pService {
       return;
     }
 
-    print("[P2pService] Decoded payload contains items. Verifying signatures...");
+    terminalLog("[*] Decoded payload contains items. Verifying signatures...");
     state = state.copyWith(
       syncMessage: 'Preparing to verify signatures...',
       clearSyncProgress: true,
@@ -2259,7 +2271,7 @@ class P2pService extends _$P2pService {
       });
     }
     
-    print("[P2pService] DB queries for existing timestamps took ${processStopwatch.elapsedMilliseconds}ms");
+    terminalLog("[+] DB queries for existing timestamps took ${processStopwatch.elapsedMilliseconds}ms");
     processStopwatch.reset();
 
     state = state.copyWith(
@@ -2531,10 +2543,10 @@ class P2pService extends _$P2pService {
               .write(PathsCompanion(trustTier: Value(fallbackTier)));
         }
       });
-      print("[P2pService] Batch processed and saved to DB in ${batchStopwatch.elapsedMilliseconds}ms");
+      terminalLog("[+] Batch processed and saved to DB in ${batchStopwatch.elapsedMilliseconds}ms");
     });
 
-    print("[P2pService] Isolate verification completed in ${processStopwatch.elapsedMilliseconds}ms");
+    terminalLog("[+] Isolate verification completed in ${processStopwatch.elapsedMilliseconds}ms");
     processStopwatch.reset();
 
     state = state.copyWith(
@@ -2596,7 +2608,7 @@ class P2pService extends _$P2pService {
             await file.writeAsBytes(bytes);
             downloaded = true;
           } catch (e) {
-            print("[P2pService] Failed to download image $imageId from cloud: $e");
+            terminalLog("[-] Failed to download image $imageId from cloud: $e");
           }
 
           if (!downloaded && !isFromCloud) {
@@ -2621,7 +2633,7 @@ class P2pService extends _$P2pService {
             await file.writeAsBytes(bytes);
             downloaded = true;
           } catch (e) {
-            print("[P2pService] Failed to download image $imageId from cloud: $e");
+            terminalLog("[-] Failed to download image $imageId from cloud: $e");
           }
 
           if (!downloaded && !isFromCloud) {
@@ -2633,7 +2645,7 @@ class P2pService extends _$P2pService {
       }
     }
     
-    print("[P2pService] Cleanup and image requests took ${processStopwatch.elapsedMilliseconds}ms");
+    terminalLog("[+] Cleanup and image requests took ${processStopwatch.elapsedMilliseconds}ms");
     processStopwatch.reset();
 
     state = state.copyWith(
@@ -2722,9 +2734,9 @@ class P2pService extends _$P2pService {
       syncMessage: 'Successfully synced data.',
       clearSyncProgress: true,
     );
-    print("[P2pService] Forwarding data took ${processStopwatch.elapsedMilliseconds}ms");
-    print(
-      "[P2pService] Successfully synced ${payload.markers.length} markers, ${payload.news.length} news, ${payload.profiles.length} profiles, ${payload.areas.length} areas, ${payload.paths.length} paths, ${payload.deletedItems.length} deletions, ${payload.delegations.length} delegations, ${payload.revokedDelegations.length} revocations.",
+    terminalLog("[+] Forwarding data took ${processStopwatch.elapsedMilliseconds}ms");
+    terminalLog(
+      "[+] Successfully synced ${payload.markers.length} markers, ${payload.news.length} news, ${payload.profiles.length} profiles, ${payload.areas.length} areas, ${payload.paths.length} paths, ${payload.deletedItems.length} deletions, ${payload.delegations.length} delegations, ${payload.revokedDelegations.length} revocations.",
     );
   }
 
@@ -2749,7 +2761,7 @@ class P2pService extends _$P2pService {
         }
       }
     } catch (e) {
-      print("[P2pService] Error broadcasting text: $e");
+      terminalLog("[-] Error broadcasting text: $e");
     }
   }
 
@@ -2764,7 +2776,7 @@ class P2pService extends _$P2pService {
         }
       }
     } catch (e) {
-      print("[P2pService] Error broadcasting file: $e");
+      terminalLog("[-] Error broadcasting file: $e");
     }
   }
 
