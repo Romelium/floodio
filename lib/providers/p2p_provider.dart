@@ -1954,6 +1954,7 @@ class P2pService extends _$P2pService {
       syncMessage: 'Receiving cloud data...',
       clearSyncProgress: true,
     );
+    bool success = false;
     try {
       final file = File(filePath);
       final data = await file.readAsBytes();
@@ -1964,6 +1965,7 @@ class P2pService extends _$P2pService {
       final payload = await Isolate.run(() => pb.SyncPayload.fromBuffer(data));
 
       await _processDecodedPayload(payload, isFromCloud: true);
+      success = true;
     } catch (e) {
       print("[P2pService] Error handling payload from file: $e");
       state = state.copyWith(
@@ -1972,6 +1974,9 @@ class P2pService extends _$P2pService {
       );
     } finally {
       state = state.copyWith(isSyncing: false, clearSyncProgress: true);
+      if (isBackgroundIsolate) {
+        bgServiceInstance?.invoke('processPayloadComplete', {'success': success});
+      }
     }
   }
 

@@ -6,6 +6,7 @@ import 'dart:isolate';
 import 'package:drift/drift.dart';
 import 'package:fixnum/fixnum.dart';
 import 'package:floodio/database/database.dart';
+import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -237,8 +238,6 @@ class CloudSyncService extends _$CloudSyncService {
       )..where((t) => t.uploadedToCloud.equals(false))).get();
       final recentSeenSet = recentSeen.map((e) => e.messageId).toSet();
 
-      final skippedMessageIds = <String>{};
-
       final markers = await (db.select(db.hazardMarkers)..where((t) {
         Expression<bool> expr = const Constant(true);
         if (state.onlyTier1And2) {
@@ -293,8 +292,11 @@ class CloudSyncService extends _$CloudSyncService {
           .toList();
 
       final payload = pb.SyncPayload();
+      final uploadedMessageIds = <String>[];
+      final uploadedDeletedIds = <String>[];
 
       for (final m in filteredMarkers) {
+        uploadedMessageIds.add('${m.id}_${m.timestamp}');
         payload.markers.add(
           pb.HazardMarker(
             id: m.id,
@@ -314,6 +316,7 @@ class CloudSyncService extends _$CloudSyncService {
       }
 
       for (final n in filteredNews) {
+        uploadedMessageIds.add('${n.id}_${n.timestamp}');
         payload.news.add(
           pb.NewsItem(
             id: n.id,
@@ -331,6 +334,7 @@ class CloudSyncService extends _$CloudSyncService {
       }
 
       for (final a in filteredAreas) {
+        uploadedMessageIds.add('${a.id}_${a.timestamp}');
         final areaMarker = pb.AreaMarker(
           id: a.id,
           type: a.type,
@@ -351,6 +355,7 @@ class CloudSyncService extends _$CloudSyncService {
       }
 
       for (final p in filteredPaths) {
+        uploadedMessageIds.add('${p.id}_${p.timestamp}');
         final pathMarker = pb.PathMarker(
           id: p.id,
           type: p.type,
@@ -371,6 +376,7 @@ class CloudSyncService extends _$CloudSyncService {
       }
 
       for (final p in profiles) {
+        uploadedMessageIds.add('${p.publicKey}_${p.timestamp}');
         payload.profiles.add(
           pb.UserProfile(
             publicKey: p.publicKey,
@@ -383,12 +389,15 @@ class CloudSyncService extends _$CloudSyncService {
       }
 
       for (final d in deleted) {
+        uploadedDeletedIds.add(d.id);
+        uploadedMessageIds.add('del_${d.id}_${d.timestamp}');
         payload.deletedItems.add(
           pb.DeletedItem(id: d.id, timestamp: Int64(d.timestamp)),
         );
       }
 
       for (final d in delegations) {
+        uploadedMessageIds.add('delg_${d.publicKey}_${d.timestamp}');
         payload.delegations.add(
           pb.TrustDelegation(
             id: 'delg_${d.publicKey}',
@@ -401,6 +410,7 @@ class CloudSyncService extends _$CloudSyncService {
       }
 
       for (final r in revocations) {
+        uploadedMessageIds.add('rev_${r.delegateePublicKey}_${r.timestamp}');
         payload.revokedDelegations.add(
           pb.RevokedDelegation(
             delegateePublicKey: r.delegateePublicKey,
@@ -409,6 +419,42 @@ class CloudSyncService extends _$CloudSyncService {
             signature: r.signature,
           ),
         );
+      }
+
+      if (!state.syncTextOnly) {
+        state = state.copyWith(
+          syncMessage: 'Uploading images...',
+          syncProgress: 0.2,
+        );
+        final dir = await getApplicationDocumentsDirectory();
+        final imageIds = [
+          ...filteredMarkers
+              .map((m) => m.imageId)
+              .where((id) => id != null && id.isNotEmpty),
+          ...filteredNews
+              .map((n) => n.imageId)
+              .where((id) => id != null && id.isNotEmpty),
+        ];
+
+        for (final imageId in imageIds) {
+          final file = File('${dir.path}/$imageId');
+          if (await file.exists()) {
+            try {
+              await Supabase.instance.client.storage
+                  .from('images')
+                  .upload(imageId!, file);
+            } catch (e) {
+              print('[CloudSyncService] Image upload error (might already exist): $e');
+              if (e is StorageException && e.statusCode == '409') {
+                // Duplicate, ignore
+              } else if (e.toString().contains('Duplicate') || e.toString().contains('already exists')) {
+                // Duplicate, ignore
+              } else {
+                throw Exception('Failed to upload image $imageId: $e');
+              }
+            }
+          }
+        }
       }
 
       if (payload.markers.isNotEmpty ||
@@ -439,54 +485,22 @@ class CloudSyncService extends _$CloudSyncService {
         }
       }
 
-      // Mark as uploaded regardless of whether payload was empty or not
-      final messageIdsToMark = recentSeenSet.difference(skippedMessageIds).toList();
-
       await db.transaction(() async {
-        if (messageIdsToMark.isNotEmpty) {
-          for (var i = 0; i < messageIdsToMark.length; i += 500) {
-            final chunk = messageIdsToMark.skip(i).take(500).toList();
+        if (uploadedMessageIds.isNotEmpty) {
+          for (var i = 0; i < uploadedMessageIds.length; i += 500) {
+            final chunk = uploadedMessageIds.skip(i).take(500).toList();
             await (db.update(db.seenMessageIds)..where((t) => t.messageId.isIn(chunk)))
                 .write(const SeenMessageIdsCompanion(uploadedToCloud: Value(true)));
           }
         }
-        if (deleted.isNotEmpty) {
-          for (var i = 0; i < deleted.length; i += 500) {
-            final chunk = deleted.skip(i).take(500).map((e) => e.id).toList();
+        if (uploadedDeletedIds.isNotEmpty) {
+          for (var i = 0; i < uploadedDeletedIds.length; i += 500) {
+            final chunk = uploadedDeletedIds.skip(i).take(500).toList();
             await (db.update(db.deletedItems)..where((t) => t.id.isIn(chunk)))
                 .write(const DeletedItemsCompanion(uploadedToCloud: Value(true)));
           }
         }
       });
-
-      if (!state.syncTextOnly) {
-        state = state.copyWith(
-          syncMessage: 'Uploading images...',
-          syncProgress: 0.4,
-        );
-        final dir = await getApplicationDocumentsDirectory();
-        final imageIds = [
-          ...filteredMarkers
-              .map((m) => m.imageId)
-              .where((id) => id != null && id.isNotEmpty),
-          ...filteredNews
-              .map((n) => n.imageId)
-              .where((id) => id != null && id.isNotEmpty),
-        ];
-
-        for (final imageId in imageIds) {
-          final file = File('${dir.path}/$imageId');
-          if (await file.exists()) {
-            try {
-              await Supabase.instance.client.storage
-                  .from('images')
-                  .upload(imageId!, file);
-            } catch (e) {
-              print('[CloudSyncService] Image upload error (might already exist): $e');
-            }
-          }
-        }
-      }
 
       // 2. "Download" new data from cloud
       state = state.copyWith(
@@ -527,7 +541,6 @@ class CloudSyncService extends _$CloudSyncService {
                   payload.paths.isNotEmpty ||
                   payload.delegations.isNotEmpty ||
                   payload.revokedDelegations.isNotEmpty) {
-                downloadedAny = true;
                 combinedPayload.markers.addAll(payload.markers);
                 combinedPayload.news.addAll(payload.news);
                 combinedPayload.profiles.addAll(payload.profiles);
@@ -560,20 +573,32 @@ class CloudSyncService extends _$CloudSyncService {
           syncProgress: 0.9,
         );
         await tempFile.writeAsBytes(combinedPayload.writeToBuffer());
+        
+        final completer = Completer<bool>();
+        final sub = FlutterBackgroundService().on('processPayloadComplete').listen((event) {
+          if (event != null && event['success'] == true) {
+            if (!completer.isCompleted) completer.complete(true);
+          } else {
+            if (!completer.isCompleted) completer.complete(false);
+          }
+        });
+
         ref.read(uiP2pServiceProvider.notifier).processPayloadFromFile(tempFile.path);
 
-        // Wait for the background service to pick it up
-        await Future.delayed(const Duration(seconds: 1));
-
-        // Wait until the background service finishes processing
-        while (true) {
-          final p2pState = ref.read(uiP2pServiceProvider);
-          if (!p2pState.isSyncing) {
-            break;
-          }
-          await Future.delayed(const Duration(milliseconds: 500));
+        print('[CloudSyncService] Downloaded and sent new data to background service. Waiting for processing...');
+        
+        bool processSuccess = false;
+        try {
+          processSuccess = await completer.future.timeout(const Duration(minutes: 5));
+        } catch (e) {
+          print('[CloudSyncService] Timeout waiting for payload processing.');
+        } finally {
+          sub.cancel();
         }
-        print('[CloudSyncService] Downloaded and processed new data from the cloud.');
+
+        if (!processSuccess) {
+          throw Exception('Failed to process downloaded payload');
+        }
       } else {
         print('[CloudSyncService] No new data found in the cloud.');
       }
