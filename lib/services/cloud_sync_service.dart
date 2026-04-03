@@ -427,6 +427,48 @@ class CloudSyncService extends _$CloudSyncService {
         );
       }
 
+      final skippedMessageIds = <String>{};
+
+      if (state.onlyTier1And2) {
+        final skippedMarkers = await (db.selectOnly(db.hazardMarkers)
+              ..addColumns([db.hazardMarkers.id, db.hazardMarkers.timestamp])
+              ..where(db.hazardMarkers.trustTier.isBiggerThanValue(2)))
+            .get();
+        for (final row in skippedMarkers) {
+          skippedMessageIds.add('${row.read(db.hazardMarkers.id)}_${row.read(db.hazardMarkers.timestamp)}');
+        }
+
+        final skippedNews = await (db.selectOnly(db.newsItems)
+              ..addColumns([db.newsItems.id, db.newsItems.timestamp])
+              ..where(db.newsItems.trustTier.isBiggerThanValue(2)))
+            .get();
+        for (final row in skippedNews) {
+          skippedMessageIds.add('${row.read(db.newsItems.id)}_${row.read(db.newsItems.timestamp)}');
+        }
+
+        final skippedAreas = await (db.selectOnly(db.areas)
+              ..addColumns([db.areas.id, db.areas.timestamp])
+              ..where(db.areas.trustTier.isBiggerThanValue(2)))
+            .get();
+        for (final row in skippedAreas) {
+          skippedMessageIds.add('${row.read(db.areas.id)}_${row.read(db.areas.timestamp)}');
+        }
+
+        final skippedPaths = await (db.selectOnly(db.paths)
+              ..addColumns([db.paths.id, db.paths.timestamp])
+              ..where(db.paths.trustTier.isBiggerThanValue(2)))
+            .get();
+        for (final row in skippedPaths) {
+          skippedMessageIds.add('${row.read(db.paths.id)}_${row.read(db.paths.timestamp)}');
+        }
+      }
+
+      final orphanedIds = recentSeenSet
+          .difference(uploadedMessageIds.toSet())
+          .difference(skippedMessageIds);
+      
+      uploadedMessageIds.addAll(orphanedIds);
+
       print("[CloudSyncService] DB queries for upload took ${syncStopwatch.elapsedMilliseconds}ms");
       syncStopwatch.reset();
 
