@@ -8,6 +8,18 @@ import 'database_provider.dart';
 
 part 'critical_alert_provider.g.dart';
 
+class RedAlertState {
+  final bool isActive;
+  final bool isMuted;
+  final String? latestAlertTitle;
+
+  RedAlertState({
+    this.isActive = false,
+    this.isMuted = false,
+    this.latestAlertTitle,
+  });
+}
+
 @Riverpod(keepAlive: true)
 class RedAlertController extends _$RedAlertController {
   List<HazardMarkerEntity> _markers = [];
@@ -19,7 +31,7 @@ class RedAlertController extends _$RedAlertController {
   bool _isVibrating = false;
 
   @override
-  bool build() {
+  RedAlertState build() {
     final db = ref.watch(databaseProvider);
 
     void check() {
@@ -31,8 +43,32 @@ class RedAlertController extends _$RedAlertController {
 
       final hasAlerts = activeMarkers.isNotEmpty || activeNews.isNotEmpty || activeAreas.isNotEmpty || activePaths.isNotEmpty;
 
-      if (hasAlerts != state) {
-        state = hasAlerts;
+      String? latestTitle;
+      int latestTs = 0;
+
+      for (final m in activeMarkers) {
+        if (m.timestamp > latestTs) {
+          latestTs = m.timestamp;
+          latestTitle = m.type;
+        }
+      }
+      for (final n in activeNews) {
+        if (n.timestamp > latestTs) {
+          latestTs = n.timestamp;
+          latestTitle = n.title;
+        }
+      }
+      for (final a in activeAreas) {
+        if (a.timestamp > latestTs) {
+          latestTs = a.timestamp;
+          latestTitle = a.type;
+        }
+      }
+      for (final p in activePaths) {
+        if (p.timestamp > latestTs) {
+          latestTs = p.timestamp;
+          latestTitle = p.type;
+        }
       }
 
       bool newAlert = false;
@@ -61,7 +97,15 @@ class RedAlertController extends _$RedAlertController {
         }
       }
 
-      if (newAlert) {
+      if (hasAlerts != state.isActive || latestTitle != state.latestAlertTitle || newAlert) {
+        state = RedAlertState(
+          isActive: hasAlerts,
+          isMuted: newAlert ? false : state.isMuted,
+          latestAlertTitle: latestTitle,
+        );
+      }
+
+      if (newAlert && !state.isMuted) {
         _triggerAlarm();
       }
     }
@@ -92,10 +136,11 @@ class RedAlertController extends _$RedAlertController {
       _audioPlayer.dispose();
     });
 
-    return false;
+    return RedAlertState();
   }
 
   void _triggerAlarm() async {
+    if (state.isMuted) return;
     _isVibrating = true;
     _vibrateLoop();
     try {
@@ -118,5 +163,10 @@ class RedAlertController extends _$RedAlertController {
     try {
       _audioPlayer.stop();
     } catch (_) {}
+    state = RedAlertState(
+      isActive: state.isActive,
+      isMuted: true,
+      latestAlertTitle: state.latestAlertTitle,
+    );
   }
 }

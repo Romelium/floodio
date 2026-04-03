@@ -123,13 +123,13 @@ class _SearchBarState extends ConsumerState<_SearchBar> {
   }
 }
 
-class RedAlertBanner extends StatefulWidget {
+class RedAlertBanner extends ConsumerStatefulWidget {
   const RedAlertBanner({super.key});
   @override
-  State<RedAlertBanner> createState() => _RedAlertBannerState();
+  ConsumerState<RedAlertBanner> createState() => _RedAlertBannerState();
 }
 
-class _RedAlertBannerState extends State<RedAlertBanner> with SingleTickerProviderStateMixin {
+class _RedAlertBannerState extends ConsumerState<RedAlertBanner> with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<Color?> _colorAnimation;
 
@@ -148,35 +148,55 @@ class _RedAlertBannerState extends State<RedAlertBanner> with SingleTickerProvid
 
   @override
   Widget build(BuildContext context) {
+    final alertState = ref.watch(redAlertControllerProvider);
+
     return AnimatedBuilder(
       animation: _colorAnimation,
       builder: (context, child) {
         return Material(
           color: _colorAnimation.value,
           elevation: 4,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Row(
-              children: [
-                const Icon(Icons.warning_amber_rounded, color: Colors.white, size: 28),
-                const SizedBox(width: 12),
-                const Expanded(
-                  child: Text(
-                    'CRITICAL EMERGENCY ALERT ACTIVE',
-                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16, letterSpacing: 1.2),
+          child: InkWell(
+            onTap: () {
+              ref.read(navigationIndexProvider.notifier).setIndex(1);
+            },
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Row(
+                children: [
+                  const Icon(Icons.warning_amber_rounded, color: Colors.white, size: 28),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text(
+                          'CRITICAL EMERGENCY',
+                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16, letterSpacing: 1.2),
+                        ),
+                        if (alertState.latestAlertTitle != null)
+                          Text(
+                            alertState.latestAlertTitle!,
+                            style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                      ],
+                    ),
                   ),
-                ),
-                Consumer(
-                  builder: (context, ref, child) {
-                    return IconButton(
+                  if (!alertState.isMuted)
+                    IconButton(
                       icon: const Icon(Icons.volume_off, color: Colors.white),
+                      tooltip: 'Mute Alarm',
                       onPressed: () {
                         ref.read(redAlertControllerProvider.notifier).stopAlarm();
                       },
-                    );
-                  }
-                )
-              ],
+                    )
+                  else
+                    const Icon(Icons.volume_off, color: Colors.white54, size: 20),
+                ],
+              ),
             ),
           ),
         );
@@ -202,6 +222,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   double _mapRotation = 0.0;
   bool _showTutorial = false;
   bool _isRequestingPermissions = false;
+  final LayerHitNotifier<String> _polygonHitNotifier = ValueNotifier(null);
+  final LayerHitNotifier<String> _polylineHitNotifier = ValueNotifier(null);
 
   void _showTrustModelHelp(BuildContext context) {
     showDialog(
@@ -662,6 +684,513 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           ),
         );
       },
+    );
+  }
+
+  void _showMarkerDetailsDialog(HazardMarkerEntity m, List<UserProfileEntity> profiles, bool isAdmin, AppSettingsData settings) {
+    final canEndorse = isAdmin && (m.trustTier == 3 || m.trustTier == 4);
+    final color = getHazardColor(m.type, m.trustTier);
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: Row(
+          children: [
+            Icon(getHazardIcon(m.type), color: color),
+            const SizedBox(width: 8),
+            Expanded(child: Text(m.type)),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              buildTrustBadge(m.trustTier),
+              const SizedBox(height: 16),
+              Text(
+                m.description,
+                style: const TextStyle(fontSize: 16),
+              ),
+              if (m.imageId != null && m.imageId!.isNotEmpty)
+                LocalImageDisplay(imageId: m.imageId!),
+              const SizedBox(height: 8),
+              Text(
+                'Reported: ${formatTimestamp(m.timestamp)}',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey.shade600,
+                ),
+              ),
+              Builder(
+                builder: (context) {
+                  final profile = getProfile(m.senderId, profiles);
+                  if (profile != null) {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Divider(),
+                        Text('Reported by: ${profile.name}'),
+                        if (profile.contactInfo.isNotEmpty)
+                          Text('Contact: ${profile.contactInfo}'),
+                      ],
+                    );
+                  } else {
+                    return const Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Divider(),
+                        Text('Reported by: Unknown User'),
+                      ],
+                    );
+                  }
+                },
+              ),
+              const SizedBox(height: 16),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  if (canEndorse)
+                    FilledButton.tonalIcon(
+                      onPressed: () {
+                        Navigator.pop(dialogContext);
+                        _endorseHazard(m);
+                      },
+                      icon: const Icon(Icons.verified, size: 16),
+                      label: const Text('Verify & Endorse'),
+                      style: FilledButton.styleFrom(
+                        foregroundColor: Colors.purple.shade700,
+                        backgroundColor: Colors.purple.shade50,
+                      ),
+                    ),
+                  if (canEndorse)
+                    FilledButton.tonalIcon(
+                      onPressed: () {
+                        Navigator.pop(dialogContext);
+                        _confirmDebunkReport(m.id, 'marker');
+                      },
+                      icon: const Icon(Icons.gavel, size: 16),
+                      label: const Text('Debunk'),
+                      style: FilledButton.styleFrom(
+                        foregroundColor: Colors.red.shade700,
+                        backgroundColor: Colors.red.shade50,
+                      ),
+                    ),
+                  FilledButton.tonalIcon(
+                    onPressed: () {
+                      Navigator.pop(dialogContext);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => CompassScreen(
+                            target: LatLng(m.latitude, m.longitude),
+                            title: m.type,
+                          ),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.explore, size: 16),
+                    label: const Text('Compass'),
+                    style: FilledButton.styleFrom(
+                      foregroundColor: Colors.blue.shade700,
+                      backgroundColor: Colors.blue.shade50,
+                    ),
+                  ),
+                  TextButton.icon(
+                    onPressed: () {
+                      Navigator.pop(dialogContext);
+                      _resolveMarker(m.id);
+                    },
+                    icon: const Icon(Icons.check_circle_outline, size: 16),
+                    label: const Text('Resolve'),
+                    style: TextButton.styleFrom(foregroundColor: Colors.green),
+                  ),
+                  if (m.trustTier == 4 || m.trustTier == 3)
+                    TextButton.icon(
+                      onPressed: () {
+                        Navigator.pop(dialogContext);
+                        _blockSender(m.senderId);
+                      },
+                      icon: const Icon(Icons.block, size: 16),
+                      label: const Text('Block'),
+                      style: TextButton.styleFrom(foregroundColor: Colors.red),
+                    ),
+                  if (m.trustTier == 4 || (settings.isOfficialMode && m.trustTier == 3))
+                    FilledButton.tonalIcon(
+                      onPressed: () {
+                        Navigator.pop(dialogContext);
+                        if (settings.isOfficialMode) {
+                          _makeOfficialVolunteer(m.senderId);
+                        } else {
+                          _markAsTrusted(m.senderId);
+                        }
+                      },
+                      icon: Icon(
+                        settings.isOfficialMode ? Icons.admin_panel_settings : Icons.verified_user,
+                        size: 16,
+                      ),
+                      label: Text(settings.isOfficialMode ? 'Make Volunteer' : 'Trust'),
+                      style: FilledButton.styleFrom(
+                        foregroundColor: settings.isOfficialMode ? Colors.purple.shade700 : Colors.green.shade700,
+                        backgroundColor: settings.isOfficialMode ? Colors.purple.shade50 : Colors.green.shade50,
+                      ),
+                    ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showAreaDetailsDialog(AreaEntity a, List<UserProfileEntity> profiles, bool isAdmin, AppSettingsData settings) {
+    final canEndorse = isAdmin && (a.trustTier == 3 || a.trustTier == 4);
+    final color = a.isCritical
+        ? Colors.red
+        : (a.type.toLowerCase().contains('safe') || a.type.toLowerCase().contains('evacuation')
+            ? Colors.green
+            : Colors.orange);
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: Row(
+          children: [
+            Icon(Icons.format_shapes, color: color),
+            const SizedBox(width: 8),
+            Expanded(child: Text(a.type)),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              buildTrustBadge(a.trustTier),
+              const SizedBox(height: 16),
+              Text(
+                a.description,
+                style: const TextStyle(fontSize: 16),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Reported: ${formatTimestamp(a.timestamp)}',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey.shade600,
+                ),
+              ),
+              Builder(
+                builder: (context) {
+                  final profile = getProfile(a.senderId, profiles);
+                  if (profile != null) {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Divider(),
+                        Text('Reported by: ${profile.name}'),
+                        if (profile.contactInfo.isNotEmpty)
+                          Text('Contact: ${profile.contactInfo}'),
+                      ],
+                    );
+                  } else {
+                    return const Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Divider(),
+                        Text('Reported by: Unknown User'),
+                      ],
+                    );
+                  }
+                },
+              ),
+              const SizedBox(height: 16),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  if (canEndorse)
+                    FilledButton.tonalIcon(
+                      onPressed: () {
+                        Navigator.pop(dialogContext);
+                        _endorseArea(a);
+                      },
+                      icon: const Icon(Icons.verified, size: 16),
+                      label: const Text('Verify & Endorse'),
+                      style: FilledButton.styleFrom(
+                        foregroundColor: Colors.purple.shade700,
+                        backgroundColor: Colors.purple.shade50,
+                      ),
+                    ),
+                  if (canEndorse)
+                    FilledButton.tonalIcon(
+                      onPressed: () {
+                        Navigator.pop(dialogContext);
+                        _confirmDebunkReport(a.id, 'area');
+                      },
+                      icon: const Icon(Icons.gavel, size: 16),
+                      label: const Text('Debunk'),
+                      style: FilledButton.styleFrom(
+                        foregroundColor: Colors.red.shade700,
+                        backgroundColor: Colors.red.shade50,
+                      ),
+                    ),
+                  if (a.coordinates.isNotEmpty)
+                    FilledButton.tonalIcon(
+                      onPressed: () {
+                        Navigator.pop(dialogContext);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => CompassScreen(
+                              target: LatLng(a.coordinates.first['lat']!, a.coordinates.first['lng']!),
+                              title: a.type,
+                            ),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.explore, size: 16),
+                      label: const Text('Compass'),
+                      style: FilledButton.styleFrom(
+                        foregroundColor: Colors.blue.shade700,
+                        backgroundColor: Colors.blue.shade50,
+                      ),
+                    ),
+                  TextButton.icon(
+                    onPressed: () {
+                      Navigator.pop(dialogContext);
+                      _resolveArea(a.id);
+                    },
+                    icon: const Icon(Icons.check_circle_outline, size: 16),
+                    label: const Text('Resolve'),
+                    style: TextButton.styleFrom(foregroundColor: Colors.green),
+                  ),
+                  if (a.trustTier == 4 || a.trustTier == 3)
+                    TextButton.icon(
+                      onPressed: () {
+                        Navigator.pop(dialogContext);
+                        _blockSender(a.senderId);
+                      },
+                      icon: const Icon(Icons.block, size: 16),
+                      label: const Text('Block'),
+                      style: TextButton.styleFrom(foregroundColor: Colors.red),
+                    ),
+                  if (a.trustTier == 4 || (settings.isOfficialMode && a.trustTier == 3))
+                    FilledButton.tonalIcon(
+                      onPressed: () {
+                        Navigator.pop(dialogContext);
+                        if (settings.isOfficialMode) {
+                          _makeOfficialVolunteer(a.senderId);
+                        } else {
+                          _markAsTrusted(a.senderId);
+                        }
+                      },
+                      icon: Icon(
+                        settings.isOfficialMode ? Icons.admin_panel_settings : Icons.verified_user,
+                        size: 16,
+                      ),
+                      label: Text(settings.isOfficialMode ? 'Make Volunteer' : 'Trust'),
+                      style: FilledButton.styleFrom(
+                        foregroundColor: settings.isOfficialMode ? Colors.purple.shade700 : Colors.green.shade700,
+                        backgroundColor: settings.isOfficialMode ? Colors.purple.shade50 : Colors.green.shade50,
+                      ),
+                    ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showPathDetailsDialog(PathEntity p, List<UserProfileEntity> profiles, bool isAdmin, AppSettingsData settings) {
+    final canEndorse = isAdmin && (p.trustTier == 3 || p.trustTier == 4);
+    final color = p.isCritical
+        ? Colors.red
+        : (p.type.toLowerCase().contains('safe') || p.type.toLowerCase().contains('evacuation')
+            ? Colors.green
+            : Colors.orange);
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: Row(
+          children: [
+            Icon(Icons.route, color: color),
+            const SizedBox(width: 8),
+            Expanded(child: Text(p.type)),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              buildTrustBadge(p.trustTier),
+              const SizedBox(height: 16),
+              Text(
+                p.description,
+                style: const TextStyle(fontSize: 16),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Reported: ${formatTimestamp(p.timestamp)}',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey.shade600,
+                ),
+              ),
+              Builder(
+                builder: (context) {
+                  final profile = getProfile(p.senderId, profiles);
+                  if (profile != null) {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Divider(),
+                        Text('Reported by: ${profile.name}'),
+                        if (profile.contactInfo.isNotEmpty)
+                          Text('Contact: ${profile.contactInfo}'),
+                      ],
+                    );
+                  } else {
+                    return const Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Divider(),
+                        Text('Reported by: Unknown User'),
+                      ],
+                    );
+                  }
+                },
+              ),
+              const SizedBox(height: 16),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  if (canEndorse)
+                    FilledButton.tonalIcon(
+                      onPressed: () {
+                        Navigator.pop(dialogContext);
+                        _endorsePath(p);
+                      },
+                      icon: const Icon(Icons.verified, size: 16),
+                      label: const Text('Verify & Endorse'),
+                      style: FilledButton.styleFrom(
+                        foregroundColor: Colors.purple.shade700,
+                        backgroundColor: Colors.purple.shade50,
+                      ),
+                    ),
+                  if (canEndorse)
+                    FilledButton.tonalIcon(
+                      onPressed: () {
+                        Navigator.pop(dialogContext);
+                        _confirmDebunkReport(p.id, 'path');
+                      },
+                      icon: const Icon(Icons.gavel, size: 16),
+                      label: const Text('Debunk'),
+                      style: FilledButton.styleFrom(
+                        foregroundColor: Colors.red.shade700,
+                        backgroundColor: Colors.red.shade50,
+                      ),
+                    ),
+                  if (p.coordinates.isNotEmpty)
+                    FilledButton.tonalIcon(
+                      onPressed: () {
+                        Navigator.pop(dialogContext);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => CompassScreen(
+                              target: LatLng(p.coordinates.first['lat']!, p.coordinates.first['lng']!),
+                              title: p.type,
+                            ),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.explore, size: 16),
+                      label: const Text('Compass'),
+                      style: FilledButton.styleFrom(
+                        foregroundColor: Colors.blue.shade700,
+                        backgroundColor: Colors.blue.shade50,
+                      ),
+                    ),
+                  TextButton.icon(
+                    onPressed: () {
+                      Navigator.pop(dialogContext);
+                      _resolvePath(p.id);
+                    },
+                    icon: const Icon(Icons.check_circle_outline, size: 16),
+                    label: const Text('Resolve'),
+                    style: TextButton.styleFrom(foregroundColor: Colors.green),
+                  ),
+                  if (p.trustTier == 4 || p.trustTier == 3)
+                    TextButton.icon(
+                      onPressed: () {
+                        Navigator.pop(dialogContext);
+                        _blockSender(p.senderId);
+                      },
+                      icon: const Icon(Icons.block, size: 16),
+                      label: const Text('Block'),
+                      style: TextButton.styleFrom(foregroundColor: Colors.red),
+                    ),
+                  if (p.trustTier == 4 || (settings.isOfficialMode && p.trustTier == 3))
+                    FilledButton.tonalIcon(
+                      onPressed: () {
+                        Navigator.pop(dialogContext);
+                        if (settings.isOfficialMode) {
+                          _makeOfficialVolunteer(p.senderId);
+                        } else {
+                          _markAsTrusted(p.senderId);
+                        }
+                      },
+                      icon: Icon(
+                        settings.isOfficialMode ? Icons.admin_panel_settings : Icons.verified_user,
+                        size: 16,
+                      ),
+                      label: Text(settings.isOfficialMode ? 'Make Volunteer' : 'Trust'),
+                      style: FilledButton.styleFrom(
+                        foregroundColor: settings.isOfficialMode ? Colors.purple.shade700 : Colors.green.shade700,
+                        backgroundColor: settings.isOfficialMode ? Colors.purple.shade50 : Colors.green.shade50,
+                      ),
+                    ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
     );
   }
 
@@ -2870,6 +3399,26 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   }
                 },
                 onTap: (tapPosition, point) {
+                  final polyHit = _polylineHitNotifier.value;
+                  if (polyHit != null && polyHit.hitValues.isNotEmpty) {
+                    final pathId = polyHit.hitValues.first;
+                    try {
+                      final path = paths.firstWhere((p) => p.id == pathId);
+                      _showPathDetailsDialog(path, profiles, isAdmin, settings);
+                      return;
+                    } catch (_) {}
+                  }
+
+                  final polyHitArea = _polygonHitNotifier.value;
+                  if (polyHitArea != null && polyHitArea.hitValues.isNotEmpty) {
+                    final areaId = polyHitArea.hitValues.first;
+                    try {
+                      final area = areas.firstWhere((a) => a.id == areaId);
+                      _showAreaDetailsDialog(area, profiles, isAdmin, settings);
+                      return;
+                    } catch (_) {}
+                  }
+
                   final drawingState = ref.read(drawingControllerProvider);
                   if (drawingState.mode == DrawingMode.area) {
                     ref
@@ -2909,6 +3458,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     ],
                   ),
                 PolygonLayer(
+                  hitNotifier: _polygonHitNotifier,
                   polygons: [
                     if (showOfflineRegions)
                       ...offlineRegions.map(
@@ -2935,6 +3485,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                                 ? Colors.green
                                 : Colors.orange);
                       return Polygon(
+                        hitValue: a.id,
                         points: points,
                         color: color.withValues(alpha: 0.3),
                         borderColor: color,
@@ -2960,6 +3511,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   ],
                 ),
                 PolylineLayer(
+                  hitNotifier: _polylineHitNotifier,
                   polylines: [
                     ...paths.map((p) {
                       final points = p.coordinates
@@ -2972,9 +3524,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                                 ? Colors.green
                                 : Colors.orange);
                       return Polyline(
+                        hitValue: p.id,
                         points: points,
                         color: color,
-                        strokeWidth: 4.0,
+                        strokeWidth: 8.0,
                         pattern: p.type.toLowerCase().contains('blocked')
                             ? StrokePattern.dashed(segments: const [10.0, 10.0])
                             : const StrokePattern.solid(),
@@ -3087,191 +3640,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                         child: GestureDetector(
                           behavior: HitTestBehavior.opaque,
                           onTap: () {
-                            final canEndorse =
-                                isAdmin &&
-                                (m.trustTier == 3 || m.trustTier == 4);
-
-                            showDialog(
-                              context: context,
-                              builder: (dialogContext) => AlertDialog(
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                                title: Row(
-                                  children: [
-                                    Icon(getHazardIcon(m.type), color: color),
-                                    const SizedBox(width: 8),
-                                    Text(m.type),
-                                  ],
-                                ),
-                                content: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    buildTrustBadge(m.trustTier),
-                                    const SizedBox(height: 16),
-                                    Text(
-                                      m.description,
-                                      style: const TextStyle(fontSize: 16),
-                                    ),
-                                    if (m.imageId != null &&
-                                        m.imageId!.isNotEmpty)
-                                      LocalImageDisplay(imageId: m.imageId!),
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      'Reported: ${formatTimestamp(m.timestamp)}',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.grey.shade600,
-                                      ),
-                                    ),
-                                    Builder(
-                                      builder: (context) {
-                                        final profile = getProfile(
-                                          m.senderId,
-                                          profiles,
-                                        );
-                                        if (profile != null) {
-                                          return Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              const Divider(),
-                                              Text(
-                                                'Reported by: ${profile.name}',
-                                              ),
-                                              if (profile
-                                                  .contactInfo
-                                                  .isNotEmpty)
-                                                Text(
-                                                  'Contact: ${profile.contactInfo}',
-                                                ),
-                                            ],
-                                          );
-                                        } else {
-                                          return const Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Divider(),
-                                              Text('Reported by: Unknown User'),
-                                            ],
-                                          );
-                                        }
-                                      },
-                                    ),
-                                  ],
-                                ),
-                                actions: [
-                                  if (canEndorse)
-                                    TextButton.icon(
-                                      onPressed: () {
-                                        Navigator.pop(dialogContext);
-                                        _endorseHazard(m);
-                                      },
-                                      icon: const Icon(
-                                        Icons.verified,
-                                        size: 18,
-                                      ),
-                                      label: const Text('Verify & Endorse'),
-                                      style: TextButton.styleFrom(
-                                        foregroundColor: Colors.purple,
-                                      ),
-                                    ),
-                                  if (canEndorse)
-                                    TextButton.icon(
-                                      onPressed: () {
-                                        Navigator.pop(dialogContext);
-                                        _confirmDebunkReport(m.id, 'marker');
-                                      },
-                                      icon: const Icon(Icons.gavel, size: 18),
-                                      label: const Text('Debunk'),
-                                      style: TextButton.styleFrom(
-                                        foregroundColor: Colors.red,
-                                      ),
-                                    ),
-                                  TextButton.icon(
-                                    onPressed: () {
-                                      Navigator.pop(dialogContext);
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (_) => CompassScreen(
-                                            target: LatLng(m.latitude, m.longitude),
-                                            title: m.type,
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                    icon: const Icon(Icons.explore, size: 18),
-                                    label: const Text('Compass'),
-                                    style: TextButton.styleFrom(
-                                      foregroundColor: Colors.blue,
-                                    ),
-                                  ),
-                                  TextButton.icon(
-                                    onPressed: () {
-                                      Navigator.pop(dialogContext);
-                                      _resolveMarker(m.id);
-                                    },
-                                    icon: const Icon(
-                                      Icons.check_circle_outline,
-                                      size: 18,
-                                    ),
-                                    label: const Text('Resolve'),
-                                    style: TextButton.styleFrom(
-                                      foregroundColor: Colors.green,
-                                    ),
-                                  ),
-                                  if (m.trustTier == 4 || m.trustTier == 3)
-                                    TextButton.icon(
-                                      onPressed: () {
-                                        Navigator.pop(dialogContext);
-                                        _blockSender(m.senderId);
-                                      },
-                                      icon: const Icon(Icons.block, size: 18),
-                                      label: const Text('Block'),
-                                      style: TextButton.styleFrom(
-                                        foregroundColor: Colors.red,
-                                      ),
-                                    ),
-                                  if (m.trustTier == 4 ||
-                                      (settings.isOfficialMode &&
-                                          m.trustTier == 3))
-                                    TextButton.icon(
-                                      onPressed: () {
-                                        Navigator.pop(dialogContext);
-                                        if (settings.isOfficialMode) {
-                                          _makeOfficialVolunteer(m.senderId);
-                                        } else {
-                                          _markAsTrusted(m.senderId);
-                                        }
-                                      },
-                                      icon: Icon(
-                                        settings.isOfficialMode
-                                            ? Icons.admin_panel_settings
-                                            : Icons.verified_user,
-                                        size: 18,
-                                      ),
-                                      label: Text(
-                                        settings.isOfficialMode
-                                            ? 'Make Volunteer'
-                                            : 'Trust',
-                                      ),
-                                      style: TextButton.styleFrom(
-                                        foregroundColor: settings.isOfficialMode
-                                            ? Colors.purple
-                                            : Colors.green,
-                                      ),
-                                    ),
-                                  TextButton(
-                                    onPressed: () =>
-                                        Navigator.pop(dialogContext),
-                                    child: const Text('Close'),
-                                  ),
-                                ],
-                              ),
-                            );
+                            _showMarkerDetailsDialog(m, profiles, isAdmin, settings);
                           },
                           child: Stack(
                             alignment: Alignment.center,
@@ -4957,7 +5326,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     final settings = ref.watch(appSettingsProvider);
     final effectiveIndex = ref.watch(navigationIndexProvider);
     final showHeatmap = ref.watch(showHeatmapProvider);
-    final isRedAlert = ref.watch(redAlertControllerProvider);
+    final isRedAlert = ref.watch(redAlertControllerProvider).isActive;
 
     int displayIndex = effectiveIndex;
     if (!settings.isOfficialMode && displayIndex > 3) {

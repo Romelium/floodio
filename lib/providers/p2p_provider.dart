@@ -6,7 +6,6 @@ import 'dart:math';
 
 import 'package:drift/drift.dart';
 import 'package:fixnum/fixnum.dart';
-import 'package:floodio/providers/location_provider.dart';
 import 'package:floodio/services/background_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
@@ -14,6 +13,7 @@ import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_p2p_connection/flutter_p2p_connection.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -2810,7 +2810,10 @@ class P2pService extends _$P2pService {
     final id = 'mock_hazard_${DateTime.now().millisecondsSinceEpoch}';
     final timestamp = DateTime.now().millisecondsSinceEpoch;
     
-    final loc = await ref.read(locationControllerProvider.notifier).getCurrentPosition();
+    Position? loc;
+    try {
+      loc = await Geolocator.getLastKnownPosition();
+    } catch (_) {}
     final lat = loc?.latitude ?? 10.7326718;
     final lng = loc?.longitude ?? 122.5482846;
 
@@ -2839,7 +2842,10 @@ class P2pService extends _$P2pService {
     final id = 'mock_critical_${DateTime.now().millisecondsSinceEpoch}';
     final timestamp = DateTime.now().millisecondsSinceEpoch;
 
-    final loc = await ref.read(locationControllerProvider.notifier).getCurrentPosition();
+    Position? loc;
+    try {
+      loc = await Geolocator.getLastKnownPosition();
+    } catch (_) {}
     final lat = loc?.latitude ?? 10.730185;
     final lng = loc?.longitude ?? 122.559115;
 

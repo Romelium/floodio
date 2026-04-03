@@ -54,7 +54,7 @@ class FloodioApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(appSettingsProvider);
     final isOfficial = settings.isOfficialMode;
-    final isRedAlert = ref.watch(redAlertControllerProvider);
+    final isRedAlert = ref.watch(redAlertControllerProvider).isActive;
 
     final seedColor = isRedAlert ? Colors.redAccent : (isOfficial ? const Color(0xFFB71C1C) : const Color(0xFF0D47A1));
     final primaryColor = isRedAlert ? Colors.redAccent : (isOfficial ? const Color(0xFFB71C1C) : const Color(0xFF0D47A1));
