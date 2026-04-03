@@ -105,12 +105,21 @@ class RedAlertController extends _$RedAlertController {
       if (hasAlerts != state.isActive || latestTitle != state.latestAlertTitle || newAlert) {
         state = RedAlertState(
           isActive: hasAlerts,
-          isMuted: newAlert ? false : state.isMuted,
+          isMuted: hasAlerts ? (newAlert ? false : state.isMuted) : false,
           latestAlertTitle: latestTitle,
         );
       }
 
-      if (newAlert && !state.isMuted) {
+      if (!hasAlerts) {
+        _isVibrating = false;
+        _isFlashing = false;
+        try {
+          _audioPlayer.stop();
+        } catch (_) {}
+        try {
+          TorchLight.disableTorch();
+        } catch (_) {}
+      } else if (newAlert && !state.isMuted) {
         _triggerAlarm();
       }
     }
@@ -150,10 +159,16 @@ class RedAlertController extends _$RedAlertController {
 
   void _triggerAlarm() async {
     if (state.isMuted) return;
+    
+    final startLoops = !_isVibrating && !_isFlashing;
     _isVibrating = true;
     _isFlashing = true;
-    _vibrateLoop();
-    _flashLoop();
+    
+    if (startLoops) {
+      _vibrateLoop();
+      _flashLoop();
+    }
+    
     try {
       try {
         await SoundMode.setSoundMode(RingerModeStatus.normal);
@@ -164,7 +179,9 @@ class RedAlertController extends _$RedAlertController {
       } catch (_) {}
 
       _audioPlayer.setReleaseMode(ReleaseMode.loop);
-      await _audioPlayer.play(UrlSource('https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg'));
+      if (_audioPlayer.state != PlayerState.playing) {
+        await _audioPlayer.play(UrlSource('https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg'));
+      }
     } catch (_) {}
   }
 

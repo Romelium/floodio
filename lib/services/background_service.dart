@@ -14,6 +14,7 @@ import '../providers/database_provider.dart';
 import '../providers/p2p_provider.dart';
 import '../providers/offline_regions_provider.dart';
 import '../providers/settings_provider.dart';
+import '../providers/critical_alert_provider.dart';
 
 bool isBackgroundIsolate = false;
 ServiceInstance? bgServiceInstance;
@@ -39,6 +40,16 @@ Future<void> initializeBackgroundService() async {
     importance: Importance.low,
   );
 
+  const AndroidNotificationChannel criticalChannel = AndroidNotificationChannel(
+    'floodio_critical_alerts',
+    'Critical Alerts',
+    description: 'High priority emergency alerts',
+    importance: Importance.max,
+    enableLights: true,
+    enableVibration: true,
+    playSound: true,
+  );
+
   final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
       FlutterLocalNotificationsPlugin();
 
@@ -55,6 +66,12 @@ Future<void> initializeBackgroundService() async {
         AndroidFlutterLocalNotificationsPlugin
       >()
       ?.createNotificationChannel(channel);
+
+  await flutterLocalNotificationsPlugin
+      .resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin
+      >()
+      ?.createNotificationChannel(criticalChannel);
 
   await service.configure(
     androidConfiguration: AndroidConfiguration(
@@ -263,5 +280,33 @@ void onStart(ServiceInstance service) async {
     }
 
     service.invoke('p2pStateUpdate', next.toMap());
+  });
+
+  container.listen(redAlertControllerProvider, (previous, next) async {
+    if (next.isActive && (previous == null || !previous.isActive || (next.latestAlertTitle != previous.latestAlertTitle))) {
+      final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+          FlutterLocalNotificationsPlugin();
+
+      flutterLocalNotificationsPlugin.show(
+        id: 999,
+        title: 'CRITICAL EMERGENCY',
+        body: next.latestAlertTitle ?? 'A critical alert has been issued.',
+        notificationDetails: const NotificationDetails(
+          android: AndroidNotificationDetails(
+            'floodio_critical_alerts',
+            'Critical Alerts',
+            channelDescription: 'High priority emergency alerts',
+            importance: Importance.max,
+            priority: Priority.max,
+            icon: 'ic_bg_service_small',
+            color: Colors.red,
+            enableLights: true,
+            enableVibration: true,
+            playSound: true,
+            fullScreenIntent: true,
+          ),
+        ),
+      );
+    }
   });
 }
