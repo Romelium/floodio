@@ -2505,10 +2505,13 @@ class P2pService extends _$P2pService {
           try {
             final bytes = await Supabase.instance.client.storage
                 .from('images')
-                .download(imageId);
+                .download(imageId)
+                .timeout(const Duration(seconds: 15));
             await file.writeAsBytes(bytes);
             downloaded = true;
-          } catch (_) {}
+          } catch (e) {
+            print("[P2pService] Failed to download image $imageId from cloud: $e");
+          }
 
           if (!downloaded && !isFromCloud) {
             await broadcastText(
@@ -2527,10 +2530,13 @@ class P2pService extends _$P2pService {
           try {
             final bytes = await Supabase.instance.client.storage
                 .from('images')
-                .download(imageId);
+                .download(imageId)
+                .timeout(const Duration(seconds: 15));
             await file.writeAsBytes(bytes);
             downloaded = true;
-          } catch (_) {}
+          } catch (e) {
+            print("[P2pService] Failed to download image $imageId from cloud: $e");
+          }
 
           if (!downloaded && !isFromCloud) {
             await broadcastText(

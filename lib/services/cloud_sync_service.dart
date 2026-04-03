@@ -236,7 +236,9 @@ class CloudSyncService extends _$CloudSyncService {
       final recentSeen = await (db.select(
         db.seenMessageIds,
       )..where((t) => t.uploadedToCloud.equals(false))).get();
-      final recentSeenSet = recentSeen.map((e) => e.messageId).toSet();
+      
+      // Limit upload batch size to prevent massive payloads and timeouts
+      final recentSeenSet = recentSeen.map((e) => e.messageId).take(500).toSet();
 
       final markers = await (db.select(db.hazardMarkers)..where((t) {
         Expression<bool> expr = const Constant(true);
@@ -278,6 +280,8 @@ class CloudSyncService extends _$CloudSyncService {
           .where((p) => recentSeenSet.contains('${p.publicKey}_${p.timestamp}'))
           .toList();
       final deleted = await (db.select(db.deletedItems)..where((t) => t.uploadedToCloud.equals(false))).get();
+      final filteredDeleted = deleted.take(500).toList();
+      
       final delegations = (await db.select(db.adminTrustedSenders).get())
           .where(
             (d) => recentSeenSet.contains('delg_${d.publicKey}_${d.timestamp}'),
@@ -388,7 +392,7 @@ class CloudSyncService extends _$CloudSyncService {
         );
       }
 
-      for (final d in deleted) {
+      for (final d in filteredDeleted) {
         uploadedDeletedIds.add(d.id);
         uploadedMessageIds.add('del_${d.id}_${d.timestamp}');
         payload.deletedItems.add(
@@ -442,16 +446,13 @@ class CloudSyncService extends _$CloudSyncService {
             try {
               await Supabase.instance.client.storage
                   .from('images')
-                  .upload(imageId!, file);
+                  .upload(imageId!, file)
+                  .timeout(const Duration(seconds: 30));
             } catch (e) {
               print('[CloudSyncService] Image upload error (might already exist): $e');
-              if (e is StorageException && e.statusCode == '409') {
-                // Duplicate, ignore
-              } else if (e.toString().contains('Duplicate') || e.toString().contains('already exists')) {
-                // Duplicate, ignore
-              } else {
-                throw Exception('Failed to upload image $imageId: $e');
-              }
+              // We don't throw here. If an image fails to upload (e.g. due to size limits, 
+              // network blip, or it already exists), we still want the text payload to sync.
+              // The image will just be missing on the other end, which the app handles gracefully.
             }
           }
         }
@@ -475,13 +476,13 @@ class CloudSyncService extends _$CloudSyncService {
         try {
           await Supabase.instance.client.from('sync_events').insert({
             'payload_base64': encoded,
-          });
+          }).timeout(const Duration(seconds: 30));
           print(
             '[CloudSyncService] Uploaded ${payload.markers.length} markers, ${payload.news.length} news, ${payload.areas.length} areas, ${payload.paths.length} paths to the cloud.',
           );
         } catch (e) {
           print('[CloudSyncService] Failed to upload payload to Supabase: $e');
-          throw Exception('Failed to upload payload to cloud');
+          throw Exception('Failed to upload payload to cloud: $e');
         }
       }
 
@@ -515,45 +516,56 @@ class CloudSyncService extends _$CloudSyncService {
       final tempFile = File('${tempDir.path}/cloud_sync_payload_${DateTime.now().millisecondsSinceEpoch}.dat');
       final combinedPayload = pb.SyncPayload();
 
-      while (hasMore) {
-        final response = await Supabase.instance.client
-            .from('sync_events')
-            .select()
-            .gt('id', currentLastId)
-            .order('id', ascending: true)
-            .limit(50);
+      int downloadBatches = 0;
+      while (hasMore && downloadBatches < 10) { // Limit to 10 batches (500 events) per sync to avoid OOM/timeouts
+        downloadBatches++;
+        try {
+          final response = await Supabase.instance.client
+              .from('sync_events')
+              .select()
+              .gt('id', currentLastId)
+              .order('id', ascending: true)
+              .limit(50)
+              .timeout(const Duration(seconds: 30));
 
-        if (response.isEmpty) {
-          hasMore = false;
-        } else {
-          downloadedAny = true;
-          for (final row in response) {
-            final encoded = row['payload_base64'] as String;
-            try {
-              final data = base64Decode(encoded);
-              final payload = pb.SyncPayload.fromBuffer(data);
-              
-              if (payload.markers.isNotEmpty ||
-                  payload.news.isNotEmpty ||
-                  payload.profiles.isNotEmpty ||
-                  payload.deletedItems.isNotEmpty ||
-                  payload.areas.isNotEmpty ||
-                  payload.paths.isNotEmpty ||
-                  payload.delegations.isNotEmpty ||
-                  payload.revokedDelegations.isNotEmpty) {
-                combinedPayload.markers.addAll(payload.markers);
-                combinedPayload.news.addAll(payload.news);
-                combinedPayload.profiles.addAll(payload.profiles);
-                combinedPayload.deletedItems.addAll(payload.deletedItems);
-                combinedPayload.areas.addAll(payload.areas);
-                combinedPayload.paths.addAll(payload.paths);
-                combinedPayload.delegations.addAll(payload.delegations);
-                combinedPayload.revokedDelegations.addAll(payload.revokedDelegations);
+          if (response.isEmpty) {
+            hasMore = false;
+          } else {
+            downloadedAny = true;
+            for (final row in response) {
+              final encoded = row['payload_base64'] as String;
+              try {
+                final data = base64Decode(encoded);
+                final payload = pb.SyncPayload.fromBuffer(data);
+
+                if (payload.markers.isNotEmpty ||
+                    payload.news.isNotEmpty ||
+                    payload.profiles.isNotEmpty ||
+                    payload.deletedItems.isNotEmpty ||
+                    payload.areas.isNotEmpty ||
+                    payload.paths.isNotEmpty ||
+                    payload.delegations.isNotEmpty ||
+                    payload.revokedDelegations.isNotEmpty) {
+                  combinedPayload.markers.addAll(payload.markers);
+                  combinedPayload.news.addAll(payload.news);
+                  combinedPayload.profiles.addAll(payload.profiles);
+                  combinedPayload.deletedItems.addAll(payload.deletedItems);
+                  combinedPayload.areas.addAll(payload.areas);
+                  combinedPayload.paths.addAll(payload.paths);
+                  combinedPayload.delegations.addAll(payload.delegations);
+                  combinedPayload.revokedDelegations.addAll(payload.revokedDelegations);
+                }
+              } catch (e) {
+                print('[CloudSyncService] Error decoding payload from cloud: $e');
               }
-            } catch (e) {
-              print('[CloudSyncService] Error decoding payload from cloud: $e');
+              currentLastId = row['id'] as int;
             }
-            currentLastId = row['id'] as int;
+          }
+        } catch (e) {
+          print('[CloudSyncService] Error downloading from cloud: $e');
+          hasMore = false; // Stop downloading, but process what we have so far
+          if (!downloadedAny) {
+            throw Exception('Failed to download from cloud: $e');
           }
         }
       }
