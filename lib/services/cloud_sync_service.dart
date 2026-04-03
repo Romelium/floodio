@@ -160,21 +160,36 @@ class CloudSyncService extends _$CloudSyncService {
       final skippedMessageIds = <String>{};
 
       if (state.onlyTier1And2) {
-        final markers = await db.select(db.hazardMarkers).get();
-        for (final m in markers) {
-          if (m.trustTier > 2) skippedMessageIds.add('${m.id}_${m.timestamp}');
+        final markers = await (db.selectOnly(db.hazardMarkers)
+              ..addColumns([db.hazardMarkers.id, db.hazardMarkers.timestamp])
+              ..where(db.hazardMarkers.trustTier.isBiggerThanValue(2)))
+            .get();
+        for (final row in markers) {
+          skippedMessageIds.add('${row.read(db.hazardMarkers.id)}_${row.read(db.hazardMarkers.timestamp)}');
         }
-        final news = await db.select(db.newsItems).get();
-        for (final n in news) {
-          if (n.trustTier > 2) skippedMessageIds.add('${n.id}_${n.timestamp}');
+        
+        final news = await (db.selectOnly(db.newsItems)
+              ..addColumns([db.newsItems.id, db.newsItems.timestamp])
+              ..where(db.newsItems.trustTier.isBiggerThanValue(2)))
+            .get();
+        for (final row in news) {
+          skippedMessageIds.add('${row.read(db.newsItems.id)}_${row.read(db.newsItems.timestamp)}');
         }
-        final areas = await db.select(db.areas).get();
-        for (final a in areas) {
-          if (a.trustTier > 2) skippedMessageIds.add('${a.id}_${a.timestamp}');
+
+        final areas = await (db.selectOnly(db.areas)
+              ..addColumns([db.areas.id, db.areas.timestamp])
+              ..where(db.areas.trustTier.isBiggerThanValue(2)))
+            .get();
+        for (final row in areas) {
+          skippedMessageIds.add('${row.read(db.areas.id)}_${row.read(db.areas.timestamp)}');
         }
-        final paths = await db.select(db.paths).get();
-        for (final p in paths) {
-          if (p.trustTier > 2) skippedMessageIds.add('${p.id}_${p.timestamp}');
+
+        final paths = await (db.selectOnly(db.paths)
+              ..addColumns([db.paths.id, db.paths.timestamp])
+              ..where(db.paths.trustTier.isBiggerThanValue(2)))
+            .get();
+        for (final row in paths) {
+          skippedMessageIds.add('${row.read(db.paths.id)}_${row.read(db.paths.timestamp)}');
         }
       }
 
@@ -224,37 +239,41 @@ class CloudSyncService extends _$CloudSyncService {
 
       final skippedMessageIds = <String>{};
 
-      final markers = (await db.select(db.hazardMarkers).get()).where((m) {
-        if (state.onlyTier1And2 && m.trustTier > 2) {
-          skippedMessageIds.add('${m.id}_${m.timestamp}');
-          return false;
+      final markers = await (db.select(db.hazardMarkers)..where((t) {
+        Expression<bool> expr = const Constant(true);
+        if (state.onlyTier1And2) {
+          expr = expr & t.trustTier.isSmallerOrEqualValue(2);
         }
-        return recentSeenSet.contains('${m.id}_${m.timestamp}');
-      }).toList();
+        return expr;
+      })).get();
+      final filteredMarkers = markers.where((m) => recentSeenSet.contains('${m.id}_${m.timestamp}')).toList();
 
-      final news = (await db.select(db.newsItems).get()).where((n) {
-        if (state.onlyTier1And2 && n.trustTier > 2) {
-          skippedMessageIds.add('${n.id}_${n.timestamp}');
-          return false;
+      final news = await (db.select(db.newsItems)..where((t) {
+        Expression<bool> expr = const Constant(true);
+        if (state.onlyTier1And2) {
+          expr = expr & t.trustTier.isSmallerOrEqualValue(2);
         }
-        return recentSeenSet.contains('${n.id}_${n.timestamp}');
-      }).toList();
+        return expr;
+      })).get();
+      final filteredNews = news.where((n) => recentSeenSet.contains('${n.id}_${n.timestamp}')).toList();
 
-      final areas = (await db.select(db.areas).get()).where((a) {
-        if (state.onlyTier1And2 && a.trustTier > 2) {
-          skippedMessageIds.add('${a.id}_${a.timestamp}');
-          return false;
+      final areas = await (db.select(db.areas)..where((t) {
+        Expression<bool> expr = const Constant(true);
+        if (state.onlyTier1And2) {
+          expr = expr & t.trustTier.isSmallerOrEqualValue(2);
         }
-        return recentSeenSet.contains('${a.id}_${a.timestamp}');
-      }).toList();
+        return expr;
+      })).get();
+      final filteredAreas = areas.where((a) => recentSeenSet.contains('${a.id}_${a.timestamp}')).toList();
 
-      final paths = (await db.select(db.paths).get()).where((p) {
-        if (state.onlyTier1And2 && p.trustTier > 2) {
-          skippedMessageIds.add('${p.id}_${p.timestamp}');
-          return false;
+      final paths = await (db.select(db.paths)..where((t) {
+        Expression<bool> expr = const Constant(true);
+        if (state.onlyTier1And2) {
+          expr = expr & t.trustTier.isSmallerOrEqualValue(2);
         }
-        return recentSeenSet.contains('${p.id}_${p.timestamp}');
-      }).toList();
+        return expr;
+      })).get();
+      final filteredPaths = paths.where((p) => recentSeenSet.contains('${p.id}_${p.timestamp}')).toList();
 
       final profiles = (await db.select(db.userProfiles).get())
           .where((p) => recentSeenSet.contains('${p.publicKey}_${p.timestamp}'))
@@ -275,7 +294,7 @@ class CloudSyncService extends _$CloudSyncService {
 
       final payload = pb.SyncPayload();
 
-      for (final m in markers) {
+      for (final m in filteredMarkers) {
         payload.markers.add(
           pb.HazardMarker(
             id: m.id,
@@ -294,7 +313,7 @@ class CloudSyncService extends _$CloudSyncService {
         );
       }
 
-      for (final n in news) {
+      for (final n in filteredNews) {
         payload.news.add(
           pb.NewsItem(
             id: n.id,
@@ -311,7 +330,7 @@ class CloudSyncService extends _$CloudSyncService {
         );
       }
 
-      for (final a in areas) {
+      for (final a in filteredAreas) {
         final areaMarker = pb.AreaMarker(
           id: a.id,
           type: a.type,
@@ -331,7 +350,7 @@ class CloudSyncService extends _$CloudSyncService {
         payload.areas.add(areaMarker);
       }
 
-      for (final p in paths) {
+      for (final p in filteredPaths) {
         final pathMarker = pb.PathMarker(
           id: p.id,
           type: p.type,
@@ -447,10 +466,10 @@ class CloudSyncService extends _$CloudSyncService {
         );
         final dir = await getApplicationDocumentsDirectory();
         final imageIds = [
-          ...markers
+          ...filteredMarkers
               .map((m) => m.imageId)
               .where((id) => id != null && id.isNotEmpty),
-          ...news
+          ...filteredNews
               .map((n) => n.imageId)
               .where((id) => id != null && id.isNotEmpty),
         ];

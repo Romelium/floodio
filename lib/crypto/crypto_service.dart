@@ -38,7 +38,7 @@ Future<(SimpleKeyPairData, SimplePublicKey, String?)> _initKeysLogic(
   return (userKeyPairExtracted, serverPubKey, newPrivKeyStr);
 }
 
-Future<String> _signDataLogic(
+Future<String> signDataLogic(
   SimpleKeyPairData keyPairData,
   List<int> data,
 ) async {
@@ -47,7 +47,7 @@ Future<String> _signDataLogic(
   return base64Encode(signature.bytes);
 }
 
-Future<int> _verifyDataLogic(
+Future<int> verifyDataLogic(
   List<int> data,
   String signatureStr,
   String senderPublicKeyStr,
@@ -94,7 +94,7 @@ Future<int> _verifyDataLogic(
   }
 }
 
-Future<bool> _verifyDelegationLogic(
+Future<bool> verifyDelegationLogic(
   String delegateePublicKeyStr,
   int timestamp,
   String signatureStr,
@@ -122,7 +122,7 @@ Future<bool> _verifyDelegationLogic(
   }
 }
 
-Future<bool> _verifyRevocationLogic(
+Future<bool> verifyRevocationLogic(
   String delegateePublicKeyStr,
   int timestamp,
   String signatureStr,
@@ -194,8 +194,10 @@ class CryptoService extends _$CryptoService {
     _serverPublicKey = serverPublicKey;
   }
 
+  List<int> get serverPublicKeyBytes => _serverPublicKey.bytes;
+
   Future<String> signData(List<int> data) async {
-    return _signDataLogic(_userKeyPair, data);
+    return signDataLogic(_userKeyPair, data);
   }
 
   Future<String> getPublicKeyString() async {
@@ -210,7 +212,7 @@ class CryptoService extends _$CryptoService {
     required String delegatorPublicKeyStr,
   }) async {
     final serverPubKeyBytes = _serverPublicKey.bytes;
-    return _verifyDelegationLogic(
+    return verifyDelegationLogic(
       delegateePublicKeyStr,
       timestamp,
       signatureStr,
@@ -226,7 +228,7 @@ class CryptoService extends _$CryptoService {
     required String delegatorPublicKeyStr,
   }) async {
     final serverPubKeyBytes = _serverPublicKey.bytes;
-    return _verifyRevocationLogic(
+    return verifyRevocationLogic(
       delegateePublicKeyStr,
       timestamp,
       signatureStr,
@@ -253,7 +255,7 @@ class CryptoService extends _$CryptoService {
         .where((k) => !revokedPublicKeys.contains(k))
         .toList();
 
-    return _verifyDataLogic(
+    return verifyDataLogic(
       data,
       signatureStr,
       senderPublicKeyStr,
