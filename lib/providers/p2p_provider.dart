@@ -48,6 +48,7 @@ class P2pState {
   final double? syncProgress;
   final int? syncEstimatedSeconds;
   final DateTime? lastSyncTime;
+  final String? lastSyncSummary;
   final AppHostState? hostState;
   final AppClientState? clientState;
   final List<AppDiscoveredDevice> discoveredDevices;
@@ -65,6 +66,7 @@ class P2pState {
     this.syncProgress,
     this.syncEstimatedSeconds,
     this.lastSyncTime,
+    this.lastSyncSummary,
     this.hostState,
     this.clientState,
     this.discoveredDevices = const [],
@@ -85,6 +87,8 @@ class P2pState {
     int? syncEstimatedSeconds,
     bool clearSyncEstimatedSeconds = false,
     DateTime? lastSyncTime,
+    String? lastSyncSummary,
+    bool clearLastSyncSummary = false,
     AppHostState? hostState,
     bool clearHostState = false,
     AppClientState? clientState,
@@ -108,6 +112,7 @@ class P2pState {
           ? null
           : (syncEstimatedSeconds ?? this.syncEstimatedSeconds),
       lastSyncTime: lastSyncTime ?? this.lastSyncTime,
+      lastSyncSummary: clearLastSyncSummary ? null : (lastSyncSummary ?? this.lastSyncSummary),
       hostState: clearHostState ? null : (hostState ?? this.hostState),
       clientState: clearClientState ? null : (clientState ?? this.clientState),
       discoveredDevices: discoveredDevices ?? this.discoveredDevices,
@@ -128,6 +133,7 @@ class P2pState {
       'syncProgress': syncProgress,
       'syncEstimatedSeconds': syncEstimatedSeconds,
       'lastSyncTime': lastSyncTime?.millisecondsSinceEpoch,
+      'lastSyncSummary': lastSyncSummary,
       'hostState': hostState != null
           ? {
               'isActive': hostState!.isActive,
@@ -172,6 +178,7 @@ class P2pState {
       lastSyncTime: map['lastSyncTime'] != null
           ? DateTime.fromMillisecondsSinceEpoch(map['lastSyncTime'])
           : null,
+      lastSyncSummary: map['lastSyncSummary'],
       hostState: map['hostState'] != null
           ? AppHostState.fromMap(Map<String, dynamic>.from(map['hostState']))
           : null,
@@ -215,6 +222,7 @@ class P2pState {
         other.syncProgress == syncProgress &&
         other.syncEstimatedSeconds == syncEstimatedSeconds &&
         other.lastSyncTime == lastSyncTime &&
+        other.lastSyncSummary == lastSyncSummary &&
         other.hostState == hostState &&
         other.clientState == clientState &&
         listEquals(other.discoveredDevices, discoveredDevices) &&
@@ -235,6 +243,7 @@ class P2pState {
       syncProgress,
       syncEstimatedSeconds,
       lastSyncTime,
+      lastSyncSummary,
       hostState,
       clientState,
       Object.hashAll(discoveredDevices),
@@ -1814,10 +1823,12 @@ class P2pService extends _$P2pService {
         return;
       }
 
+      final summary = 'Sent ${newHazards.length} markers, ${newNews.length} news, ${newProfiles.length} profiles, ${newAreas.length} areas, ${newPaths.length} paths, ${newDeleted.length} deletions, ${newDelegations.length} delegations, ${newRevocations.length} revocations.';
       terminalLog("[+] Preparing payload with ${newHazards.length} markers, ${newNews.length} news...");
       state = state.copyWith(
         syncMessage:
             'Sending ${newHazards.length} markers, ${newNews.length} news, ${newProfiles.length} profiles, ${newAreas.length} areas, ${newPaths.length} paths, ${newDeleted.length} deletions, ${newDelegations.length} delegations, ${newRevocations.length} revocations...',
+        lastSyncSummary: summary,
         clearSyncProgress: true,
       );
 
@@ -1986,6 +1997,7 @@ class P2pService extends _$P2pService {
       state = state.copyWith(
         isSyncing: false,
         syncMessage: 'Map file sent.',
+        lastSyncSummary: 'Sent offline map region.',
         clearSyncProgress: true,
       );
     } catch (e) {
@@ -2743,10 +2755,12 @@ class P2pService extends _$P2pService {
       }
     }
 
+    final summary = 'Received ${payload.markers.length} markers, ${payload.news.length} news, ${payload.profiles.length} profiles, ${payload.areas.length} areas, ${payload.paths.length} paths, ${payload.deletedItems.length} deletions, ${payload.delegations.length} delegations, ${payload.revokedDelegations.length} revocations.';
     state = state.copyWith(
       isSyncing: false,
       lastSyncTime: DateTime.now(),
       syncMessage: 'Successfully synced data.',
+      lastSyncSummary: summary,
       clearSyncProgress: true,
     );
     terminalLog("[+] Forwarding data took ${processStopwatch.elapsedMilliseconds}ms");

@@ -31,8 +31,11 @@ class MeshEdge {
   final MeshNode source;
   final MeshNode target;
   final bool isConnected;
+  final bool isSyncing;
+  final bool flowForward;
+  final bool flowBackward;
 
-  MeshEdge(this.source, this.target, this.isConnected);
+  MeshEdge(this.source, this.target, this.isConnected, {this.isSyncing = false, this.flowForward = false, this.flowBackward = false});
 }
 
 class MeshTopologyScreen extends ConsumerStatefulWidget {
@@ -81,6 +84,22 @@ class _MeshTopologyScreenState extends ConsumerState<MeshTopologyScreen>
     final localUser = ref.watch(localUserControllerProvider).value;
     final myName = localUser?.name ?? 'Me';
 
+    bool isSyncing = p2pState.isSyncing || p2pState.isConnecting;
+    bool flowToMe = false;
+    bool flowFromMe = false;
+
+    if (isSyncing) {
+      final msg = p2pState.syncMessage?.toLowerCase() ?? '';
+      if (msg.contains('downloading') || msg.contains('receiving') || msg.contains('unpacking')) {
+        flowToMe = true;
+      } else if (msg.contains('sending') || msg.contains('broadcasting') || msg.contains('forwarding') || msg.contains('packing')) {
+        flowFromMe = true;
+      } else {
+        flowToMe = true;
+        flowFromMe = true;
+      }
+    }
+
     List<MeshNode> newNodes = [];
     List<MeshEdge> newEdges = [];
 
@@ -104,7 +123,7 @@ class _MeshTopologyScreenState extends ConsumerState<MeshTopologyScreen>
         );
         newNodes.add(n);
         orbit1.add(n);
-        newEdges.add(MeshEdge(meNode, n, true));
+        newEdges.add(MeshEdge(meNode, n, true, isSyncing: isSyncing, flowForward: flowFromMe, flowBackward: flowToMe));
       }
       for (var device in p2pState.discoveredDevices) {
         final n = MeshNode(
@@ -128,7 +147,7 @@ class _MeshTopologyScreenState extends ConsumerState<MeshTopologyScreen>
       meNode.type = NodeType.connectedClient; // I am a client
       meNode.label = '$myName (You)';
       orbit1.add(meNode);
-      newEdges.add(MeshEdge(hostNode, meNode, true));
+      newEdges.add(MeshEdge(hostNode, meNode, true, isSyncing: isSyncing, flowForward: flowToMe, flowBackward: flowFromMe));
 
       for (var client in p2pState.connectedClients) {
         if (client.id != 'me' && !client.isHost) {
@@ -139,7 +158,7 @@ class _MeshTopologyScreenState extends ConsumerState<MeshTopologyScreen>
           );
           newNodes.add(n);
           orbit1.add(n);
-          newEdges.add(MeshEdge(hostNode, n, true));
+          newEdges.add(MeshEdge(hostNode, n, true, isSyncing: isSyncing, flowForward: flowToMe, flowBackward: flowFromMe));
         }
       }
       for (var device in p2pState.discoveredDevices) {
@@ -211,6 +230,10 @@ class _MeshTopologyScreenState extends ConsumerState<MeshTopologyScreen>
   }
 
   void _showNodeDetails(MeshNode node) {
+    final p2pState = ref.read(uiP2pServiceProvider);
+    final summary = p2pState.lastSyncSummary;
+    final msg = p2pState.syncMessage;
+
     showModalBottomSheet(
       context: context,
       backgroundColor: const Color(0xFF151A28),
@@ -275,6 +298,52 @@ class _MeshTopologyScreenState extends ConsumerState<MeshTopologyScreen>
                   ),
                 ),
                 const SizedBox(height: 24),
+                if (node.type == NodeType.connectedClient || node.type == NodeType.host)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.black26,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: color.withValues(alpha: 0.3)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(Icons.sync, color: color, size: 16),
+                            const SizedBox(width: 8),
+                            Text('Connection Status', style: TextStyle(color: color, fontWeight: FontWeight.bold)),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          p2pState.isSyncing ? 'Active Transfer: $msg' : 'Connected (Idle)',
+                          style: const TextStyle(color: Colors.white70, fontSize: 13),
+                        ),
+                        if (summary != null) ...[
+                          const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 12),
+                            child: Divider(color: Colors.white12, height: 1),
+                          ),
+                          Row(
+                            children: [
+                              Icon(Icons.history, color: color, size: 16),
+                              const SizedBox(width: 8),
+                              Text('Last Exchange', style: TextStyle(color: color, fontWeight: FontWeight.bold)),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            summary,
+                            style: const TextStyle(color: Colors.white70, fontSize: 13),
+                          ),
+                        ]
+                      ],
+                    ),
+                  ),
+                const SizedBox(height: 24),
                 if (node.type == NodeType.discovered)
                   FilledButton.icon(
                     onPressed: () {
@@ -288,11 +357,6 @@ class _MeshTopologyScreenState extends ConsumerState<MeshTopologyScreen>
                     label: const Text('Connect'),
                     style: FilledButton.styleFrom(backgroundColor: Colors.orange),
                   )
-                else if (node.type == NodeType.connectedClient || node.type == NodeType.host)
-                  const Text(
-                    'Actively syncing data...',
-                    style: TextStyle(color: Colors.white70),
-                  ),
               ],
             ),
           ),
@@ -441,7 +505,7 @@ class TopologyPainter extends CustomPainter {
     // Draw edges
     for (var edge in edges) {
       if (edge.isConnected) {
-        _drawConnectedEdge(canvas, edge.source.position, edge.target.position);
+        _drawConnectedEdge(canvas, edge);
       } else {
         _drawDashedEdge(canvas, edge.source.position, edge.target.position);
       }
@@ -467,10 +531,19 @@ class TopologyPainter extends CustomPainter {
     }
   }
 
-  void _drawConnectedEdge(Canvas canvas, Offset p1, Offset p2) {
-    final paint = Paint()
-      ..color = Colors.teal.withValues(alpha: 0.4)
-      ..strokeWidth = 3
+  void _drawConnectedEdge(Canvas canvas, MeshEdge edge) {
+    final p1 = edge.source.position;
+    final p2 = edge.target.position;
+
+    final glowPaint = Paint()
+      ..color = Colors.cyanAccent.withValues(alpha: edge.isSyncing ? 0.8 : 0.3)
+      ..strokeWidth = edge.isSyncing ? 6 : 2
+      ..style = PaintingStyle.stroke
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
+
+    final corePaint = Paint()
+      ..color = Colors.white.withValues(alpha: edge.isSyncing ? 0.9 : 0.5)
+      ..strokeWidth = edge.isSyncing ? 2 : 1
       ..style = PaintingStyle.stroke;
 
     // Draw curved line
@@ -485,30 +558,36 @@ class TopologyPainter extends CustomPainter {
     final controlPoint = midPoint + normalizedNormal * (distance * 0.15);
 
     path.quadraticBezierTo(controlPoint.dx, controlPoint.dy, p2.dx, p2.dy);
-    canvas.drawPath(path, paint);
+    canvas.drawPath(path, glowPaint);
+    canvas.drawPath(path, corePaint);
 
     // Draw flowing particles if syncing
-    if (isSyncing) {
-      _drawParticles(canvas, path, distance);
+    if (edge.isSyncing) {
+      if (edge.flowForward) _drawParticles(canvas, path, true);
+      if (edge.flowBackward) _drawParticles(canvas, path, false);
     }
   }
 
-  void _drawParticles(Canvas canvas, Path path, double distance) {
+  void _drawParticles(Canvas canvas, Path path, bool forward) {
     final metrics = path.computeMetrics().first;
-    final particlePaint = Paint()
+    final particleGlowPaint = Paint()
       ..color = Colors.cyanAccent
       ..style = PaintingStyle.fill
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3);
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
+
+    final particleCorePaint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.fill;
 
     const int numParticles = 3;
     for (int i = 0; i < numParticles; i++) {
       double offset = (flowValue + (i / numParticles)) % 1.0;
+      if (!forward) offset = 1.0 - offset; // Reverse direction
+
       final tangent = metrics.getTangentForOffset(metrics.length * offset);
       if (tangent != null) {
-        canvas.drawCircle(tangent.position, 4, particlePaint);
-        
-        // Core of particle
-        canvas.drawCircle(tangent.position, 2, Paint()..color = Colors.white);
+        canvas.drawCircle(tangent.position, 6, particleGlowPaint);
+        canvas.drawCircle(tangent.position, 2, particleCorePaint);
       }
     }
   }
@@ -578,9 +657,9 @@ class TopologyPainter extends CustomPainter {
 
     // Outer glow
     final glowPaint = Paint()
-      ..color = nodeColor.withValues(alpha: 0.5)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10);
-    canvas.drawCircle(node.position, 22, glowPaint);
+      ..color = nodeColor.withValues(alpha: 0.8)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 15);
+    canvas.drawCircle(node.position, 24, glowPaint);
 
     // Draw node circle (dark center)
     final nodePaint = Paint()
