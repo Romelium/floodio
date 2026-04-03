@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:battery_plus/battery_plus.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
@@ -32,10 +33,15 @@ class LocationController extends _$LocationController {
       return;
     }
 
+    bool isPowerSave = false;
+    try {
+      isPowerSave = await Battery().isInBatterySaveMode;
+    } catch (_) {}
+
     yield* Geolocator.getPositionStream(
-      locationSettings: const LocationSettings(
-        accuracy: LocationAccuracy.high,
-        distanceFilter: 5,
+      locationSettings: LocationSettings(
+        accuracy: isPowerSave ? LocationAccuracy.medium : LocationAccuracy.high,
+        distanceFilter: isPowerSave ? 20 : 5,
       ),
     );
   }
@@ -51,8 +57,13 @@ class LocationController extends _$LocationController {
     }
     if (permission == LocationPermission.deniedForever) return null;
 
+    bool isPowerSave = false;
+    try {
+      isPowerSave = await Battery().isInBatterySaveMode;
+    } catch (_) {}
+
     return await Geolocator.getCurrentPosition(
-      locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+      locationSettings: LocationSettings(accuracy: isPowerSave ? LocationAccuracy.medium : LocationAccuracy.high),
     );
   }
 }

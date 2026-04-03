@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../providers/battery_provider.dart';
 import '../providers/local_user_provider.dart';
 import '../providers/ui_p2p_provider.dart';
 
@@ -303,6 +304,8 @@ class _MeshTopologyScreenState extends ConsumerState<MeshTopologyScreen>
   @override
   Widget build(BuildContext context) {
     final isSyncing = ref.watch(uiP2pServiceProvider.select((s) => s.isSyncing || s.isConnecting));
+    final battery = ref.watch(batteryControllerProvider);
+    final isPowerSave = battery.isPowerSaveMode;
 
     return Scaffold(
       backgroundColor: const Color(0xFF0B0F19),
@@ -345,9 +348,9 @@ class _MeshTopologyScreenState extends ConsumerState<MeshTopologyScreen>
                             painter: TopologyPainter(
                               nodes: _nodes,
                               edges: _edges,
-                              pulseValue: _pulseController.value,
-                              flowValue: _flowController.value,
-                              isSyncing: isSyncing,
+                              pulseValue: isPowerSave ? 0.0 : _pulseController.value,
+                              flowValue: isPowerSave ? 0.0 : _flowController.value,
+                              isSyncing: isSyncing && !isPowerSave,
                             ),
                           );
                         },

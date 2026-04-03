@@ -4,6 +4,7 @@ import 'dart:io';
 import 'dart:isolate';
 import 'dart:math';
 
+import 'package:battery_plus/battery_plus.dart';
 import 'package:drift/drift.dart';
 import 'package:fixnum/fixnum.dart';
 import 'package:floodio/services/background_service.dart';
@@ -1024,8 +1025,22 @@ class P2pService extends _$P2pService {
       final prefs = ref.read(sharedPreferencesProvider);
       final baseInterval = prefs.getInt('settings_sync_interval') ?? 15;
 
+      int batteryMultiplier = 1;
+      try {
+        final battery = Battery();
+        final isPowerSave = await battery.isInBatterySaveMode;
+        final level = await battery.batteryLevel;
+        if (isPowerSave) {
+          batteryMultiplier = 4;
+        } else if (level < 20) {
+          batteryMultiplier = 3;
+        } else if (level < 50) {
+          batteryMultiplier = 2;
+        }
+      } catch (_) {}
+
       // Large jitter to prevent perfect sync loops between two devices.
-      int nextCycleSeconds = baseInterval + Random().nextInt(20);
+      int nextCycleSeconds = (baseInterval * batteryMultiplier) + Random().nextInt(20);
       
       if (state.isHosting) {
         // Give the host extra time so clients have a chance to discover and 

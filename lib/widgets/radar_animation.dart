@@ -4,11 +4,13 @@ import 'package:flutter/material.dart';
 class RadarAnimation extends StatefulWidget {
   final double size;
   final Color color;
+  final bool isPowerSave;
 
   const RadarAnimation({
     super.key,
     this.size = 100.0,
     this.color = Colors.blue,
+    this.isPowerSave = false,
   });
 
   @override
@@ -25,7 +27,22 @@ class _RadarAnimationState extends State<RadarAnimation>
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 2),
-    )..repeat();
+    );
+    if (!widget.isPowerSave) {
+      _controller.repeat();
+    }
+  }
+
+  @override
+  void didUpdateWidget(RadarAnimation oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isPowerSave != oldWidget.isPowerSave) {
+      if (widget.isPowerSave) {
+        _controller.stop();
+      } else {
+        _controller.repeat();
+      }
+    }
   }
 
   @override
@@ -259,11 +276,13 @@ class _RadarPainter extends CustomPainter {
 class RippleAnimation extends StatefulWidget {
   final double size;
   final Color color;
+  final bool isPowerSave;
 
   const RippleAnimation({
     super.key,
     this.size = 100.0,
     this.color = Colors.blue,
+    this.isPowerSave = false,
   });
 
   @override
@@ -280,7 +299,22 @@ class _RippleAnimationState extends State<RippleAnimation>
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 2),
-    )..repeat();
+    );
+    if (!widget.isPowerSave) {
+      _controller.repeat();
+    }
+  }
+
+  @override
+  void didUpdateWidget(RippleAnimation oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isPowerSave != oldWidget.isPowerSave) {
+      if (widget.isPowerSave) {
+        _controller.stop();
+      } else {
+        _controller.repeat();
+      }
+    }
   }
 
   @override

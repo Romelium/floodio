@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../providers/battery_provider.dart';
 import '../providers/offline_regions_provider.dart';
 import '../providers/ui_p2p_provider.dart';
 import '../providers/ui_state_provider.dart';
@@ -68,6 +69,8 @@ class SyncBottomSheet extends ConsumerWidget {
     final p2pNotifier = ref.read(uiP2pServiceProvider.notifier);
     final myRegionsAsync = ref.watch(offlineRegionsProvider);
     final myRegions = myRegionsAsync.value ?? [];
+    final battery = ref.watch(batteryControllerProvider);
+    final isPowerSave = battery.isPowerSaveMode;
 
     final isConnected =
         (p2pState.isHosting && p2pState.hostState?.isActive == true) ||
@@ -174,30 +177,55 @@ class SyncBottomSheet extends ConsumerWidget {
                 const SizedBox(height: 16),
 
                 // 1. Network Status
-                _buildNetworkStatusCard(context, ref, p2pState, isConnected, hasPeers, isBusy, isSyncingOrConnecting),
+                _buildNetworkStatusCard(context, ref, p2pState, isConnected, hasPeers, isBusy, isSyncingOrConnecting, isPowerSave),
 
                 const SizedBox(height: 24),
                 const Text('Connection Mode', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
                 const SizedBox(height: 12),
 
                 // 2. Auto-Sync
-                _buildModeCard(
-                  context: context,
-                  title: 'Mesh Auto-Sync',
-                  subtitle: 'Automatically switch between hosting and scanning to relay data.',
-                  icon: Icons.autorenew,
-                  activeColor: Colors.blue.shade700,
-                  isActive: p2pState.isAutoSyncing,
-                  isDisabled: false,
-                  onChanged: (val) async {
-                    if (val) {
-                      final enabled = await ensureServicesEnabled();
-                      if (enabled) p2pNotifier.toggleAutoSync();
-                    } else {
-                      p2pNotifier.toggleAutoSync();
-                    }
-                  },
-                ),
+                Consumer(builder: (context, ref, child) {
+                  final battery = ref.watch(batteryControllerProvider);
+                  final isBatteryLow = battery.isPowerSaveMode || battery.level < 20;
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildModeCard(
+                        context: context,
+                        title: 'Mesh Auto-Sync',
+                        subtitle: 'Automatically switch between hosting and scanning to relay data.',
+                        icon: Icons.autorenew,
+                        activeColor: Colors.blue.shade700,
+                        isActive: p2pState.isAutoSyncing,
+                        isDisabled: false,
+                        onChanged: (val) async {
+                          if (val) {
+                            final enabled = await ensureServicesEnabled();
+                            if (enabled) p2pNotifier.toggleAutoSync();
+                          } else {
+                            p2pNotifier.toggleAutoSync();
+                          }
+                        },
+                      ),
+                      if (p2pState.isAutoSyncing && isBatteryLow)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8.0, left: 8.0, right: 8.0),
+                          child: Row(
+                            children: [
+                              Icon(Icons.battery_alert, size: 16, color: Colors.orange.shade700),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Battery is low or in Power Save mode. Sync interval is automatically reduced to conserve power.',
+                                  style: TextStyle(fontSize: 12, color: Colors.orange.shade800),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  );
+                }),
                 const SizedBox(height: 12),
 
                 // 3. Manual Controls Row
@@ -654,6 +682,7 @@ class SyncBottomSheet extends ConsumerWidget {
     bool hasPeers,
     bool isBusy,
     bool isSyncingOrConnecting,
+    bool isPowerSave,
   ) {
     return Card(
       color: hasPeers
@@ -685,7 +714,7 @@ class SyncBottomSheet extends ConsumerWidget {
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     color: Theme.of(context).colorScheme.surface,
-                    boxShadow: [
+                    boxShadow: isPowerSave ? null : [
                       BoxShadow(
                         color: (p2pState.isScanning ? Colors.teal : Colors.green).withValues(alpha: 0.2),
                         blurRadius: 24,
@@ -694,8 +723,8 @@ class SyncBottomSheet extends ConsumerWidget {
                     ]
                   ),
                   child: p2pState.isScanning
-                    ? RadarAnimation(size: 140, color: Colors.teal.shade600)
-                    : RippleAnimation(size: 140, color: Colors.green.shade600),
+                    ? RadarAnimation(size: 140, color: Colors.teal.shade600, isPowerSave: isPowerSave)
+                    : RippleAnimation(size: 140, color: Colors.green.shade600, isPowerSave: isPowerSave),
                 ),
               ),
               const SizedBox(height: 8),

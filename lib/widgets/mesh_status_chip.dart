@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../providers/battery_provider.dart';
 import '../providers/ui_p2p_provider.dart';
 import 'sync_bottom_sheet.dart';
 
@@ -38,6 +39,8 @@ class _MeshStatusChipState extends ConsumerState<MeshStatusChip>
   @override
   Widget build(BuildContext context) {
     final p2pState = ref.watch(uiP2pServiceProvider);
+    final battery = ref.watch(batteryControllerProvider);
+    final isPowerSave = battery.isPowerSaveMode;
     final isConnected =
         (p2pState.isHosting && p2pState.hostState?.isActive == true) ||
         p2pState.clientState?.isActive == true;
@@ -71,7 +74,7 @@ class _MeshStatusChipState extends ConsumerState<MeshStatusChip>
                     ? Colors.transparent
                     : Theme.of(context).colorScheme.outline.withValues(alpha: 0.5),
               ),
-              boxShadow: isSyncing
+              boxShadow: (isSyncing && !isPowerSave)
                   ? [
                       BoxShadow(
                         color: glowColor.withValues(alpha: 0.6 * _animation.value),

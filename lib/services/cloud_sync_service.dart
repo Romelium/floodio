@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
 
+import 'package:battery_plus/battery_plus.dart';
 import 'package:drift/drift.dart';
 import 'package:fixnum/fixnum.dart';
 import 'package:floodio/database/database.dart';
@@ -112,7 +113,16 @@ class CloudSyncService extends _$CloudSyncService {
     _loadLastSyncTime().then((_) => _updateStatus());
 
     // Start periodic check (e.g., every 5 minutes)
-    _timer = Timer.periodic(const Duration(minutes: 5), (_) {
+    _timer = Timer.periodic(const Duration(minutes: 5), (_) async {
+      try {
+        final battery = Battery();
+        final isPowerSave = await battery.isInBatterySaveMode;
+        final level = await battery.batteryLevel;
+        if (isPowerSave || level < 15) {
+          terminalLog("[*] Skipping background cloud sync due to battery constraints (PowerSave: $isPowerSave, Level: $level%)");
+          return;
+        }
+      } catch (_) {}
       syncWithCloud();
     });
 
