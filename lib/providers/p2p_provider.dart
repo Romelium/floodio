@@ -1717,12 +1717,14 @@ class P2pService extends _$P2pService {
           DeletedItemsCompanion.insert(
             id: d.id,
             timestamp: d.timestamp.toInt(),
+            uploadedToCloud: Value(isFromCloud),
           ),
         );
         seenIds.add(
           SeenMessageIdsCompanion.insert(
             messageId: 'del_${d.id}_${d.timestamp}',
             timestamp: DateTime.now().millisecondsSinceEpoch,
+            uploadedToCloud: Value(isFromCloud),
           ),
         );
       }
@@ -1780,6 +1782,7 @@ class P2pService extends _$P2pService {
           SeenMessageIdsCompanion.insert(
             messageId: 'delg_${d.delegateePublicKey}_${d.timestamp}',
             timestamp: DateTime.now().millisecondsSinceEpoch,
+            uploadedToCloud: Value(isFromCloud),
           ),
         );
       } else {
@@ -1813,6 +1816,7 @@ class P2pService extends _$P2pService {
           SeenMessageIdsCompanion.insert(
             messageId: 'rev_${r.delegateePublicKey}_${r.timestamp}',
             timestamp: DateTime.now().millisecondsSinceEpoch,
+            uploadedToCloud: Value(isFromCloud),
           ),
         );
       } else {
@@ -1871,6 +1875,7 @@ class P2pService extends _$P2pService {
           SeenMessageIdsCompanion.insert(
             messageId: '${m.id}_${m.timestamp}',
             timestamp: DateTime.now().millisecondsSinceEpoch,
+            uploadedToCloud: Value(isFromCloud),
           ),
         );
       } else {
@@ -1921,6 +1926,7 @@ class P2pService extends _$P2pService {
           SeenMessageIdsCompanion.insert(
             messageId: '${n.id}_${n.timestamp}',
             timestamp: DateTime.now().millisecondsSinceEpoch,
+            uploadedToCloud: Value(isFromCloud),
           ),
         );
       } else {
@@ -1962,6 +1968,7 @@ class P2pService extends _$P2pService {
           SeenMessageIdsCompanion.insert(
             messageId: '${p.publicKey}_${p.timestamp}',
             timestamp: DateTime.now().millisecondsSinceEpoch,
+            uploadedToCloud: Value(isFromCloud),
           ),
         );
       } else {
@@ -2017,6 +2024,7 @@ class P2pService extends _$P2pService {
           SeenMessageIdsCompanion.insert(
             messageId: '${a.id}_${a.timestamp}',
             timestamp: DateTime.now().millisecondsSinceEpoch,
+            uploadedToCloud: Value(isFromCloud),
           ),
         );
       } else {
@@ -2072,6 +2080,7 @@ class P2pService extends _$P2pService {
           SeenMessageIdsCompanion.insert(
             messageId: '${p.id}_${p.timestamp}',
             timestamp: DateTime.now().millisecondsSinceEpoch,
+            uploadedToCloud: Value(isFromCloud),
           ),
         );
       } else {

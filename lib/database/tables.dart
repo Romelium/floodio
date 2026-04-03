@@ -96,14 +96,16 @@ class NewsItems extends Table {
 class SeenMessageIdEntity {
   final String messageId;
   final int timestamp;
+  final bool uploadedToCloud;
 
-  SeenMessageIdEntity({required this.messageId, required this.timestamp});
+  SeenMessageIdEntity({required this.messageId, required this.timestamp, this.uploadedToCloud = false});
 }
 
 @UseRowClass(SeenMessageIdEntity)
 class SeenMessageIds extends Table {
   TextColumn get messageId => text()();
   IntColumn get timestamp => integer()();
+  BoolColumn get uploadedToCloud => boolean().withDefault(const Constant(false))();
 
   @override
   Set<Column> get primaryKey => {messageId};
@@ -128,14 +130,16 @@ class TrustedSenders extends Table {
 class DeletedItemEntity {
   final String id;
   final int timestamp;
+  final bool uploadedToCloud;
 
-  DeletedItemEntity({required this.id, required this.timestamp});
+  DeletedItemEntity({required this.id, required this.timestamp, this.uploadedToCloud = false});
 }
 
 @UseRowClass(DeletedItemEntity)
 class DeletedItems extends Table {
   TextColumn get id => text()();
   IntColumn get timestamp => integer()();
+  BoolColumn get uploadedToCloud => boolean().withDefault(const Constant(false))();
 
   @override
   Set<Column> get primaryKey => {id};

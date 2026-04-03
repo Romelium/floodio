@@ -26,7 +26,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 13;
+  int get schemaVersion => 14;
 
   Future<void> cleanupOldData() async {
     final now = DateTime.now().millisecondsSinceEpoch;
@@ -162,6 +162,10 @@ class AppDatabase extends _$AppDatabase {
           await m.addColumn(newsItems, newsItems.isCritical);
           await m.addColumn(areas, areas.isCritical);
           await m.addColumn(paths, paths.isCritical);
+        }
+        if (from < 14) {
+          await m.addColumn(seenMessageIds, seenMessageIds.uploadedToCloud);
+          await m.addColumn(deletedItems, deletedItems.uploadedToCloud);
         }
       },
     );

@@ -5,6 +5,7 @@ import 'dart:isolate';
 
 import 'package:drift/drift.dart';
 import 'package:fixnum/fixnum.dart';
+import 'package:floodio/database/database.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -19,6 +20,7 @@ part 'cloud_sync_service.g.dart';
 class CloudSyncState {
   final bool isSyncing;
   final DateTime? lastSyncTime;
+  final int lastSyncEventId;
   final bool hasInternet;
   final int pendingUploads;
   final bool syncTextOnly;
@@ -29,6 +31,7 @@ class CloudSyncState {
   CloudSyncState({
     this.isSyncing = false,
     this.lastSyncTime,
+    this.lastSyncEventId = 0,
     this.hasInternet = false,
     this.pendingUploads = 0,
     this.syncTextOnly = false,
@@ -40,6 +43,7 @@ class CloudSyncState {
   CloudSyncState copyWith({
     bool? isSyncing,
     DateTime? lastSyncTime,
+    int? lastSyncEventId,
     bool? hasInternet,
     int? pendingUploads,
     bool? syncTextOnly,
@@ -52,6 +56,7 @@ class CloudSyncState {
     return CloudSyncState(
       isSyncing: isSyncing ?? this.isSyncing,
       lastSyncTime: lastSyncTime ?? this.lastSyncTime,
+      lastSyncEventId: lastSyncEventId ?? this.lastSyncEventId,
       hasInternet: hasInternet ?? this.hasInternet,
       pendingUploads: pendingUploads ?? this.pendingUploads,
       syncTextOnly: syncTextOnly ?? this.syncTextOnly,
@@ -68,6 +73,7 @@ class CloudSyncState {
           runtimeType == other.runtimeType &&
           isSyncing == other.isSyncing &&
           lastSyncTime == other.lastSyncTime &&
+          lastSyncEventId == other.lastSyncEventId &&
           hasInternet == other.hasInternet &&
           pendingUploads == other.pendingUploads &&
           syncTextOnly == other.syncTextOnly &&
@@ -79,6 +85,7 @@ class CloudSyncState {
   int get hashCode => Object.hash(
     isSyncing,
     lastSyncTime,
+    lastSyncEventId,
     hasInternet,
     pendingUploads,
     syncTextOnly,
@@ -127,11 +134,12 @@ class CloudSyncService extends _$CloudSyncService {
   Future<void> _loadLastSyncTime() async {
     final prefs = await SharedPreferences.getInstance();
     final timestamp = prefs.getInt('last_cloud_sync_time');
-    if (timestamp != null) {
-      state = state.copyWith(
-        lastSyncTime: DateTime.fromMillisecondsSinceEpoch(timestamp),
-      );
-    }
+    final eventId = prefs.getInt('last_sync_event_id') ?? 0;
+    
+    state = state.copyWith(
+      lastSyncTime: timestamp != null ? DateTime.fromMillisecondsSinceEpoch(timestamp) : null,
+      lastSyncEventId: eventId,
+    );
   }
 
   Future<void> _updateStatus() async {
@@ -143,61 +151,34 @@ class CloudSyncService extends _$CloudSyncService {
     int pending = 0;
     try {
       final db = ref.read(databaseProvider);
-      final lastSync = state.lastSyncTime?.millisecondsSinceEpoch ?? 0;
 
       final recentSeen = await (db.select(
         db.seenMessageIds,
-      )..where((t) => t.timestamp.isBiggerThanValue(lastSync))).get();
+      )..where((t) => t.uploadedToCloud.equals(false))).get();
       final recentSeenSet = recentSeen.map((e) => e.messageId).toSet();
 
-      final markers = (await db.select(db.hazardMarkers).get()).where((m) {
-        if (state.onlyTier1And2 && m.trustTier > 2) return false;
-        return recentSeenSet.contains('${m.id}_${m.timestamp}');
-      }).toList();
+      final skippedMessageIds = <String>{};
 
-      final news = (await db.select(db.newsItems).get()).where((n) {
-        if (state.onlyTier1And2 && n.trustTier > 2) return false;
-        return recentSeenSet.contains('${n.id}_${n.timestamp}');
-      }).toList();
+      if (state.onlyTier1And2) {
+        final markers = await db.select(db.hazardMarkers).get();
+        for (final m in markers) {
+          if (m.trustTier > 2) skippedMessageIds.add('${m.id}_${m.timestamp}');
+        }
+        final news = await db.select(db.newsItems).get();
+        for (final n in news) {
+          if (n.trustTier > 2) skippedMessageIds.add('${n.id}_${n.timestamp}');
+        }
+        final areas = await db.select(db.areas).get();
+        for (final a in areas) {
+          if (a.trustTier > 2) skippedMessageIds.add('${a.id}_${a.timestamp}');
+        }
+        final paths = await db.select(db.paths).get();
+        for (final p in paths) {
+          if (p.trustTier > 2) skippedMessageIds.add('${p.id}_${p.timestamp}');
+        }
+      }
 
-      final areas = (await db.select(db.areas).get()).where((a) {
-        if (state.onlyTier1And2 && a.trustTier > 2) return false;
-        return recentSeenSet.contains('${a.id}_${a.timestamp}');
-      }).toList();
-
-      final paths = (await db.select(db.paths).get()).where((p) {
-        if (state.onlyTier1And2 && p.trustTier > 2) return false;
-        return recentSeenSet.contains('${p.id}_${p.timestamp}');
-      }).toList();
-
-      final profiles = (await db.select(db.userProfiles).get())
-          .where((p) => recentSeenSet.contains('${p.publicKey}_${p.timestamp}'))
-          .toList();
-      final deleted = (await db.select(db.deletedItems).get())
-          .where((d) => recentSeenSet.contains('del_${d.id}_${d.timestamp}'))
-          .toList();
-      final delegations = (await db.select(db.adminTrustedSenders).get())
-          .where(
-            (d) => recentSeenSet.contains('delg_${d.publicKey}_${d.timestamp}'),
-          )
-          .toList();
-      final revocations = (await db.select(db.revokedDelegations).get())
-          .where(
-            (r) => recentSeenSet.contains(
-              'rev_${r.delegateePublicKey}_${r.timestamp}',
-            ),
-          )
-          .toList();
-
-      pending =
-          markers.length +
-          news.length +
-          areas.length +
-          paths.length +
-          profiles.length +
-          deleted.length +
-          delegations.length +
-          revocations.length;
+      pending = recentSeenSet.difference(skippedMessageIds).length;
     } catch (_) {}
 
     print("[CloudSyncService] Status updated. HasInternet: $internet, PendingUploads: $pending");
@@ -206,11 +187,11 @@ class CloudSyncService extends _$CloudSyncService {
 
   Future<bool> _hasInternet() async {
     try {
-      final result = await InternetAddress.lookup('google.com');
+      final result = await InternetAddress.lookup('google.com').timeout(const Duration(seconds: 5));
       if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
         return true;
       }
-    } on SocketException catch (_) {
+    } catch (_) {
       return false;
     }
     return false;
@@ -235,39 +216,50 @@ class CloudSyncService extends _$CloudSyncService {
 
     try {
       final db = ref.read(databaseProvider);
-      final lastSync = state.lastSyncTime?.millisecondsSinceEpoch ?? 0;
 
       final recentSeen = await (db.select(
         db.seenMessageIds,
-      )..where((t) => t.timestamp.isBiggerThanValue(lastSync))).get();
+      )..where((t) => t.uploadedToCloud.equals(false))).get();
       final recentSeenSet = recentSeen.map((e) => e.messageId).toSet();
 
+      final skippedMessageIds = <String>{};
+
       final markers = (await db.select(db.hazardMarkers).get()).where((m) {
-        if (state.onlyTier1And2 && m.trustTier > 2) return false;
+        if (state.onlyTier1And2 && m.trustTier > 2) {
+          skippedMessageIds.add('${m.id}_${m.timestamp}');
+          return false;
+        }
         return recentSeenSet.contains('${m.id}_${m.timestamp}');
       }).toList();
 
       final news = (await db.select(db.newsItems).get()).where((n) {
-        if (state.onlyTier1And2 && n.trustTier > 2) return false;
+        if (state.onlyTier1And2 && n.trustTier > 2) {
+          skippedMessageIds.add('${n.id}_${n.timestamp}');
+          return false;
+        }
         return recentSeenSet.contains('${n.id}_${n.timestamp}');
       }).toList();
 
       final areas = (await db.select(db.areas).get()).where((a) {
-        if (state.onlyTier1And2 && a.trustTier > 2) return false;
+        if (state.onlyTier1And2 && a.trustTier > 2) {
+          skippedMessageIds.add('${a.id}_${a.timestamp}');
+          return false;
+        }
         return recentSeenSet.contains('${a.id}_${a.timestamp}');
       }).toList();
 
       final paths = (await db.select(db.paths).get()).where((p) {
-        if (state.onlyTier1And2 && p.trustTier > 2) return false;
+        if (state.onlyTier1And2 && p.trustTier > 2) {
+          skippedMessageIds.add('${p.id}_${p.timestamp}');
+          return false;
+        }
         return recentSeenSet.contains('${p.id}_${p.timestamp}');
       }).toList();
 
       final profiles = (await db.select(db.userProfiles).get())
           .where((p) => recentSeenSet.contains('${p.publicKey}_${p.timestamp}'))
           .toList();
-      final deleted = (await db.select(db.deletedItems).get())
-          .where((d) => recentSeenSet.contains('del_${d.id}_${d.timestamp}'))
-          .toList();
+      final deleted = await (db.select(db.deletedItems)..where((t) => t.uploadedToCloud.equals(false))).get();
       final delegations = (await db.select(db.adminTrustedSenders).get())
           .where(
             (d) => recentSeenSet.contains('delg_${d.publicKey}_${d.timestamp}'),
@@ -414,12 +406,38 @@ class CloudSyncService extends _$CloudSyncService {
           syncProgress: 0.3,
         );
         final encoded = await Isolate.run(() => base64Encode(payload.writeToBuffer()));
-        await Supabase.instance.client.from('sync_events').insert({
-          'payload_base64': encoded,
-        });
-        print(
-          '[CloudSyncService] Uploaded ${payload.markers.length} markers, ${payload.news.length} news, ${payload.areas.length} areas, ${payload.paths.length} paths to the cloud.',
-        );
+        
+        try {
+          await Supabase.instance.client.from('sync_events').insert({
+            'payload_base64': encoded,
+          });
+          print(
+            '[CloudSyncService] Uploaded ${payload.markers.length} markers, ${payload.news.length} news, ${payload.areas.length} areas, ${payload.paths.length} paths to the cloud.',
+          );
+
+          // Mark as uploaded
+          final messageIdsToMark = recentSeenSet.difference(skippedMessageIds).toList();
+          
+          await db.transaction(() async {
+            if (messageIdsToMark.isNotEmpty) {
+              for (var i = 0; i < messageIdsToMark.length; i += 500) {
+                final chunk = messageIdsToMark.skip(i).take(500).toList();
+                await (db.update(db.seenMessageIds)..where((t) => t.messageId.isIn(chunk)))
+                    .write(const SeenMessageIdsCompanion(uploadedToCloud: Value(true)));
+              }
+            }
+            if (deleted.isNotEmpty) {
+              for (var i = 0; i < deleted.length; i += 500) {
+                final chunk = deleted.skip(i).take(500).map((e) => e.id).toList();
+                await (db.update(db.deletedItems)..where((t) => t.id.isIn(chunk)))
+                    .write(const DeletedItemsCompanion(uploadedToCloud: Value(true)));
+              }
+            }
+          });
+        } catch (e) {
+          print('[CloudSyncService] Failed to upload payload to Supabase: $e');
+          throw Exception('Failed to upload payload to cloud');
+        }
       }
 
       if (!state.syncTextOnly) {
@@ -445,7 +463,7 @@ class CloudSyncService extends _$CloudSyncService {
                   .from('images')
                   .upload(imageId!, file);
             } catch (e) {
-              // Ignore if already exists or error
+              print('[CloudSyncService] Image upload error (might already exist): $e');
             }
           }
         }
@@ -456,73 +474,80 @@ class CloudSyncService extends _$CloudSyncService {
         syncMessage: 'Checking for new data...',
         syncProgress: 0.5,
       );
-      final lastSyncIso = DateTime.fromMillisecondsSinceEpoch(
-        lastSync,
-      ).toUtc().toIso8601String();
-      final response = await Supabase.instance.client
-          .from('sync_events')
-          .select()
-          .gt('created_at', lastSyncIso)
-          .order('created_at', ascending: true);
+      
+      bool hasMore = true;
+      int currentLastId = state.lastSyncEventId;
+      bool downloadedAny = false;
+      final tempDir = await getTemporaryDirectory();
+      final tempFile = File('${tempDir.path}/cloud_sync_payload_${DateTime.now().millisecondsSinceEpoch}.dat');
+      final combinedPayload = pb.SyncPayload();
 
-      if (response.isEmpty) {
-        print('[CloudSyncService] No new data found in the cloud.');
-      } else {
-        state = state.copyWith(
-          syncMessage: 'Downloading from cloud...',
-          syncProgress: 0.7,
-        );
-        final tempDir = await getTemporaryDirectory();
-        final tempFile = File('${tempDir.path}/cloud_sync_payload_${DateTime.now().millisecondsSinceEpoch}.dat');
-        
-        final hasData = await Isolate.run(() async {
-          final combinedPayload = pb.SyncPayload();
-          bool added = false;
+      while (hasMore) {
+        final response = await Supabase.instance.client
+            .from('sync_events')
+            .select()
+            .gt('id', currentLastId)
+            .order('id', ascending: true)
+            .limit(50);
+
+        if (response.isEmpty) {
+          hasMore = false;
+        } else {
+          downloadedAny = true;
           for (final row in response) {
             final encoded = row['payload_base64'] as String;
             try {
               final data = base64Decode(encoded);
               final payload = pb.SyncPayload.fromBuffer(data);
-              combinedPayload.markers.addAll(payload.markers);
-              combinedPayload.news.addAll(payload.news);
-              combinedPayload.profiles.addAll(payload.profiles);
-              combinedPayload.deletedItems.addAll(payload.deletedItems);
-              combinedPayload.areas.addAll(payload.areas);
-              combinedPayload.paths.addAll(payload.paths);
-              combinedPayload.delegations.addAll(payload.delegations);
-              combinedPayload.revokedDelegations.addAll(payload.revokedDelegations);
-              added = true;
+              
+              if (payload.markers.isNotEmpty ||
+                  payload.news.isNotEmpty ||
+                  payload.profiles.isNotEmpty ||
+                  payload.deletedItems.isNotEmpty ||
+                  payload.areas.isNotEmpty ||
+                  payload.paths.isNotEmpty ||
+                  payload.delegations.isNotEmpty ||
+                  payload.revokedDelegations.isNotEmpty) {
+                downloadedAny = true;
+                combinedPayload.markers.addAll(payload.markers);
+                combinedPayload.news.addAll(payload.news);
+                combinedPayload.profiles.addAll(payload.profiles);
+                combinedPayload.deletedItems.addAll(payload.deletedItems);
+                combinedPayload.areas.addAll(payload.areas);
+                combinedPayload.paths.addAll(payload.paths);
+                combinedPayload.delegations.addAll(payload.delegations);
+                combinedPayload.revokedDelegations.addAll(payload.revokedDelegations);
+              }
             } catch (e) {
               print('[CloudSyncService] Error decoding payload from cloud: $e');
             }
-          }
-          if (added) {
-            await tempFile.writeAsBytes(combinedPayload.writeToBuffer());
-            return true;
-          }
-          return false;
-        });
-
-        if (hasData) {
-          state = state.copyWith(
-            syncMessage: 'Processing downloaded data...',
-            syncProgress: 0.9,
-          );
-          ref.read(uiP2pServiceProvider.notifier).processPayloadFromFile(tempFile.path);
-          
-          // Wait for the background service to pick it up
-          await Future.delayed(const Duration(seconds: 1));
-          
-          // Wait until the background service finishes processing
-          while (true) {
-            final p2pState = ref.read(uiP2pServiceProvider);
-            if (!p2pState.isSyncing) {
-              break;
-            }
-            await Future.delayed(const Duration(milliseconds: 500));
+            currentLastId = row['id'] as int;
           }
         }
+      }
+
+      if (downloadedAny) {
+        state = state.copyWith(
+          syncMessage: 'Processing downloaded data...',
+          syncProgress: 0.9,
+        );
+        await tempFile.writeAsBytes(combinedPayload.writeToBuffer());
+        ref.read(uiP2pServiceProvider.notifier).processPayloadFromFile(tempFile.path);
+
+        // Wait for the background service to pick it up
+        await Future.delayed(const Duration(seconds: 1));
+
+        // Wait until the background service finishes processing
+        while (true) {
+          final p2pState = ref.read(uiP2pServiceProvider);
+          if (!p2pState.isSyncing) {
+            break;
+          }
+          await Future.delayed(const Duration(milliseconds: 500));
+        }
         print('[CloudSyncService] Downloaded and processed new data from the cloud.');
+      } else {
+        print('[CloudSyncService] No new data found in the cloud.');
       }
 
       final prefs = await SharedPreferences.getInstance();
@@ -531,10 +556,12 @@ class CloudSyncService extends _$CloudSyncService {
         'last_cloud_sync_time',
         syncEndTime.millisecondsSinceEpoch,
       );
+      await prefs.setInt('last_sync_event_id', currentLastId);
 
       state = state.copyWith(
         isSyncing: false,
         lastSyncTime: syncEndTime,
+        lastSyncEventId: currentLastId,
         pendingUploads: 0,
         clearSyncMessage: true,
         clearSyncProgress: true,

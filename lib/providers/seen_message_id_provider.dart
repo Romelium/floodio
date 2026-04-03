@@ -23,6 +23,7 @@ class SeenMessageIdsController extends _$SeenMessageIdsController {
           SeenMessageIdsCompanion.insert(
             messageId: seenMessageId.messageId,
             timestamp: seenMessageId.timestamp,
+            uploadedToCloud: Value(seenMessageId.uploadedToCloud),
           ),
           mode: InsertMode.insertOrReplace,
         );
