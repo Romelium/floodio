@@ -243,15 +243,53 @@ class P2pState {
   }
 }
 
-Future<Map<String, dynamic>> _runVerifyPayloadInIsolate(Map<String, dynamic> args) {
-  return Isolate.run(() => _verifyPayloadInIsolate(args));
-}
-
 Future<String> _encodePayloadInIsolate(pb.SyncPayload payload) {
   return Isolate.run(() => base64Encode(payload.writeToBuffer()));
 }
 
-Future<Map<String, dynamic>> _verifyPayloadInIsolate(Map<String, dynamic> args) async {
+Future<Map<String, dynamic>> _runVerifyPayloadInIsolate(
+  Map<String, dynamic> args,
+  void Function(double) onProgress,
+) async {
+  final receivePort = ReceivePort();
+  args['sendPort'] = receivePort.sendPort;
+
+  final isolate = await Isolate.spawn(_verifyPayloadInIsolateWithProgress, args);
+
+  final completer = Completer<Map<String, dynamic>>();
+
+  receivePort.listen((message) {
+    if (message is double) {
+      onProgress(message);
+    } else if (message is Map<String, dynamic>) {
+      completer.complete(message);
+      receivePort.close();
+      isolate.kill();
+    } else if (message is Exception || message is Error) {
+      completer.completeError(message);
+      receivePort.close();
+      isolate.kill();
+    } else {
+      completer.completeError(Exception(message.toString()));
+      receivePort.close();
+      isolate.kill();
+    }
+  });
+
+  return completer.future;
+}
+
+Future<void> _verifyPayloadInIsolateWithProgress(Map<String, dynamic> args) async {
+  final sendPort = args['sendPort'] as SendPort;
+  try {
+    final result = await _verifyPayloadInIsolate(args, sendPort);
+    sendPort.send(result);
+  } catch (e, st) {
+    sendPort.send(Exception('$e\n$st'));
+  }
+}
+
+Future<Map<String, dynamic>> _verifyPayloadInIsolate(Map<String, dynamic> args, [SendPort? sendPort]) async {
   final payload = args['payload'] as pb.SyncPayload;
   final trustedKeys = (args['trustedKeys'] as List<String>).toSet();
   final adminTrustedKeys = (args['adminTrustedKeys'] as List<String>).toSet();
@@ -281,9 +319,34 @@ Future<Map<String, dynamic>> _verifyPayloadInIsolate(Map<String, dynamic> args) 
   final areaTrustTiers = <String, int>{};
   final pathTrustTiers = <String, int>{};
 
+  final totalItems = payload.delegations.length +
+      payload.revokedDelegations.length +
+      payload.markers.length +
+      payload.news.length +
+      payload.profiles.length +
+      payload.areas.length +
+      payload.paths.length;
+
+  int processed = 0;
+  int lastReportedPercent = -1;
+
+  void reportProgress() {
+    if (sendPort != null && totalItems > 0) {
+      final percent = ((processed / totalItems) * 100).toInt();
+      if (percent > lastReportedPercent) {
+        lastReportedPercent = percent;
+        sendPort.send(processed / totalItems);
+      }
+    }
+  }
+
   final delegationFutures = payload.delegations.map((d) async {
     final existingTs = delegationTimestamps[d.delegateePublicKey] ?? 0;
-    if (d.timestamp.toInt() <= existingTs) return null;
+    if (d.timestamp.toInt() <= existingTs) {
+      processed++;
+      reportProgress();
+      return null;
+    }
 
     final isValid = await verifyDelegationLogic(
       d.delegateePublicKey,
@@ -292,6 +355,8 @@ Future<Map<String, dynamic>> _verifyPayloadInIsolate(Map<String, dynamic> args) 
       d.delegatorPublicKey,
       serverPubKeyBytes,
     );
+    processed++;
+    reportProgress();
     if (isValid) {
       return d;
     }
@@ -309,7 +374,11 @@ Future<Map<String, dynamic>> _verifyPayloadInIsolate(Map<String, dynamic> args) 
 
   final revocationFutures = payload.revokedDelegations.map((r) async {
     final existingTs = revocationTimestamps[r.delegateePublicKey] ?? 0;
-    if (r.timestamp.toInt() <= existingTs) return null;
+    if (r.timestamp.toInt() <= existingTs) {
+      processed++;
+      reportProgress();
+      return null;
+    }
 
     final isValid = await verifyRevocationLogic(
       r.delegateePublicKey,
@@ -318,6 +387,8 @@ Future<Map<String, dynamic>> _verifyPayloadInIsolate(Map<String, dynamic> args) 
       r.delegatorPublicKey,
       serverPubKeyBytes,
     );
+    processed++;
+    reportProgress();
     if (isValid) {
       return r;
     }
@@ -334,9 +405,17 @@ Future<Map<String, dynamic>> _verifyPayloadInIsolate(Map<String, dynamic> args) 
   }
 
   final markerFutures = payload.markers.map((m) async {
-    if (deletedIds.contains(m.id)) return null;
+    if (deletedIds.contains(m.id)) {
+      processed++;
+      reportProgress();
+      return null;
+    }
     final existingTs = markerTimestamps[m.id] ?? 0;
-    if (m.timestamp.toInt() <= existingTs) return null;
+    if (m.timestamp.toInt() <= existingTs) {
+      processed++;
+      reportProgress();
+      return null;
+    }
 
     final imageIdStr = m.imageId.isEmpty ? "" : m.imageId;
     final expiresAtStr = m.expiresAt == 0 ? "" : m.expiresAt.toString();
@@ -354,6 +433,9 @@ Future<Map<String, dynamic>> _verifyPayloadInIsolate(Map<String, dynamic> args) 
       untrustedKeys,
     );
 
+    processed++;
+    reportProgress();
+
     if (trustTier != 5) {
       return MapEntry(m, trustTier);
     }
@@ -368,9 +450,17 @@ Future<Map<String, dynamic>> _verifyPayloadInIsolate(Map<String, dynamic> args) 
   }
 
   final newsFutures = payload.news.map((n) async {
-    if (deletedIds.contains(n.id)) return null;
+    if (deletedIds.contains(n.id)) {
+      processed++;
+      reportProgress();
+      return null;
+    }
     final existingTs = newsTimestamps[n.id] ?? 0;
-    if (n.timestamp.toInt() <= existingTs) return null;
+    if (n.timestamp.toInt() <= existingTs) {
+      processed++;
+      reportProgress();
+      return null;
+    }
 
     final imageIdStr = n.imageId.isEmpty ? "" : n.imageId;
     final expiresAtStr = n.expiresAt == 0 ? "" : n.expiresAt.toString();
@@ -388,6 +478,9 @@ Future<Map<String, dynamic>> _verifyPayloadInIsolate(Map<String, dynamic> args) 
       untrustedKeys,
     );
 
+    processed++;
+    reportProgress();
+
     if (trustTier != 5) {
       return MapEntry(n, trustTier);
     }
@@ -403,7 +496,11 @@ Future<Map<String, dynamic>> _verifyPayloadInIsolate(Map<String, dynamic> args) 
 
   final profileFutures = payload.profiles.map((p) async {
     final existingTs = profileTimestamps[p.publicKey] ?? 0;
-    if (p.timestamp.toInt() <= existingTs) return null;
+    if (p.timestamp.toInt() <= existingTs) {
+      processed++;
+      reportProgress();
+      return null;
+    }
 
     final payloadToSign = utf8.encode(
       '${p.publicKey}${p.name}${p.contactInfo}${p.timestamp}',
@@ -418,6 +515,9 @@ Future<Map<String, dynamic>> _verifyPayloadInIsolate(Map<String, dynamic> args) 
       untrustedKeys,
     );
 
+    processed++;
+    reportProgress();
+
     if (trustTier != 5) {
       return p;
     }
@@ -431,9 +531,17 @@ Future<Map<String, dynamic>> _verifyPayloadInIsolate(Map<String, dynamic> args) 
   }
 
   final areaFutures = payload.areas.map((a) async {
-    if (deletedIds.contains(a.id)) return null;
+    if (deletedIds.contains(a.id)) {
+      processed++;
+      reportProgress();
+      return null;
+    }
     final existingTs = areaTimestamps[a.id] ?? 0;
-    if (a.timestamp.toInt() <= existingTs) return null;
+    if (a.timestamp.toInt() <= existingTs) {
+      processed++;
+      reportProgress();
+      return null;
+    }
 
     final expiresAtStr = a.expiresAt == 0 ? "" : a.expiresAt.toString();
     final isCriticalStr = a.isCritical ? "1" : "0";
@@ -453,6 +561,9 @@ Future<Map<String, dynamic>> _verifyPayloadInIsolate(Map<String, dynamic> args) 
       untrustedKeys,
     );
 
+    processed++;
+    reportProgress();
+
     if (trustTier != 5) {
       return MapEntry(a, trustTier);
     }
@@ -467,9 +578,17 @@ Future<Map<String, dynamic>> _verifyPayloadInIsolate(Map<String, dynamic> args) 
   }
 
   final pathFutures = payload.paths.map((p) async {
-    if (deletedIds.contains(p.id)) return null;
+    if (deletedIds.contains(p.id)) {
+      processed++;
+      reportProgress();
+      return null;
+    }
     final existingTs = pathTimestamps[p.id] ?? 0;
-    if (p.timestamp.toInt() <= existingTs) return null;
+    if (p.timestamp.toInt() <= existingTs) {
+      processed++;
+      reportProgress();
+      return null;
+    }
 
     final expiresAtStr = p.expiresAt == 0 ? "" : p.expiresAt.toString();
     final isCriticalStr = p.isCritical ? "1" : "0";
@@ -488,6 +607,9 @@ Future<Map<String, dynamic>> _verifyPayloadInIsolate(Map<String, dynamic> args) 
       adminTrustedKeys,
       untrustedKeys,
     );
+
+    processed++;
+    reportProgress();
 
     if (trustTier != 5) {
       return MapEntry(p, trustTier);
@@ -2010,7 +2132,7 @@ class P2pService extends _$P2pService {
 
     state = state.copyWith(
       syncMessage: 'Verifying signatures in background...',
-      clearSyncProgress: true,
+      syncProgress: 0.0,
     );
 
     final myPubKeyStr = await crypto.getPublicKeyString();
@@ -2036,7 +2158,12 @@ class P2pService extends _$P2pService {
       'revocationTimestamps': revocationTimestamps,
     };
 
-    final result = await _runVerifyPayloadInIsolate(args);
+    final result = await _runVerifyPayloadInIsolate(args, (progress) {
+      state = state.copyWith(
+        syncMessage: 'Verifying signatures...',
+        syncProgress: progress,
+      );
+    });
 
     final validMarkersPb = result['validMarkers'] as List<pb.HazardMarker>;
     final validNewsPb = result['validNews'] as List<pb.NewsItem>;
