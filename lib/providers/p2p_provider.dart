@@ -2698,8 +2698,8 @@ class P2pService extends _$P2pService {
     final timestamp = DateTime.now().millisecondsSinceEpoch;
     
     final loc = await ref.read(locationControllerProvider.notifier).getCurrentPosition();
-    final lat = loc?.latitude ?? 10.730185;
-    final lng = loc?.longitude ?? 122.559115;
+    final lat = loc?.latitude ?? 10.7326718;
+    final lng = loc?.longitude ?? 122.5482846;
 
     final newMarker = HazardMarkersCompanion.insert(
       id: id,

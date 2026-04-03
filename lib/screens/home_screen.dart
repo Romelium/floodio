@@ -34,9 +34,9 @@ import '../providers/offline_regions_provider.dart';
 import '../providers/path_provider.dart';
 import '../providers/revoked_delegation_provider.dart';
 import '../providers/settings_provider.dart';
+import '../providers/sos_flashlight_provider.dart';
 import '../providers/trusted_sender_provider.dart';
 import '../providers/ui_p2p_provider.dart';
-import '../providers/sos_flashlight_provider.dart';
 import '../providers/ui_state_provider.dart';
 import '../providers/untrusted_sender_provider.dart';
 import '../providers/user_profile_provider.dart';
@@ -51,8 +51,8 @@ import '../widgets/heatmap_layer.dart';
 import '../widgets/local_image_display.dart';
 import '../widgets/mesh_status_chip.dart';
 import 'command_tab.dart';
-import 'guide_tab.dart';
 import 'compass_screen.dart';
+import 'guide_tab.dart';
 import 'mesh_topology_screen.dart';
 import 'profile_tab.dart';
 
@@ -1369,7 +1369,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       try {
         return _mapController.camera.center;
       } catch (_) {
-        return const LatLng(10.730185, 122.559115);
+        return const LatLng(10.7326718, 122.5482846);
       }
     }
   }
@@ -2854,7 +2854,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             FlutterMap(
               mapController: _mapController,
               options: MapOptions(
-                initialCenter: const LatLng(10.730185, 122.559115),
+                initialCenter: const LatLng(10.7326718, 122.5482846),
                 initialZoom: 13.0,
                 onPositionChanged: (camera, hasGesture) {
                   if (hasGesture && _isTrackingLocation) {
