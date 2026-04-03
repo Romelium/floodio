@@ -2,6 +2,10 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:drift/drift.dart';
 import 'package:flutter/services.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:sound_mode/sound_mode.dart';
+import 'package:sound_mode/utils/ringer_mode_statuses.dart';
+import 'package:torch_light/torch_light.dart';
+import 'package:volume_controller/volume_controller.dart';
 
 import '../database/tables.dart';
 import 'database_provider.dart';
@@ -29,6 +33,7 @@ class RedAlertController extends _$RedAlertController {
   final Set<String> _notifiedIds = {};
   final AudioPlayer _audioPlayer = AudioPlayer();
   bool _isVibrating = false;
+  bool _isFlashing = false;
 
   @override
   RedAlertState build() {
@@ -133,7 +138,11 @@ class RedAlertController extends _$RedAlertController {
       aSub.cancel();
       pSub.cancel();
       _isVibrating = false;
+      _isFlashing = false;
       _audioPlayer.dispose();
+      try {
+        TorchLight.disableTorch();
+      } catch (_) {}
     });
 
     return RedAlertState();
@@ -142,8 +151,18 @@ class RedAlertController extends _$RedAlertController {
   void _triggerAlarm() async {
     if (state.isMuted) return;
     _isVibrating = true;
+    _isFlashing = true;
     _vibrateLoop();
+    _flashLoop();
     try {
+      try {
+        await SoundMode.setSoundMode(RingerModeStatus.normal);
+      } catch (_) {}
+      try {
+        VolumeController.instance.showSystemUI = false;
+        await VolumeController.instance.setVolume(1.0);
+      } catch (_) {}
+
       _audioPlayer.setReleaseMode(ReleaseMode.loop);
       await _audioPlayer.play(UrlSource('https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg'));
     } catch (_) {}
@@ -158,10 +177,32 @@ class RedAlertController extends _$RedAlertController {
     }
   }
 
+  void _flashLoop() async {
+    bool torchOn = false;
+    while (_isFlashing) {
+      try {
+        if (torchOn) {
+          await TorchLight.disableTorch();
+        } else {
+          await TorchLight.enableTorch();
+        }
+        torchOn = !torchOn;
+      } catch (_) {}
+      await Future.delayed(const Duration(milliseconds: 300));
+    }
+    try {
+      await TorchLight.disableTorch();
+    } catch (_) {}
+  }
+
   void stopAlarm() {
     _isVibrating = false;
+    _isFlashing = false;
     try {
       _audioPlayer.stop();
+    } catch (_) {}
+    try {
+      TorchLight.disableTorch();
     } catch (_) {}
     state = RedAlertState(
       isActive: state.isActive,

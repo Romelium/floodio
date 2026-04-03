@@ -136,7 +136,7 @@ class _RedAlertBannerState extends ConsumerState<RedAlertBanner> with SingleTick
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(vsync: this, duration: const Duration(seconds: 1))..repeat(reverse: true);
+    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 300))..repeat(reverse: true);
     _colorAnimation = ColorTween(begin: Colors.red.shade900, end: Colors.redAccent).animate(_controller);
   }
 
@@ -201,6 +201,47 @@ class _RedAlertBannerState extends ConsumerState<RedAlertBanner> with SingleTick
           ),
         );
       }
+    );
+  }
+}
+
+class CriticalAlertOverlay extends ConsumerStatefulWidget {
+  const CriticalAlertOverlay({super.key});
+  @override
+  ConsumerState<CriticalAlertOverlay> createState() => _CriticalAlertOverlayState();
+}
+
+class _CriticalAlertOverlayState extends ConsumerState<CriticalAlertOverlay> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _opacityAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 300))..repeat(reverse: true);
+    _opacityAnimation = Tween<double>(begin: 0.0, end: 0.5).animate(_controller);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isMuted = ref.watch(redAlertControllerProvider).isMuted;
+    if (isMuted) return const SizedBox.shrink();
+
+    return IgnorePointer(
+      child: AnimatedBuilder(
+        animation: _opacityAnimation,
+        builder: (context, child) {
+          return Container(
+            color: Colors.red.withValues(alpha: _opacityAnimation.value),
+          );
+        }
+      ),
     );
   }
 }
@@ -5599,6 +5640,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                         right: 0,
                         child: TerminalOverlay(),
                       ),
+                    if (isRedAlert) const CriticalAlertOverlay(),
                   ],
                 ),
               ),
