@@ -88,7 +88,7 @@ class SettingsScreen extends ConsumerWidget {
           const Padding(
             padding: EdgeInsets.all(16.0),
             child: Text(
-              'Note: Faster sync intervals consume more battery but discover peers much quicker. 15s-30s is recommended during active emergencies.',
+              'Note: Faster sync intervals consume more battery but discover peers much quicker. 15s-30s is recommended during active emergencies. Smart-Sync automatically pauses scanning when stationary to save up to 80% battery.',
               style: TextStyle(
                 fontSize: 12,
                 color: Colors.grey,

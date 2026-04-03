@@ -315,7 +315,7 @@ class GuideTab extends ConsumerWidget {
                 ),
                 _buildFAQ(
                   'Does this drain my battery?',
-                  'Mesh syncing uses Bluetooth Low Energy (BLE) to find peers, which is very efficient. However, frequent Wi-Fi Direct transfers can impact battery life. You can adjust the "Sync Interval" in Settings (e.g., change from 15s to 5m) to save power. The app also respects Android\'s battery optimization settings.',
+                  'Floodio uses "Smart-Sync" which automatically pauses scanning when you are stationary, saving up to 80% of battery life. Mesh syncing also uses Bluetooth Low Energy (BLE) to find peers, which is very efficient. You can further adjust the "Sync Interval" in Settings to save power.',
                 ),
                 _buildFAQ(
                   'What is a "Global Action"?',

@@ -207,17 +207,19 @@ class SyncBottomSheet extends ConsumerWidget {
                           }
                         },
                       ),
-                      if (p2pState.isAutoSyncing && isBatteryLow)
+                      if (p2pState.isAutoSyncing)
                         Padding(
                           padding: const EdgeInsets.only(top: 8.0, left: 8.0, right: 8.0),
                           child: Row(
                             children: [
-                              Icon(Icons.battery_alert, size: 16, color: Colors.orange.shade700),
+                              Icon(isBatteryLow ? Icons.battery_alert : Icons.eco, size: 16, color: isBatteryLow ? Colors.orange.shade700 : Colors.green.shade700),
                               const SizedBox(width: 8),
                               Expanded(
                                 child: Text(
-                                  'Battery is low or in Power Save mode. Sync interval is automatically reduced to conserve power.',
-                                  style: TextStyle(fontSize: 12, color: Colors.orange.shade800),
+                                  isBatteryLow
+                                      ? 'Battery is low or in Power Save mode. Sync interval is automatically reduced to conserve power.'
+                                      : 'Smart-Sync active: Paused while stationary to save 80% battery.',
+                                  style: TextStyle(fontSize: 12, color: isBatteryLow ? Colors.orange.shade800 : Colors.green.shade800),
                                 ),
                               ),
                             ],
