@@ -123,6 +123,7 @@ Future<int> _isolateUnpackMap(MapUnpackData data) async {
     final header = await raf.read(7);
     if (header.length < 7 ||
         String.fromCharCodes(header.sublist(0, 6)) != 'FLDMAP') {
+      debugPrint('[MapCacheService] Invalid map pack file header');
       throw Exception('Invalid map pack file');
     }
     // read timestamp
@@ -149,6 +150,7 @@ Future<int> _isolateUnpackMap(MapUnpackData data) async {
         await tileFile.writeAsBytes(fileData);
       } catch (e) {
         debugPrint('Failed to write unpacked tile: $e');
+        debugPrint('[MapCacheService] Failed to write unpacked tile: $e');
       }
     }
     return timestamp; // Kept for backwards compatibility with older file headers
@@ -221,7 +223,7 @@ class MapCacheService {
         return bytes;
       }
     } catch (e) {
-      debugPrint('Error downloading tile: $e');
+      debugPrint('[MapCacheService] Error downloading tile: $e');
     }
     return null;
   }

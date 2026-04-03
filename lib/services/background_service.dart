@@ -76,6 +76,7 @@ Future<bool> onIosBackground(ServiceInstance service) async {
 
 @pragma('vm:entry-point')
 void onStart(ServiceInstance service) async {
+  print("[BackgroundService] Service started in isolate.");
   isBackgroundIsolate = true;
   bgServiceInstance = service;
   DartPluginRegistrant.ensureInitialized();

@@ -135,6 +135,7 @@ class CloudSyncService extends _$CloudSyncService {
   }
 
   Future<void> _updateStatus() async {
+    print("[CloudSyncService] Updating status...");
     if (state.isSyncing) return;
 
     final internet = await _hasInternet();
@@ -199,6 +200,7 @@ class CloudSyncService extends _$CloudSyncService {
           revocations.length;
     } catch (_) {}
 
+    print("[CloudSyncService] Status updated. HasInternet: $internet, PendingUploads: $pending");
     state = state.copyWith(hasInternet: internet, pendingUploads: pending);
   }
 
@@ -215,6 +217,7 @@ class CloudSyncService extends _$CloudSyncService {
   }
 
   Future<bool> syncWithCloud() async {
+    print("[CloudSyncService] Initiating syncWithCloud...");
     if (state.isSyncing) return false;
 
     final hasInternet = await _hasInternet();
@@ -415,7 +418,7 @@ class CloudSyncService extends _$CloudSyncService {
           'payload_base64': encoded,
         });
         print(
-          'CloudSync: Uploaded ${payload.markers.length} markers, ${payload.news.length} news, ${payload.areas.length} areas, ${payload.paths.length} paths to the cloud.',
+          '[CloudSyncService] Uploaded ${payload.markers.length} markers, ${payload.news.length} news, ${payload.areas.length} areas, ${payload.paths.length} paths to the cloud.',
         );
       }
 
@@ -463,7 +466,7 @@ class CloudSyncService extends _$CloudSyncService {
           .order('created_at', ascending: true);
 
       if (response.isEmpty) {
-        print('CloudSync: No new data found in the cloud.');
+        print('[CloudSyncService] No new data found in the cloud.');
       } else {
         state = state.copyWith(
           syncMessage: 'Downloading from cloud...',
@@ -490,7 +493,7 @@ class CloudSyncService extends _$CloudSyncService {
               combinedPayload.revokedDelegations.addAll(payload.revokedDelegations);
               added = true;
             } catch (e) {
-              print('Error decoding payload from cloud: $e');
+              print('[CloudSyncService] Error decoding payload from cloud: $e');
             }
           }
           if (added) {
@@ -519,7 +522,7 @@ class CloudSyncService extends _$CloudSyncService {
             await Future.delayed(const Duration(milliseconds: 500));
           }
         }
-        print('CloudSync: Downloaded and processed new data from the cloud.');
+        print('[CloudSyncService] Downloaded and processed new data from the cloud.');
       }
 
       final prefs = await SharedPreferences.getInstance();
@@ -538,7 +541,7 @@ class CloudSyncService extends _$CloudSyncService {
       );
       return true;
     } catch (e) {
-      print('CloudSync: Error syncing with cloud: $e');
+      print('[CloudSyncService] Error syncing with cloud: $e');
       state = state.copyWith(
         isSyncing: false,
         syncMessage: 'Error: $e',

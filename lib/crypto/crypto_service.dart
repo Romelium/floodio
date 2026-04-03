@@ -58,6 +58,7 @@ Future<int> _verifyDataLogic(
 ) async {
   try {
     if (untrustedPublicKeys.contains(senderPublicKeyStr)) {
+      print("[CryptoService] Dropping payload: Sender is in untrusted list.");
       return 5; // Drop
     }
     final signatureBytes = base64Decode(signatureStr);
@@ -73,7 +74,10 @@ Future<int> _verifyDataLogic(
       data,
       signature: Signature(signatureBytes, publicKey: senderPubKey),
     );
-    if (!isValid) return 5;
+    if (!isValid) {
+      print("[CryptoService] Dropping payload: Invalid Ed25519 signature.");
+      return 5;
+    }
 
     if (senderPublicKeyStr == base64Encode(serverPubKeyBytes)) {
       return 1;
@@ -85,6 +89,7 @@ Future<int> _verifyDataLogic(
 
     return trustedPublicKeys.contains(senderPublicKeyStr) ? 3 : 4;
   } catch (e) {
+    print("[CryptoService] Exception during signature verification: $e");
     return 5;
   }
 }
