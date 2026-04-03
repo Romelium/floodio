@@ -42,6 +42,7 @@ class SosFlashlightController extends _$SosFlashlightController {
 
   Future<bool> toggle() async {
     if (state) {
+      state = false;
       await _stopFlashing();
       return false;
     } else {
@@ -98,7 +99,6 @@ class SosFlashlightController extends _$SosFlashlightController {
   }
 
   Future<void> _stopFlashing() async {
-    state = false;
     _timer?.cancel();
     try {
       await TorchLight.disableTorch();
