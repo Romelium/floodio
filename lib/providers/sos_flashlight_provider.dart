@@ -51,15 +51,25 @@ class SosFlashlightController extends _$SosFlashlightController {
 
   Future<bool> _startFlashing() async {
     try {
-      bool hasTorch = await TorchLight.isTorchAvailable();
-      if (!hasTorch) return false;
-    } on Exception catch (_) {
+      // Bypass isTorchAvailable() as it can be unreliable on some devices.
+      // Directly attempt to enable the torch.
+      await TorchLight.enableTorch();
+    } on Exception catch (e) {
+      print("Torch error: $e");
       return false;
     }
 
     state = true;
     _sequenceIndex = 0;
-    _processNextStep();
+    
+    // Since we just turned it on, wait for the first step's duration
+    final duration = _sosSequence[0].$2;
+    _timer = Timer(Duration(milliseconds: duration), () {
+      if (!state) return;
+      _sequenceIndex = 1;
+      _processNextStep();
+    });
+    
     return true;
   }
 
