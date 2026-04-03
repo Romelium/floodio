@@ -13,6 +13,46 @@ import '../utils/ui_helpers.dart';
 class CommandTab extends ConsumerWidget {
   const CommandTab({super.key});
 
+  void _showCloudHelp(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Cloud Gateway Guide'),
+        content: const Text(
+          'The Cloud Gateway bridges the offline mesh network with the central database.\n\n'
+          '• Sync Text Only: Skips uploading images to save bandwidth on slow connections (e.g., satellite).\n'
+          '• Only Upload Tier 1 & 2: Filters out unverified crowdsourced reports, uploading only official and volunteer data to the cloud.\n'
+          '• Force Cloud Sync Now: Pushes local data to the cloud and pulls the latest global alerts.',
+        ),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showMeshActionsHelp(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Mesh Network Actions'),
+        content: const Text(
+          '• Manual Mesh Sync: Forces an immediate 2-way synchronization with all currently connected devices in your local mesh network. Useful if Auto-Sync is paused or you want to ensure immediate delivery.\n\n'
+          '• Broadcast Offline Map: Sends a downloaded map region to all currently connected devices. This allows you to distribute maps to citizens who have no internet access.',
+        ),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return CustomScrollView(
@@ -35,16 +75,21 @@ class CommandTab extends ConsumerWidget {
                 const SizedBox(height: 24),
 
                 // Cloud Gateway Section
-                const Row(
+                Row(
                   children: [
-                    Icon(Icons.cloud_sync, color: Colors.blue),
-                    SizedBox(width: 8),
-                    Text(
+                    const Icon(Icons.cloud_sync, color: Colors.blue),
+                    const SizedBox(width: 8),
+                    const Text(
                       'Cloud Gateway',
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),
+                    ),
+                    const Spacer(),
+                    IconButton(
+                      icon: const Icon(Icons.help_outline, size: 20, color: Colors.blue),
+                      onPressed: () => _showCloudHelp(context),
                     ),
                   ],
                 ),
@@ -66,6 +111,11 @@ class CommandTab extends ConsumerWidget {
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),
+                    ),
+                    const Spacer(),
+                    IconButton(
+                      icon: const Icon(Icons.help_outline, size: 20, color: Colors.orange),
+                      onPressed: () => _showMeshActionsHelp(context),
                     ),
                   ],
                 ),

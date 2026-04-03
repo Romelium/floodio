@@ -202,6 +202,87 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   bool _showTutorial = false;
   bool _isRequestingPermissions = false;
 
+  void _showTrustModelHelp(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('The 4-Tier Trust Model'),
+        content: const SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('To prevent misinformation, every report is cryptographically signed and categorized:', style: TextStyle(fontSize: 13, color: Colors.grey)),
+              SizedBox(height: 16),
+              Text('🔵 Tier 1: OFFICIAL', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue)),
+              Text('Reports from Government, NGOs, or Emergency Services. Always prioritized.', style: TextStyle(fontSize: 13)),
+              SizedBox(height: 12),
+              Text('🟣 Tier 2: VERIFIED', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.purple)),
+              Text('Reports from vetted volunteers. Used to verify crowdsourced data.', style: TextStyle(fontSize: 13)),
+              SizedBox(height: 12),
+              Text('🟢 Tier 3: TRUSTED', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.green)),
+              Text('People you have personally marked as "Trusted". Prioritized on your device only.', style: TextStyle(fontSize: 13)),
+              SizedBox(height: 12),
+              Text('⚪ Tier 4: UNVERIFIED', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
+              Text('General public reports. Unverified until endorsed by a Tier 1 or Tier 2 user.', style: TextStyle(fontSize: 13)),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(dialogContext);
+              ref.read(navigationIndexProvider.notifier).setIndex(2);
+            },
+            child: const Text('Read Full Guide'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Got it'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showMapHelp(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Map Legend & Tools'),
+        content: const SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Tools', style: TextStyle(fontWeight: FontWeight.bold)),
+              Text('• ➕ / ➖: Zoom in and out.'),
+              Text('• 📚: Toggle offline map regions (teal boxes).'),
+              Text('• 🔥: Toggle heatmap of all reports.'),
+              Text('• 📍: Center map on your GPS location.'),
+              Text('• 🆘: Activate SOS Morse code flashlight beacon.'),
+              SizedBox(height: 12),
+              Text('Markers', style: TextStyle(fontWeight: FontWeight.bold)),
+              Text('• 🔵 Blue: Official Report'),
+              Text('• 🟣 Purple: Verified Volunteer Report'),
+              Text('• 🟢 Green: Trusted / Safe Zone'),
+              Text('• 🟠 Orange: Unverified / Hazard'),
+              Text('• 🔴 Red: CRITICAL Emergency'),
+              SizedBox(height: 12),
+              Text('Tap any marker, area, or path to view details, navigate with the compass, or endorse/resolve it.'),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -3465,9 +3546,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               ),
               const Spacer(),
               TextButton.icon(
-                onPressed: () {
-                  ref.read(navigationIndexProvider.notifier).setIndex(2);
-                },
+                onPressed: () => _showTrustModelHelp(context),
                 icon: const Icon(Icons.help_outline, size: 14),
                 label: const Text(
                   'Trust Model',
@@ -5323,6 +5402,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                               context,
                             ).colorScheme.primary,
                             child: const Icon(Icons.remove),
+                          ),
+                          const SizedBox(height: 16),
+                          FloatingActionButton.small(
+                            heroTag: 'map_help',
+                            onPressed: () => _showMapHelp(context),
+                            backgroundColor: Theme.of(
+                              context,
+                            ).colorScheme.surface,
+                            foregroundColor: Theme.of(
+                              context,
+                            ).colorScheme.primary,
+                            child: const Icon(Icons.help_outline),
                           ),
                           const SizedBox(height: 16),
                           FloatingActionButton.small(

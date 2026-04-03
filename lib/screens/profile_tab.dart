@@ -54,6 +54,28 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
     return '${(bytes / pow(1024, i)).toStringAsFixed(2)} ${suffixes[i]}';
   }
 
+  void _showMuleHelp(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Data Mule Stats'),
+        content: const Text(
+          'A "Data Mule" is someone who physically carries data between disconnected areas.\n\n'
+          '• Data Carried: Total amount of data you have received and forwarded.\n'
+          '• Peers Synced: Number of unique device connections you have made.\n'
+          '• Reports Relayed: Number of individual hazard, news, area, and path reports you have successfully passed on to others.\n\n'
+          'By keeping Auto-Sync on while moving, you are actively helping your community stay informed!',
+        ),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Awesome'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildHeroStatItem(
     BuildContext context, {
     required IconData icon,
@@ -1176,6 +1198,11 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
                               ),
+                            ),
+                            const Spacer(),
+                            IconButton(
+                              icon: const Icon(Icons.help_outline, size: 20, color: Colors.amber),
+                              onPressed: () => _showMuleHelp(context),
                             ),
                           ],
                         ),

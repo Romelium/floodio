@@ -17,6 +17,49 @@ import 'radar_animation.dart';
 class SyncBottomSheet extends ConsumerWidget {
   const SyncBottomSheet({super.key});
 
+  void _showSyncHelp(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.help_outline, color: Colors.blue),
+            SizedBox(width: 8),
+            Text('Sync & Connect Guide'),
+          ],
+        ),
+        content: const SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('Mesh Auto-Sync', style: TextStyle(fontWeight: FontWeight.bold)),
+              Text('Automatically switches between hosting and scanning to find nearby devices and exchange data seamlessly in the background.'),
+              SizedBox(height: 12),
+              Text('Host Mode', style: TextStyle(fontWeight: FontWeight.bold)),
+              Text('Creates a Wi-Fi Direct group. Other devices can scan and connect to you to receive and send data.'),
+              SizedBox(height: 12),
+              Text('Join Mode', style: TextStyle(fontWeight: FontWeight.bold)),
+              Text('Scans for nearby Hosts using Bluetooth. Once found, it connects to their Wi-Fi Direct group to sync data.'),
+              SizedBox(height: 12),
+              Text('Cloud Gateway', style: TextStyle(fontWeight: FontWeight.bold)),
+              Text('When you have internet access, use this to upload local mesh data to the cloud and download global updates.'),
+              SizedBox(height: 12),
+              Text('Available Peer Maps', style: TextStyle(fontWeight: FontWeight.bold)),
+              Text('If a connected peer has downloaded an offline map, you can request it directly from them without needing internet.'),
+            ],
+          ),
+        ),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Got it'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final p2pState = ref.watch(uiP2pServiceProvider);
@@ -73,12 +116,25 @@ class SyncBottomSheet extends ConsumerWidget {
                         fontWeight: FontWeight.w900,
                       ),
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.close),
-                      onPressed: () => Navigator.pop(context),
-                      style: IconButton.styleFrom(
-                        backgroundColor: Colors.grey.shade100,
-                      ),
+                    Row(
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.help_outline),
+                          onPressed: () => _showSyncHelp(context),
+                          style: IconButton.styleFrom(
+                            backgroundColor: Colors.blue.shade50,
+                            foregroundColor: Colors.blue.shade900,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        IconButton(
+                          icon: const Icon(Icons.close),
+                          onPressed: () => Navigator.pop(context),
+                          style: IconButton.styleFrom(
+                            backgroundColor: Colors.grey.shade100,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
