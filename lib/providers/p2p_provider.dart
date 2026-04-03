@@ -35,6 +35,7 @@ part 'p2p_provider.g.dart';
 
 // A unique UUID specifically for the Floodio app's BLE discovery
 const String _floodioServiceUuid = "0f0540bd-4a04-46d0-b90d-b0447453ec3a";
+const int _verifyBatchSize = 10;
 
 class P2pState {
   final bool isHosting;
@@ -250,6 +251,7 @@ Future<String> _encodePayloadInIsolate(pb.SyncPayload payload) {
 Future<Map<String, dynamic>> _runVerifyPayloadInIsolate(
   Map<String, dynamic> args,
   void Function(double) onProgress,
+  Future<void> Function(Map<String, dynamic>) onBatch,
 ) async {
   final receivePort = ReceivePort();
   args['sendPort'] = receivePort.sendPort;
@@ -258,13 +260,24 @@ Future<Map<String, dynamic>> _runVerifyPayloadInIsolate(
 
   final completer = Completer<Map<String, dynamic>>();
 
-  receivePort.listen((message) {
+  StreamSubscription? sub;
+  sub = receivePort.listen((message) async {
     if (message is double) {
       onProgress(message);
     } else if (message is Map<String, dynamic>) {
-      completer.complete(message);
-      receivePort.close();
-      isolate.kill();
+      if (message['type'] == 'batch') {
+        sub?.pause();
+        try {
+          await onBatch(message['data']);
+        } catch (e, st) {
+          print("Error processing batch: $e\n$st");
+        }
+        sub?.resume();
+      } else if (message['type'] == 'done') {
+        completer.complete({});
+        receivePort.close();
+        isolate.kill();
+      }
     } else if (message is Exception || message is Error) {
       completer.completeError(message);
       receivePort.close();
@@ -282,14 +295,13 @@ Future<Map<String, dynamic>> _runVerifyPayloadInIsolate(
 Future<void> _verifyPayloadInIsolateWithProgress(Map<String, dynamic> args) async {
   final sendPort = args['sendPort'] as SendPort;
   try {
-    final result = await _verifyPayloadInIsolate(args, sendPort);
-    sendPort.send(result);
+    await _verifyPayloadInIsolate(args, sendPort);
   } catch (e, st) {
     sendPort.send(Exception('$e\n$st'));
   }
 }
 
-Future<Map<String, dynamic>> _verifyPayloadInIsolate(Map<String, dynamic> args, [SendPort? sendPort]) async {
+Future<void> _verifyPayloadInIsolate(Map<String, dynamic> args, [SendPort? sendPort]) async {
   final payload = args['payload'] as pb.SyncPayload;
   final trustedKeys = (args['trustedKeys'] as List<String>).toSet();
   final adminTrustedKeys = (args['adminTrustedKeys'] as List<String>).toSet();
@@ -340,303 +352,282 @@ Future<Map<String, dynamic>> _verifyPayloadInIsolate(Map<String, dynamic> args, 
     }
   }
 
-  final delegationFutures = payload.delegations.map((d) async {
-    final existingTs = delegationTimestamps[d.delegateePublicKey] ?? 0;
-    if (d.timestamp.toInt() <= existingTs) {
-      processed++;
-      reportProgress();
-      return null;
+  void sendBatchIfNeeded({bool force = false}) {
+    final totalValid = validMarkers.length + validNews.length + validProfiles.length + 
+                       validAreas.length + validPaths.length + validDelegations.length + validRevocations.length;
+    if (totalValid >= _verifyBatchSize || (force && totalValid > 0)) {
+      if (sendPort != null) {
+        sendPort.send({
+          'type': 'batch',
+          'data': {
+            'validMarkers': List<pb.HazardMarker>.from(validMarkers),
+            'validNews': List<pb.NewsItem>.from(validNews),
+            'validProfiles': List<pb.UserProfile>.from(validProfiles),
+            'validAreas': List<pb.AreaMarker>.from(validAreas),
+            'validPaths': List<pb.PathMarker>.from(validPaths),
+            'validDelegations': List<pb.TrustDelegation>.from(validDelegations),
+            'validRevocations': List<pb.RevokedDelegation>.from(validRevocations),
+            'markerTrustTiers': Map<String, int>.from(markerTrustTiers),
+            'newsTrustTiers': Map<String, int>.from(newsTrustTiers),
+            'areaTrustTiers': Map<String, int>.from(areaTrustTiers),
+            'pathTrustTiers': Map<String, int>.from(pathTrustTiers),
+          }
+        });
+      }
+      validMarkers.clear();
+      validNews.clear();
+      validProfiles.clear();
+      validAreas.clear();
+      validPaths.clear();
+      validDelegations.clear();
+      validRevocations.clear();
+      markerTrustTiers.clear();
+      newsTrustTiers.clear();
+      areaTrustTiers.clear();
+      pathTrustTiers.clear();
     }
+  }
 
-    final isValid = await verifyDelegationLogic(
-      d.delegateePublicKey,
-      d.timestamp.toInt(),
-      d.signature,
-      d.delegatorPublicKey,
-      serverPubKeyBytes,
-    );
-    processed++;
-    reportProgress();
-    if (isValid) {
-      return d;
-    }
-    return null;
-  });
-  final delegationResults = await Future.wait(delegationFutures);
-  for (final d in delegationResults) {
-    if (d != null) {
-      validDelegations.add(d);
-      if (!adminTrustedKeys.contains(d.delegateePublicKey)) {
+  // Process delegations
+  for (var i = 0; i < payload.delegations.length; i += _verifyBatchSize) {
+    final chunk = payload.delegations.skip(i).take(_verifyBatchSize);
+    final results = await Future.wait(chunk.map((d) async {
+      final existingTs = delegationTimestamps[d.delegateePublicKey] ?? 0;
+      if (d.timestamp.toInt() <= existingTs) return null;
+      final isValid = await verifyDelegationLogic(
+        d.delegateePublicKey,
+        d.timestamp.toInt(),
+        d.signature,
+        d.delegatorPublicKey,
+        serverPubKeyBytes,
+      );
+      if (isValid) return d;
+      return null;
+    }));
+    for (final d in results) {
+      processed++;
+      if (d != null) {
+        validDelegations.add(d);
         adminTrustedKeys.add(d.delegateePublicKey);
       }
     }
+    reportProgress();
+    sendBatchIfNeeded();
   }
 
-  final revocationFutures = payload.revokedDelegations.map((r) async {
-    final existingTs = revocationTimestamps[r.delegateePublicKey] ?? 0;
-    if (r.timestamp.toInt() <= existingTs) {
-      processed++;
-      reportProgress();
+  // Process revocations
+  for (var i = 0; i < payload.revokedDelegations.length; i += _verifyBatchSize) {
+    final chunk = payload.revokedDelegations.skip(i).take(_verifyBatchSize);
+    final results = await Future.wait(chunk.map((r) async {
+      final existingTs = revocationTimestamps[r.delegateePublicKey] ?? 0;
+      if (r.timestamp.toInt() <= existingTs) return null;
+      final isValid = await verifyRevocationLogic(
+        r.delegateePublicKey,
+        r.timestamp.toInt(),
+        r.signature,
+        r.delegatorPublicKey,
+        serverPubKeyBytes,
+      );
+      if (isValid) return r;
       return null;
-    }
-
-    final isValid = await verifyRevocationLogic(
-      r.delegateePublicKey,
-      r.timestamp.toInt(),
-      r.signature,
-      r.delegatorPublicKey,
-      serverPubKeyBytes,
-    );
-    processed++;
-    reportProgress();
-    if (isValid) {
-      return r;
-    }
-    return null;
-  });
-  final revocationResults = await Future.wait(revocationFutures);
-  for (final r in revocationResults) {
-    if (r != null) {
-      validRevocations.add(r);
-      if (!revokedKeys.contains(r.delegateePublicKey)) {
+    }));
+    for (final r in results) {
+      processed++;
+      if (r != null) {
+        validRevocations.add(r);
         revokedKeys.add(r.delegateePublicKey);
       }
     }
-  }
-
-  final markerFutures = payload.markers.map((m) async {
-    if (deletedIds.contains(m.id)) {
-      processed++;
-      reportProgress();
-      return null;
-    }
-    final existingTs = markerTimestamps[m.id] ?? 0;
-    if (m.timestamp.toInt() <= existingTs) {
-      processed++;
-      reportProgress();
-      return null;
-    }
-
-    final imageIdStr = m.imageId.isEmpty ? "" : m.imageId;
-    final expiresAtStr = m.expiresAt == 0 ? "" : m.expiresAt.toString();
-    final isCriticalStr = m.isCritical ? "1" : "0";
-    final payloadToSign = utf8.encode(
-      '${m.id}${m.latitude}${m.longitude}${m.type}${m.description}${m.timestamp}$imageIdStr$expiresAtStr$isCriticalStr',
-    );
-    final trustTier = await verifyDataLogic(
-      payloadToSign,
-      m.signature,
-      m.senderId,
-      serverPubKeyBytes,
-      trustedKeys,
-      adminTrustedKeys,
-      untrustedKeys,
-    );
-
-    processed++;
     reportProgress();
-
-    if (trustTier != 5) {
-      return MapEntry(m, trustTier);
-    }
-    return null;
-  });
-  final markerResults = await Future.wait(markerFutures);
-  for (final res in markerResults) {
-    if (res != null) {
-      validMarkers.add(res.key);
-      markerTrustTiers[res.key.id] = res.value;
-    }
+    sendBatchIfNeeded();
   }
 
-  final newsFutures = payload.news.map((n) async {
-    if (deletedIds.contains(n.id)) {
-      processed++;
-      reportProgress();
-      return null;
-    }
-    final existingTs = newsTimestamps[n.id] ?? 0;
-    if (n.timestamp.toInt() <= existingTs) {
-      processed++;
-      reportProgress();
-      return null;
-    }
+  // Process markers
+  for (var i = 0; i < payload.markers.length; i += _verifyBatchSize) {
+    final chunk = payload.markers.skip(i).take(_verifyBatchSize);
+    final results = await Future.wait(chunk.map((m) async {
+      if (deletedIds.contains(m.id)) return null;
+      final existingTs = markerTimestamps[m.id] ?? 0;
+      if (m.timestamp.toInt() <= existingTs) return null;
 
-    final imageIdStr = n.imageId.isEmpty ? "" : n.imageId;
-    final expiresAtStr = n.expiresAt == 0 ? "" : n.expiresAt.toString();
-    final isCriticalStr = n.isCritical ? "1" : "0";
-    final payloadToSign = utf8.encode(
-      '${n.id}${n.title}${n.content}${n.timestamp}$imageIdStr$expiresAtStr$isCriticalStr',
-    );
-    final trustTier = await verifyDataLogic(
-      payloadToSign,
-      n.signature,
-      n.senderId,
-      serverPubKeyBytes,
-      trustedKeys,
-      adminTrustedKeys,
-      untrustedKeys,
-    );
-
-    processed++;
+      final imageIdStr = m.imageId.isEmpty ? "" : m.imageId;
+      final expiresAtStr = m.expiresAt == 0 ? "" : m.expiresAt.toString();
+      final isCriticalStr = m.isCritical ? "1" : "0";
+      final payloadToSign = utf8.encode(
+        '${m.id}${m.latitude}${m.longitude}${m.type}${m.description}${m.timestamp}$imageIdStr$expiresAtStr$isCriticalStr',
+      );
+      final trustTier = await verifyDataLogic(
+        payloadToSign,
+        m.signature,
+        m.senderId,
+        serverPubKeyBytes,
+        trustedKeys,
+        adminTrustedKeys,
+        untrustedKeys,
+      );
+      if (trustTier != 5) return MapEntry(m, trustTier);
+      return null;
+    }));
+    for (final res in results) {
+      processed++;
+      if (res != null) {
+        validMarkers.add(res.key);
+        markerTrustTiers[res.key.id] = res.value;
+      }
+    }
     reportProgress();
-
-    if (trustTier != 5) {
-      return MapEntry(n, trustTier);
-    }
-    return null;
-  });
-  final newsResults = await Future.wait(newsFutures);
-  for (final res in newsResults) {
-    if (res != null) {
-      validNews.add(res.key);
-      newsTrustTiers[res.key.id] = res.value;
-    }
+    sendBatchIfNeeded();
   }
 
-  final profileFutures = payload.profiles.map((p) async {
-    final existingTs = profileTimestamps[p.publicKey] ?? 0;
-    if (p.timestamp.toInt() <= existingTs) {
-      processed++;
-      reportProgress();
+  // Process news
+  for (var i = 0; i < payload.news.length; i += _verifyBatchSize) {
+    final chunk = payload.news.skip(i).take(_verifyBatchSize);
+    final results = await Future.wait(chunk.map((n) async {
+      if (deletedIds.contains(n.id)) return null;
+      final existingTs = newsTimestamps[n.id] ?? 0;
+      if (n.timestamp.toInt() <= existingTs) return null;
+
+      final imageIdStr = n.imageId.isEmpty ? "" : n.imageId;
+      final expiresAtStr = n.expiresAt == 0 ? "" : n.expiresAt.toString();
+      final isCriticalStr = n.isCritical ? "1" : "0";
+      final payloadToSign = utf8.encode(
+        '${n.id}${n.title}${n.content}${n.timestamp}$imageIdStr$expiresAtStr$isCriticalStr',
+      );
+      final trustTier = await verifyDataLogic(
+        payloadToSign,
+        n.signature,
+        n.senderId,
+        serverPubKeyBytes,
+        trustedKeys,
+        adminTrustedKeys,
+        untrustedKeys,
+      );
+      if (trustTier != 5) return MapEntry(n, trustTier);
       return null;
+    }));
+    for (final res in results) {
+      processed++;
+      if (res != null) {
+        validNews.add(res.key);
+        newsTrustTiers[res.key.id] = res.value;
+      }
     }
-
-    final payloadToSign = utf8.encode(
-      '${p.publicKey}${p.name}${p.contactInfo}${p.timestamp}',
-    );
-    final trustTier = await verifyDataLogic(
-      payloadToSign,
-      p.signature,
-      p.publicKey,
-      serverPubKeyBytes,
-      trustedKeys,
-      adminTrustedKeys,
-      untrustedKeys,
-    );
-
-    processed++;
     reportProgress();
-
-    if (trustTier != 5) {
-      return p;
-    }
-    return null;
-  });
-  final profileResults = await Future.wait(profileFutures);
-  for (final p in profileResults) {
-    if (p != null) {
-      validProfiles.add(p);
-    }
+    sendBatchIfNeeded();
   }
 
-  final areaFutures = payload.areas.map((a) async {
-    if (deletedIds.contains(a.id)) {
-      processed++;
-      reportProgress();
-      return null;
-    }
-    final existingTs = areaTimestamps[a.id] ?? 0;
-    if (a.timestamp.toInt() <= existingTs) {
-      processed++;
-      reportProgress();
-      return null;
-    }
+  // Process profiles
+  for (var i = 0; i < payload.profiles.length; i += _verifyBatchSize) {
+    final chunk = payload.profiles.skip(i).take(_verifyBatchSize);
+    final results = await Future.wait(chunk.map((p) async {
+      final existingTs = profileTimestamps[p.publicKey] ?? 0;
+      if (p.timestamp.toInt() <= existingTs) return null;
 
-    final expiresAtStr = a.expiresAt == 0 ? "" : a.expiresAt.toString();
-    final isCriticalStr = a.isCritical ? "1" : "0";
-    final coordsStr = a.coordinates
-        .map((c) => '${c.latitude},${c.longitude}')
-        .join('|');
-    final payloadToSign = utf8.encode(
-      '${a.id}$coordsStr${a.type}${a.description}${a.timestamp}$expiresAtStr$isCriticalStr',
-    );
-    final trustTier = await verifyDataLogic(
-      payloadToSign,
-      a.signature,
-      a.senderId,
-      serverPubKeyBytes,
-      trustedKeys,
-      adminTrustedKeys,
-      untrustedKeys,
-    );
-
-    processed++;
+      final payloadToSign = utf8.encode(
+        '${p.publicKey}${p.name}${p.contactInfo}${p.timestamp}',
+      );
+      final trustTier = await verifyDataLogic(
+        payloadToSign,
+        p.signature,
+        p.publicKey,
+        serverPubKeyBytes,
+        trustedKeys,
+        adminTrustedKeys,
+        untrustedKeys,
+      );
+      if (trustTier != 5) return p;
+      return null;
+    }));
+    for (final p in results) {
+      processed++;
+      if (p != null) validProfiles.add(p);
+    }
     reportProgress();
-
-    if (trustTier != 5) {
-      return MapEntry(a, trustTier);
-    }
-    return null;
-  });
-  final areaResults = await Future.wait(areaFutures);
-  for (final res in areaResults) {
-    if (res != null) {
-      validAreas.add(res.key);
-      areaTrustTiers[res.key.id] = res.value;
-    }
+    sendBatchIfNeeded();
   }
 
-  final pathFutures = payload.paths.map((p) async {
-    if (deletedIds.contains(p.id)) {
-      processed++;
-      reportProgress();
-      return null;
-    }
-    final existingTs = pathTimestamps[p.id] ?? 0;
-    if (p.timestamp.toInt() <= existingTs) {
-      processed++;
-      reportProgress();
-      return null;
-    }
+  // Process areas
+  for (var i = 0; i < payload.areas.length; i += _verifyBatchSize) {
+    final chunk = payload.areas.skip(i).take(_verifyBatchSize);
+    final results = await Future.wait(chunk.map((a) async {
+      if (deletedIds.contains(a.id)) return null;
+      final existingTs = areaTimestamps[a.id] ?? 0;
+      if (a.timestamp.toInt() <= existingTs) return null;
 
-    final expiresAtStr = p.expiresAt == 0 ? "" : p.expiresAt.toString();
-    final isCriticalStr = p.isCritical ? "1" : "0";
-    final coordsStr = p.coordinates
-        .map((c) => '${c.latitude},${c.longitude}')
-        .join('|');
-    final payloadToSign = utf8.encode(
-      '${p.id}$coordsStr${p.type}${p.description}${p.timestamp}$expiresAtStr$isCriticalStr',
-    );
-    final trustTier = await verifyDataLogic(
-      payloadToSign,
-      p.signature,
-      p.senderId,
-      serverPubKeyBytes,
-      trustedKeys,
-      adminTrustedKeys,
-      untrustedKeys,
-    );
-
-    processed++;
+      final expiresAtStr = a.expiresAt == 0 ? "" : a.expiresAt.toString();
+      final isCriticalStr = a.isCritical ? "1" : "0";
+      final coordsStr = a.coordinates
+          .map((c) => '${c.latitude},${c.longitude}')
+          .join('|');
+      final payloadToSign = utf8.encode(
+        '${a.id}$coordsStr${a.type}${a.description}${a.timestamp}$expiresAtStr$isCriticalStr',
+      );
+      final trustTier = await verifyDataLogic(
+        payloadToSign,
+        a.signature,
+        a.senderId,
+        serverPubKeyBytes,
+        trustedKeys,
+        adminTrustedKeys,
+        untrustedKeys,
+      );
+      if (trustTier != 5) return MapEntry(a, trustTier);
+      return null;
+    }));
+    for (final res in results) {
+      processed++;
+      if (res != null) {
+        validAreas.add(res.key);
+        areaTrustTiers[res.key.id] = res.value;
+      }
+    }
     reportProgress();
-
-    if (trustTier != 5) {
-      return MapEntry(p, trustTier);
-    }
-    return null;
-  });
-  final pathResults = await Future.wait(pathFutures);
-  for (final res in pathResults) {
-    if (res != null) {
-      validPaths.add(res.key);
-      pathTrustTiers[res.key.id] = res.value;
-    }
+    sendBatchIfNeeded();
   }
 
-  return {
-    'validMarkers': validMarkers,
-    'validNews': validNews,
-    'validProfiles': validProfiles,
-    'validAreas': validAreas,
-    'validPaths': validPaths,
-    'validDelegations': validDelegations,
-    'validRevocations': validRevocations,
-    'markerTrustTiers': markerTrustTiers,
-    'newsTrustTiers': newsTrustTiers,
-    'areaTrustTiers': areaTrustTiers,
-    'pathTrustTiers': pathTrustTiers,
-  };
+  // Process paths
+  for (var i = 0; i < payload.paths.length; i += _verifyBatchSize) {
+    final chunk = payload.paths.skip(i).take(_verifyBatchSize);
+    final results = await Future.wait(chunk.map((p) async {
+      if (deletedIds.contains(p.id)) return null;
+      final existingTs = pathTimestamps[p.id] ?? 0;
+      if (p.timestamp.toInt() <= existingTs) return null;
+
+      final expiresAtStr = p.expiresAt == 0 ? "" : p.expiresAt.toString();
+      final isCriticalStr = p.isCritical ? "1" : "0";
+      final coordsStr = p.coordinates
+          .map((c) => '${c.latitude},${c.longitude}')
+          .join('|');
+      final payloadToSign = utf8.encode(
+        '${p.id}$coordsStr${p.type}${p.description}${p.timestamp}$expiresAtStr$isCriticalStr',
+      );
+      final trustTier = await verifyDataLogic(
+        payloadToSign,
+        p.signature,
+        p.senderId,
+        serverPubKeyBytes,
+        trustedKeys,
+        adminTrustedKeys,
+        untrustedKeys,
+      );
+      if (trustTier != 5) return MapEntry(p, trustTier);
+      return null;
+    }));
+    for (final res in results) {
+      processed++;
+      if (res != null) {
+        validPaths.add(res.key);
+        pathTrustTiers[res.key.id] = res.value;
+      }
+    }
+    reportProgress();
+    sendBatchIfNeeded();
+  }
+
+  sendBatchIfNeeded(force: true);
+  if (sendPort != null) {
+    sendPort.send({'type': 'done'});
+  }
 }
 
 @Riverpod(
@@ -2109,10 +2100,8 @@ class P2pService extends _$P2pService {
       }
     }
 
-    final existingDeleted = await db.select(db.deletedItems).get();
-    final existingDeletedIds = existingDeleted.map((e) => e.id).toSet();
+    final existingDeletedIds = deletedIds.toSet();
     final validDeleted = <DeletedItemsCompanion>[];
-
     final seenIds = <SeenMessageIdsCompanion>[];
 
     for (final d in payload.deletedItems) {
@@ -2133,6 +2122,14 @@ class P2pService extends _$P2pService {
           ),
         );
       }
+    }
+
+    // Insert deleted items immediately
+    if (validDeleted.isNotEmpty || seenIds.isNotEmpty) {
+      await db.batch((batch) {
+        batch.insertAll(db.deletedItems, validDeleted, mode: InsertMode.insertOrReplace);
+        batch.insertAll(db.seenMessageIds, seenIds, mode: InsertMode.insertOrReplace);
+      });
     }
 
     state = state.copyWith(
@@ -2163,236 +2160,246 @@ class P2pService extends _$P2pService {
       'revocationTimestamps': revocationTimestamps,
     };
 
-    final result = await _runVerifyPayloadInIsolate(args, (progress) {
+    // Accumulate all valid items to forward later
+    final allValidMarkersPb = <pb.HazardMarker>[];
+    final allValidNewsPb = <pb.NewsItem>[];
+    final allValidProfilesPb = <pb.UserProfile>[];
+    final allValidAreasPb = <pb.AreaMarker>[];
+    final allValidPathsPb = <pb.PathMarker>[];
+    final allValidDelegationsPb = <pb.TrustDelegation>[];
+    final allValidRevocationsPb = <pb.RevokedDelegation>[];
+
+    await _runVerifyPayloadInIsolate(args, (progress) {
       state = state.copyWith(
         syncMessage: 'Verifying signatures...',
         syncProgress: progress,
       );
-    });
+    }, (batchData) async {
+      // Process batch
+      final validMarkersPb = batchData['validMarkers'] as List<pb.HazardMarker>;
+      final validNewsPb = batchData['validNews'] as List<pb.NewsItem>;
+      final validProfilesPb = batchData['validProfiles'] as List<pb.UserProfile>;
+      final validAreasPb = batchData['validAreas'] as List<pb.AreaMarker>;
+      final validPathsPb = batchData['validPaths'] as List<pb.PathMarker>;
+      final validDelegationsPb = batchData['validDelegations'] as List<pb.TrustDelegation>;
+      final validRevocationsPb = batchData['validRevocations'] as List<pb.RevokedDelegation>;
 
-    final validMarkersPb = result['validMarkers'] as List<pb.HazardMarker>;
-    final validNewsPb = result['validNews'] as List<pb.NewsItem>;
-    final validProfilesPb = result['validProfiles'] as List<pb.UserProfile>;
-    final validAreasPb = result['validAreas'] as List<pb.AreaMarker>;
-    final validPathsPb = result['validPaths'] as List<pb.PathMarker>;
-    final validDelegationsPb = result['validDelegations'] as List<pb.TrustDelegation>;
-    final validRevocationsPb = result['validRevocations'] as List<pb.RevokedDelegation>;
-    
-    final markerTrustTiers = result['markerTrustTiers'] as Map<String, int>;
-    final newsTrustTiers = result['newsTrustTiers'] as Map<String, int>;
-    final areaTrustTiers = result['areaTrustTiers'] as Map<String, int>;
-    final pathTrustTiers = result['pathTrustTiers'] as Map<String, int>;
+      final markerTrustTiers = batchData['markerTrustTiers'] as Map<String, int>;
+      final newsTrustTiers = batchData['newsTrustTiers'] as Map<String, int>;
+      final areaTrustTiers = batchData['areaTrustTiers'] as Map<String, int>;
+      final pathTrustTiers = batchData['pathTrustTiers'] as Map<String, int>;
 
-    final validDelegations = <AdminTrustedSendersCompanion>[];
-    for (final d in validDelegationsPb) {
-      validDelegations.add(
-        AdminTrustedSendersCompanion.insert(
-          publicKey: d.delegateePublicKey,
-          delegatorPublicKey: d.delegatorPublicKey,
-          timestamp: d.timestamp.toInt(),
-          signature: d.signature,
-        ),
-      );
-      seenIds.add(
-        SeenMessageIdsCompanion.insert(
-          messageId: 'delg_${d.delegateePublicKey}_${d.timestamp}',
-          timestamp: DateTime.now().millisecondsSinceEpoch,
-          uploadedToCloud: Value(isFromCloud),
-        ),
-      );
-    }
+      allValidMarkersPb.addAll(validMarkersPb);
+      allValidNewsPb.addAll(validNewsPb);
+      allValidProfilesPb.addAll(validProfilesPb);
+      allValidAreasPb.addAll(validAreasPb);
+      allValidPathsPb.addAll(validPathsPb);
+      allValidDelegationsPb.addAll(validDelegationsPb);
+      allValidRevocationsPb.addAll(validRevocationsPb);
 
-    final validRevocations = <RevokedDelegationsCompanion>[];
-    for (final r in validRevocationsPb) {
-      validRevocations.add(
-        RevokedDelegationsCompanion.insert(
-          delegateePublicKey: r.delegateePublicKey,
-          delegatorPublicKey: r.delegatorPublicKey,
-          timestamp: r.timestamp.toInt(),
-          signature: r.signature,
-        ),
-      );
-      seenIds.add(
-        SeenMessageIdsCompanion.insert(
-          messageId: 'rev_${r.delegateePublicKey}_${r.timestamp}',
-          timestamp: DateTime.now().millisecondsSinceEpoch,
-          uploadedToCloud: Value(isFromCloud),
-        ),
-      );
-    }
+      final batchSeenIds = <SeenMessageIdsCompanion>[];
+      final validDelegations = <AdminTrustedSendersCompanion>[];
+      for (final d in validDelegationsPb) {
+        validDelegations.add(
+          AdminTrustedSendersCompanion.insert(
+            publicKey: d.delegateePublicKey,
+            delegatorPublicKey: d.delegatorPublicKey,
+            timestamp: d.timestamp.toInt(),
+            signature: d.signature,
+          ),
+        );
+        batchSeenIds.add(
+          SeenMessageIdsCompanion.insert(
+            messageId: 'delg_${d.delegateePublicKey}_${d.timestamp}',
+            timestamp: DateTime.now().millisecondsSinceEpoch,
+            uploadedToCloud: Value(isFromCloud),
+          ),
+        );
+      }
 
-    final validMarkers = <HazardMarkersCompanion>[];
-    for (final m in validMarkersPb) {
-      validMarkers.add(
-        HazardMarkersCompanion.insert(
-          id: m.id,
-          latitude: m.latitude,
-          longitude: m.longitude,
-          type: m.type,
-          description: m.description,
-          timestamp: m.timestamp.toInt(),
-          senderId: m.senderId,
-          signature: Value(m.signature),
-          trustTier: markerTrustTiers[m.id]!,
-          imageId: Value(m.imageId.isEmpty ? null : m.imageId),
-          expiresAt: Value(m.expiresAt == 0 ? null : m.expiresAt.toInt()),
-          isCritical: Value(m.isCritical),
-        ),
-      );
-      seenIds.add(
-        SeenMessageIdsCompanion.insert(
-          messageId: '${m.id}_${m.timestamp}',
-          timestamp: DateTime.now().millisecondsSinceEpoch,
-          uploadedToCloud: Value(isFromCloud),
-        ),
-      );
-    }
+      final validRevocations = <RevokedDelegationsCompanion>[];
+      for (final r in validRevocationsPb) {
+        validRevocations.add(
+          RevokedDelegationsCompanion.insert(
+            delegateePublicKey: r.delegateePublicKey,
+            delegatorPublicKey: r.delegatorPublicKey,
+            timestamp: r.timestamp.toInt(),
+            signature: r.signature,
+          ),
+        );
+        batchSeenIds.add(
+          SeenMessageIdsCompanion.insert(
+            messageId: 'rev_${r.delegateePublicKey}_${r.timestamp}',
+            timestamp: DateTime.now().millisecondsSinceEpoch,
+            uploadedToCloud: Value(isFromCloud),
+          ),
+        );
+      }
 
-    final validNews = <NewsItemsCompanion>[];
-    for (final n in validNewsPb) {
-      validNews.add(
-        NewsItemsCompanion.insert(
-          id: n.id,
-          title: n.title,
-          content: n.content,
-          timestamp: n.timestamp.toInt(),
-          senderId: n.senderId,
-          signature: Value(n.signature),
-          trustTier: newsTrustTiers[n.id]!,
-          expiresAt: Value(n.expiresAt == 0 ? null : n.expiresAt.toInt()),
-          imageId: Value(n.imageId.isEmpty ? null : n.imageId),
-          isCritical: Value(n.isCritical),
-        ),
-      );
-      seenIds.add(
-        SeenMessageIdsCompanion.insert(
-          messageId: '${n.id}_${n.timestamp}',
-          timestamp: DateTime.now().millisecondsSinceEpoch,
-          uploadedToCloud: Value(isFromCloud),
-        ),
-      );
-    }
+      final validMarkers = <HazardMarkersCompanion>[];
+      for (final m in validMarkersPb) {
+        validMarkers.add(
+          HazardMarkersCompanion.insert(
+            id: m.id,
+            latitude: m.latitude,
+            longitude: m.longitude,
+            type: m.type,
+            description: m.description,
+            timestamp: m.timestamp.toInt(),
+            senderId: m.senderId,
+            signature: Value(m.signature),
+            trustTier: markerTrustTiers[m.id]!,
+            imageId: Value(m.imageId.isEmpty ? null : m.imageId),
+            expiresAt: Value(m.expiresAt == 0 ? null : m.expiresAt.toInt()),
+            isCritical: Value(m.isCritical),
+          ),
+        );
+        batchSeenIds.add(
+          SeenMessageIdsCompanion.insert(
+            messageId: '${m.id}_${m.timestamp}',
+            timestamp: DateTime.now().millisecondsSinceEpoch,
+            uploadedToCloud: Value(isFromCloud),
+          ),
+        );
+      }
 
-    final validProfiles = <UserProfilesCompanion>[];
-    for (final p in validProfilesPb) {
-      validProfiles.add(
-        UserProfilesCompanion.insert(
-          publicKey: p.publicKey,
-          name: p.name,
-          contactInfo: p.contactInfo,
-          timestamp: p.timestamp.toInt(),
-          signature: p.signature,
-        ),
-      );
-      seenIds.add(
-        SeenMessageIdsCompanion.insert(
-          messageId: '${p.publicKey}_${p.timestamp}',
-          timestamp: DateTime.now().millisecondsSinceEpoch,
-          uploadedToCloud: Value(isFromCloud),
-        ),
-      );
-    }
+      final validNews = <NewsItemsCompanion>[];
+      for (final n in validNewsPb) {
+        validNews.add(
+          NewsItemsCompanion.insert(
+            id: n.id,
+            title: n.title,
+            content: n.content,
+            timestamp: n.timestamp.toInt(),
+            senderId: n.senderId,
+            signature: Value(n.signature),
+            trustTier: newsTrustTiers[n.id]!,
+            expiresAt: Value(n.expiresAt == 0 ? null : n.expiresAt.toInt()),
+            imageId: Value(n.imageId.isEmpty ? null : n.imageId),
+            isCritical: Value(n.isCritical),
+          ),
+        );
+        batchSeenIds.add(
+          SeenMessageIdsCompanion.insert(
+            messageId: '${n.id}_${n.timestamp}',
+            timestamp: DateTime.now().millisecondsSinceEpoch,
+            uploadedToCloud: Value(isFromCloud),
+          ),
+        );
+      }
 
-    final validAreas = <AreasCompanion>[];
-    for (final a in validAreasPb) {
-      final coords = a.coordinates
-          .map((c) => {'lat': c.latitude, 'lng': c.longitude})
-          .toList();
-      validAreas.add(
-        AreasCompanion.insert(
-          id: a.id,
-          coordinates: coords,
-          type: a.type,
-          description: a.description,
-          timestamp: a.timestamp.toInt(),
-          senderId: a.senderId,
-          signature: Value(a.signature),
-          trustTier: areaTrustTiers[a.id]!,
-          expiresAt: Value(a.expiresAt == 0 ? null : a.expiresAt.toInt()),
-          isCritical: Value(a.isCritical),
-        ),
-      );
-      seenIds.add(
-        SeenMessageIdsCompanion.insert(
-          messageId: '${a.id}_${a.timestamp}',
-          timestamp: DateTime.now().millisecondsSinceEpoch,
-          uploadedToCloud: Value(isFromCloud),
-        ),
-      );
-    }
+      final validProfiles = <UserProfilesCompanion>[];
+      for (final p in validProfilesPb) {
+        validProfiles.add(
+          UserProfilesCompanion.insert(
+            publicKey: p.publicKey,
+            name: p.name,
+            contactInfo: p.contactInfo,
+            timestamp: p.timestamp.toInt(),
+            signature: p.signature,
+          ),
+        );
+        batchSeenIds.add(
+          SeenMessageIdsCompanion.insert(
+            messageId: '${p.publicKey}_${p.timestamp}',
+            timestamp: DateTime.now().millisecondsSinceEpoch,
+            uploadedToCloud: Value(isFromCloud),
+          ),
+        );
+      }
 
-    final validPaths = <PathsCompanion>[];
-    for (final p in validPathsPb) {
-      final coords = p.coordinates
-          .map((c) => {'lat': c.latitude, 'lng': c.longitude})
-          .toList();
-      validPaths.add(
-        PathsCompanion.insert(
-          id: p.id,
-          coordinates: coords,
-          type: p.type,
-          description: p.description,
-          timestamp: p.timestamp.toInt(),
-          senderId: p.senderId,
-          signature: Value(p.signature),
-          trustTier: pathTrustTiers[p.id]!,
-          expiresAt: Value(p.expiresAt == 0 ? null : p.expiresAt.toInt()),
-          isCritical: Value(p.isCritical),
-        ),
-      );
-      seenIds.add(
-        SeenMessageIdsCompanion.insert(
-          messageId: '${p.id}_${p.timestamp}',
-          timestamp: DateTime.now().millisecondsSinceEpoch,
-          uploadedToCloud: Value(isFromCloud),
-        ),
-      );
-    }
+      final validAreas = <AreasCompanion>[];
+      for (final a in validAreasPb) {
+        final coords = a.coordinates
+            .map((c) => {'lat': c.latitude, 'lng': c.longitude})
+            .toList();
+        validAreas.add(
+          AreasCompanion.insert(
+            id: a.id,
+            coordinates: coords,
+            type: a.type,
+            description: a.description,
+            timestamp: a.timestamp.toInt(),
+            senderId: a.senderId,
+            signature: Value(a.signature),
+            trustTier: areaTrustTiers[a.id]!,
+            expiresAt: Value(a.expiresAt == 0 ? null : a.expiresAt.toInt()),
+            isCritical: Value(a.isCritical),
+          ),
+        );
+        batchSeenIds.add(
+          SeenMessageIdsCompanion.insert(
+            messageId: '${a.id}_${a.timestamp}',
+            timestamp: DateTime.now().millisecondsSinceEpoch,
+            uploadedToCloud: Value(isFromCloud),
+          ),
+        );
+      }
 
-    print("[P2pService] Verification complete. Saving to database...");
-    state = state.copyWith(
-      syncMessage: 'Saving verified data to database...',
-      clearSyncProgress: true,
-    );
+      final validPaths = <PathsCompanion>[];
+      for (final p in validPathsPb) {
+        final coords = p.coordinates
+            .map((c) => {'lat': c.latitude, 'lng': c.longitude})
+            .toList();
+        validPaths.add(
+          PathsCompanion.insert(
+            id: p.id,
+            coordinates: coords,
+            type: p.type,
+            description: p.description,
+            timestamp: p.timestamp.toInt(),
+            senderId: p.senderId,
+            signature: Value(p.signature),
+            trustTier: pathTrustTiers[p.id]!,
+            expiresAt: Value(p.expiresAt == 0 ? null : p.expiresAt.toInt()),
+            isCritical: Value(p.isCritical),
+          ),
+        );
+        batchSeenIds.add(
+          SeenMessageIdsCompanion.insert(
+            messageId: '${p.id}_${p.timestamp}',
+            timestamp: DateTime.now().millisecondsSinceEpoch,
+            uploadedToCloud: Value(isFromCloud),
+          ),
+        );
+      }
 
-    await db.batch((batch) {
-      batch.insertAll(
-        db.hazardMarkers,
-        validMarkers,
-        mode: InsertMode.insertOrReplace,
-      );
-      batch.insertAll(
-        db.newsItems,
-        validNews,
-        mode: InsertMode.insertOrReplace,
-      );
-      batch.insertAll(
-        db.userProfiles,
-        validProfiles,
-        mode: InsertMode.insertOrReplace,
-      );
-      batch.insertAll(db.areas, validAreas, mode: InsertMode.insertOrReplace);
-      batch.insertAll(db.paths, validPaths, mode: InsertMode.insertOrReplace);
-      batch.insertAll(
-        db.seenMessageIds,
-        seenIds,
-        mode: InsertMode.insertOrReplace,
-      );
-      batch.insertAll(
-        db.deletedItems,
-        validDeleted,
-        mode: InsertMode.insertOrReplace,
-      );
-      batch.insertAll(
-        db.adminTrustedSenders,
-        validDelegations,
-        mode: InsertMode.insertOrReplace,
-      );
-      batch.insertAll(
-        db.revokedDelegations,
-        validRevocations,
-        mode: InsertMode.insertOrReplace,
-      );
+      await db.batch((batch) {
+        batch.insertAll(db.hazardMarkers, validMarkers, mode: InsertMode.insertOrReplace);
+        batch.insertAll(db.newsItems, validNews, mode: InsertMode.insertOrReplace);
+        batch.insertAll(db.userProfiles, validProfiles, mode: InsertMode.insertOrReplace);
+        batch.insertAll(db.areas, validAreas, mode: InsertMode.insertOrReplace);
+        batch.insertAll(db.paths, validPaths, mode: InsertMode.insertOrReplace);
+        batch.insertAll(db.seenMessageIds, batchSeenIds, mode: InsertMode.insertOrReplace);
+        batch.insertAll(db.adminTrustedSenders, validDelegations, mode: InsertMode.insertOrReplace);
+        batch.insertAll(db.revokedDelegations, validRevocations, mode: InsertMode.insertOrReplace);
+      });
+
+      // Update trust tiers for delegations/revocations in this batch
+      await db.transaction(() async {
+        for (final d in validDelegations) {
+          if (revokedKeys.contains(d.publicKey.value)) continue;
+          await (db.update(db.hazardMarkers)..where((t) => t.senderId.equals(d.publicKey.value) & t.trustTier.isBiggerThanValue(2)))
+              .write(const HazardMarkersCompanion(trustTier: Value(2)));
+          await (db.update(db.newsItems)..where((t) => t.senderId.equals(d.publicKey.value) & t.trustTier.isBiggerThanValue(2)))
+              .write(const NewsItemsCompanion(trustTier: Value(2)));
+          await (db.update(db.areas)..where((t) => t.senderId.equals(d.publicKey.value) & t.trustTier.isBiggerThanValue(2)))
+              .write(const AreasCompanion(trustTier: Value(2)));
+          await (db.update(db.paths)..where((t) => t.senderId.equals(d.publicKey.value) & t.trustTier.isBiggerThanValue(2)))
+              .write(const PathsCompanion(trustTier: Value(2)));
+        }
+        for (final r in validRevocations) {
+          final fallbackTier = trustedKeys.contains(r.delegateePublicKey.value) ? 3 : 4;
+          await (db.update(db.hazardMarkers)..where((t) => t.senderId.equals(r.delegateePublicKey.value) & t.trustTier.equals(2)))
+              .write(HazardMarkersCompanion(trustTier: Value(fallbackTier)));
+          await (db.update(db.newsItems)..where((t) => t.senderId.equals(r.delegateePublicKey.value) & t.trustTier.equals(2)))
+              .write(NewsItemsCompanion(trustTier: Value(fallbackTier)));
+          await (db.update(db.areas)..where((t) => t.senderId.equals(r.delegateePublicKey.value) & t.trustTier.equals(2)))
+              .write(AreasCompanion(trustTier: Value(fallbackTier)));
+          await (db.update(db.paths)..where((t) => t.senderId.equals(r.delegateePublicKey.value) & t.trustTier.equals(2)))
+              .write(PathsCompanion(trustTier: Value(fallbackTier)));
+        }
+      });
     });
 
     state = state.copyWith(
@@ -2432,62 +2439,6 @@ class P2pService extends _$P2pService {
           db.paths,
         )..where((t) => t.id.equals(d.id.value))).go();
       }
-      for (final d in validDelegations) {
-        if (revokedKeys.contains(d.publicKey.value)) continue;
-        await (db.update(db.hazardMarkers)..where(
-              (t) =>
-                  t.senderId.equals(d.publicKey.value) &
-                  t.trustTier.isBiggerThanValue(2),
-            ))
-            .write(const HazardMarkersCompanion(trustTier: Value(2)));
-        await (db.update(db.newsItems)..where(
-              (t) =>
-                  t.senderId.equals(d.publicKey.value) &
-                  t.trustTier.isBiggerThanValue(2),
-            ))
-            .write(const NewsItemsCompanion(trustTier: Value(2)));
-        await (db.update(db.areas)..where(
-              (t) =>
-                  t.senderId.equals(d.publicKey.value) &
-                  t.trustTier.isBiggerThanValue(2),
-            ))
-            .write(const AreasCompanion(trustTier: Value(2)));
-        await (db.update(db.paths)..where(
-              (t) =>
-                  t.senderId.equals(d.publicKey.value) &
-                  t.trustTier.isBiggerThanValue(2),
-            ))
-            .write(const PathsCompanion(trustTier: Value(2)));
-      }
-      for (final r in validRevocations) {
-        final fallbackTier = trustedKeys.contains(r.delegateePublicKey.value)
-            ? 3
-            : 4;
-        await (db.update(db.hazardMarkers)..where(
-              (t) =>
-                  t.senderId.equals(r.delegateePublicKey.value) &
-                  t.trustTier.equals(2),
-            ))
-            .write(HazardMarkersCompanion(trustTier: Value(fallbackTier)));
-        await (db.update(db.newsItems)..where(
-              (t) =>
-                  t.senderId.equals(r.delegateePublicKey.value) &
-                  t.trustTier.equals(2),
-            ))
-            .write(NewsItemsCompanion(trustTier: Value(fallbackTier)));
-        await (db.update(db.areas)..where(
-              (t) =>
-                  t.senderId.equals(r.delegateePublicKey.value) &
-                  t.trustTier.equals(2),
-            ))
-            .write(AreasCompanion(trustTier: Value(fallbackTier)));
-        await (db.update(db.paths)..where(
-              (t) =>
-                  t.senderId.equals(r.delegateePublicKey.value) &
-                  t.trustTier.equals(2),
-            ))
-            .write(PathsCompanion(trustTier: Value(fallbackTier)));
-      }
     });
 
     state = state.copyWith(
@@ -2496,7 +2447,7 @@ class P2pService extends _$P2pService {
     );
 
     // Request missing images
-    for (final m in validMarkersPb) {
+    for (final m in allValidMarkersPb) {
       final imageId = m.imageId;
       if (imageId.isNotEmpty) {
         final file = File('${dir.path}/$imageId');
@@ -2521,7 +2472,7 @@ class P2pService extends _$P2pService {
         }
       }
     }
-    for (final n in validNewsPb) {
+    for (final n in allValidNewsPb) {
       final imageId = n.imageId;
       if (imageId.isNotEmpty) {
         final file = File('${dir.path}/$imageId');
@@ -2556,27 +2507,27 @@ class P2pService extends _$P2pService {
     final forwardPayload = pb.SyncPayload();
     bool hasNewData = false;
 
-    for (final m in validMarkersPb) {
+    for (final m in allValidMarkersPb) {
       hasNewData = true;
       forwardPayload.markers.add(m);
     }
 
-    for (final n in validNewsPb) {
+    for (final n in allValidNewsPb) {
       hasNewData = true;
       forwardPayload.news.add(n);
     }
 
-    for (final p in validProfilesPb) {
+    for (final p in allValidProfilesPb) {
       hasNewData = true;
       forwardPayload.profiles.add(p);
     }
 
-    for (final a in validAreasPb) {
+    for (final a in allValidAreasPb) {
       hasNewData = true;
       forwardPayload.areas.add(a);
     }
 
-    for (final p in validPathsPb) {
+    for (final p in allValidPathsPb) {
       hasNewData = true;
       forwardPayload.paths.add(p);
     }
@@ -2588,12 +2539,12 @@ class P2pService extends _$P2pService {
       );
     }
 
-    for (final d in validDelegationsPb) {
+    for (final d in allValidDelegationsPb) {
       hasNewData = true;
       forwardPayload.delegations.add(d);
     }
 
-    for (final r in validRevocationsPb) {
+    for (final r in allValidRevocationsPb) {
       hasNewData = true;
       forwardPayload.revokedDelegations.add(r);
     }
