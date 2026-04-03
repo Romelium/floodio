@@ -52,9 +52,9 @@ Future<int> verifyDataLogic(
   String signatureStr,
   String senderPublicKeyStr,
   List<int> serverPubKeyBytes,
-  List<String> trustedPublicKeys,
-  List<String> adminTrustedPublicKeys,
-  List<String> untrustedPublicKeys,
+  Set<String> trustedPublicKeys,
+  Set<String> adminTrustedPublicKeys,
+  Set<String> untrustedPublicKeys,
 ) async {
   try {
     if (untrustedPublicKeys.contains(senderPublicKeyStr)) {
@@ -250,10 +250,10 @@ class CryptoService extends _$CryptoService {
     final myPubKey = await _userKeyPair.extractPublicKey();
     final myPubKeyStr = base64Encode(myPubKey.bytes);
 
-    final effectiveTrustedKeys = [...trustedPublicKeys, myPubKeyStr];
+    final effectiveTrustedKeys = {...trustedPublicKeys, myPubKeyStr};
     final effectiveAdminKeys = adminTrustedPublicKeys
         .where((k) => !revokedPublicKeys.contains(k))
-        .toList();
+        .toSet();
 
     return verifyDataLogic(
       data,
@@ -262,7 +262,7 @@ class CryptoService extends _$CryptoService {
       serverPubKeyBytes,
       effectiveTrustedKeys,
       effectiveAdminKeys,
-      untrustedPublicKeys,
+      untrustedPublicKeys.toSet(),
     );
   }
 }
