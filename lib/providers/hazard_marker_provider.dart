@@ -68,6 +68,15 @@ class HazardMarkersController extends _$HazardMarkersController {
             DeletedItemsCompanion.insert(id: id, timestamp: ts),
             mode: InsertMode.insertOrReplace,
           );
+      await db
+          .into(db.seenMessageIds)
+          .insert(
+            SeenMessageIdsCompanion.insert(
+              messageId: 'del_${id}_$ts',
+              timestamp: DateTime.now().millisecondsSinceEpoch,
+            ),
+            mode: InsertMode.insertOrReplace,
+          );
     });
 
     if (marker?.imageId != null && marker!.imageId!.isNotEmpty) {

@@ -433,31 +433,31 @@ class CloudSyncService extends _$CloudSyncService {
           print(
             '[CloudSyncService] Uploaded ${payload.markers.length} markers, ${payload.news.length} news, ${payload.areas.length} areas, ${payload.paths.length} paths to the cloud.',
           );
-
-          // Mark as uploaded
-          final messageIdsToMark = recentSeenSet.difference(skippedMessageIds).toList();
-          
-          await db.transaction(() async {
-            if (messageIdsToMark.isNotEmpty) {
-              for (var i = 0; i < messageIdsToMark.length; i += 500) {
-                final chunk = messageIdsToMark.skip(i).take(500).toList();
-                await (db.update(db.seenMessageIds)..where((t) => t.messageId.isIn(chunk)))
-                    .write(const SeenMessageIdsCompanion(uploadedToCloud: Value(true)));
-              }
-            }
-            if (deleted.isNotEmpty) {
-              for (var i = 0; i < deleted.length; i += 500) {
-                final chunk = deleted.skip(i).take(500).map((e) => e.id).toList();
-                await (db.update(db.deletedItems)..where((t) => t.id.isIn(chunk)))
-                    .write(const DeletedItemsCompanion(uploadedToCloud: Value(true)));
-              }
-            }
-          });
         } catch (e) {
           print('[CloudSyncService] Failed to upload payload to Supabase: $e');
           throw Exception('Failed to upload payload to cloud');
         }
       }
+
+      // Mark as uploaded regardless of whether payload was empty or not
+      final messageIdsToMark = recentSeenSet.difference(skippedMessageIds).toList();
+
+      await db.transaction(() async {
+        if (messageIdsToMark.isNotEmpty) {
+          for (var i = 0; i < messageIdsToMark.length; i += 500) {
+            final chunk = messageIdsToMark.skip(i).take(500).toList();
+            await (db.update(db.seenMessageIds)..where((t) => t.messageId.isIn(chunk)))
+                .write(const SeenMessageIdsCompanion(uploadedToCloud: Value(true)));
+          }
+        }
+        if (deleted.isNotEmpty) {
+          for (var i = 0; i < deleted.length; i += 500) {
+            final chunk = deleted.skip(i).take(500).map((e) => e.id).toList();
+            await (db.update(db.deletedItems)..where((t) => t.id.isIn(chunk)))
+                .write(const DeletedItemsCompanion(uploadedToCloud: Value(true)));
+          }
+        }
+      });
 
       if (!state.syncTextOnly) {
         state = state.copyWith(
@@ -545,7 +545,16 @@ class CloudSyncService extends _$CloudSyncService {
         }
       }
 
-      if (downloadedAny) {
+      bool hasCombinedData = combinedPayload.markers.isNotEmpty ||
+          combinedPayload.news.isNotEmpty ||
+          combinedPayload.profiles.isNotEmpty ||
+          combinedPayload.deletedItems.isNotEmpty ||
+          combinedPayload.areas.isNotEmpty ||
+          combinedPayload.paths.isNotEmpty ||
+          combinedPayload.delegations.isNotEmpty ||
+          combinedPayload.revokedDelegations.isNotEmpty;
+
+      if (downloadedAny && hasCombinedData) {
         state = state.copyWith(
           syncMessage: 'Processing downloaded data...',
           syncProgress: 0.9,

@@ -58,6 +58,15 @@ class AreasController extends _$AreasController {
             DeletedItemsCompanion.insert(id: id, timestamp: ts),
             mode: InsertMode.insertOrReplace,
           );
+      await db
+          .into(db.seenMessageIds)
+          .insert(
+            SeenMessageIdsCompanion.insert(
+              messageId: 'del_${id}_$ts',
+              timestamp: DateTime.now().millisecondsSinceEpoch,
+            ),
+            mode: InsertMode.insertOrReplace,
+          );
     });
   }
 }

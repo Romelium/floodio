@@ -66,6 +66,15 @@ class NewsItemsController extends _$NewsItemsController {
             DeletedItemsCompanion.insert(id: id, timestamp: ts),
             mode: InsertMode.insertOrReplace,
           );
+      await db
+          .into(db.seenMessageIds)
+          .insert(
+            SeenMessageIdsCompanion.insert(
+              messageId: 'del_${id}_$ts',
+              timestamp: DateTime.now().millisecondsSinceEpoch,
+            ),
+            mode: InsertMode.insertOrReplace,
+          );
     });
 
     if (newsItem?.imageId != null && newsItem!.imageId!.isNotEmpty) {
