@@ -12,6 +12,24 @@ class TerminalScreen extends ConsumerStatefulWidget {
 
 class _TerminalScreenState extends ConsumerState<TerminalScreen> {
   final ScrollController _scrollController = ScrollController();
+  bool _isAtBottom = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(() {
+      if (_scrollController.hasClients) {
+        _isAtBottom = _scrollController.position.pixels >=
+            _scrollController.position.maxScrollExtent - 50;
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -19,7 +37,7 @@ class _TerminalScreenState extends ConsumerState<TerminalScreen> {
 
     // Auto-scroll to bottom when new logs arrive
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scrollController.hasClients) {
+      if (_scrollController.hasClients && _isAtBottom) {
         _scrollController.animateTo(
           _scrollController.position.maxScrollExtent,
           duration: const Duration(milliseconds: 200),
