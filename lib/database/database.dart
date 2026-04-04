@@ -110,7 +110,9 @@ class AppDatabase extends _$AppDatabase {
             await file.delete();
           }
         }
-      } catch (_) {}
+      } catch (e) {
+        print("[AppDatabase] Error cleaning up old images: $e");
+      }
     }
   }
 

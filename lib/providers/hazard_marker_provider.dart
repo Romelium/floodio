@@ -86,7 +86,9 @@ class HazardMarkersController extends _$HazardMarkersController {
         if (await file.exists()) {
           await file.delete();
         }
-      } catch (_) {}
+      } catch (e) {
+        print("[HazardMarkersController] Error deleting marker image: $e");
+      }
     }
   }
 }

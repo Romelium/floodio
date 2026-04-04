@@ -36,7 +36,9 @@ class LocationController extends _$LocationController {
     bool isPowerSave = false;
     try {
       isPowerSave = await Battery().isInBatterySaveMode;
-    } catch (_) {}
+    } catch (e) {
+      print("[LocationController] Error checking battery save mode: $e");
+    }
 
     yield* Geolocator.getPositionStream(
       locationSettings: LocationSettings(
@@ -60,7 +62,9 @@ class LocationController extends _$LocationController {
     bool isPowerSave = false;
     try {
       isPowerSave = await Battery().isInBatterySaveMode;
-    } catch (_) {}
+    } catch (e) {
+      print("[LocationController] Error checking battery save mode: $e");
+    }
 
     return await Geolocator.getCurrentPosition(
       locationSettings: LocationSettings(accuracy: isPowerSave ? LocationAccuracy.medium : LocationAccuracy.high),

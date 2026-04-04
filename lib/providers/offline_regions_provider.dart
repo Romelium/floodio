@@ -103,7 +103,9 @@ class OfflineRegions extends _$OfflineRegions {
     } else {
       try {
         FlutterBackgroundService().invoke('reloadOfflineRegions');
-      } catch (_) {}
+      } catch (e) {
+        print("[OfflineRegions] Error invoking background service: $e");
+      }
     }
   }
 
@@ -116,7 +118,9 @@ class OfflineRegions extends _$OfflineRegions {
     } else {
       try {
         FlutterBackgroundService().invoke('reloadOfflineRegions');
-      } catch (_) {}
+      } catch (e) {
+        print("[OfflineRegions] Error invoking background service: $e");
+      }
     }
   }
 
@@ -145,7 +149,9 @@ class OfflineRegions extends _$OfflineRegions {
     } else {
       try {
         FlutterBackgroundService().invoke('reloadOfflineRegions');
-      } catch (_) {}
+      } catch (e) {
+        print("[OfflineRegions] Error invoking background service: $e");
+      }
     }
   }
 }

@@ -31,7 +31,9 @@ void main() async {
 
   final prefs = await SharedPreferences.getInstance();
 
-  db.cleanupOldData().ignore();
+  db.cleanupOldData().catchError((e) {
+    debugPrint("[FloodioApp] Error during database cleanup: $e");
+  });
   await initializeBackgroundService();
   runApp(
     ProviderScope(

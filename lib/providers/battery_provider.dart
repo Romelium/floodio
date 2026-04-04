@@ -43,6 +43,8 @@ class BatteryController extends _$BatteryController {
       final state = await _battery.batteryState;
       final isPowerSave = await _battery.isInBatterySaveMode;
       this.state = BatteryInfo(level: level, state: state, isPowerSaveMode: isPowerSave);
-    } catch (_) {}
+    } catch (e) {
+      // Ignore battery fetch errors, but log them for debugging
+    }
   }
 }

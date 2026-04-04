@@ -84,7 +84,9 @@ class NewsItemsController extends _$NewsItemsController {
         if (await file.exists()) {
           await file.delete();
         }
-      } catch (_) {}
+      } catch (e) {
+        print("[NewsItemsController] Error deleting news image: $e");
+      }
     }
   }
 }

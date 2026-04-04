@@ -118,6 +118,7 @@ Future<bool> verifyDelegationLogic(
       signature: Signature(signatureBytes, publicKey: senderPubKey),
     );
   } catch (e) {
+    print("[CryptoService] Exception during delegation verification: $e");
     return false;
   }
 }
@@ -146,6 +147,7 @@ Future<bool> verifyRevocationLogic(
       signature: Signature(signatureBytes, publicKey: senderPubKey),
     );
   } catch (e) {
+    print("[CryptoService] Exception during revocation verification: $e");
     return false;
   }
 }

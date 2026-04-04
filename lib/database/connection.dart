@@ -39,6 +39,7 @@ Future<QueryExecutor> getSharedConnection() async {
       final isolate = DriftIsolate.fromConnectPort(port);
       return await isolate.connect().timeout(const Duration(seconds: 2));
     } catch (e) {
+      print("[DatabaseConnection] Failed to connect to existing isolate: $e");
       IsolateNameServer.removePortNameMapping(_dbIsolateName);
     }
   }
@@ -59,7 +60,9 @@ Future<QueryExecutor> getSharedConnection() async {
     try {
       final redundantConnection = await isolate.connect();
       await redundantConnection.close();
-    } catch (_) {}
+    } catch (e) {
+      print("[DatabaseConnection] Error closing redundant connection: $e");
+    }
     isolateObj.kill();
 
     port = IsolateNameServer.lookupPortByName(_dbIsolateName);

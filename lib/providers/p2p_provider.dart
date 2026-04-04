@@ -1140,7 +1140,9 @@ class P2pService extends _$P2pService {
         terminalLog("[*] Removing existing group before creating new one...");
         await _host.removeGroup();
         await Future.delayed(const Duration(milliseconds: 500));
-      } catch (_) {}
+      } catch (e) {
+        terminalLog("[-] Error removing existing group before hosting: $e");
+      }
 
       await _host.createGroup(advertise: true);
       if (!state.isHosting || _disposed) {
@@ -1260,7 +1262,9 @@ class P2pService extends _$P2pService {
             .where((s) => s == BluetoothAdapterState.on)
             .first
             .timeout(const Duration(seconds: 5));
-      } catch (_) {}
+      } catch (e) {
+        terminalLog("[-] Timeout waiting for Bluetooth to turn on: $e");
+      }
 
       await FlutterBluePlus.startScan(
         withServices: [Guid(_floodioServiceUuid)],
@@ -1398,7 +1402,9 @@ class P2pService extends _$P2pService {
     _scanSub = null;
     try {
       await FlutterBluePlus.stopScan();
-    } catch (_) {}
+    } catch (e) {
+      terminalLog("[-] Error stopping FlutterBluePlus scan: $e");
+    }
     if (_isInitialized) {
       await _client.stopScan();
     }
@@ -1565,8 +1571,9 @@ class P2pService extends _$P2pService {
                     );
                     ref.read(offlineRegionsProvider.notifier).addRegion(region);
                   }
-                } catch (e) {
+                } catch (e, st) {
                   terminalLog("[-] Failed to parse region from map filename: $e");
+                  terminalLog("[-] Stacktrace: $st");
                 }
               }
 
@@ -2842,7 +2849,9 @@ class P2pService extends _$P2pService {
     Position? loc;
     try {
       loc = await Geolocator.getLastKnownPosition();
-    } catch (_) {}
+    } catch (e) {
+      terminalLog("[-] Error getting location for mock hazard: $e");
+    }
     final lat = loc?.latitude ?? 10.7326718;
     final lng = loc?.longitude ?? 122.5482846;
 

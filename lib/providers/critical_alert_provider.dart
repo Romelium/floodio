@@ -115,10 +115,14 @@ class RedAlertController extends _$RedAlertController {
         _isFlashing = false;
         try {
           _audioPlayer.stop();
-        } catch (_) {}
+        } catch (e) {
+          print("[RedAlertController] Error stopping audio player: $e");
+        }
         try {
           TorchLight.disableTorch();
-        } catch (_) {}
+        } catch (e) {
+          print("[RedAlertController] Error disabling torch: $e");
+        }
       } else if (newAlert && !state.isMuted) {
         _triggerAlarm();
       }
@@ -151,7 +155,9 @@ class RedAlertController extends _$RedAlertController {
       _audioPlayer.dispose();
       try {
         TorchLight.disableTorch();
-      } catch (_) {}
+      } catch (e) {
+        print("[RedAlertController] Error disabling torch on dispose: $e");
+      }
     });
 
     return RedAlertState();
@@ -172,17 +178,23 @@ class RedAlertController extends _$RedAlertController {
     try {
       try {
         await SoundMode.setSoundMode(RingerModeStatus.normal);
-      } catch (_) {}
+      } catch (e) {
+        print("[RedAlertController] Error setting sound mode: $e");
+      }
       try {
         VolumeController.instance.showSystemUI = false;
         await VolumeController.instance.setVolume(1.0);
-      } catch (_) {}
+      } catch (e) {
+        print("[RedAlertController] Error setting volume: $e");
+      }
 
       _audioPlayer.setReleaseMode(ReleaseMode.loop);
       if (_audioPlayer.state != PlayerState.playing) {
         await _audioPlayer.play(UrlSource('https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg'));
       }
-    } catch (_) {}
+    } catch (e) {
+      print("[RedAlertController] Error triggering alarm: $e");
+    }
   }
 
   void _vibrateLoop() async {
@@ -193,7 +205,9 @@ class RedAlertController extends _$RedAlertController {
         if (!_isVibrating) break;
         HapticFeedback.heavyImpact();
         await Future.delayed(const Duration(milliseconds: 800));
-      } catch (_) {}
+      } catch (e) {
+        print("[RedAlertController] Error in vibrate loop: $e");
+      }
       await Future.delayed(const Duration(milliseconds: 1000));
     }
   }
@@ -208,12 +222,16 @@ class RedAlertController extends _$RedAlertController {
           await TorchLight.enableTorch();
         }
         torchOn = !torchOn;
-      } catch (_) {}
+      } catch (e) {
+        print("[RedAlertController] Error in flash loop: $e");
+      }
       await Future.delayed(const Duration(milliseconds: 300));
     }
     try {
       await TorchLight.disableTorch();
-    } catch (_) {}
+    } catch (e) {
+      print("[RedAlertController] Error disabling torch after flash loop: $e");
+    }
   }
 
   void stopAlarm() {
@@ -221,10 +239,14 @@ class RedAlertController extends _$RedAlertController {
     _isFlashing = false;
     try {
       _audioPlayer.stop();
-    } catch (_) {}
+    } catch (e) {
+      print("[RedAlertController] Error stopping audio player: $e");
+    }
     try {
       TorchLight.disableTorch();
-    } catch (_) {}
+    } catch (e) {
+      print("[RedAlertController] Error disabling torch: $e");
+    }
     state = RedAlertState(
       isActive: state.isActive,
       isMuted: true,
