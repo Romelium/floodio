@@ -628,15 +628,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         );
       } else if (granted) {
         if (mounted) {
-          final batteryExempt =
-              await Permission.ignoreBatteryOptimizations.isGranted;
+          final batteryExempt = await isBatteryOptimizationExempt();
           if (!batteryExempt && mounted) {
             await showDialog(
               context: context,
               builder: (context) => AlertDialog(
                 title: const Text('Background Sync'),
                 content: const Text(
-                  'To keep syncing while the app is closed, please allow Floodio to run in the background (ignore battery optimizations).',
+                  'To keep syncing while the app is closed, please allow Floodio to run in the background. You may need to disable battery optimizations and enable auto-start depending on your device manufacturer.',
                 ),
                 actions: [
                   TextButton(

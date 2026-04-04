@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:device_info_plus/device_info_plus.dart';
+import 'package:disable_battery_optimization/disable_battery_optimization.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter_p2p_connection/flutter_p2p_connection.dart';
 
@@ -83,11 +84,21 @@ Future<bool> checkLocationServices() async {
   return await Permission.location.serviceStatus.isEnabled;
 }
 
+Future<bool> isBatteryOptimizationExempt() async {
+  if (!Platform.isAndroid) return true;
+  final isAllDisabled =
+      await DisableBatteryOptimization.isAllBatteryOptimizationDisabled;
+  return isAllDisabled ?? false;
+}
+
 Future<void> requestBatteryOptimizationExemption() async {
   if (!Platform.isAndroid) return;
-  if (!await Permission.ignoreBatteryOptimizations.isGranted) {
-    await Permission.ignoreBatteryOptimizations.request();
-  }
+  await DisableBatteryOptimization.showDisableAllOptimizationsSettings(
+    "Enable Auto Start",
+    "Follow the steps and enable the auto start of this app to keep syncing in the background.",
+    "Disable Battery Optimization",
+    "Follow the steps and disable the optimizations to allow smooth background syncing.",
+  );
 }
 
 Future<bool> ensureServicesEnabled({bool isHosting = false}) async {
