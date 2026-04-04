@@ -1,3 +1,4 @@
+import 'dart:collection';
 import 'dart:io';
 import 'dart:isolate';
 import 'dart:math';
@@ -15,6 +16,40 @@ class MapPackData {
   final String dirPath;
   final Map<String, dynamic>? regionJson;
   MapPackData(this.dirPath, this.regionJson);
+}
+
+class LruCache<K, V> {
+  final int capacity;
+  final LinkedHashMap<K, V> _cache = LinkedHashMap<K, V>();
+
+  LruCache(this.capacity);
+
+  V? get(K key) {
+    if (!_cache.containsKey(key)) return null;
+    final value = _cache.remove(key)!;
+    _cache[key] = value;
+    return value;
+  }
+
+  void put(K key, V value) {
+    if (_cache.containsKey(key)) {
+      _cache.remove(key);
+    }
+    _cache[key] = value;
+    if (_cache.length > capacity) {
+      _cache.remove(_cache.keys.first);
+    }
+  }
+
+  V? remove(K key) {
+    return _cache.remove(key);
+  }
+
+  void clear() {
+    _cache.clear();
+  }
+
+  int get length => _cache.length;
 }
 
 int _lon2tilex(double lon, int z) {
@@ -178,8 +213,7 @@ class MapCacheSizeController extends _$MapCacheSizeController {
 }
 
 class MapCacheService {
-  final _memoryCache = <String, Uint8List>{};
-  final int _maxMemoryCacheSize = 200; // Cache up to 200 tiles in memory
+  final _memoryCache = LruCache<String, Uint8List>(200); // Cache up to 200 tiles in memory
   final HttpClient _httpClient = HttpClient();
 
   Future<File> getTileFile(int z, int x, int y) async {
@@ -190,16 +224,15 @@ class MapCacheService {
 
   Future<Uint8List?> getTile(int z, int x, int y, String urlTemplate) async {
     final key = '$z/$x/$y';
-    if (_memoryCache.containsKey(key)) {
-      final bytes = _memoryCache.remove(key)!;
-      _memoryCache[key] = bytes; // Move to end (most recently used)
-      return bytes;
+    final cachedBytes = _memoryCache.get(key);
+    if (cachedBytes != null) {
+      return cachedBytes;
     }
 
     final file = await getTileFile(z, x, y);
     if (await file.exists()) {
       final bytes = await file.readAsBytes();
-      _addToMemoryCache(key, bytes);
+      _memoryCache.put(key, bytes);
       return bytes;
     }
 
@@ -219,20 +252,13 @@ class MapCacheService {
         try {
           await file.writeAsBytes(bytes);
         } catch (_) {} // Ignore concurrent write collisions
-        _addToMemoryCache(key, bytes);
+        _memoryCache.put(key, bytes);
         return bytes;
       }
     } catch (e) {
       debugPrint('[MapCacheService] Error downloading tile: $e');
     }
     return null;
-  }
-
-  void _addToMemoryCache(String key, Uint8List bytes) {
-    _memoryCache[key] = bytes;
-    if (_memoryCache.length > _maxMemoryCacheSize) {
-      _memoryCache.remove(_memoryCache.keys.first);
-    }
   }
 
   Future<File> packMap({OfflineRegion? region}) async {
@@ -279,6 +305,7 @@ class MapCacheService {
   }
 
   Future<void> clearCache() async {
+    _memoryCache.clear();
     final dir = await getApplicationDocumentsDirectory();
     final mapDir = Directory('${dir.path}/map_tiles');
     if (await mapDir.exists()) {
@@ -298,6 +325,8 @@ class MapCacheService {
 
       for (int x = min(minX, maxX); x <= max(minX, maxX); x++) {
         for (int y = min(minY, maxY); y <= max(minY, maxY); y++) {
+          final key = '$z/$x/$y';
+          _memoryCache.remove(key);
           final file = File('${dir.path}/map_tiles/$z/$x/$y.png');
           if (await file.exists()) {
             try {
