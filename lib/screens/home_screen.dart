@@ -928,7 +928,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   }
 
   Future<int> _getTrustTier(
-    String payloadToSignStr,
+    List<int> data,
     String signature,
     String senderId,
   ) async {
@@ -951,7 +951,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         adminTrustedSendersAsync.value?.map((e) => e.publicKey).toList() ?? [];
 
     return await cryptoService.verifyAndGetTrustTier(
-      data: utf8.encode(payloadToSignStr),
+      data: data,
       signatureStr: signature,
       senderPublicKeyStr: senderId,
       trustedPublicKeys: trustedKeys,
@@ -1828,7 +1828,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     }
 
     final trustTier = await _getTrustTier(
-      String.fromCharCodes(payloadToSign),
+      payloadToSign,
       signature,
       senderId,
     );
@@ -1915,7 +1915,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     }
 
     final trustTier = await _getTrustTier(
-      String.fromCharCodes(payloadToSign),
+      payloadToSign,
       signature,
       senderId,
     );
@@ -1999,7 +1999,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     }
 
     final trustTier = await _getTrustTier(
-      String.fromCharCodes(payloadToSign),
+      payloadToSign,
       signature,
       senderId,
     );
@@ -2080,7 +2080,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     }
 
     final trustTier = await _getTrustTier(
-      String.fromCharCodes(payloadToSign),
+      payloadToSign,
       signature,
       senderId,
     );
@@ -2584,7 +2584,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 );
                 final signature = await cryptoService.signData(payloadToSign);
                 final trustTier = await _getTrustTier(
-                  String.fromCharCodes(payloadToSign),
+                  payloadToSign,
                   signature,
                   senderId,
                 );
@@ -2797,7 +2797,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 );
                 final signature = await cryptoService.signData(payloadToSign);
                 final trustTier = await _getTrustTier(
-                  String.fromCharCodes(payloadToSign),
+                  payloadToSign,
                   signature,
                   senderId,
                 );
@@ -3011,7 +3011,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 );
                 final signature = await cryptoService.signData(payloadToSign);
                 final trustTier = await _getTrustTier(
-                  String.fromCharCodes(payloadToSign),
+                  payloadToSign,
                   signature,
                   senderId,
                 );
@@ -3380,7 +3380,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     await generateOfficialMarkerSignature(payloadToSign);
 
                 final trustTier = await _getTrustTier(
-                  String.fromCharCodes(payloadToSign),
+                  payloadToSign,
                   signature,
                   senderId,
                 );
