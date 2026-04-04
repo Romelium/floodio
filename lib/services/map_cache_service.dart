@@ -196,7 +196,18 @@ Future<int> _isolateUnpackMap(MapUnpackData data) async {
 
 @Riverpod(keepAlive: true)
 MapCacheService mapCacheService(Ref ref) {
-  return MapCacheService();
+  final service = MapCacheService();
+  
+  Future.microtask(() async {
+    try {
+      final regions = await ref.read(offlineRegionsProvider.future);
+      await service.enforceDiskCacheLimit(regions);
+    } catch (e) {
+      debugPrint('[MapCacheService] Error enforcing disk cache limit: $e');
+    }
+  });
+  
+  return service;
 }
 
 @riverpod
@@ -217,6 +228,102 @@ class MapCacheService {
     200,
   ); // Cache up to 200 tiles in memory
   final HttpClient _httpClient = HttpClient();
+
+  static const int _maxDiskCacheSize = 1024 * 1024 * 1024; // 1 GB
+  static const Duration _maxTileAge = Duration(days: 30);
+
+  bool _isTileInOfflineRegion(int z, int x, int y, List<OfflineRegion> regions) {
+    for (final region in regions) {
+      if (z >= region.minZoom && z <= region.maxZoom) {
+        final minX = _lon2tilex(region.bounds.west, z);
+        final maxX = _lon2tilex(region.bounds.east, z);
+        final minY = _lat2tiley(region.bounds.north, z);
+        final maxY = _lat2tiley(region.bounds.south, z);
+
+        if (x >= min(minX, maxX) &&
+            x <= max(minX, maxX) &&
+            y >= min(minY, maxY) &&
+            y <= max(minY, maxY)) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  Future<void> enforceDiskCacheLimit(List<OfflineRegion> offlineRegions) async {
+    final dir = await getApplicationDocumentsDirectory();
+    final mapDir = Directory('${dir.path}/map_tiles');
+    if (!await mapDir.exists()) return;
+
+    int totalSize = 0;
+    final List<File> removableFiles = [];
+    final now = DateTime.now();
+
+    await for (final entity in mapDir.list(recursive: true)) {
+      if (entity is File && entity.path.endsWith('.png')) {
+        try {
+          final parts = entity.path.split(RegExp(r'[/\\]'));
+          if (parts.length >= 3) {
+            final yStr = parts.last.replaceAll('.png', '');
+            final xStr = parts[parts.length - 2];
+            final zStr = parts[parts.length - 3];
+
+            final z = int.tryParse(zStr);
+            final x = int.tryParse(xStr);
+            final y = int.tryParse(yStr);
+
+            if (z != null && x != null && y != null) {
+              final stat = await entity.stat();
+              
+              // Check if tile is protected by an offline region
+              if (_isTileInOfflineRegion(z, x, y, offlineRegions)) {
+                totalSize += stat.size;
+                continue;
+              }
+
+              // 1. Delete old files
+              if (now.difference(stat.modified) > _maxTileAge) {
+                await entity.delete();
+                continue;
+              }
+              
+              removableFiles.add(entity);
+              totalSize += stat.size;
+            }
+          }
+        } catch (_) {}
+      }
+    }
+
+    // 2. If still over limit, delete oldest modified files
+    if (totalSize > _maxDiskCacheSize) {
+      final fileStats = <File, FileStat>{};
+      for (final file in removableFiles) {
+        try {
+          fileStats[file] = await file.stat();
+        } catch (_) {}
+      }
+      
+      removableFiles.sort((a, b) {
+        final statA = fileStats[a];
+        final statB = fileStats[b];
+        if (statA == null || statB == null) return 0;
+        return statA.modified.compareTo(statB.modified);
+      });
+
+      for (final file in removableFiles) {
+        if (totalSize <= _maxDiskCacheSize) break;
+        try {
+          final stat = fileStats[file];
+          if (stat != null) {
+            await file.delete();
+            totalSize -= stat.size;
+          }
+        } catch (_) {}
+      }
+    }
+  }
 
   Future<File> getTileFile(int z, int x, int y) async {
     final dir = await getApplicationDocumentsDirectory();
