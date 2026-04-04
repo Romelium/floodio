@@ -3755,8 +3755,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                       final color = getHazardColor(m.type, m.trustTier);
                       return Marker(
                         point: LatLng(m.latitude, m.longitude),
-                        width: m.isCritical ? 120 : 40,
-                        height: m.isCritical ? 120 : 40,
+                        width: m.isCritical ? 200 : 40,
+                        height: m.isCritical ? 200 : 40,
                         alignment: m.isCritical ? Alignment.center : Alignment.topCenter,
                         child: GestureDetector(
                           behavior: HitTestBehavior.opaque,
@@ -3850,12 +3850,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                             currentPosition.latitude,
                             currentPosition.longitude,
                           ),
-                          width: 120,
-                          height: 120,
+                          width: 150,
+                          height: 150,
                           alignment: Alignment.center,
                           child: PulseMarker(
                             color: isSosActive ? Colors.red : Colors.blue,
                             size: isSosActive ? 32 : 24,
+                            isRadar: true,
                             child: Container(
                               width: isSosActive ? 32 : 24,
                               height: isSosActive ? 32 : 24,
