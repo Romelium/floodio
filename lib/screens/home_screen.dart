@@ -46,6 +46,7 @@ import '../services/map_cache_service.dart';
 import '../utils/clear_data.dart';
 import '../utils/permission_utils.dart';
 import '../utils/ui_helpers.dart';
+import '../utils/constants.dart';
 import '../widgets/download_map_dialog.dart';
 import '../widgets/heatmap_layer.dart';
 import '../widgets/local_image_display.dart';
@@ -843,6 +844,29 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           ),
         );
       },
+    );
+  }
+
+  Future<int> _getTrustTier(String payloadToSignStr, String signature, String senderId) async {
+    final cryptoService = ref.read(cryptoServiceProvider.notifier);
+    final trustedSendersAsync = ref.read(trustedSendersControllerProvider);
+    final untrustedSendersAsync = ref.read(untrustedSendersControllerProvider);
+    final revokedSendersAsync = ref.read(revokedDelegationsControllerProvider);
+    final adminTrustedSendersAsync = ref.read(adminTrustedSendersControllerProvider);
+
+    final trustedKeys = trustedSendersAsync.value?.map((e) => e.publicKey).toList() ?? [];
+    final untrustedKeys = untrustedSendersAsync.value?.map((e) => e.publicKey).toList() ?? [];
+    final revokedKeys = revokedSendersAsync.value?.map((e) => e.delegateePublicKey).toList() ?? [];
+    final adminTrustedKeys = adminTrustedSendersAsync.value?.map((e) => e.publicKey).toList() ?? [];
+
+    return await cryptoService.verifyAndGetTrustTier(
+      data: utf8.encode(payloadToSignStr),
+      signatureStr: signature,
+      senderPublicKeyStr: senderId,
+      trustedPublicKeys: trustedKeys,
+      adminTrustedPublicKeys: adminTrustedKeys,
+      untrustedPublicKeys: untrustedKeys,
+      revokedPublicKeys: revokedKeys,
     );
   }
 
@@ -1712,32 +1736,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       signature = await cryptoService.signData(payloadToSign);
     }
 
-    final trustedSendersAsync = ref.read(trustedSendersControllerProvider);
-    final untrustedSendersAsync = ref.read(untrustedSendersControllerProvider);
-    final revokedSendersAsync = ref.read(revokedDelegationsControllerProvider);
-    final adminTrustedSendersAsync = ref.read(
-      adminTrustedSendersControllerProvider,
-    );
-
-    final trustedKeys =
-        trustedSendersAsync.value?.map((e) => e.publicKey).toList() ?? [];
-    final untrustedKeys =
-        untrustedSendersAsync.value?.map((e) => e.publicKey).toList() ?? [];
-    final revokedKeys =
-        revokedSendersAsync.value?.map((e) => e.delegateePublicKey).toList() ??
-        [];
-    final adminTrustedKeys =
-        adminTrustedSendersAsync.value?.map((e) => e.publicKey).toList() ?? [];
-
-    final trustTier = await cryptoService.verifyAndGetTrustTier(
-      data: payloadToSign,
-      signatureStr: signature,
-      senderPublicKeyStr: senderId,
-      trustedPublicKeys: trustedKeys,
-      adminTrustedPublicKeys: adminTrustedKeys,
-      untrustedPublicKeys: untrustedKeys,
-      revokedPublicKeys: revokedKeys,
-    );
+    final trustTier = await _getTrustTier(String.fromCharCodes(payloadToSign), signature, senderId);
 
     final updatedMarker = HazardMarkerEntity(
       id: marker.id,
@@ -1820,32 +1819,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       signature = await cryptoService.signData(payloadToSign);
     }
 
-    final trustedSendersAsync = ref.read(trustedSendersControllerProvider);
-    final untrustedSendersAsync = ref.read(untrustedSendersControllerProvider);
-    final revokedSendersAsync = ref.read(revokedDelegationsControllerProvider);
-    final adminTrustedSendersAsync = ref.read(
-      adminTrustedSendersControllerProvider,
-    );
-
-    final trustedKeys =
-        trustedSendersAsync.value?.map((e) => e.publicKey).toList() ?? [];
-    final untrustedKeys =
-        untrustedSendersAsync.value?.map((e) => e.publicKey).toList() ?? [];
-    final revokedKeys =
-        revokedSendersAsync.value?.map((e) => e.delegateePublicKey).toList() ??
-        [];
-    final adminTrustedKeys =
-        adminTrustedSendersAsync.value?.map((e) => e.publicKey).toList() ?? [];
-
-    final trustTier = await cryptoService.verifyAndGetTrustTier(
-      data: payloadToSign,
-      signatureStr: signature,
-      senderPublicKeyStr: senderId,
-      trustedPublicKeys: trustedKeys,
-      adminTrustedPublicKeys: adminTrustedKeys,
-      untrustedPublicKeys: untrustedKeys,
-      revokedPublicKeys: revokedKeys,
-    );
+    final trustTier = await _getTrustTier(String.fromCharCodes(payloadToSign), signature, senderId);
 
     final updatedArea = AreaEntity(
       id: area.id,
@@ -1925,32 +1899,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       signature = await cryptoService.signData(payloadToSign);
     }
 
-    final trustedSendersAsync = ref.read(trustedSendersControllerProvider);
-    final untrustedSendersAsync = ref.read(untrustedSendersControllerProvider);
-    final revokedSendersAsync = ref.read(revokedDelegationsControllerProvider);
-    final adminTrustedSendersAsync = ref.read(
-      adminTrustedSendersControllerProvider,
-    );
-
-    final trustedKeys =
-        trustedSendersAsync.value?.map((e) => e.publicKey).toList() ?? [];
-    final untrustedKeys =
-        untrustedSendersAsync.value?.map((e) => e.publicKey).toList() ?? [];
-    final revokedKeys =
-        revokedSendersAsync.value?.map((e) => e.delegateePublicKey).toList() ??
-        [];
-    final adminTrustedKeys =
-        adminTrustedSendersAsync.value?.map((e) => e.publicKey).toList() ?? [];
-
-    final trustTier = await cryptoService.verifyAndGetTrustTier(
-      data: payloadToSign,
-      signatureStr: signature,
-      senderPublicKeyStr: senderId,
-      trustedPublicKeys: trustedKeys,
-      adminTrustedPublicKeys: adminTrustedKeys,
-      untrustedPublicKeys: untrustedKeys,
-      revokedPublicKeys: revokedKeys,
-    );
+    final trustTier = await _getTrustTier(String.fromCharCodes(payloadToSign), signature, senderId);
 
     final updatedPath = PathEntity(
       id: path.id,
@@ -2027,32 +1976,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       signature = await cryptoService.signData(payloadToSign);
     }
 
-    final trustedSendersAsync = ref.read(trustedSendersControllerProvider);
-    final untrustedSendersAsync = ref.read(untrustedSendersControllerProvider);
-    final revokedSendersAsync = ref.read(revokedDelegationsControllerProvider);
-    final adminTrustedSendersAsync = ref.read(
-      adminTrustedSendersControllerProvider,
-    );
-
-    final trustedKeys =
-        trustedSendersAsync.value?.map((e) => e.publicKey).toList() ?? [];
-    final untrustedKeys =
-        untrustedSendersAsync.value?.map((e) => e.publicKey).toList() ?? [];
-    final revokedKeys =
-        revokedSendersAsync.value?.map((e) => e.delegateePublicKey).toList() ??
-        [];
-    final adminTrustedKeys =
-        adminTrustedSendersAsync.value?.map((e) => e.publicKey).toList() ?? [];
-
-    final trustTier = await cryptoService.verifyAndGetTrustTier(
-      data: payloadToSign,
-      signatureStr: signature,
-      senderPublicKeyStr: senderId,
-      trustedPublicKeys: trustedKeys,
-      adminTrustedPublicKeys: adminTrustedKeys,
-      untrustedPublicKeys: untrustedKeys,
-      revokedPublicKeys: revokedKeys,
-    );
+    final trustTier = await _getTrustTier(String.fromCharCodes(payloadToSign), signature, senderId);
 
     final updatedNews = NewsItemEntity(
       id: news.id,
@@ -2112,7 +2036,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       try {
         return _mapController.camera.center;
       } catch (_) {
-        return const LatLng(10.7326718, 122.5482846);
+        return const LatLng(AppConstants.defaultLat, AppConstants.defaultLng);
       }
     }
   }
@@ -2522,9 +2446,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 HapticFeedback.mediumImpact();
                 Navigator.pop(dialogContext);
                 final cryptoService = ref.read(cryptoServiceProvider.notifier);
-                final trustedSendersAsync = ref.read(
-                  trustedSendersControllerProvider,
-                );
 
                 final id = DateTime.now().millisecondsSinceEpoch.toString();
                 final type = selectedType;
@@ -2552,46 +2473,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   '$id${point.latitude}${point.longitude}$type$description$timestamp${imageId ?? ""}${expiresAt ?? ""}$isCriticalStr',
                 );
                 final signature = await cryptoService.signData(payloadToSign);
-                final untrustedSendersAsync = ref.read(
-                  untrustedSendersControllerProvider,
-                );
-                final revokedSendersAsync = ref.read(
-                  revokedDelegationsControllerProvider,
-                );
-                final revokedKeys =
-                    revokedSendersAsync.value
-                        ?.map((e) => e.delegateePublicKey)
-                        .toList() ??
-                    [];
-                final adminTrustedSendersAsync = ref.read(
-                  adminTrustedSendersControllerProvider,
-                );
-                final adminTrustedKeys =
-                    adminTrustedSendersAsync.value
-                        ?.map((e) => e.publicKey)
-                        .toList() ??
-                    [];
-
-                final trustedKeys =
-                    trustedSendersAsync.value
-                        ?.map((e) => e.publicKey)
-                        .toList() ??
-                    [];
-                final untrustedKeys =
-                    untrustedSendersAsync.value
-                        ?.map((e) => e.publicKey)
-                        .toList() ??
-                    [];
-
-                final trustTier = await cryptoService.verifyAndGetTrustTier(
-                  data: payloadToSign,
-                  signatureStr: signature,
-                  senderPublicKeyStr: senderId,
-                  trustedPublicKeys: trustedKeys,
-                  adminTrustedPublicKeys: adminTrustedKeys,
-                  untrustedPublicKeys: untrustedKeys,
-                  revokedPublicKeys: revokedKeys,
-                );
+                final trustTier = await _getTrustTier(String.fromCharCodes(payloadToSign), signature, senderId);
 
                 final newMarker = HazardMarkerEntity(
                   id: id,
@@ -2778,9 +2660,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 HapticFeedback.mediumImpact();
                 Navigator.pop(dialogContext);
                 final cryptoService = ref.read(cryptoServiceProvider.notifier);
-                final trustedSendersAsync = ref.read(
-                  trustedSendersControllerProvider,
-                );
 
                 final id =
                     existingArea?.id ??
@@ -2803,46 +2682,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   '$id$coordsStr$type$description$timestamp${expiresAt ?? ""}$isCriticalStr',
                 );
                 final signature = await cryptoService.signData(payloadToSign);
-                final untrustedSendersAsync = ref.read(
-                  untrustedSendersControllerProvider,
-                );
-                final revokedSendersAsync = ref.read(
-                  revokedDelegationsControllerProvider,
-                );
-                final revokedKeys =
-                    revokedSendersAsync.value
-                        ?.map((e) => e.delegateePublicKey)
-                        .toList() ??
-                    [];
-                final adminTrustedSendersAsync = ref.read(
-                  adminTrustedSendersControllerProvider,
-                );
-                final adminTrustedKeys =
-                    adminTrustedSendersAsync.value
-                        ?.map((e) => e.publicKey)
-                        .toList() ??
-                    [];
-
-                final trustedKeys =
-                    trustedSendersAsync.value
-                        ?.map((e) => e.publicKey)
-                        .toList() ??
-                    [];
-                final untrustedKeys =
-                    untrustedSendersAsync.value
-                        ?.map((e) => e.publicKey)
-                        .toList() ??
-                    [];
-
-                final trustTier = await cryptoService.verifyAndGetTrustTier(
-                  data: payloadToSign,
-                  signatureStr: signature,
-                  senderPublicKeyStr: senderId,
-                  trustedPublicKeys: trustedKeys,
-                  adminTrustedPublicKeys: adminTrustedKeys,
-                  untrustedPublicKeys: untrustedKeys,
-                  revokedPublicKeys: revokedKeys,
-                );
+                final trustTier = await _getTrustTier(String.fromCharCodes(payloadToSign), signature, senderId);
 
                 final coords = points
                     .map((p) => {'lat': p.latitude, 'lng': p.longitude})
@@ -3030,9 +2870,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 HapticFeedback.mediumImpact();
                 Navigator.pop(dialogContext);
                 final cryptoService = ref.read(cryptoServiceProvider.notifier);
-                final trustedSendersAsync = ref.read(
-                  trustedSendersControllerProvider,
-                );
 
                 final id =
                     existingPath?.id ??
@@ -3055,46 +2892,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   '$id$coordsStr$type$description$timestamp${expiresAt ?? ""}$isCriticalStr',
                 );
                 final signature = await cryptoService.signData(payloadToSign);
-                final untrustedSendersAsync = ref.read(
-                  untrustedSendersControllerProvider,
-                );
-                final revokedSendersAsync = ref.read(
-                  revokedDelegationsControllerProvider,
-                );
-                final revokedKeys =
-                    revokedSendersAsync.value
-                        ?.map((e) => e.delegateePublicKey)
-                        .toList() ??
-                    [];
-                final adminTrustedSendersAsync = ref.read(
-                  adminTrustedSendersControllerProvider,
-                );
-                final adminTrustedKeys =
-                    adminTrustedSendersAsync.value
-                        ?.map((e) => e.publicKey)
-                        .toList() ??
-                    [];
-
-                final trustedKeys =
-                    trustedSendersAsync.value
-                        ?.map((e) => e.publicKey)
-                        .toList() ??
-                    [];
-                final untrustedKeys =
-                    untrustedSendersAsync.value
-                        ?.map((e) => e.publicKey)
-                        .toList() ??
-                    [];
-
-                final trustTier = await cryptoService.verifyAndGetTrustTier(
-                  data: payloadToSign,
-                  signatureStr: signature,
-                  senderPublicKeyStr: senderId,
-                  trustedPublicKeys: trustedKeys,
-                  adminTrustedPublicKeys: adminTrustedKeys,
-                  untrustedPublicKeys: untrustedKeys,
-                  revokedPublicKeys: revokedKeys,
-                );
+                final trustTier = await _getTrustTier(String.fromCharCodes(payloadToSign), signature, senderId);
 
                 final coords = points
                     .map((p) => {'lat': p.latitude, 'lng': p.longitude})
@@ -3454,49 +3252,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 final (senderId, signature) =
                     await generateOfficialMarkerSignature(payloadToSign);
 
-                final trustedSendersAsync = ref.read(
-                  trustedSendersControllerProvider,
-                );
-                final untrustedSendersAsync = ref.read(
-                  untrustedSendersControllerProvider,
-                );
-                final revokedSendersAsync = ref.read(
-                  revokedDelegationsControllerProvider,
-                );
-                final revokedKeys =
-                    revokedSendersAsync.value
-                        ?.map((e) => e.delegateePublicKey)
-                        .toList() ??
-                    [];
-                final adminTrustedSendersAsync = ref.read(
-                  adminTrustedSendersControllerProvider,
-                );
-                final adminTrustedKeys =
-                    adminTrustedSendersAsync.value
-                        ?.map((e) => e.publicKey)
-                        .toList() ??
-                    [];
-                final trustedKeys =
-                    trustedSendersAsync.value
-                        ?.map((e) => e.publicKey)
-                        .toList() ??
-                    [];
-                final untrustedKeys =
-                    untrustedSendersAsync.value
-                        ?.map((e) => e.publicKey)
-                        .toList() ??
-                    [];
-
-                final cryptoService = ref.read(cryptoServiceProvider.notifier);
-                final trustTier = await cryptoService.verifyAndGetTrustTier(
-                  data: payloadToSign,
-                  signatureStr: signature,
-                  senderPublicKeyStr: senderId,
-                  trustedPublicKeys: trustedKeys,
-                  adminTrustedPublicKeys: adminTrustedKeys,
-                  untrustedPublicKeys: untrustedKeys,
-                  revokedPublicKeys: revokedKeys,
-                );
+                final trustTier = await _getTrustTier(String.fromCharCodes(payloadToSign), signature, senderId);
 
                 final newNews = NewsItemEntity(
                   id: id,
@@ -3619,7 +3375,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             FlutterMap(
               mapController: _mapController,
               options: MapOptions(
-                initialCenter: const LatLng(10.7326718, 122.5482846),
+                initialCenter: const LatLng(AppConstants.defaultLat, AppConstants.defaultLng),
                 initialZoom: 13.0,
                 onPositionChanged: (camera, hasGesture) {
                   if (hasGesture && _isTrackingLocation) {

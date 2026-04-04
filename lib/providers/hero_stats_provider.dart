@@ -1,6 +1,7 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../utils/constants.dart';
 part 'hero_stats_provider.g.dart';
 
 class HeroStats {
@@ -29,9 +30,9 @@ class HeroStatsController extends _$HeroStatsController {
     final prefs = await SharedPreferences.getInstance();
     await prefs.reload();
     return HeroStats(
-      dataCarriedBytes: prefs.getInt('hero_data_carried') ?? 0,
-      peersSyncedWith: prefs.getInt('hero_peers_synced') ?? 0,
-      reportsRelayed: prefs.getInt('hero_reports_relayed') ?? 0,
+      dataCarriedBytes: prefs.getInt(PrefKeys.heroDataCarried) ?? 0,
+      peersSyncedWith: prefs.getInt(PrefKeys.heroPeersSynced) ?? 0,
+      reportsRelayed: prefs.getInt(PrefKeys.heroReportsRelayed) ?? 0,
     );
   }
 }

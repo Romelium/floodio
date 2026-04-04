@@ -10,6 +10,7 @@ import '../database/tables.dart';
 import '../providers/local_user_provider.dart';
 import '../providers/user_profile_provider.dart';
 import 'home_screen.dart';
+import '../utils/constants.dart';
 
 class OnboardingScreen extends ConsumerStatefulWidget {
   const OnboardingScreen({super.key});
@@ -38,8 +39,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     }
 
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('user_name', name);
-    await prefs.setString('user_contact', contact);
+    await prefs.setString(PrefKeys.userName, name);
+    await prefs.setString(PrefKeys.userContact, contact);
 
     await ref.read(cryptoServiceProvider.future);
     final cryptoService = ref.read(cryptoServiceProvider.notifier);
@@ -152,7 +153,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             TextButton(
               onPressed: () async {
                 final prefs = await SharedPreferences.getInstance();
-                await prefs.setInt('onboarding_shown_count', 2);
+                await prefs.setInt(PrefKeys.onboardingShownCount, 2);
                 if (!context.mounted) return;
                 Navigator.of(context).pushReplacement(
                   MaterialPageRoute(builder: (_) => const HomeScreen()),

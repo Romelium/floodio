@@ -9,7 +9,7 @@ import 'package:drift/native.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
-const String _dbIsolateName = 'floodio_db_isolate';
+import '../utils/constants.dart';
 
 class _IsolateStartRequest {
   final SendPort sendPort;
@@ -32,7 +32,7 @@ void _databaseIsolateEntry(_IsolateStartRequest request) {
 }
 
 Future<QueryExecutor> getSharedConnection() async {
-  SendPort? port = IsolateNameServer.lookupPortByName(_dbIsolateName);
+  SendPort? port = IsolateNameServer.lookupPortByName(AppConstants.dbIsolateName);
 
   if (port != null) {
     try {
@@ -40,7 +40,7 @@ Future<QueryExecutor> getSharedConnection() async {
       return await isolate.connect().timeout(const Duration(seconds: 2));
     } catch (e) {
       print("[DatabaseConnection] Failed to connect to existing isolate: $e");
-      IsolateNameServer.removePortNameMapping(_dbIsolateName);
+      IsolateNameServer.removePortNameMapping(AppConstants.dbIsolateName);
     }
   }
 
@@ -57,7 +57,7 @@ Future<QueryExecutor> getSharedConnection() async {
 
   final registered = IsolateNameServer.registerPortWithName(
     isolate.connectPort,
-    _dbIsolateName,
+    AppConstants.dbIsolateName,
   );
   if (!registered) {
     try {
@@ -68,7 +68,7 @@ Future<QueryExecutor> getSharedConnection() async {
     }
     isolateObj.kill();
 
-    port = IsolateNameServer.lookupPortByName(_dbIsolateName);
+    port = IsolateNameServer.lookupPortByName(AppConstants.dbIsolateName);
     if (port != null) {
       final existingIsolate = DriftIsolate.fromConnectPort(port);
       return await existingIsolate.connect();

@@ -15,6 +15,7 @@ import '../providers/p2p_provider.dart';
 import '../providers/offline_regions_provider.dart';
 import '../providers/settings_provider.dart';
 import '../providers/critical_alert_provider.dart';
+import '../utils/constants.dart';
 
 bool isBackgroundIsolate = false;
 ServiceInstance? bgServiceInstance;
@@ -34,14 +35,14 @@ Future<void> initializeBackgroundService() async {
   final service = FlutterBackgroundService();
 
   const AndroidNotificationChannel channel = AndroidNotificationChannel(
-    'floodio_bg_service',
+    AppConstants.bgServiceChannel,
     'Floodio Background Sync',
     description: 'This channel is used for background P2P syncing.',
     importance: Importance.low,
   );
 
   const AndroidNotificationChannel criticalChannel = AndroidNotificationChannel(
-    'floodio_critical_alerts',
+    AppConstants.criticalAlertsChannel,
     'Critical Alerts',
     description: 'High priority emergency alerts',
     importance: Importance.max,
@@ -78,7 +79,7 @@ Future<void> initializeBackgroundService() async {
       onStart: onStart,
       autoStart: false,
       isForegroundMode: true,
-      notificationChannelId: 'floodio_bg_service',
+      notificationChannelId: AppConstants.bgServiceChannel,
       initialNotificationTitle: 'Floodio Sync',
       initialNotificationContent: 'Initializing background sync',
       foregroundServiceNotificationId: 888,
@@ -269,7 +270,7 @@ void onStart(ServiceInstance service) async {
           body: next.syncMessage ?? 'Running in background',
           notificationDetails: const NotificationDetails(
             android: AndroidNotificationDetails(
-              'floodio_bg_service',
+              AppConstants.bgServiceChannel,
               'Floodio Background Sync',
               icon: 'ic_bg_service_small',
               ongoing: true,
@@ -296,7 +297,7 @@ void onStart(ServiceInstance service) async {
         body: next.latestAlertTitle ?? 'A critical alert has been issued.',
         notificationDetails: const NotificationDetails(
           android: AndroidNotificationDetails(
-            'floodio_critical_alerts',
+            AppConstants.criticalAlertsChannel,
             'Critical Alerts',
             channelDescription: 'High priority emergency alerts',
             importance: Importance.max,

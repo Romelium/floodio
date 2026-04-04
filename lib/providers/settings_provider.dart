@@ -2,6 +2,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import '../services/background_service.dart';
+import '../utils/constants.dart';
 
 part 'settings_provider.g.dart';
 
@@ -61,16 +62,12 @@ SharedPreferences sharedPreferences(Ref ref) {
 
 @Riverpod(keepAlive: true, dependencies: [sharedPreferences])
 class AppSettings extends _$AppSettings {
-  static const _keyMapStyle = 'settings_map_style';
-  static const _keySyncInterval = 'settings_sync_interval';
-  static const _keyIsOfficialMode = 'settings_is_official_mode';
-
   @override
   AppSettingsData build() {
     final prefs = ref.watch(sharedPreferencesProvider);
-    final styleIndex = prefs.getInt(_keyMapStyle) ?? 0;
-    final interval = prefs.getInt(_keySyncInterval) ?? 15;
-    final isOfficial = prefs.getBool(_keyIsOfficialMode) ?? false;
+    final styleIndex = prefs.getInt(PrefKeys.mapStyle) ?? 0;
+    final interval = prefs.getInt(PrefKeys.syncInterval) ?? 15;
+    final isOfficial = prefs.getBool(PrefKeys.isOfficialMode) ?? false;
 
     return AppSettingsData(
       mapStyle:
@@ -83,7 +80,7 @@ class AppSettings extends _$AppSettings {
   Future<void> setMapStyle(MapStyle style) async {
     state = state.copyWith(mapStyle: style);
     final prefs = ref.read(sharedPreferencesProvider);
-    await prefs.setInt(_keyMapStyle, style.index);
+    await prefs.setInt(PrefKeys.mapStyle, style.index);
     if (isBackgroundIsolate) {
       bgServiceInstance?.invoke('reloadSettings');
     } else {
@@ -96,7 +93,7 @@ class AppSettings extends _$AppSettings {
   Future<void> setSyncInterval(int seconds) async {
     state = state.copyWith(syncIntervalSeconds: seconds);
     final prefs = ref.read(sharedPreferencesProvider);
-    await prefs.setInt(_keySyncInterval, seconds);
+    await prefs.setInt(PrefKeys.syncInterval, seconds);
     if (isBackgroundIsolate) {
       bgServiceInstance?.invoke('reloadSettings');
     } else {
@@ -109,7 +106,7 @@ class AppSettings extends _$AppSettings {
   Future<void> setOfficialMode(bool isOfficial) async {
     state = state.copyWith(isOfficialMode: isOfficial);
     final prefs = ref.read(sharedPreferencesProvider);
-    await prefs.setBool(_keyIsOfficialMode, isOfficial);
+    await prefs.setBool(PrefKeys.isOfficialMode, isOfficial);
     if (isBackgroundIsolate) {
       bgServiceInstance?.invoke('reloadSettings');
     } else {

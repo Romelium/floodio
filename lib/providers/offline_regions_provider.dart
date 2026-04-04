@@ -6,6 +6,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/background_service.dart';
+import '../utils/constants.dart';
 
 part 'offline_regions_provider.g.dart';
 
@@ -66,7 +67,7 @@ class OfflineRegions extends _$OfflineRegions {
   @override
   Future<List<OfflineRegion>> build() async {
     final prefs = await SharedPreferences.getInstance();
-    final String? data = prefs.getString('offline_regions');
+    final String? data = prefs.getString(PrefKeys.offlineRegions);
     if (data == null) return [];
     try {
       final List<dynamic> decoded = jsonDecode(data);
@@ -94,7 +95,7 @@ class OfflineRegions extends _$OfflineRegions {
     final updated = [...current, region];
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(
-      'offline_regions',
+      PrefKeys.offlineRegions,
       jsonEncode(updated.map((e) => e.toJson()).toList()),
     );
     state = AsyncData(updated);
@@ -111,7 +112,7 @@ class OfflineRegions extends _$OfflineRegions {
 
   Future<void> clearRegions() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('offline_regions');
+    await prefs.remove(PrefKeys.offlineRegions);
     state = const AsyncData([]);
     if (isBackgroundIsolate) {
       bgServiceInstance?.invoke('reloadOfflineRegions');
@@ -140,7 +141,7 @@ class OfflineRegions extends _$OfflineRegions {
 
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(
-      'offline_regions',
+      PrefKeys.offlineRegions,
       jsonEncode(updated.map((e) => e.toJson()).toList()),
     );
     state = AsyncData(updated);

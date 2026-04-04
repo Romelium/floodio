@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'home_screen.dart';
 import 'onboarding_screen.dart';
+import '../utils/constants.dart';
 
 class InitializerScreen extends StatefulWidget {
   const InitializerScreen({super.key});
@@ -24,15 +25,15 @@ class _InitializerScreenState extends State<InitializerScreen> {
   Future<void> _checkOnboarding() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.reload();
-    final name = prefs.getString('user_name');
+    final name = prefs.getString(PrefKeys.userName);
     if (name != null && name.isNotEmpty) {
       _needsOnboarding = false;
     } else {
-      final count = prefs.getInt('onboarding_shown_count') ?? 0;
+      final count = prefs.getInt(PrefKeys.onboardingShownCount) ?? 0;
       if (count >= 2) {
         _needsOnboarding = false;
       } else {
-        await prefs.setInt('onboarding_shown_count', count + 1);
+        await prefs.setInt(PrefKeys.onboardingShownCount, count + 1);
       }
     }
     setState(() {

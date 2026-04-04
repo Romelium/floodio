@@ -2,6 +2,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../crypto/crypto_service.dart';
+import '../utils/constants.dart';
 
 part 'local_user_provider.g.dart';
 
@@ -23,8 +24,8 @@ class LocalUserController extends _$LocalUserController {
   Future<LocalUser> build() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.reload();
-    final name = prefs.getString('user_name') ?? 'Unknown';
-    final contact = prefs.getString('user_contact') ?? '';
+    final name = prefs.getString(PrefKeys.userName) ?? 'Unknown';
+    final contact = prefs.getString(PrefKeys.userContact) ?? '';
 
     await ref.watch(cryptoServiceProvider.future);
     final pubKey = await ref
@@ -36,8 +37,8 @@ class LocalUserController extends _$LocalUserController {
 
   Future<void> updateProfile(String name, String contact) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('user_name', name);
-    await prefs.setString('user_contact', contact);
+    await prefs.setString(PrefKeys.userName, name);
+    await prefs.setString(PrefKeys.userContact, contact);
 
     final pubKey =
         state.value?.publicKey ??

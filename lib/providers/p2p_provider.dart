@@ -31,6 +31,7 @@ import 'database_provider.dart';
 import 'local_user_provider.dart'; // <-- Added import
 import 'offline_regions_provider.dart';
 import 'settings_provider.dart';
+import '../utils/constants.dart';
 
 part 'p2p_provider.g.dart';
 
@@ -258,6 +259,44 @@ class P2pState {
 
 Future<String> _encodePayloadInIsolate(pb.SyncPayload payload) {
   return Isolate.run(() => base64Encode(payload.writeToBuffer()));
+}
+
+void _deduplicate<T>(
+  List<T> items,
+  String Function(T) getId,
+  Int64 Function(T) getTimestamp,
+) {
+  final unique = <String, T>{};
+  for (final item in items) {
+    final id = getId(item);
+    final existing = unique[id];
+    if (existing == null || getTimestamp(item) > getTimestamp(existing)) {
+      unique[id] = item;
+    }
+  }
+  items.clear();
+  items.addAll(unique.values);
+}
+
+Future<Map<String, int>> _fetchTimestamps(
+  AppDatabase db,
+  dynamic table,
+  Expression<String> idCol,
+  Expression<int> tsCol,
+  List<String> ids,
+) async {
+  final res = <String, int>{};
+  for (var i = 0; i < ids.length; i += 900) {
+    final chunk = ids.skip(i).take(900).toList();
+    final existing = await (db.selectOnly(table)
+          ..addColumns([idCol, tsCol])
+          ..where(idCol.isIn(chunk)))
+        .get();
+    for (final row in existing) {
+      res[row.read(idCol)!] = row.read(tsCol)!;
+    }
+  }
+  return res;
 }
 
 Future<Map<String, dynamic>> _runVerifyPayloadInIsolate(
@@ -1091,7 +1130,7 @@ class P2pService extends _$P2pService {
     if (state.isAutoSyncing && !_disposed) {
       // Read the latest interval from preferences
       final prefs = ref.read(sharedPreferencesProvider);
-      final baseInterval = prefs.getInt('settings_sync_interval') ?? 15;
+      final baseInterval = prefs.getInt(PrefKeys.syncInterval) ?? 15;
 
       int batteryMultiplier = 1;
       try {
@@ -2177,85 +2216,14 @@ class P2pService extends _$P2pService {
     final processStopwatch = Stopwatch()..start();
 
     // Deduplicate payload items to prevent redundant signature verification
-    final uniqueMarkers = <String, pb.HazardMarker>{};
-    for (final m in payload.markers) {
-      final existing = uniqueMarkers[m.id];
-      if (existing == null || m.timestamp > existing.timestamp) {
-        uniqueMarkers[m.id] = m;
-      }
-    }
-    payload.markers.clear();
-    payload.markers.addAll(uniqueMarkers.values);
-
-    final uniqueNews = <String, pb.NewsItem>{};
-    for (final n in payload.news) {
-      final existing = uniqueNews[n.id];
-      if (existing == null || n.timestamp > existing.timestamp) {
-        uniqueNews[n.id] = n;
-      }
-    }
-    payload.news.clear();
-    payload.news.addAll(uniqueNews.values);
-
-    final uniqueProfiles = <String, pb.UserProfile>{};
-    for (final p in payload.profiles) {
-      final existing = uniqueProfiles[p.publicKey];
-      if (existing == null || p.timestamp > existing.timestamp) {
-        uniqueProfiles[p.publicKey] = p;
-      }
-    }
-    payload.profiles.clear();
-    payload.profiles.addAll(uniqueProfiles.values);
-
-    final uniqueAreas = <String, pb.AreaMarker>{};
-    for (final a in payload.areas) {
-      final existing = uniqueAreas[a.id];
-      if (existing == null || a.timestamp > existing.timestamp) {
-        uniqueAreas[a.id] = a;
-      }
-    }
-    payload.areas.clear();
-    payload.areas.addAll(uniqueAreas.values);
-
-    final uniquePaths = <String, pb.PathMarker>{};
-    for (final p in payload.paths) {
-      final existing = uniquePaths[p.id];
-      if (existing == null || p.timestamp > existing.timestamp) {
-        uniquePaths[p.id] = p;
-      }
-    }
-    payload.paths.clear();
-    payload.paths.addAll(uniquePaths.values);
-
-    final uniqueDelegations = <String, pb.TrustDelegation>{};
-    for (final d in payload.delegations) {
-      final existing = uniqueDelegations[d.delegateePublicKey];
-      if (existing == null || d.timestamp > existing.timestamp) {
-        uniqueDelegations[d.delegateePublicKey] = d;
-      }
-    }
-    payload.delegations.clear();
-    payload.delegations.addAll(uniqueDelegations.values);
-
-    final uniqueRevocations = <String, pb.RevokedDelegation>{};
-    for (final r in payload.revokedDelegations) {
-      final existing = uniqueRevocations[r.delegateePublicKey];
-      if (existing == null || r.timestamp > existing.timestamp) {
-        uniqueRevocations[r.delegateePublicKey] = r;
-      }
-    }
-    payload.revokedDelegations.clear();
-    payload.revokedDelegations.addAll(uniqueRevocations.values);
-
-    final uniqueDeleted = <String, pb.DeletedItem>{};
-    for (final d in payload.deletedItems) {
-      final existing = uniqueDeleted[d.id];
-      if (existing == null || d.timestamp > existing.timestamp) {
-        uniqueDeleted[d.id] = d;
-      }
-    }
-    payload.deletedItems.clear();
-    payload.deletedItems.addAll(uniqueDeleted.values);
+    _deduplicate<pb.HazardMarker>(payload.markers, (m) => m.id, (m) => m.timestamp);
+    _deduplicate<pb.NewsItem>(payload.news, (n) => n.id, (n) => n.timestamp);
+    _deduplicate<pb.UserProfile>(payload.profiles, (p) => p.publicKey, (p) => p.timestamp);
+    _deduplicate<pb.AreaMarker>(payload.areas, (a) => a.id, (a) => a.timestamp);
+    _deduplicate<pb.PathMarker>(payload.paths, (p) => p.id, (p) => p.timestamp);
+    _deduplicate<pb.TrustDelegation>(payload.delegations, (d) => d.delegateePublicKey, (d) => d.timestamp);
+    _deduplicate<pb.RevokedDelegation>(payload.revokedDelegations, (r) => r.delegateePublicKey, (r) => r.timestamp);
+    _deduplicate<pb.DeletedItem>(payload.deletedItems, (d) => d.id, (d) => d.timestamp);
 
     if (payload.markers.isEmpty &&
         payload.news.isEmpty &&
@@ -2309,86 +2277,11 @@ class P2pService extends _$P2pService {
         .toList();
 
     // Fetch existing timestamps for LWW CRDT resolution (optimized with chunked isIn)
-    final markerTimestamps = <String, int>{};
-    final payloadMarkerIds = payload.markers.map((m) => m.id).toList();
-    for (var i = 0; i < payloadMarkerIds.length; i += 900) {
-      final chunk = payloadMarkerIds.skip(i).take(900).toList();
-      final existing =
-          await (db.selectOnly(db.hazardMarkers)
-                ..addColumns([db.hazardMarkers.id, db.hazardMarkers.timestamp])
-                ..where(db.hazardMarkers.id.isIn(chunk)))
-              .get();
-      for (final m in existing) {
-        markerTimestamps[m.read(db.hazardMarkers.id)!] = m.read(
-          db.hazardMarkers.timestamp,
-        )!;
-      }
-    }
-
-    final newsTimestamps = <String, int>{};
-    final payloadNewsIds = payload.news.map((n) => n.id).toList();
-    for (var i = 0; i < payloadNewsIds.length; i += 900) {
-      final chunk = payloadNewsIds.skip(i).take(900).toList();
-      final existing =
-          await (db.selectOnly(db.newsItems)
-                ..addColumns([db.newsItems.id, db.newsItems.timestamp])
-                ..where(db.newsItems.id.isIn(chunk)))
-              .get();
-      for (final n in existing) {
-        newsTimestamps[n.read(db.newsItems.id)!] = n.read(
-          db.newsItems.timestamp,
-        )!;
-      }
-    }
-
-    final profileTimestamps = <String, int>{};
-    final payloadProfileKeys = payload.profiles
-        .map((p) => p.publicKey)
-        .toList();
-    for (var i = 0; i < payloadProfileKeys.length; i += 900) {
-      final chunk = payloadProfileKeys.skip(i).take(900).toList();
-      final existing =
-          await (db.selectOnly(db.userProfiles)
-                ..addColumns([
-                  db.userProfiles.publicKey,
-                  db.userProfiles.timestamp,
-                ])
-                ..where(db.userProfiles.publicKey.isIn(chunk)))
-              .get();
-      for (final p in existing) {
-        profileTimestamps[p.read(db.userProfiles.publicKey)!] = p.read(
-          db.userProfiles.timestamp,
-        )!;
-      }
-    }
-
-    final areaTimestamps = <String, int>{};
-    final payloadAreaIds = payload.areas.map((a) => a.id).toList();
-    for (var i = 0; i < payloadAreaIds.length; i += 900) {
-      final chunk = payloadAreaIds.skip(i).take(900).toList();
-      final existing =
-          await (db.selectOnly(db.areas)
-                ..addColumns([db.areas.id, db.areas.timestamp])
-                ..where(db.areas.id.isIn(chunk)))
-              .get();
-      for (final a in existing) {
-        areaTimestamps[a.read(db.areas.id)!] = a.read(db.areas.timestamp)!;
-      }
-    }
-
-    final pathTimestamps = <String, int>{};
-    final payloadPathIds = payload.paths.map((p) => p.id).toList();
-    for (var i = 0; i < payloadPathIds.length; i += 900) {
-      final chunk = payloadPathIds.skip(i).take(900).toList();
-      final existing =
-          await (db.selectOnly(db.paths)
-                ..addColumns([db.paths.id, db.paths.timestamp])
-                ..where(db.paths.id.isIn(chunk)))
-              .get();
-      for (final p in existing) {
-        pathTimestamps[p.read(db.paths.id)!] = p.read(db.paths.timestamp)!;
-      }
-    }
+    final markerTimestamps = await _fetchTimestamps(db, db.hazardMarkers, db.hazardMarkers.id, db.hazardMarkers.timestamp, payload.markers.map((m) => m.id).toList());
+    final newsTimestamps = await _fetchTimestamps(db, db.newsItems, db.newsItems.id, db.newsItems.timestamp, payload.news.map((n) => n.id).toList());
+    final profileTimestamps = await _fetchTimestamps(db, db.userProfiles, db.userProfiles.publicKey, db.userProfiles.timestamp, payload.profiles.map((p) => p.publicKey).toList());
+    final areaTimestamps = await _fetchTimestamps(db, db.areas, db.areas.id, db.areas.timestamp, payload.areas.map((a) => a.id).toList());
+    final pathTimestamps = await _fetchTimestamps(db, db.paths, db.paths.id, db.paths.timestamp, payload.paths.map((p) => p.id).toList());
 
     final existingDeletedIds = deletedIds.toSet();
     final validDeleted = <DeletedItemsCompanion>[];
@@ -2837,7 +2730,7 @@ class P2pService extends _$P2pService {
           bool downloaded = false;
           try {
             final bytes = await Supabase.instance.client.storage
-                .from('images')
+                .from(AppConstants.imagesBucket)
                 .download(imageId)
                 .timeout(const Duration(seconds: 15));
             await file.writeAsBytes(bytes);
@@ -2862,7 +2755,7 @@ class P2pService extends _$P2pService {
           bool downloaded = false;
           try {
             final bytes = await Supabase.instance.client.storage
-                .from('images')
+                .from(AppConstants.imagesBucket)
                 .download(imageId)
                 .timeout(const Duration(seconds: 15));
             await file.writeAsBytes(bytes);
@@ -3068,8 +2961,8 @@ class P2pService extends _$P2pService {
     } catch (e) {
       terminalLog("[-] Error getting location for mock hazard: $e");
     }
-    final lat = loc?.latitude ?? 10.7326718;
-    final lng = loc?.longitude ?? 122.5482846;
+    final lat = loc?.latitude ?? AppConstants.defaultLat;
+    final lng = loc?.longitude ?? AppConstants.defaultLng;
 
     final newMarker = HazardMarkersCompanion.insert(
       id: id,
@@ -3100,8 +2993,8 @@ class P2pService extends _$P2pService {
     try {
       loc = await Geolocator.getLastKnownPosition();
     } catch (_) {}
-    final lat = loc?.latitude ?? 10.730185;
-    final lng = loc?.longitude ?? 122.559115;
+    final lat = loc?.latitude ?? AppConstants.defaultLat;
+    final lng = loc?.longitude ?? AppConstants.defaultLng;
 
     final newMarker = HazardMarkersCompanion.insert(
       id: id,

@@ -17,6 +17,7 @@ import '../protos/models.pb.dart' as pb;
 import '../providers/database_provider.dart';
 import '../providers/ui_p2p_provider.dart';
 import 'background_service.dart';
+import '../utils/constants.dart';
 
 part 'cloud_sync_service.g.dart';
 
@@ -149,8 +150,8 @@ class CloudSyncService extends _$CloudSyncService {
 
   Future<void> _loadLastSyncTime() async {
     final prefs = await SharedPreferences.getInstance();
-    final timestamp = prefs.getInt('last_cloud_sync_time');
-    final eventId = prefs.getInt('last_sync_event_id') ?? 0;
+    final timestamp = prefs.getInt(PrefKeys.lastCloudSyncTime);
+    final eventId = prefs.getInt(PrefKeys.lastSyncEventId) ?? 0;
 
     state = state.copyWith(
       lastSyncTime: timestamp != null
@@ -281,6 +282,10 @@ class CloudSyncService extends _$CloudSyncService {
           .take(500)
           .toSet();
 
+      List<T> filterRecent<T>(List<T> items, String Function(T) getId, int Function(T) getTs) {
+        return items.where((item) => recentSeenSet.contains('${getId(item)}_${getTs(item)}')).toList();
+      }
+
       final markers =
           await (db.select(db.hazardMarkers)..where((t) {
                 Expression<bool> expr = const Constant(true);
@@ -290,9 +295,7 @@ class CloudSyncService extends _$CloudSyncService {
                 return expr;
               }))
               .get();
-      final filteredMarkers = markers
-          .where((m) => recentSeenSet.contains('${m.id}_${m.timestamp}'))
-          .toList();
+      final filteredMarkers = filterRecent(markers, (m) => m.id, (m) => m.timestamp);
 
       final news =
           await (db.select(db.newsItems)..where((t) {
@@ -303,9 +306,7 @@ class CloudSyncService extends _$CloudSyncService {
                 return expr;
               }))
               .get();
-      final filteredNews = news
-          .where((n) => recentSeenSet.contains('${n.id}_${n.timestamp}'))
-          .toList();
+      final filteredNews = filterRecent(news, (n) => n.id, (n) => n.timestamp);
 
       final areas =
           await (db.select(db.areas)..where((t) {
@@ -316,9 +317,7 @@ class CloudSyncService extends _$CloudSyncService {
                 return expr;
               }))
               .get();
-      final filteredAreas = areas
-          .where((a) => recentSeenSet.contains('${a.id}_${a.timestamp}'))
-          .toList();
+      final filteredAreas = filterRecent(areas, (a) => a.id, (a) => a.timestamp);
 
       final paths =
           await (db.select(db.paths)..where((t) {
@@ -329,9 +328,7 @@ class CloudSyncService extends _$CloudSyncService {
                 return expr;
               }))
               .get();
-      final filteredPaths = paths
-          .where((p) => recentSeenSet.contains('${p.id}_${p.timestamp}'))
-          .toList();
+      final filteredPaths = filterRecent(paths, (p) => p.id, (p) => p.timestamp);
 
       final profiles = (await db.select(db.userProfiles).get())
           .where((p) => recentSeenSet.contains('${p.publicKey}_${p.timestamp}'))
@@ -566,7 +563,7 @@ class CloudSyncService extends _$CloudSyncService {
           if (await file.exists()) {
             try {
               await Supabase.instance.client.storage
-                  .from('images')
+                  .from(AppConstants.imagesBucket)
                   .upload(imageId!, file)
                   .timeout(const Duration(seconds: 30));
             } catch (e) {
@@ -601,7 +598,7 @@ class CloudSyncService extends _$CloudSyncService {
 
         try {
           await Supabase.instance.client
-              .from('sync_events')
+              .from(AppConstants.syncEventsTable)
               .insert({'payload_base64': encoded})
               .timeout(const Duration(seconds: 30));
           terminalLog(
@@ -671,7 +668,7 @@ class CloudSyncService extends _$CloudSyncService {
         downloadBatches++;
         try {
           final response = await Supabase.instance.client
-              .from('sync_events')
+              .from(AppConstants.syncEventsTable)
               .select()
               .gt('id', currentLastId)
               .order('id', ascending: true)
@@ -823,10 +820,10 @@ class CloudSyncService extends _$CloudSyncService {
       final prefs = await SharedPreferences.getInstance();
       final syncEndTime = DateTime.now();
       await prefs.setInt(
-        'last_cloud_sync_time',
+        PrefKeys.lastCloudSyncTime,
         syncEndTime.millisecondsSinceEpoch,
       );
-      await prefs.setInt('last_sync_event_id', currentLastId);
+      await prefs.setInt(PrefKeys.lastSyncEventId, currentLastId);
 
       state = state.copyWith(
         isSyncing: false,
