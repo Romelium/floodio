@@ -257,9 +257,6 @@ class P2pState {
   }
 }
 
-Future<String> _encodePayloadInIsolate(pb.SyncPayload payload) {
-  return Isolate.run(() => base64Encode(payload.writeToBuffer()));
-}
 
 void _deduplicate<T>(
   List<T> items,
@@ -1058,6 +1055,9 @@ class P2pService extends _$P2pService {
   static const _systemChannel = MethodChannel('com.example.floodio/system');
   bool _isSwitchingRoles = false;
 
+  final List<Map<String, dynamic>> _payloadQueue = [];
+  bool _isProcessingQueue = false;
+
   Future<void> _setBluetoothName(String prefix) async {
     try {
       if (!isBackgroundIsolate) {
@@ -1784,9 +1784,15 @@ class P2pService extends _$P2pService {
           terminalLog("[*] Message type: manifest");
           await _handleManifest(json);
           return;
+        } else if (json['type'] == 'payload_chunk') {
+          final chunkIndex = json['chunkIndex'] as int? ?? 0;
+          final totalChunks = json['totalChunks'] as int? ?? 1;
+          terminalLog("[*] Message type: payload_chunk ${chunkIndex + 1}/$totalChunks");
+          await _enqueuePayload(json['data'], chunkIndex, totalChunks);
+          return;
         } else if (json['type'] == 'payload') {
           terminalLog("[*] Message type: payload");
-          await processPayload(json['data']);
+          await _enqueuePayload(json['data'], 0, 1);
           return;
         } else if (json['type'] == 'request_map') {
           terminalLog("[*] Message type: request_map");
@@ -1813,6 +1819,53 @@ class P2pService extends _$P2pService {
     }
 
     state = state.copyWith(receivedTexts: [...state.receivedTexts, text]);
+  }
+
+  Future<void> _enqueuePayload(String base64Data, int chunkIndex, int totalChunks) async {
+    _payloadQueue.add({
+      'data': base64Data,
+      'chunkIndex': chunkIndex,
+      'totalChunks': totalChunks,
+    });
+    
+    if (!_isProcessingQueue) {
+      _processPayloadQueue();
+    }
+  }
+
+  Future<void> _processPayloadQueue() async {
+    _isProcessingQueue = true;
+
+    while (_payloadQueue.isNotEmpty) {
+      if (_disposed) break;
+      final item = _payloadQueue.removeAt(0);
+      final base64Data = item['data'] as String;
+      final chunkIndex = item['chunkIndex'] as int;
+      final totalChunks = item['totalChunks'] as int;
+      
+      state = state.copyWith(
+        isSyncing: true,
+        syncMessage: 'Processing chunk ${chunkIndex + 1}/$totalChunks...',
+        syncProgress: (chunkIndex + 1) / totalChunks,
+      );
+
+      await processPayload(base64Data, isChunk: true);
+      
+      if (chunkIndex == totalChunks - 1) {
+        await broadcastText(jsonEncode({'type': 'up_to_date'}));
+      }
+    }
+
+    _isProcessingQueue = false;
+    
+    if (!_disposed) {
+      state = state.copyWith(
+        isSyncing: false,
+        lastSyncTime: DateTime.now(),
+        syncMessage: 'Successfully synced all chunks.',
+        clearSyncProgress: true,
+      );
+    }
   }
 
   Future<void> _handleRequestImage(String imageId) async {
@@ -2085,13 +2138,11 @@ class P2pService extends _$P2pService {
             .where(
               (h) => !peerBloomFilter.mightContain('${h.id}_${h.timestamp}'),
             )
-            .take(200)
             .toList();
         final newNews = allNews
             .where(
               (n) => !peerBloomFilter.mightContain('${n.id}_${n.timestamp}'),
             )
-            .take(200)
             .toList();
         final newProfiles = allProfiles
             .where(
@@ -2099,26 +2150,22 @@ class P2pService extends _$P2pService {
                 '${p.publicKey}_${p.timestamp}',
               ),
             )
-            .take(200)
             .toList();
         final newDeleted = allDeleted
             .where(
               (d) =>
                   !peerBloomFilter.mightContain('del_${d.id}_${d.timestamp}'),
             )
-            .take(200)
             .toList();
         final newAreas = allAreas
             .where(
               (a) => !peerBloomFilter.mightContain('${a.id}_${a.timestamp}'),
             )
-            .take(200)
             .toList();
         final newPaths = allPaths
             .where(
               (p) => !peerBloomFilter.mightContain('${p.id}_${p.timestamp}'),
             )
-            .take(200)
             .toList();
         final newDelegations = allAdminTrusted
             .where(
@@ -2126,7 +2173,6 @@ class P2pService extends _$P2pService {
                 'delg_${a.publicKey}_${a.timestamp}',
               ),
             )
-            .take(200)
             .toList();
         final newRevocations = allRevoked
             .where(
@@ -2134,7 +2180,6 @@ class P2pService extends _$P2pService {
                 'rev_${r.delegateePublicKey}_${r.timestamp}',
               ),
             )
-            .take(200)
             .toList();
 
         await db.close();
@@ -2310,10 +2355,14 @@ class P2pService extends _$P2pService {
         );
       }
 
-      final encoded = await Isolate.run(
-        () => base64Encode(payload.writeToBuffer()),
+      state = state.copyWith(
+        syncMessage: 'Sending data chunks...',
+        lastSyncSummary: summary,
+        clearSyncProgress: true,
       );
-      await broadcastText(jsonEncode({'type': 'payload', 'data': encoded}));
+
+      await _broadcastPayloadChunked(payload);
+
       state = state.copyWith(
         syncMessage: 'Data sent successfully.',
         clearSyncProgress: true,
@@ -2326,6 +2375,78 @@ class P2pService extends _$P2pService {
       );
     } finally {
       state = state.copyWith(isSyncing: false, clearSyncProgress: true);
+    }
+  }
+
+  Future<void> _broadcastPayloadChunked(pb.SyncPayload payload) async {
+    final payloads = <pb.SyncPayload>[];
+    pb.SyncPayload currentPayload = pb.SyncPayload();
+    int currentCount = 0;
+    const int chunkSize = 200;
+
+    void addPayload() {
+      if (currentCount > 0) {
+        payloads.add(currentPayload);
+        currentPayload = pb.SyncPayload();
+        currentCount = 0;
+      }
+    }
+
+    for (final m in payload.markers) {
+      currentPayload.markers.add(m);
+      currentCount++;
+      if (currentCount >= chunkSize) addPayload();
+    }
+    for (final n in payload.news) {
+      currentPayload.news.add(n);
+      currentCount++;
+      if (currentCount >= chunkSize) addPayload();
+    }
+    for (final p in payload.profiles) {
+      currentPayload.profiles.add(p);
+      currentCount++;
+      if (currentCount >= chunkSize) addPayload();
+    }
+    for (final d in payload.deletedItems) {
+      currentPayload.deletedItems.add(d);
+      currentCount++;
+      if (currentCount >= chunkSize) addPayload();
+    }
+    for (final a in payload.areas) {
+      currentPayload.areas.add(a);
+      currentCount++;
+      if (currentCount >= chunkSize) addPayload();
+    }
+    for (final p in payload.paths) {
+      currentPayload.paths.add(p);
+      currentCount++;
+      if (currentCount >= chunkSize) addPayload();
+    }
+    for (final d in payload.delegations) {
+      currentPayload.delegations.add(d);
+      currentCount++;
+      if (currentCount >= chunkSize) addPayload();
+    }
+    for (final r in payload.revokedDelegations) {
+      currentPayload.revokedDelegations.add(r);
+      currentCount++;
+      if (currentCount >= chunkSize) addPayload();
+    }
+    addPayload();
+
+    if (payloads.isEmpty) return;
+
+    for (int i = 0; i < payloads.length; i++) {
+      final p = payloads[i];
+      final encoded = await Isolate.run(() => base64Encode(p.writeToBuffer()));
+      _incrementHeroStat('hero_data_carried', encoded.length);
+      await broadcastText(jsonEncode({
+        'type': 'payload_chunk',
+        'data': encoded,
+        'chunkIndex': i,
+        'totalChunks': payloads.length,
+      }));
+      await Future.delayed(const Duration(milliseconds: 200));
     }
   }
 
@@ -2396,7 +2517,7 @@ class P2pService extends _$P2pService {
       terminalLog("[+] Payload decoded in ${stopwatch.elapsedMilliseconds}ms");
 
       stopwatch.reset();
-      await _processDecodedPayload(payload, isFromCloud: true);
+      await _processDecodedPayload(payload, isFromCloud: true, isChunk: false);
       success = true;
     } catch (e) {
       terminalLog("[-] Error handling payload from file: $e");
@@ -2417,20 +2538,24 @@ class P2pService extends _$P2pService {
     }
   }
 
-  Future<void> processPayload(String base64Data) async {
+  Future<void> processPayload(String base64Data, {bool isChunk = false}) async {
     final stopwatch = Stopwatch()..start();
     _idleTicks = 0;
     terminalLog("[*] Processing base64 payload...");
-    state = state.copyWith(
-      isSyncing: true,
-      syncMessage: 'Receiving data...',
-      clearSyncProgress: true,
-    );
-    try {
+    if (!isChunk) {
       state = state.copyWith(
-        syncMessage: 'Decoding payload...',
+        isSyncing: true,
+        syncMessage: 'Receiving data...',
         clearSyncProgress: true,
       );
+    }
+    try {
+      if (!isChunk) {
+        state = state.copyWith(
+          syncMessage: 'Decoding payload...',
+          clearSyncProgress: true,
+        );
+      }
       final data = await Isolate.run(() => base64Decode(base64Data));
       _incrementHeroStat('hero_data_carried', data.length);
 
@@ -2438,15 +2563,19 @@ class P2pService extends _$P2pService {
       terminalLog("[+] Payload decoded in ${stopwatch.elapsedMilliseconds}ms");
 
       stopwatch.reset();
-      await _processDecodedPayload(payload, isFromCloud: false);
+      await _processDecodedPayload(payload, isFromCloud: false, isChunk: isChunk);
     } catch (e) {
       terminalLog("[-] Error handling payload: $e");
-      state = state.copyWith(
-        syncMessage: 'Error syncing data.',
-        clearSyncProgress: true,
-      );
+      if (!isChunk) {
+        state = state.copyWith(
+          syncMessage: 'Error syncing data.',
+          clearSyncProgress: true,
+        );
+      }
     } finally {
-      state = state.copyWith(isSyncing: false, clearSyncProgress: true);
+      if (!isChunk) {
+        state = state.copyWith(isSyncing: false, clearSyncProgress: true);
+      }
       terminalLog(
         "[+] processPayload completed in ${stopwatch.elapsedMilliseconds}ms",
       );
@@ -2456,6 +2585,7 @@ class P2pService extends _$P2pService {
   Future<void> _processDecodedPayload(
     pb.SyncPayload payload, {
     required bool isFromCloud,
+    bool isChunk = false,
   }) async {
     final processStopwatch = Stopwatch()..start();
 
@@ -2498,18 +2628,22 @@ class P2pService extends _$P2pService {
         payload.delegations.isEmpty &&
         payload.revokedDelegations.isEmpty) {
       terminalLog("[-] Decoded payload is empty.");
-      state = state.copyWith(
-        syncMessage: 'Empty payload received.',
-        clearSyncProgress: true,
-      );
+      if (!isChunk) {
+        state = state.copyWith(
+          syncMessage: 'Empty payload received.',
+          clearSyncProgress: true,
+        );
+      }
       return;
     }
 
     terminalLog("[*] Decoded payload contains items. Verifying signatures...");
-    state = state.copyWith(
-      syncMessage: 'Preparing to verify signatures...',
-      clearSyncProgress: true,
-    );
+    if (!isChunk) {
+      state = state.copyWith(
+        syncMessage: 'Preparing to verify signatures...',
+        clearSyncProgress: true,
+      );
+    }
 
     final db = ref.read(databaseProvider);
     await ref.read(cryptoServiceProvider.future);
@@ -2622,10 +2756,12 @@ class P2pService extends _$P2pService {
     );
     processStopwatch.reset();
 
-    state = state.copyWith(
-      syncMessage: 'Verifying signatures & saving...',
-      syncProgress: 0.0,
-    );
+    if (!isChunk) {
+      state = state.copyWith(
+        syncMessage: 'Verifying signatures & saving...',
+        syncProgress: 0.0,
+      );
+    }
 
     final myPubKeyStr = await crypto.getPublicKeyString();
     final effectiveTrustedKeys = [...trustedKeys, myPubKeyStr];
@@ -2663,10 +2799,12 @@ class P2pService extends _$P2pService {
     await _runVerifyPayloadInIsolate(
       args,
       (progress) {
-        state = state.copyWith(
-          syncMessage: 'Verifying signatures & saving...',
-          syncProgress: progress,
-        );
+        if (!isChunk) {
+          state = state.copyWith(
+            syncMessage: 'Verifying signatures & saving...',
+            syncProgress: progress,
+          );
+        }
       },
       (batchData) {
         allValidMarkersPb.addAll(
@@ -2692,10 +2830,12 @@ class P2pService extends _$P2pService {
     );
     processStopwatch.reset();
 
-    state = state.copyWith(
-      syncMessage: 'Cleaning up old records...',
-      clearSyncProgress: true,
-    );
+    if (!isChunk) {
+      state = state.copyWith(
+        syncMessage: 'Cleaning up old records...',
+        clearSyncProgress: true,
+      );
+    }
 
     final dir = await getApplicationDocumentsDirectory();
     await db.transaction(() async {
@@ -2727,10 +2867,12 @@ class P2pService extends _$P2pService {
       }
     });
 
-    state = state.copyWith(
-      syncMessage: 'Requesting missing images...',
-      clearSyncProgress: true,
-    );
+    if (!isChunk) {
+      state = state.copyWith(
+        syncMessage: 'Requesting missing images...',
+        clearSyncProgress: true,
+      );
+    }
 
     // Request missing images
     for (final m in allValidMarkersPb) {
@@ -2789,10 +2931,12 @@ class P2pService extends _$P2pService {
     );
     processStopwatch.reset();
 
-    state = state.copyWith(
-      syncMessage: 'Forwarding data to peers...',
-      clearSyncProgress: true,
-    );
+    if (!isChunk) {
+      state = state.copyWith(
+        syncMessage: 'Forwarding data to peers...',
+        clearSyncProgress: true,
+      );
+    }
 
     // Forward newly received and validated data to other connected peers
     final forwardPayload = pb.SyncPayload();
@@ -2845,21 +2989,18 @@ class P2pService extends _$P2pService {
         // If we got new data from the cloud, and we are connected to peers, forward it to them.
         if ((state.isHosting && state.connectedClients.isNotEmpty) ||
             state.clientState?.isActive == true) {
-          final encoded = await _encodePayloadInIsolate(forwardPayload);
-          await broadcastText(jsonEncode({'type': 'payload', 'data': encoded}));
+          await _broadcastPayloadChunked(forwardPayload);
           int relayedCount =
               forwardPayload.markers.length +
               forwardPayload.news.length +
               forwardPayload.areas.length +
               forwardPayload.paths.length;
           _incrementHeroStat('hero_reports_relayed', relayedCount);
-          _incrementHeroStat('hero_data_carried', encoded.length);
         }
       } else {
         // Prevent Echo Storm: Only forward the payload if we are a Host with MULTIPLE clients.
         if (state.isHosting && state.connectedClients.length > 1) {
-          final encoded = await _encodePayloadInIsolate(forwardPayload);
-          await broadcastText(jsonEncode({'type': 'payload', 'data': encoded}));
+          await _broadcastPayloadChunked(forwardPayload);
 
           int relayedCount =
               forwardPayload.markers.length +
@@ -2867,26 +3008,29 @@ class P2pService extends _$P2pService {
               forwardPayload.areas.length +
               forwardPayload.paths.length;
           _incrementHeroStat('hero_reports_relayed', relayedCount);
-          _incrementHeroStat('hero_data_carried', encoded.length);
         } else {
-          await broadcastText(jsonEncode({'type': 'up_to_date'}));
+          if (!isChunk) {
+            await broadcastText(jsonEncode({'type': 'up_to_date'}));
+          }
         }
       }
     } else {
-      if (!isFromCloud) {
+      if (!isFromCloud && !isChunk) {
         await broadcastText(jsonEncode({'type': 'up_to_date'}));
       }
     }
 
     final summary =
         'Received ${payload.markers.length} markers, ${payload.news.length} news, ${payload.profiles.length} profiles, ${payload.areas.length} areas, ${payload.paths.length} paths, ${payload.deletedItems.length} deletions, ${payload.delegations.length} delegations, ${payload.revokedDelegations.length} revocations.';
-    state = state.copyWith(
-      isSyncing: false,
-      lastSyncTime: DateTime.now(),
-      syncMessage: 'Successfully synced data.',
-      lastSyncSummary: summary,
-      clearSyncProgress: true,
-    );
+    if (!isChunk) {
+      state = state.copyWith(
+        isSyncing: false,
+        lastSyncTime: DateTime.now(),
+        syncMessage: 'Successfully synced data.',
+        lastSyncSummary: summary,
+        clearSyncProgress: true,
+      );
+    }
     terminalLog(
       "[+] Forwarding data took ${processStopwatch.elapsedMilliseconds}ms",
     );
