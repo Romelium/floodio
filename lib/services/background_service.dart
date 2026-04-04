@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:math';
 import 'dart:ui';
 
+import 'package:floodio/providers/hero_stats_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -411,6 +412,11 @@ void onStart(ServiceInstance service) async {
   service.on('reloadOfflineRegions').listen((_) async {
     await prefs.reload();
     container.invalidate(offlineRegionsProvider);
+  });
+
+  service.on('reloadHeroStats').listen((_) async {
+    await prefs.reload();
+    container.invalidate(heroStatsControllerProvider);
   });
 
   service.on('requestState').listen((event) {
