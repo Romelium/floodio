@@ -346,9 +346,8 @@ class SyncBottomSheet extends ConsumerWidget {
                   ],
                 ),
 
-                // If hosting and has clients, show them
-                if (p2pState.hostState?.isActive == true &&
-                    p2pState.connectedClients.isNotEmpty) ...[
+                // If hosting, show connected peers section
+                if (p2pState.hostState?.isActive == true) ...[
                   const SizedBox(height: 12),
                   Container(
                     padding: const EdgeInsets.all(12),
@@ -368,40 +367,65 @@ class SyncBottomSheet extends ConsumerWidget {
                           ),
                         ),
                         const SizedBox(height: 8),
-                        ...p2pState.connectedClients.map(
-                          (client) => Padding(
-                            padding: const EdgeInsets.only(bottom: 4.0),
+                        if (p2pState.connectedClients.isEmpty)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 8.0),
                             child: Row(
                               children: [
-                                Icon(
-                                  Icons.smartphone,
-                                  size: 14,
-                                  color: Colors.green.shade700,
+                                SizedBox(
+                                  width: 14,
+                                  height: 14,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.green.shade700,
+                                  ),
                                 ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    client.username.isEmpty
-                                        ? 'Unknown Client'
-                                        : client.username,
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      color: Colors.green.shade900,
-                                    ),
+                                const SizedBox(width: 12),
+                                Text(
+                                  'Waiting for peers to connect...',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: Colors.green.shade800,
+                                    fontStyle: FontStyle.italic,
                                   ),
                                 ),
                               ],
                             ),
+                          )
+                        else
+                          ...p2pState.connectedClients.map(
+                            (client) => Padding(
+                              padding: const EdgeInsets.only(bottom: 4.0),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.smartphone,
+                                    size: 14,
+                                    color: Colors.green.shade700,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      client.username.isEmpty
+                                          ? 'Unknown Client'
+                                          : client.username,
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: Colors.green.shade900,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                           ),
-                        ),
                       ],
                     ),
                   ),
                 ],
 
-                // If scanning and found devices, show them
+                // If scanning, show discovered devices section
                 if (p2pState.isScanning &&
-                    p2pState.discoveredDevices.isNotEmpty &&
                     p2pState.clientState?.isActive != true) ...[
                   const SizedBox(height: 12),
                   Container(
@@ -422,75 +446,101 @@ class SyncBottomSheet extends ConsumerWidget {
                           ),
                         ),
                         const SizedBox(height: 8),
-                        ...p2pState.discoveredDevices.map(
-                          (device) => Padding(
-                            padding: const EdgeInsets.only(bottom: 4.0),
+                        if (p2pState.discoveredDevices.isEmpty)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 8.0),
                             child: Row(
                               children: [
-                                Icon(
-                                  Icons.bluetooth,
-                                  size: 14,
-                                  color: Colors.teal.shade700,
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    device.deviceName.isEmpty
-                                        ? 'Unknown Device'
-                                        : device.deviceName,
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      color: Colors.teal.shade900,
-                                    ),
+                                SizedBox(
+                                  width: 14,
+                                  height: 14,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.teal.shade700,
                                   ),
                                 ),
-                                SizedBox(
-                                  height: 28,
-                                  child: p2pState.isConnecting
-                                      ? FilledButton(
-                                          style: FilledButton.styleFrom(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 12,
-                                            ),
-                                            backgroundColor: Colors.red.shade600,
-                                          ),
-                                          onPressed: () {
-                                            HapticFeedback.selectionClick();
-                                            p2pNotifier.disconnect();
-                                          },
-                                          child: const Text(
-                                            'Cancel',
-                                            style: TextStyle(fontSize: 11),
-                                          ),
-                                        )
-                                      : FilledButton(
-                                          style: FilledButton.styleFrom(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 12,
-                                            ),
-                                            backgroundColor: Colors.teal.shade600,
-                                          ),
-                                          onPressed: () {
-                                            HapticFeedback.selectionClick();
-                                            checkAndShowWifiWarning(
-                                              context,
-                                              () {
-                                                p2pNotifier.connectToDevice(
-                                                  device,
-                                                );
-                                              },
-                                            );
-                                          },
-                                          child: const Text(
-                                            'Connect',
-                                            style: TextStyle(fontSize: 11),
-                                          ),
-                                        ),
+                                const SizedBox(width: 12),
+                                Text(
+                                  'Scanning for nearby devices...',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: Colors.teal.shade800,
+                                    fontStyle: FontStyle.italic,
+                                  ),
                                 ),
                               ],
                             ),
+                          )
+                        else
+                          ...p2pState.discoveredDevices.map(
+                            (device) => Padding(
+                              padding: const EdgeInsets.only(bottom: 4.0),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.bluetooth,
+                                    size: 14,
+                                    color: Colors.teal.shade700,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      device.deviceName.isEmpty
+                                          ? 'Unknown Device'
+                                          : device.deviceName,
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: Colors.teal.shade900,
+                                      ),
+                                    ),
+                                  ),
+                                  SizedBox(
+                                    height: 28,
+                                    child: p2pState.isConnecting
+                                        ? FilledButton(
+                                            style: FilledButton.styleFrom(
+                                              padding: const EdgeInsets.symmetric(
+                                                horizontal: 12,
+                                              ),
+                                              backgroundColor: Colors.red.shade600,
+                                            ),
+                                            onPressed: () {
+                                              HapticFeedback.selectionClick();
+                                              p2pNotifier.disconnect();
+                                            },
+                                            child: const Text(
+                                              'Cancel',
+                                              style: TextStyle(fontSize: 11),
+                                            ),
+                                          )
+                                        : FilledButton(
+                                            style: FilledButton.styleFrom(
+                                              padding: const EdgeInsets.symmetric(
+                                                horizontal: 12,
+                                              ),
+                                              backgroundColor: Colors.teal.shade600,
+                                            ),
+                                            onPressed: () {
+                                              HapticFeedback.selectionClick();
+                                              checkAndShowWifiWarning(
+                                                context,
+                                                () {
+                                                  p2pNotifier.connectToDevice(
+                                                    device,
+                                                  );
+                                                },
+                                              );
+                                            },
+                                            child: const Text(
+                                              'Connect',
+                                              style: TextStyle(fontSize: 11),
+                                            ),
+                                          ),
+                                  ),
+                                ],
+                              ),
+                            ),
                           ),
-                        ),
                       ],
                     ),
                   ),
