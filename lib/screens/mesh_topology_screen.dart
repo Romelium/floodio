@@ -409,26 +409,39 @@ class _MeshTopologyScreenState extends ConsumerState<MeshTopologyScreen>
                   ),
                 const SizedBox(height: 24),
                 if (node.type == NodeType.discovered)
-                  FilledButton.icon(
-                    onPressed: () {
-                      Navigator.pop(context);
-                      // Connect logic
-                      final p2pState = ref.read(uiP2pServiceProvider);
-                      final device = p2pState.discoveredDevices.firstWhere(
-                        (d) => d.deviceAddress == node.id,
-                      );
-                      checkAndShowWifiWarning(context, () {
-                        ref
-                            .read(uiP2pServiceProvider.notifier)
-                            .connectToDevice(device);
-                      });
-                    },
-                    icon: const Icon(Icons.link),
-                    label: const Text('Connect'),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: Colors.orange,
+                  if (p2pState.isConnecting)
+                    FilledButton.icon(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        ref.read(uiP2pServiceProvider.notifier).disconnect();
+                      },
+                      icon: const Icon(Icons.cancel),
+                      label: const Text('Cancel Connection'),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: Colors.red,
+                      ),
+                    )
+                  else
+                    FilledButton.icon(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        // Connect logic
+                        final p2pState = ref.read(uiP2pServiceProvider);
+                        final device = p2pState.discoveredDevices.firstWhere(
+                          (d) => d.deviceAddress == node.id,
+                        );
+                        checkAndShowWifiWarning(context, () {
+                          ref
+                              .read(uiP2pServiceProvider.notifier)
+                              .connectToDevice(device);
+                        });
+                      },
+                      icon: const Icon(Icons.link),
+                      label: const Text('Connect'),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: Colors.orange,
+                      ),
                     ),
-                  ),
               ],
             ),
           ),

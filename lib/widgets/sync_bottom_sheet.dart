@@ -446,16 +446,31 @@ class SyncBottomSheet extends ConsumerWidget {
                                 ),
                                 SizedBox(
                                   height: 28,
-                                  child: FilledButton(
-                                    style: FilledButton.styleFrom(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 12,
-                                      ),
-                                      backgroundColor: Colors.teal.shade600,
-                                    ),
-                                    onPressed: p2pState.isConnecting
-                                        ? null
-                                        : () {
+                                  child: p2pState.isConnecting
+                                      ? FilledButton(
+                                          style: FilledButton.styleFrom(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 12,
+                                            ),
+                                            backgroundColor: Colors.red.shade600,
+                                          ),
+                                          onPressed: () {
+                                            HapticFeedback.selectionClick();
+                                            p2pNotifier.disconnect();
+                                          },
+                                          child: const Text(
+                                            'Cancel',
+                                            style: TextStyle(fontSize: 11),
+                                          ),
+                                        )
+                                      : FilledButton(
+                                          style: FilledButton.styleFrom(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 12,
+                                            ),
+                                            backgroundColor: Colors.teal.shade600,
+                                          ),
+                                          onPressed: () {
                                             HapticFeedback.selectionClick();
                                             checkAndShowWifiWarning(
                                               context,
@@ -466,11 +481,11 @@ class SyncBottomSheet extends ConsumerWidget {
                                               },
                                             );
                                           },
-                                    child: const Text(
-                                      'Connect',
-                                      style: TextStyle(fontSize: 11),
-                                    ),
-                                  ),
+                                          child: const Text(
+                                            'Connect',
+                                            style: TextStyle(fontSize: 11),
+                                          ),
+                                        ),
                                 ),
                               ],
                             ),
@@ -1043,6 +1058,22 @@ class SyncBottomSheet extends ConsumerWidget {
                       ),
                     ),
                   ),
+                  if (p2pState.isConnecting) ...[
+                    const SizedBox(width: 8),
+                    TextButton(
+                      onPressed: () {
+                        HapticFeedback.selectionClick();
+                        ref.read(uiP2pServiceProvider.notifier).disconnect();
+                      },
+                      style: TextButton.styleFrom(
+                        foregroundColor: Colors.red,
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      child: const Text('Cancel', style: TextStyle(fontWeight: FontWeight.bold)),
+                    ),
+                  ],
                 ],
               ),
             ),

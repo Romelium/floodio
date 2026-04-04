@@ -118,9 +118,11 @@ class _MeshStatusChipState extends ConsumerState<MeshStatusChip>
                 Flexible(
                   child: Text(
                     isSyncing
-                        ? (p2pState.syncProgress != null
-                              ? 'SYNCING (${(p2pState.syncProgress! * 100).toInt()}%${p2pState.syncEstimatedSeconds != null ? ' - ${p2pState.syncEstimatedSeconds}s' : ''})'
-                              : 'SYNCING')
+                        ? (p2pState.isConnecting
+                              ? 'CONNECTING${p2pState.syncEstimatedSeconds != null ? ' (${p2pState.syncEstimatedSeconds}s)' : ''}'
+                              : (p2pState.syncProgress != null
+                                    ? 'SYNCING (${(p2pState.syncProgress! * 100).toInt()}%${p2pState.syncEstimatedSeconds != null ? ' - ${p2pState.syncEstimatedSeconds}s' : ''})'
+                                    : 'SYNCING'))
                         : isConnected
                         ? (p2pState.hostState?.isActive == true
                               ? (p2pState.connectedClients.isEmpty &&

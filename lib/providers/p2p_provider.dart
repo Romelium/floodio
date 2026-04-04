@@ -1661,22 +1661,36 @@ class P2pService extends _$P2pService {
   Future<void> connectToDeviceByAddress(String address) async {
     if (!_isInitialized || state.isConnecting) return;
     terminalLog("[*] Attempting to connect to BLE device: $address");
+    Timer? countdownTimer;
     try {
       final device = _rawDiscoveredDevices.firstWhere(
         (d) => d.deviceAddress == address,
       );
+      
+      int countdown = 25;
       state = state.copyWith(
         isConnecting: true,
         syncMessage: 'Connecting... Please ACCEPT the system Wi-Fi prompt!',
+        syncEstimatedSeconds: countdown,
         clearSyncProgress: true,
       );
+      
+      countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+        countdown--;
+        if (countdown <= 0 || !state.isConnecting) {
+          timer.cancel();
+        } else {
+          state = state.copyWith(syncEstimatedSeconds: countdown);
+        }
+      });
       await stopScanning();
 
       // Allow the Android BLE stack a brief moment to settle after stopping the scan
       // before initiating a new GATT connection, preventing dropped connection requests (GATT 133).
       await Future.delayed(const Duration(milliseconds: 2500));
 
-      if (_disposed) {
+      if (_disposed || !state.isConnecting) {
+        countdownTimer.cancel();
         state = state.copyWith(isConnecting: false);
         return;
       }
@@ -1685,6 +1699,7 @@ class P2pService extends _$P2pService {
       bool wifiEnabled = await _client.checkWifiEnabled();
       int wifiRetries = 5;
       while (!wifiEnabled && wifiRetries > 0) {
+        if (!state.isConnecting) break;
         state = state.copyWith(
           syncMessage: 'Waiting for Wi-Fi to enable ($wifiRetries)...',
         );
@@ -1696,6 +1711,11 @@ class P2pService extends _$P2pService {
       if (!wifiEnabled) {
         throw Exception("Wi-Fi is disabled. Cannot connect to hotspot.");
       }
+      
+      if (!state.isConnecting) {
+        countdownTimer.cancel();
+        return;
+      }
 
       // The plugin's connectWithDevice handles BLE read + Wi-Fi connect.
       // It will throw a TimeoutException if the user doesn't accept the prompt within 60s.
@@ -1703,6 +1723,8 @@ class P2pService extends _$P2pService {
         device,
         timeout: const Duration(seconds: 25),
       );
+
+      countdownTimer.cancel();
 
       if (!state.isConnecting || _disposed) {
         await _client.disconnect();
@@ -1725,6 +1747,7 @@ class P2pService extends _$P2pService {
       );
       _sendManifest();
     } catch (e) {
+      countdownTimer?.cancel();
       terminalLog("[-] Connection failed: $e");
       await _client.disconnect(); // Ensure cleanup
       state = state.copyWith(
