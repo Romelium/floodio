@@ -499,10 +499,12 @@ class SyncBottomSheet extends ConsumerWidget {
                                     child: p2pState.isConnecting
                                         ? FilledButton(
                                             style: FilledButton.styleFrom(
-                                              padding: const EdgeInsets.symmetric(
-                                                horizontal: 12,
-                                              ),
-                                              backgroundColor: Colors.red.shade600,
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 12,
+                                                  ),
+                                              backgroundColor:
+                                                  Colors.red.shade600,
                                             ),
                                             onPressed: () {
                                               HapticFeedback.selectionClick();
@@ -515,10 +517,12 @@ class SyncBottomSheet extends ConsumerWidget {
                                           )
                                         : FilledButton(
                                             style: FilledButton.styleFrom(
-                                              padding: const EdgeInsets.symmetric(
-                                                horizontal: 12,
-                                              ),
-                                              backgroundColor: Colors.teal.shade600,
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 12,
+                                                  ),
+                                              backgroundColor:
+                                                  Colors.teal.shade600,
                                             ),
                                             onPressed: () {
                                               HapticFeedback.selectionClick();
@@ -1117,11 +1121,17 @@ class SyncBottomSheet extends ConsumerWidget {
                       },
                       style: TextButton.styleFrom(
                         foregroundColor: Colors.red,
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
                         minimumSize: Size.zero,
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
-                      child: const Text('Cancel', style: TextStyle(fontWeight: FontWeight.bold)),
+                      child: const Text(
+                        'Cancel',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
                     ),
                   ],
                 ],

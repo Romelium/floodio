@@ -1198,12 +1198,15 @@ class P2pService extends _$P2pService {
                 AppClientInfo(id: c.id, username: c.username, isHost: c.isHost),
           )
           .toList();
-      
+
       if (!listEquals(state.connectedClients, appClients)) {
         state = state.copyWith(connectedClients: appClients);
         terminalLog("[+] Host client list updated. Count: ${clients.length}");
         if (clients.length > previousCount) {
-          _incrementHeroStat('hero_peers_synced', clients.length - previousCount);
+          _incrementHeroStat(
+            'hero_peers_synced',
+            clients.length - previousCount,
+          );
           state = state.copyWith(
             syncMessage: 'Client connected. Initiating 2-way sync...',
             clearSyncProgress: true,
@@ -1687,7 +1690,7 @@ class P2pService extends _$P2pService {
       final device = _rawDiscoveredDevices.firstWhere(
         (d) => d.deviceAddress == address,
       );
-      
+
       int countdown = 25;
       state = state.copyWith(
         isConnecting: true,
@@ -1695,7 +1698,7 @@ class P2pService extends _$P2pService {
         syncEstimatedSeconds: countdown,
         clearSyncProgress: true,
       );
-      
+
       countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
         countdown--;
         if (countdown <= 0 || !state.isConnecting) {
@@ -1732,7 +1735,7 @@ class P2pService extends _$P2pService {
       if (!wifiEnabled) {
         throw Exception("Wi-Fi is disabled. Cannot connect to hotspot.");
       }
-      
+
       if (!state.isConnecting) {
         countdownTimer.cancel();
         return;

@@ -197,7 +197,7 @@ Future<int> _isolateUnpackMap(MapUnpackData data) async {
 @Riverpod(keepAlive: true)
 MapCacheService mapCacheService(Ref ref) {
   final service = MapCacheService();
-  
+
   Future.microtask(() async {
     try {
       final regions = await ref.read(offlineRegionsProvider.future);
@@ -206,7 +206,7 @@ MapCacheService mapCacheService(Ref ref) {
       debugPrint('[MapCacheService] Error enforcing disk cache limit: $e');
     }
   });
-  
+
   return service;
 }
 
@@ -232,7 +232,12 @@ class MapCacheService {
   static const int _maxDiskCacheSize = 1024 * 1024 * 1024; // 1 GB
   static const Duration _maxTileAge = Duration(days: 30);
 
-  bool _isTileInOfflineRegion(int z, int x, int y, List<OfflineRegion> regions) {
+  bool _isTileInOfflineRegion(
+    int z,
+    int x,
+    int y,
+    List<OfflineRegion> regions,
+  ) {
     for (final region in regions) {
       if (z >= region.minZoom && z <= region.maxZoom) {
         final minX = _lon2tilex(region.bounds.west, z);
@@ -275,7 +280,7 @@ class MapCacheService {
 
             if (z != null && x != null && y != null) {
               final stat = await entity.stat();
-              
+
               // Check if tile is protected by an offline region
               if (_isTileInOfflineRegion(z, x, y, offlineRegions)) {
                 totalSize += stat.size;
@@ -287,7 +292,7 @@ class MapCacheService {
                 await entity.delete();
                 continue;
               }
-              
+
               removableFiles.add(entity);
               totalSize += stat.size;
             }
@@ -304,7 +309,7 @@ class MapCacheService {
           fileStats[file] = await file.stat();
         } catch (_) {}
       }
-      
+
       removableFiles.sort((a, b) {
         final statA = fileStats[a];
         final statB = fileStats[b];

@@ -59,8 +59,9 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
 
   void _showBackupIdentityDialog() async {
     HapticFeedback.selectionClick();
-    final seedPhrase =
-        await ref.read(cryptoServiceProvider.notifier).getSeedPhrase();
+    final seedPhrase = await ref
+        .read(cryptoServiceProvider.notifier)
+        .getSeedPhrase();
 
     if (!mounted) return;
 

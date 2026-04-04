@@ -2518,9 +2518,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                           maxHeight: 1280,
                         );
                         if (image != null) {
-                          final compressed = await ImageUtils.compressImage(image.path);
+                          final compressed = await ImageUtils.compressImage(
+                            image.path,
+                          );
                           final finalImage = compressed ?? image;
-    
+
                           final size = await finalImage.length();
                           if (size > 1024 * 1024) {
                             if (!mounted) return;
@@ -3313,7 +3315,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                         maxHeight: 1280,
                       );
                       if (image != null) {
-                        final compressed = await ImageUtils.compressImage(image.path);
+                        final compressed = await ImageUtils.compressImage(
+                          image.path,
+                        );
                         final finalImage = compressed ?? image;
 
                         final size = await finalImage.length();
@@ -5887,20 +5891,30 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                               heroTag: 'clear_draw',
                               onPressed: () {
                                 HapticFeedback.lightImpact();
-                                ref.read(drawingControllerProvider.notifier).clearAll();
+                                ref
+                                    .read(drawingControllerProvider.notifier)
+                                    .clearAll();
                               },
                               backgroundColor: Colors.redAccent,
-                              child: const Icon(Icons.delete_sweep, color: Colors.white),
+                              child: const Icon(
+                                Icons.delete_sweep,
+                                color: Colors.white,
+                              ),
                             ),
                             const SizedBox(width: 16),
                             FloatingActionButton.small(
                               heroTag: 'undo_draw',
                               onPressed: () {
                                 HapticFeedback.lightImpact();
-                                ref.read(drawingControllerProvider.notifier).removeLastPoint();
+                                ref
+                                    .read(drawingControllerProvider.notifier)
+                                    .removeLastPoint();
                               },
                               backgroundColor: Colors.orange,
-                              child: const Icon(Icons.undo, color: Colors.white),
+                              child: const Icon(
+                                Icons.undo,
+                                color: Colors.white,
+                              ),
                             ),
                           ],
                         ),
@@ -5913,7 +5927,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                             heroTag: 'cancel_draw',
                             onPressed: () {
                               HapticFeedback.lightImpact();
-                              ref.read(drawingControllerProvider.notifier).cancel();
+                              ref
+                                  .read(drawingControllerProvider.notifier)
+                                  .cancel();
                             },
                             backgroundColor: Colors.red,
                             icon: const Icon(Icons.close, color: Colors.white),
@@ -5928,10 +5944,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                             onPressed: () {
                               HapticFeedback.selectionClick();
                               final center = _mapController.camera.center;
-                              ref.read(drawingControllerProvider.notifier).addPoint(center);
+                              ref
+                                  .read(drawingControllerProvider.notifier)
+                                  .addPoint(center);
                             },
-                            backgroundColor: drawingState.mode == DrawingMode.area ? Colors.blue : Colors.teal,
-                            icon: const Icon(Icons.add_location_alt, color: Colors.white),
+                            backgroundColor:
+                                drawingState.mode == DrawingMode.area
+                                ? Colors.blue
+                                : Colors.teal,
+                            icon: const Icon(
+                              Icons.add_location_alt,
+                              color: Colors.white,
+                            ),
                             label: const Text(
                               'Add Point',
                               style: TextStyle(color: Colors.white),

@@ -336,7 +336,8 @@ void onStart(ServiceInstance service) async {
         int currentProgress = (mapDownloadDownloaded * 100) ~/ mapDownloadTotal;
         if (currentProgress > lastReportedProgress) {
           lastReportedProgress = currentProgress;
-          final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+          final FlutterLocalNotificationsPlugin
+          flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
           flutterLocalNotificationsPlugin.show(
             id: 778,
             title: 'Downloading Offline Map',
@@ -429,10 +430,11 @@ void onStart(ServiceInstance service) async {
 
   container.listen(p2pServiceProvider, (previous, next) {
     final now = DateTime.now();
-    
+
     // Only send updates across the isolate boundary if 500ms have passed to prevent UI jank,
     // OR if a significant state change occurred (e.g., connection status changed, sync finished).
-    final isSignificantChange = previous == null || 
+    final isSignificantChange =
+        previous == null ||
         previous.isHosting != next.isHosting ||
         previous.isScanning != next.isScanning ||
         previous.isSyncing != next.isSyncing ||
@@ -441,7 +443,8 @@ void onStart(ServiceInstance service) async {
         previous.clientState?.isActive != next.clientState?.isActive ||
         previous.connectedClients.length != next.connectedClients.length;
 
-    if (isSignificantChange || now.difference(lastStateUpdateTime).inMilliseconds > 500) {
+    if (isSignificantChange ||
+        now.difference(lastStateUpdateTime).inMilliseconds > 500) {
       stateUpdateTimer?.cancel();
       lastStateUpdateTime = now;
       service.invoke('p2pStateUpdate', next.toMap());
@@ -461,11 +464,14 @@ void onStart(ServiceInstance service) async {
       if (next.isSyncing) {
         try {
           if (await service.isForegroundService()) {
-            final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
-            
+            final FlutterLocalNotificationsPlugin
+            flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+
             bool showProgress = next.syncProgress != null;
-            int progress = (showProgress ? (next.syncProgress! * 100).toInt() : 0);
-            
+            int progress = (showProgress
+                ? (next.syncProgress! * 100).toInt()
+                : 0);
+
             flutterLocalNotificationsPlugin.show(
               id: 889,
               title: 'Cloud Gateway Sync',
@@ -553,7 +559,8 @@ void _updateNotification(ServiceInstance service, P2pState next) async {
 
     try {
       if (await service.isForegroundService()) {
-        final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+        final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+            FlutterLocalNotificationsPlugin();
         flutterLocalNotificationsPlugin.show(
           id: 888,
           title: title,

@@ -798,7 +798,9 @@ class CloudSyncService extends _$CloudSyncService {
 
         bool processSuccess = false;
         if (isBackgroundIsolate) {
-          processSuccess = await ref.read(p2pServiceProvider.notifier).processPayloadFromFile(tempFile.path);
+          processSuccess = await ref
+              .read(p2pServiceProvider.notifier)
+              .processPayloadFromFile(tempFile.path);
         } else {
           final completer = Completer<bool>();
           final sub = FlutterBackgroundService()
