@@ -199,6 +199,7 @@ class SyncBottomSheet extends ConsumerWidget {
                         isActive: p2pState.isAutoSyncing,
                         isDisabled: false,
                         onChanged: (val) async {
+                          HapticFeedback.lightImpact();
                           if (val) {
                             final enabled = await ensureServicesEnabled();
                             if (enabled) p2pNotifier.toggleAutoSync();
@@ -243,6 +244,7 @@ class SyncBottomSheet extends ConsumerWidget {
                         isActive: p2pState.isHosting,
                         isDisabled: p2pState.isScanning || p2pState.isAutoSyncing,
                         onChanged: (val) async {
+                          HapticFeedback.lightImpact();
                           if (val) {
                             final enabled = await ensureServicesEnabled(isHosting: true);
                             if (enabled) p2pNotifier.startHosting();
@@ -263,6 +265,7 @@ class SyncBottomSheet extends ConsumerWidget {
                         isActive: p2pState.isScanning || p2pState.clientState?.isActive == true,
                         isDisabled: p2pState.isHosting || p2pState.isAutoSyncing,
                         onChanged: (val) async {
+                          HapticFeedback.lightImpact();
                           if (val) {
                             final enabled = await ensureServicesEnabled();
                             if (enabled) p2pNotifier.startScanning();
@@ -408,6 +411,7 @@ class SyncBottomSheet extends ConsumerWidget {
                             : FilledButton.tonal(
                                 onPressed: cloudSyncState.hasInternet
                                     ? () async {
+                                        HapticFeedback.mediumImpact();
                                         ScaffoldMessenger.of(
                                           context,
                                         ).showSnackBar(
@@ -500,6 +504,7 @@ class SyncBottomSheet extends ConsumerWidget {
                                   onPressed: p2pState.isSyncing
                                       ? null
                                       : () {
+                                          HapticFeedback.mediumImpact();
                                           p2pNotifier.requestMapRegion(region);
                                           Navigator.pop(context);
                                           ScaffoldMessenger.of(
@@ -869,6 +874,7 @@ class SyncBottomSheet extends ConsumerWidget {
                   onPressed: p2pState.isSyncing
                       ? null
                       : () {
+                          HapticFeedback.mediumImpact();
                           ref.read(uiP2pServiceProvider.notifier).triggerSync();
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(

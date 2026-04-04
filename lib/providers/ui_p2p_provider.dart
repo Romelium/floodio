@@ -22,10 +22,18 @@ part 'ui_p2p_provider.g.dart';
 class UiP2pService extends _$UiP2pService {
   final AudioPlayer _audioPlayer = AudioPlayer();
   Uint8List? _chirpBytes;
+  Uint8List? _successBytes;
+  Uint8List? _errorBytes;
+  Uint8List? _connectionBytes;
+  Uint8List? _notificationBytes;
 
   @override
   P2pState build() {
     _chirpBytes = generateWalkieTalkieChirp();
+    _successBytes = generateSuccessChirp();
+    _errorBytes = generateErrorChirp();
+    _connectionBytes = generateConnectionChirp();
+    _notificationBytes = generateNotificationChirp();
 
     ref.onDispose(() {
       _audioPlayer.dispose();
@@ -41,8 +49,16 @@ class UiP2pService extends _$UiP2pService {
           if (newState.syncMessage == 'Successfully synced data.' || 
               newState.syncMessage == 'Up to date.' ||
               newState.syncMessage == 'Map updated successfully.') {
-            _playChirp();
+            playSuccess();
+          } else if (newState.syncMessage?.startsWith('Error') == true || newState.syncMessage?.startsWith('Failed') == true) {
+            playError();
+          } else {
+            playChirp();
           }
+        }
+
+        if (!state.isConnecting && newState.isConnecting) {
+          playConnection();
         }
 
         state = newState;
@@ -78,12 +94,18 @@ class UiP2pService extends _$UiP2pService {
     return const P2pState();
   }
 
-  void _playChirp() async {
+  void playSuccess() => _playSound(_successBytes, HapticFeedback.mediumImpact);
+  void playError() => _playSound(_errorBytes, HapticFeedback.heavyImpact);
+  void playConnection() => _playSound(_connectionBytes, HapticFeedback.lightImpact);
+  void playNotification() => _playSound(_notificationBytes, HapticFeedback.lightImpact);
+  void playChirp() => _playSound(_chirpBytes, HapticFeedback.lightImpact);
+
+  void _playSound(Uint8List? bytes, Future<void> Function() haptic) async {
     try {
-      HapticFeedback.lightImpact();
+      haptic();
     } catch (_) {}
     
-    if (_chirpBytes != null) {
+    if (bytes != null) {
       try {
         RingerModeStatus ringerStatus = RingerModeStatus.unknown;
         try {
@@ -91,7 +113,7 @@ class UiP2pService extends _$UiP2pService {
         } catch (_) {}
         
         if (ringerStatus == RingerModeStatus.normal || ringerStatus == RingerModeStatus.unknown) {
-          await _audioPlayer.play(BytesSource(_chirpBytes!));
+          await _audioPlayer.play(BytesSource(bytes));
         }
       } catch (e) {
         print("Error playing chirp: $e");
@@ -100,46 +122,56 @@ class UiP2pService extends _$UiP2pService {
   }
 
   void toggleAutoSync() {
+    HapticFeedback.lightImpact();
     FlutterBackgroundService().invoke('toggleAutoSync');
   }
 
   void startHosting() {
+    HapticFeedback.lightImpact();
     FlutterBackgroundService().invoke('startHosting');
   }
 
   void stopHosting() {
+    HapticFeedback.lightImpact();
     FlutterBackgroundService().invoke('stopHosting');
   }
 
   void startScanning() {
+    HapticFeedback.lightImpact();
     FlutterBackgroundService().invoke('startScanning');
   }
 
   void stopScanning() {
+    HapticFeedback.lightImpact();
     FlutterBackgroundService().invoke('stopScanning');
   }
 
   void disconnect() {
+    HapticFeedback.lightImpact();
     FlutterBackgroundService().invoke('disconnect');
   }
 
   void connectToDevice(AppDiscoveredDevice device) {
+    HapticFeedback.mediumImpact();
     FlutterBackgroundService().invoke('connectToDevice', {
       'deviceAddress': device.deviceAddress,
     });
   }
 
   void requestMapRegion(OfflineRegion region) {
+    HapticFeedback.mediumImpact();
     FlutterBackgroundService().invoke('requestMapRegion', region.toJson());
   }
 
   void broadcastMapRegion(OfflineRegion? region) {
+    HapticFeedback.mediumImpact();
     FlutterBackgroundService().invoke('broadcastMapRegion', {
       'region': region?.toJson(),
     });
   }
 
   void triggerSync() {
+    HapticFeedback.mediumImpact();
     FlutterBackgroundService().invoke('triggerSync');
   }
 

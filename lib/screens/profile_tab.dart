@@ -101,12 +101,14 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
   }
 
   void _removeTrustedSender(String publicKey) {
+    HapticFeedback.heavyImpact();
     ref
         .read(trustedSendersControllerProvider.notifier)
         .removeTrustedSender(publicKey);
   }
 
   void _deleteMarker(String id) {
+    HapticFeedback.selectionClick();
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -122,6 +124,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () {
+              HapticFeedback.heavyImpact();
               Navigator.pop(dialogContext);
               final timestamp = DateTime.now().millisecondsSinceEpoch;
               ref
@@ -146,6 +149,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
   }
 
   void _deleteNews(String id) {
+    HapticFeedback.selectionClick();
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -159,6 +163,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () {
+              HapticFeedback.heavyImpact();
               Navigator.pop(dialogContext);
               final timestamp = DateTime.now().millisecondsSinceEpoch;
               ref
@@ -183,6 +188,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
   }
 
   void _deleteArea(String id) {
+    HapticFeedback.selectionClick();
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -198,6 +204,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () {
+              HapticFeedback.heavyImpact();
               Navigator.pop(dialogContext);
               final timestamp = DateTime.now().millisecondsSinceEpoch;
               ref
@@ -222,6 +229,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
   }
 
   void _deletePath(String id) {
+    HapticFeedback.selectionClick();
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -237,6 +245,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () {
+              HapticFeedback.heavyImpact();
               Navigator.pop(dialogContext);
               final timestamp = DateTime.now().millisecondsSinceEpoch;
               ref
@@ -261,6 +270,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
   }
 
   void _editProfile() {
+    HapticFeedback.selectionClick();
     final localUser = ref.read(localUserControllerProvider).value;
     final nameController = TextEditingController(text: localUser?.name ?? '');
     final contactController = TextEditingController(
@@ -294,6 +304,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
           ),
           FilledButton(
             onPressed: () async {
+              HapticFeedback.mediumImpact();
               final newName = nameController.text.trim();
               final newContact = contactController.text.trim();
               if (newName.isEmpty) {
@@ -369,6 +380,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
   }
 
   void _editMarker(HazardMarkerEntity marker) {
+    HapticFeedback.selectionClick();
     final isOfficial = ref.read(appSettingsProvider).isOfficialMode;
     List<String> types = ['Flood', 'Fire', 'Roadblock', 'Medical', 'Other'];
     if (isOfficial) {
@@ -453,6 +465,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
             ),
             FilledButton(
               onPressed: () async {
+                HapticFeedback.mediumImpact();
                 Navigator.pop(dialogContext);
                 final cryptoService = ref.read(cryptoServiceProvider.notifier);
                 final timestamp = DateTime.now().millisecondsSinceEpoch;
@@ -528,6 +541,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
   }
 
   void _editNews(NewsItemEntity news) {
+    HapticFeedback.selectionClick();
     final titleController = TextEditingController(text: news.title);
     final contentController = TextEditingController(text: news.content);
     int? selectedTtlHours = 24;
@@ -594,6 +608,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
             ),
             FilledButton(
               onPressed: () async {
+                HapticFeedback.mediumImpact();
                 Navigator.pop(dialogContext);
                 final cryptoService = ref.read(cryptoServiceProvider.notifier);
                 final timestamp = DateTime.now().millisecondsSinceEpoch;
@@ -665,6 +680,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
   }
 
   void _editArea(AreaEntity area) {
+    HapticFeedback.selectionClick();
     String selectedType = area.type;
     final descController = TextEditingController(text: area.description);
     int? selectedTtlHours = 24;
@@ -758,6 +774,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
             ),
             FilledButton(
               onPressed: () async {
+                HapticFeedback.mediumImpact();
                 Navigator.pop(dialogContext);
                 final cryptoService = ref.read(cryptoServiceProvider.notifier);
                 final timestamp = DateTime.now().millisecondsSinceEpoch;
@@ -838,6 +855,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
   }
 
   void _editPath(PathEntity path) {
+    HapticFeedback.selectionClick();
     String selectedType = path.type;
     final descController = TextEditingController(text: path.description);
     int? selectedTtlHours = 24;
@@ -924,6 +942,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
             ),
             FilledButton(
               onPressed: () async {
+                HapticFeedback.mediumImpact();
                 Navigator.pop(dialogContext);
                 final cryptoService = ref.read(cryptoServiceProvider.notifier);
                 final timestamp = DateTime.now().millisecondsSinceEpoch;
@@ -1094,6 +1113,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                         InkWell(
                           borderRadius: BorderRadius.circular(8),
                           onTap: () {
+                            HapticFeedback.selectionClick();
                             if (myPublicKey != null) {
                               Clipboard.setData(
                                 ClipboardData(text: myPublicKey),
@@ -1155,18 +1175,24 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             FilledButton.icon(
-                              onPressed: _editProfile,
+                              onPressed: () {
+                                HapticFeedback.selectionClick();
+                                _editProfile();
+                              },
                               icon: const Icon(Icons.edit, size: 18),
                               label: const Text('Edit Profile'),
                             ),
                             const SizedBox(width: 12),
                             FilledButton.tonalIcon(
-                              onPressed: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => const SettingsScreen(),
-                                ),
-                              ),
+                              onPressed: () {
+                                HapticFeedback.selectionClick();
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => const SettingsScreen(),
+                                  ),
+                                );
+                              },
                               icon: const Icon(Icons.settings, size: 18),
                               label: const Text('Settings'),
                             ),
@@ -1523,6 +1549,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                                     ),
                                     tooltip: 'Unblock',
                                     onPressed: () {
+                                      HapticFeedback.selectionClick();
                                       showDialog(
                                         context: context,
                                         builder: (dialogContext) => AlertDialog(
@@ -1538,6 +1565,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                                             ),
                                             FilledButton(
                                               onPressed: () {
+                                                HapticFeedback.mediumImpact();
                                                 Navigator.pop(dialogContext);
                                                 ref
                                                     .read(
@@ -1629,6 +1657,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                                   ),
                                   tooltip: 'Clear All Offline Maps',
                                   onPressed: () {
+                                    HapticFeedback.selectionClick();
                                     showDialog(
                                       context: context,
                                       builder: (dialogContext) => AlertDialog(
@@ -1649,6 +1678,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                                               backgroundColor: Colors.red,
                                             ),
                                             onPressed: () async {
+                                              HapticFeedback.heavyImpact();
                                               Navigator.pop(dialogContext);
                                               await ref
                                                   .read(mapCacheServiceProvider)
@@ -1715,6 +1745,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                                         ),
                                         tooltip: 'Delete Region',
                                         onPressed: () {
+                                          HapticFeedback.selectionClick();
                                           showDialog(
                                             context: context,
                                             builder: (dialogContext) => AlertDialog(
@@ -1737,6 +1768,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                                                     backgroundColor: Colors.red,
                                                   ),
                                                   onPressed: () async {
+                                                    HapticFeedback.heavyImpact();
                                                     Navigator.pop(
                                                       dialogContext,
                                                     );

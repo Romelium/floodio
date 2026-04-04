@@ -93,6 +93,7 @@ class _SearchBarState extends ConsumerState<_SearchBar> {
             ? IconButton(
                 icon: const Icon(Icons.clear),
                 onPressed: () {
+                  HapticFeedback.selectionClick();
                   _controller.clear();
                   ref
                       .read(feedFilterControllerProvider.notifier)
@@ -268,6 +269,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   final LayerHitNotifier<String> _polylineHitNotifier = ValueNotifier(null);
 
   void _showTrustModelHelp(BuildContext context) {
+    HapticFeedback.selectionClick();
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -311,6 +313,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   }
 
   void _showMapHelp(BuildContext context) {
+    HapticFeedback.selectionClick();
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -546,6 +549,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   }
 
   void _showDebugMenu() {
+    HapticFeedback.selectionClick();
     showModalBottomSheet(
       context: context,
       builder: (sheetContext) {
@@ -564,6 +568,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   leading: const Icon(Icons.delete_forever, color: Colors.red),
                   title: const Text('Clear All Data'),
                   onTap: () async {
+                    HapticFeedback.heavyImpact();
                     Navigator.pop(sheetContext);
                     await clearAllAppData(context, ref);
                   },
@@ -575,6 +580,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   ),
                   title: const Text('Make Me Admin-Trusted (Tier 2)'),
                   onTap: () async {
+                    HapticFeedback.mediumImpact();
                     Navigator.pop(sheetContext);
                     final localUser = ref.read(localUserControllerProvider).value;
                     final myPubKey = localUser?.publicKey;
@@ -595,6 +601,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   leading: const Icon(Icons.remove_moderator, color: Colors.red),
                   title: const Text('Revoke My Admin Trust'),
                   onTap: () async {
+                    HapticFeedback.heavyImpact();
                     Navigator.pop(sheetContext);
                     final localUser = ref.read(localUserControllerProvider).value;
                     final myPubKey = localUser?.publicKey;
@@ -615,6 +622,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   leading: const Icon(Icons.security, color: Colors.orange),
                   title: const Text('Toggle Official Mode'),
                   onTap: () async {
+                    HapticFeedback.selectionClick();
                     Navigator.pop(sheetContext);
                     final current = ref.read(appSettingsProvider).isOfficialMode;
                     await ref
@@ -651,6 +659,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   leading: const Icon(Icons.bluetooth, color: Colors.blue),
                   title: const Text('Mock Discovered Peer'),
                   onTap: () {
+                    HapticFeedback.selectionClick();
                     Navigator.pop(sheetContext);
                     ref.read(uiP2pServiceProvider.notifier).mockDiscoveredDevice();
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -662,6 +671,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   leading: const Icon(Icons.people, color: Colors.green),
                   title: const Text('Mock Connected Client'),
                   onTap: () {
+                    HapticFeedback.selectionClick();
                     Navigator.pop(sheetContext);
                     ref.read(uiP2pServiceProvider.notifier).mockConnectedClient();
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -673,6 +683,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   leading: const Icon(Icons.warning, color: Colors.orange),
                   title: const Text('Mock Received Hazard'),
                   onTap: () {
+                    HapticFeedback.selectionClick();
                     Navigator.pop(sheetContext);
                     ref.read(uiP2pServiceProvider.notifier).mockReceivedHazard();
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -684,6 +695,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   leading: const Icon(Icons.warning, color: Colors.red),
                   title: const Text('Mock Critical Alert'),
                   onTap: () {
+                    HapticFeedback.selectionClick();
                     Navigator.pop(sheetContext);
                     ref.read(uiP2pServiceProvider.notifier).mockReceivedCriticalHazard();
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -695,6 +707,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   leading: const Icon(Icons.router, color: Colors.teal),
                   title: const Text('Mock Host State'),
                   onTap: () {
+                    HapticFeedback.selectionClick();
                     Navigator.pop(sheetContext);
                     ref.read(uiP2pServiceProvider.notifier).mockHostState();
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -706,6 +719,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   leading: const Icon(Icons.smartphone, color: Colors.indigo),
                   title: const Text('Mock Client State'),
                   onTap: () {
+                    HapticFeedback.selectionClick();
                     Navigator.pop(sheetContext);
                     ref.read(uiP2pServiceProvider.notifier).mockClientState();
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -717,6 +731,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   leading: const Icon(Icons.sync, color: Colors.cyan),
                   title: const Text('Mock Sync Progress'),
                   onTap: () {
+                    HapticFeedback.selectionClick();
                     Navigator.pop(sheetContext);
                     ref.read(uiP2pServiceProvider.notifier).mockSyncProgress();
                   },
@@ -730,6 +745,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   }
 
   void _showMarkerDetailsDialog(HazardMarkerEntity m, List<UserProfileEntity> profiles, bool isAdmin, AppSettingsData settings) {
+    HapticFeedback.selectionClick();
     final canEndorse = isAdmin && (m.trustTier == 3 || m.trustTier == 4);
     final color = getHazardColor(m.type, m.trustTier);
 
@@ -799,6 +815,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   if (canEndorse)
                     FilledButton.tonalIcon(
                       onPressed: () {
+                        HapticFeedback.mediumImpact();
                         Navigator.pop(dialogContext);
                         _endorseHazard(m);
                       },
@@ -812,6 +829,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   if (canEndorse)
                     FilledButton.tonalIcon(
                       onPressed: () {
+                        HapticFeedback.selectionClick();
                         Navigator.pop(dialogContext);
                         _confirmDebunkReport(m.id, 'marker');
                       },
@@ -824,6 +842,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     ),
                   FilledButton.tonalIcon(
                     onPressed: () {
+                      HapticFeedback.selectionClick();
                       Navigator.pop(dialogContext);
                       Navigator.push(
                         context,
@@ -844,6 +863,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   ),
                   TextButton.icon(
                     onPressed: () {
+                      HapticFeedback.selectionClick();
                       Navigator.pop(dialogContext);
                       _resolveMarker(m.id);
                     },
@@ -854,6 +874,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   if (m.trustTier == 4 || m.trustTier == 3)
                     TextButton.icon(
                       onPressed: () {
+                        HapticFeedback.selectionClick();
                         Navigator.pop(dialogContext);
                         _blockSender(m.senderId);
                       },
@@ -864,6 +885,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   if (m.trustTier == 4 || (settings.isOfficialMode && m.trustTier == 3))
                     FilledButton.tonalIcon(
                       onPressed: () {
+                        HapticFeedback.selectionClick();
                         Navigator.pop(dialogContext);
                         if (settings.isOfficialMode) {
                           _makeOfficialVolunteer(m.senderId);
@@ -897,6 +919,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   }
 
   void _showAreaDetailsDialog(AreaEntity a, List<UserProfileEntity> profiles, bool isAdmin, AppSettingsData settings) {
+    HapticFeedback.selectionClick();
     final canEndorse = isAdmin && (a.trustTier == 3 || a.trustTier == 4);
     final color = a.isCritical
         ? Colors.red
@@ -968,6 +991,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   if (canEndorse)
                     FilledButton.tonalIcon(
                       onPressed: () {
+                        HapticFeedback.mediumImpact();
                         Navigator.pop(dialogContext);
                         _endorseArea(a);
                       },
@@ -981,6 +1005,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   if (canEndorse)
                     FilledButton.tonalIcon(
                       onPressed: () {
+                        HapticFeedback.selectionClick();
                         Navigator.pop(dialogContext);
                         _confirmDebunkReport(a.id, 'area');
                       },
@@ -994,6 +1019,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   if (a.coordinates.isNotEmpty)
                     FilledButton.tonalIcon(
                       onPressed: () {
+                        HapticFeedback.selectionClick();
                         Navigator.pop(dialogContext);
                         Navigator.push(
                           context,
@@ -1014,6 +1040,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     ),
                   TextButton.icon(
                     onPressed: () {
+                      HapticFeedback.selectionClick();
                       Navigator.pop(dialogContext);
                       _resolveArea(a.id);
                     },
@@ -1024,6 +1051,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   if (a.trustTier == 4 || a.trustTier == 3)
                     TextButton.icon(
                       onPressed: () {
+                        HapticFeedback.selectionClick();
                         Navigator.pop(dialogContext);
                         _blockSender(a.senderId);
                       },
@@ -1034,6 +1062,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   if (a.trustTier == 4 || (settings.isOfficialMode && a.trustTier == 3))
                     FilledButton.tonalIcon(
                       onPressed: () {
+                        HapticFeedback.selectionClick();
                         Navigator.pop(dialogContext);
                         if (settings.isOfficialMode) {
                           _makeOfficialVolunteer(a.senderId);
@@ -1067,6 +1096,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   }
 
   void _showPathDetailsDialog(PathEntity p, List<UserProfileEntity> profiles, bool isAdmin, AppSettingsData settings) {
+    HapticFeedback.selectionClick();
     final canEndorse = isAdmin && (p.trustTier == 3 || p.trustTier == 4);
     final color = p.isCritical
         ? Colors.red
@@ -1138,6 +1168,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   if (canEndorse)
                     FilledButton.tonalIcon(
                       onPressed: () {
+                        HapticFeedback.mediumImpact();
                         Navigator.pop(dialogContext);
                         _endorsePath(p);
                       },
@@ -1151,6 +1182,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   if (canEndorse)
                     FilledButton.tonalIcon(
                       onPressed: () {
+                        HapticFeedback.selectionClick();
                         Navigator.pop(dialogContext);
                         _confirmDebunkReport(p.id, 'path');
                       },
@@ -1164,6 +1196,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   if (p.coordinates.isNotEmpty)
                     FilledButton.tonalIcon(
                       onPressed: () {
+                        HapticFeedback.selectionClick();
                         Navigator.pop(dialogContext);
                         Navigator.push(
                           context,
@@ -1184,6 +1217,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     ),
                   TextButton.icon(
                     onPressed: () {
+                      HapticFeedback.selectionClick();
                       Navigator.pop(dialogContext);
                       _resolvePath(p.id);
                     },
@@ -1194,6 +1228,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   if (p.trustTier == 4 || p.trustTier == 3)
                     TextButton.icon(
                       onPressed: () {
+                        HapticFeedback.selectionClick();
                         Navigator.pop(dialogContext);
                         _blockSender(p.senderId);
                       },
@@ -1204,6 +1239,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   if (p.trustTier == 4 || (settings.isOfficialMode && p.trustTier == 3))
                     FilledButton.tonalIcon(
                       onPressed: () {
+                        HapticFeedback.selectionClick();
                         Navigator.pop(dialogContext);
                         if (settings.isOfficialMode) {
                           _makeOfficialVolunteer(p.senderId);
@@ -1237,6 +1273,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   }
 
   void _blockSender(String senderId) {
+    HapticFeedback.selectionClick();
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -1252,6 +1289,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () {
+              HapticFeedback.heavyImpact();
               Navigator.pop(dialogContext);
               ref
                   .read(untrustedSendersControllerProvider.notifier)
@@ -1273,6 +1311,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   }
 
   void _resolveMarker(String id) {
+    HapticFeedback.selectionClick();
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -1288,6 +1327,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: Colors.green),
             onPressed: () {
+              HapticFeedback.mediumImpact();
               Navigator.pop(dialogContext);
               final timestamp = DateTime.now().millisecondsSinceEpoch;
               ref
@@ -1318,6 +1358,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   }
 
   void _resolveArea(String id) {
+    HapticFeedback.selectionClick();
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -1333,6 +1374,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: Colors.green),
             onPressed: () {
+              HapticFeedback.mediumImpact();
               Navigator.pop(dialogContext);
               final timestamp = DateTime.now().millisecondsSinceEpoch;
               ref
@@ -1363,6 +1405,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   }
 
   void _resolvePath(String id) {
+    HapticFeedback.selectionClick();
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -1378,6 +1421,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: Colors.green),
             onPressed: () {
+              HapticFeedback.mediumImpact();
               Navigator.pop(dialogContext);
               final timestamp = DateTime.now().millisecondsSinceEpoch;
               ref
@@ -1408,6 +1452,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   }
 
   Future<void> _debunkReport(String id, String type) async {
+    HapticFeedback.heavyImpact();
     final timestamp = DateTime.now().millisecondsSinceEpoch;
 
     if (type == 'marker') {
@@ -1449,6 +1494,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   }
 
   void _confirmDebunkReport(String id, String type) {
+    HapticFeedback.selectionClick();
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -1475,6 +1521,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   }
 
   void _dismissNews(String id) {
+    HapticFeedback.selectionClick();
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -1490,6 +1537,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: Colors.green),
             onPressed: () {
+              HapticFeedback.mediumImpact();
               Navigator.pop(dialogContext);
               final timestamp = DateTime.now().millisecondsSinceEpoch;
               ref
@@ -1520,6 +1568,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   }
 
   Future<void> _endorseHazard(HazardMarkerEntity marker) async {
+    HapticFeedback.mediumImpact();
     final localUser = ref.read(localUserControllerProvider).value;
     final myPublicKey = localUser?.publicKey;
     if (myPublicKey == null) return;
@@ -1624,6 +1673,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   }
 
   Future<void> _endorseArea(AreaEntity area) async {
+    HapticFeedback.mediumImpact();
     final localUser = ref.read(localUserControllerProvider).value;
     final myPublicKey = localUser?.publicKey;
     if (myPublicKey == null) return;
@@ -1728,6 +1778,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   }
 
   Future<void> _endorsePath(PathEntity path) async {
+    HapticFeedback.mediumImpact();
     final localUser = ref.read(localUserControllerProvider).value;
     final myPublicKey = localUser?.publicKey;
     if (myPublicKey == null) return;
@@ -1832,6 +1883,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   }
 
   Future<void> _endorseNews(NewsItemEntity news) async {
+    HapticFeedback.mediumImpact();
     final localUser = ref.read(localUserControllerProvider).value;
     final myPublicKey = localUser?.publicKey;
     if (myPublicKey == null) return;
@@ -1947,6 +1999,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   }
 
   void _showReportOptions() {
+    HapticFeedback.selectionClick();
     final isOfficial = ref.read(appSettingsProvider).isOfficialMode;
 
     showModalBottomSheet(
@@ -1987,6 +2040,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   title: const Text('Report Hazard'),
                   subtitle: const Text('Mark a specific point on the map'),
                   onTap: () async {
+                    HapticFeedback.selectionClick();
                     Navigator.pop(context);
                     LatLng point = await _getPointForReport();
                     if (!mounted) return;
@@ -2001,6 +2055,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   title: const Text('Report Area'),
                   subtitle: const Text('Draw a polygon on the map'),
                   onTap: () async {
+                    HapticFeedback.selectionClick();
                     Navigator.pop(context);
                     ref
                         .read(drawingControllerProvider.notifier)
@@ -2037,6 +2092,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   title: const Text('Report Path'),
                   subtitle: const Text('Draw a line on the map'),
                   onTap: () async {
+                    HapticFeedback.selectionClick();
                     Navigator.pop(context);
                     ref
                         .read(drawingControllerProvider.notifier)
@@ -2071,6 +2127,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   title: const Text('Official Alert'),
                   subtitle: const Text('Broadcast a general news or alert'),
                   onTap: () {
+                    HapticFeedback.selectionClick();
                     Navigator.pop(context);
                     _showAddNewsDialog();
                   },
@@ -2096,6 +2153,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     title: const Text('Report Supply'),
                     subtitle: const Text('Mark a supply distribution point'),
                     onTap: () async {
+                      HapticFeedback.selectionClick();
                       Navigator.pop(context);
                       LatLng point = await _getPointForReport();
                       if (!mounted) return;
@@ -2110,6 +2168,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     title: const Text('Medical Triage'),
                     subtitle: const Text('Mark a medical triage area'),
                     onTap: () async {
+                      HapticFeedback.selectionClick();
                       Navigator.pop(context);
                       LatLng point = await _getPointForReport();
                       if (!mounted) return;
@@ -2127,6 +2186,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     title: const Text('Custom Official Marker'),
                     subtitle: const Text('Mark a custom official point'),
                     onTap: () async {
+                      HapticFeedback.selectionClick();
                       Navigator.pop(context);
                       LatLng point = await _getPointForReport();
                       if (!mounted) return;
@@ -2143,6 +2203,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   }
 
   void _showAddHazardDialog(LatLng point, {String? initialType}) {
+    HapticFeedback.selectionClick();
     final isOfficial = ref.read(appSettingsProvider).isOfficialMode;
     List<String> types = ['Flood', 'Fire', 'Roadblock', 'Medical', 'Other'];
     if (isOfficial) {
@@ -2283,8 +2344,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   ),
                   Center(
                     child: TextButton.icon(
-                      onPressed: () =>
-                          setInnerState(() => selectedImage = null),
+                      onPressed: () {
+                        HapticFeedback.selectionClick();
+                        setInnerState(() => selectedImage = null);
+                      },
                       icon: const Icon(Icons.delete, color: Colors.red),
                       label: const Text(
                         'Remove Image',
@@ -2296,6 +2359,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   Center(
                     child: OutlinedButton.icon(
                       onPressed: () async {
+                        HapticFeedback.selectionClick();
                         final picker = ImagePicker();
                         final image = await picker.pickImage(
                           source: ImageSource.camera,
@@ -2336,6 +2400,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             ),
             FilledButton.icon(
               onPressed: () async {
+                HapticFeedback.mediumImpact();
                 Navigator.pop(dialogContext);
                 final cryptoService = ref.read(cryptoServiceProvider.notifier);
                 final trustedSendersAsync = ref.read(
@@ -2464,6 +2529,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     AreaEntity? existingArea,
     required List<LatLng> points,
   }) {
+    HapticFeedback.selectionClick();
     final validTypes = [
       'Flooded Area',
       'Evacuation Zone',
@@ -2590,6 +2656,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             ),
             FilledButton.icon(
               onPressed: () async {
+                HapticFeedback.mediumImpact();
                 Navigator.pop(dialogContext);
                 final cryptoService = ref.read(cryptoServiceProvider.notifier);
                 final trustedSendersAsync = ref.read(
@@ -2722,6 +2789,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     PathEntity? existingPath,
     required List<LatLng> points,
   }) {
+    HapticFeedback.selectionClick();
     final validTypes = [
       'Evacuation Route',
       'Safe Path',
@@ -2840,6 +2908,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             ),
             FilledButton.icon(
               onPressed: () async {
+                HapticFeedback.mediumImpact();
                 Navigator.pop(dialogContext);
                 final cryptoService = ref.read(cryptoServiceProvider.notifier);
                 final trustedSendersAsync = ref.read(
@@ -2969,6 +3038,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   }
 
   void _showDownloadMapDialog() {
+    HapticFeedback.selectionClick();
     try {
       final bounds = _mapController.camera.visibleBounds;
       final currentZoom = _mapController.camera.zoom.floor();
@@ -2989,6 +3059,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   }
 
   Future<void> _shareApk() async {
+    HapticFeedback.selectionClick();
     if (!Platform.isAndroid) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -3032,6 +3103,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   }
 
   void _showAddNewsDialog() {
+    HapticFeedback.selectionClick();
     final titleController = TextEditingController(
       text: 'Official Evacuation Notice',
     );
@@ -3195,6 +3267,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 ] else
                   OutlinedButton.icon(
                     onPressed: () async {
+                      HapticFeedback.selectionClick();
                       final picker = ImagePicker();
                       final image = await picker.pickImage(
                         source: ImageSource.camera,
@@ -3232,6 +3305,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             ),
             FilledButton.icon(
               onPressed: () async {
+                HapticFeedback.mediumImpact();
                 Navigator.pop(dialogContext);
                 final id = DateTime.now().millisecondsSinceEpoch.toString();
                 final title = titleController.text;
@@ -3443,6 +3517,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 onTap: (tapPosition, point) {
                   final polyHit = _polylineHitNotifier.value;
                   if (polyHit != null && polyHit.hitValues.isNotEmpty) {
+                    HapticFeedback.selectionClick();
                     final pathId = polyHit.hitValues.first;
                     try {
                       final path = paths.firstWhere((p) => p.id == pathId);
@@ -3453,6 +3528,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
                   final polyHitArea = _polygonHitNotifier.value;
                   if (polyHitArea != null && polyHitArea.hitValues.isNotEmpty) {
+                    HapticFeedback.selectionClick();
                     final areaId = polyHitArea.hitValues.first;
                     try {
                       final area = areas.firstWhere((a) => a.id == areaId);
@@ -3463,14 +3539,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
                   final drawingState = ref.read(drawingControllerProvider);
                   if (drawingState.mode == DrawingMode.area) {
+                    HapticFeedback.lightImpact();
                     ref
                         .read(drawingControllerProvider.notifier)
                         .addPoint(point);
                   } else if (drawingState.mode == DrawingMode.path) {
+                    HapticFeedback.lightImpact();
                     ref
                         .read(drawingControllerProvider.notifier)
                         .addPoint(point);
                   } else {
+                    HapticFeedback.selectionClick();
                     _showAddHazardDialog(point);
                   }
                 },
@@ -3682,6 +3761,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                         child: GestureDetector(
                           behavior: HitTestBehavior.opaque,
                           onTap: () {
+                            HapticFeedback.selectionClick();
                             _showMarkerDetailsDialog(m, profiles, isAdmin, settings);
                           },
                           child: m.isCritical
@@ -4157,6 +4237,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                           ),
                           child: InkWell(
                             onTap: () {
+                              HapticFeedback.selectionClick();
                               ref
                                   .read(navigationIndexProvider.notifier)
                                   .setIndex(0);
@@ -4307,6 +4388,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                                         ),
                                       FilledButton.tonalIcon(
                                         onPressed: () {
+                                          HapticFeedback.selectionClick();
                                           Navigator.push(
                                             context,
                                             MaterialPageRoute(
@@ -4356,6 +4438,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                                               item.trustTier == 3))
                                         FilledButton.tonalIcon(
                                           onPressed: () {
+                                            HapticFeedback.selectionClick();
                                             if (settings.isOfficialMode) {
                                               _makeOfficialVolunteer(
                                                 item.senderId,
@@ -4587,6 +4670,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                                             item.trustTier == 3))
                                       FilledButton.tonalIcon(
                                         onPressed: () {
+                                          HapticFeedback.selectionClick();
                                           if (settings.isOfficialMode) {
                                             _makeOfficialVolunteer(
                                               item.senderId,
@@ -4644,6 +4728,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                           clipBehavior: Clip.antiAlias,
                           child: InkWell(
                             onTap: () {
+                              HapticFeedback.selectionClick();
                               if (item.coordinates.isNotEmpty) {
                                 ref
                                     .read(navigationIndexProvider.notifier)
@@ -4806,6 +4891,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                                         ),
                                       FilledButton.tonalIcon(
                                         onPressed: () {
+                                          HapticFeedback.selectionClick();
                                           if (item.coordinates.isNotEmpty) {
                                             Navigator.push(
                                               context,
@@ -4856,6 +4942,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                                               item.trustTier == 3))
                                         FilledButton.tonalIcon(
                                           onPressed: () {
+                                            HapticFeedback.selectionClick();
                                             if (settings.isOfficialMode) {
                                               _makeOfficialVolunteer(
                                                 item.senderId,
@@ -4914,6 +5001,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                           clipBehavior: Clip.antiAlias,
                           child: InkWell(
                             onTap: () {
+                              HapticFeedback.selectionClick();
                               if (item.coordinates.isNotEmpty) {
                                 ref
                                     .read(navigationIndexProvider.notifier)
@@ -5076,6 +5164,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                                         ),
                                       FilledButton.tonalIcon(
                                         onPressed: () {
+                                          HapticFeedback.selectionClick();
                                           if (item.coordinates.isNotEmpty) {
                                             Navigator.push(
                                               context,
@@ -5126,6 +5215,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                                               item.trustTier == 3))
                                         FilledButton.tonalIcon(
                                           onPressed: () {
+                                            HapticFeedback.selectionClick();
                                             if (settings.isOfficialMode) {
                                               _makeOfficialVolunteer(
                                                 item.senderId,
@@ -5205,8 +5295,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                       child: FilterChip(
                         label: Text(type),
                         selected: filter.typeFilter == type,
-                        onSelected: (selected) =>
-                            filterNotifier.updateTypeFilter(type),
+                        onSelected: (selected) {
+                          HapticFeedback.selectionClick();
+                          filterNotifier.updateTypeFilter(type);
+                        },
                         showCheckmark: false,
                         selectedColor: Theme.of(
                           context,
@@ -5238,6 +5330,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                       label: const Text('Clear'),
                       avatar: const Icon(Icons.clear, size: 16),
                       onPressed: () {
+                        HapticFeedback.selectionClick();
                         filterNotifier.updateTypeFilter('All');
                         filterNotifier.updateTrustFilter(null);
                       },
@@ -5255,8 +5348,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 ChoiceChip(
                   label: const Text('All Trust Levels'),
                   selected: filter.trustFilter == null,
-                  onSelected: (selected) =>
-                      filterNotifier.updateTrustFilter(null),
+                  onSelected: (selected) {
+                    HapticFeedback.selectionClick();
+                    filterNotifier.updateTrustFilter(null);
+                  },
                   showCheckmark: false,
                   selectedColor: Theme.of(context).colorScheme.primaryContainer,
                   side: BorderSide(
@@ -5275,8 +5370,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     child: ChoiceChip(
                       label: Text(getTrustTierName(tier)),
                       selected: filter.trustFilter == tier,
-                      onSelected: (selected) => filterNotifier
-                          .updateTrustFilter(selected ? tier : null),
+                      onSelected: (selected) {
+                        HapticFeedback.selectionClick();
+                        filterNotifier
+                          .updateTrustFilter(selected ? tier : null);
+                      },
                       showCheckmark: false,
                       selectedColor: getTierColor(tier).withValues(alpha: 0.2),
                       labelStyle: TextStyle(
@@ -5307,6 +5405,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   }
 
   void _markAsTrusted(String senderId) {
+    HapticFeedback.selectionClick();
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -5322,6 +5421,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: Colors.green),
             onPressed: () {
+              HapticFeedback.mediumImpact();
               Navigator.pop(dialogContext);
               ref
                   .read(trustedSendersControllerProvider.notifier)
@@ -5341,6 +5441,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   }
 
   void _makeOfficialVolunteer(String senderId) async {
+    HapticFeedback.selectionClick();
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -5356,6 +5457,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: Colors.purple),
             onPressed: () async {
+              HapticFeedback.mediumImpact();
               Navigator.pop(dialogContext);
               await ref
                   .read(govApiServiceProvider.notifier)
@@ -5458,6 +5560,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     onPressed: p2pState.isSyncing
                         ? null
                         : () {
+                            HapticFeedback.mediumImpact();
                             ref
                                 .read(uiP2pServiceProvider.notifier)
                                 .triggerSync();
@@ -5511,6 +5614,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                             ? 'Cloud Connected'
                             : 'No Internet',
                         onPressed: () {
+                          HapticFeedback.mediumImpact();
                           if (hasInternet) {
                             ref
                                 .read(cloudSyncServiceProvider.notifier)
@@ -5568,6 +5672,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 icon: const Icon(Icons.terminal),
                 tooltip: 'Diagnostics Terminal',
                 onPressed: () {
+                  HapticFeedback.selectionClick();
                   ref.read(showTerminalOverlayProvider.notifier).toggle();
                 },
               ),
@@ -5575,6 +5680,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 icon: const Icon(Icons.device_hub),
                 tooltip: 'Mesh Topology',
                 onPressed: () {
+                  HapticFeedback.selectionClick();
                   if (!isMeshTopologyOpen) {
                     Navigator.push(
                       context,
@@ -5586,13 +5692,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               IconButton(
                 icon: const Icon(Icons.share),
                 tooltip: 'Share App (APK)',
-                onPressed: _shareApk,
+                onPressed: () {
+                  HapticFeedback.selectionClick();
+                  _shareApk();
+                },
               ),
               if (downloadProgress.isDownloading)
                 IconButton(
                   icon: const Icon(Icons.cancel),
                   tooltip: 'Cancel Download',
                   onPressed: () {
+                    HapticFeedback.selectionClick();
                     ref.read(mapDownloaderProvider.notifier).cancelDownload();
                   },
                 )
@@ -5600,7 +5710,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 IconButton(
                   icon: const Icon(Icons.download),
                   tooltip: 'Download Offline Map',
-                  onPressed: _showDownloadMapDialog,
+                  onPressed: () {
+                    HapticFeedback.selectionClick();
+                    _showDownloadMapDialog();
+                  },
                 ),
               const Padding(
                 padding: EdgeInsets.only(right: 8),
@@ -5676,8 +5789,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           ),
           bottomNavigationBar: NavigationBar(
             selectedIndex: displayIndex,
-            onDestinationSelected: (index) =>
-                ref.read(navigationIndexProvider.notifier).setIndex(index),
+            onDestinationSelected: (index) {
+              HapticFeedback.selectionClick();
+              ref.read(navigationIndexProvider.notifier).setIndex(index);
+            },
             destinations: [
               const NavigationDestination(
                 icon: Icon(Icons.map_outlined),
@@ -5719,6 +5834,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                           FloatingActionButton.extended(
                             heroTag: 'cancel_draw',
                             onPressed: () {
+                              HapticFeedback.lightImpact();
                               ref
                                   .read(drawingControllerProvider.notifier)
                                   .cancel();
@@ -5735,6 +5851,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                             FloatingActionButton.extended(
                               heroTag: 'undo_draw',
                               onPressed: () {
+                                HapticFeedback.lightImpact();
                                 ref
                                     .read(drawingControllerProvider.notifier)
                                     .removeLastPoint();
@@ -5754,6 +5871,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                             FloatingActionButton.extended(
                               heroTag: 'done_draw',
                               onPressed: () async {
+                                HapticFeedback.mediumImpact();
                                 if (drawingState.mode == DrawingMode.area) {
                                   AreaEntity? existingArea;
                                   if (drawingState.editingId != null) {
@@ -5820,6 +5938,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                             FloatingActionButton.small(
                               heroTag: 'reset_rotation',
                               onPressed: () {
+                                HapticFeedback.lightImpact();
                                 _mapController.rotate(0);
                               },
                               backgroundColor: Theme.of(
@@ -5835,6 +5954,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                           FloatingActionButton.small(
                             heroTag: 'zoom_in',
                             onPressed: () {
+                              HapticFeedback.lightImpact();
                               try {
                                 final currentZoom = _mapController.camera.zoom;
                                 _mapController.move(
@@ -5857,6 +5977,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                           FloatingActionButton.small(
                             heroTag: 'zoom_out',
                             onPressed: () {
+                              HapticFeedback.lightImpact();
                               try {
                                 final currentZoom = _mapController.camera.zoom;
                                 _mapController.move(
@@ -5878,7 +5999,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                           const SizedBox(height: 16),
                           FloatingActionButton.small(
                             heroTag: 'map_help',
-                            onPressed: () => _showMapHelp(context),
+                            onPressed: () {
+                              HapticFeedback.selectionClick();
+                              _showMapHelp(context);
+                            },
                             backgroundColor: Theme.of(
                               context,
                             ).colorScheme.surface,
@@ -5891,6 +6015,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                           FloatingActionButton.small(
                             heroTag: 'layers',
                             onPressed: () {
+                              HapticFeedback.selectionClick();
                               ref
                                   .read(showOfflineRegionsProvider.notifier)
                                   .toggle();
@@ -5918,6 +6043,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                           FloatingActionButton.small(
                             heroTag: 'heatmap',
                             onPressed: () {
+                              HapticFeedback.selectionClick();
                               ref.read(showHeatmapProvider.notifier).toggle();
                               final show = ref.read(showHeatmapProvider);
                               ScaffoldMessenger.of(context).showSnackBar(
@@ -5943,6 +6069,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                           FloatingActionButton.small(
                             heroTag: 'center_map',
                             onPressed: () async {
+                              HapticFeedback.selectionClick();
                               setState(() {
                                 _isTrackingLocation = true;
                               });
@@ -6002,6 +6129,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                           FloatingActionButton.small(
                             heroTag: 'sos_beacon',
                             onPressed: () async {
+                              HapticFeedback.heavyImpact();
                               final notifier = ref.read(sosFlashlightControllerProvider.notifier);
                               final wasActive = ref.read(sosFlashlightControllerProvider);
                               
@@ -6048,7 +6176,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                         ],
                         FloatingActionButton.extended(
                           heroTag: 'create_report',
-                          onPressed: _showReportOptions,
+                          onPressed: () {
+                            HapticFeedback.selectionClick();
+                            _showReportOptions();
+                          },
                           icon: const Icon(Icons.add),
                           label: const Text('Create Report'),
                         ),

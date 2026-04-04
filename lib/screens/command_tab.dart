@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers/admin_trusted_sender_provider.dart';
@@ -262,6 +263,7 @@ class CommandTab extends ConsumerWidget {
                                                 backgroundColor: Colors.red,
                                               ),
                                               onPressed: () async {
+                                                HapticFeedback.heavyImpact();
                                                 Navigator.pop(dialogContext);
                                                 await ref
                                                     .read(
@@ -484,6 +486,7 @@ class CommandTab extends ConsumerWidget {
                 onPressed: cloudState.isSyncing
                     ? null
                     : () async {
+                        HapticFeedback.mediumImpact();
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
                             content: Text('Initiating cloud sync...'),
@@ -559,6 +562,7 @@ class CommandTab extends ConsumerWidget {
                 onPressed: (!isConnected || p2pState.isSyncing)
                     ? null
                     : () {
+                        HapticFeedback.mediumImpact();
                         ref.read(uiP2pServiceProvider.notifier).triggerSync();
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
@@ -624,6 +628,7 @@ class CommandTab extends ConsumerWidget {
                 onPressed: offlineRegions.isEmpty
                     ? null
                     : () {
+                        HapticFeedback.selectionClick();
                         _showBroadcastMapDialog(context, ref, offlineRegions);
                       },
                 icon: const Icon(Icons.map, size: 18),
@@ -674,6 +679,7 @@ class CommandTab extends ConsumerWidget {
                   style: const TextStyle(fontSize: 12),
                 ),
                 onTap: () {
+                  HapticFeedback.mediumImpact();
                   Navigator.pop(dialogContext);
                   ref
                       .read(uiP2pServiceProvider.notifier)

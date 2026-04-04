@@ -2,13 +2,30 @@ import 'dart:math';
 import 'dart:typed_data';
 
 Uint8List generateWalkieTalkieChirp() {
+  return _generateTones(const [(1200.0, 0.06), (1600.0, 0.06), (2000.0, 0.06)]);
+}
+
+Uint8List generateSuccessChirp() {
+  return _generateTones(const [(800.0, 0.08), (1200.0, 0.12)]);
+}
+
+Uint8List generateErrorChirp() {
+  return _generateTones(const [(400.0, 0.1), (250.0, 0.15)]);
+}
+
+Uint8List generateConnectionChirp() {
+  return _generateTones(const [(1500.0, 0.05), (0.0, 0.02), (1500.0, 0.05), (0.0, 0.02), (1500.0, 0.05)]);
+}
+
+Uint8List generateNotificationChirp() {
+  return _generateTones(const [(1000.0, 0.1)]);
+}
+
+Uint8List _generateTones(List<(double freq, double duration)> tones) {
   const sampleRate = 44100;
-  const frequencies = [1200.0, 1600.0, 2000.0];
-  const durationPerTone = 0.06; // 60ms per tone
-  
   int totalSamples = 0;
-  for (var _ in frequencies) {
-    totalSamples += (sampleRate * durationPerTone).toInt();
+  for (var tone in tones) {
+    totalSamples += (sampleRate * tone.$2).toInt();
   }
   
   final byteData = ByteData(44 + totalSamples * 2);
@@ -33,17 +50,22 @@ Uint8List generateWalkieTalkieChirp() {
   byteData.setUint32(40, totalSamples * 2, Endian.little);
   
   int offset = 44;
-  for (final freq in frequencies) {
-    final numSamples = (sampleRate * durationPerTone).toInt();
+  for (final tone in tones) {
+    final freq = tone.$1;
+    final duration = tone.$2;
+    final numSamples = (sampleRate * duration).toInt();
     for (int i = 0; i < numSamples; i++) {
-      final t = i / sampleRate;
-      // Add a slight envelope to avoid clicks
-      double envelope = 1.0;
-      if (i < 100) envelope = i / 100;
-      if (i > numSamples - 100) envelope = (numSamples - i) / 100;
-      
-      final sample = (sin(2 * pi * freq * t) * 32767 * 0.3 * envelope).toInt();
-      byteData.setInt16(offset, sample, Endian.little);
+      if (freq == 0.0) {
+        byteData.setInt16(offset, 0, Endian.little);
+      } else {
+        final t = i / sampleRate;
+        double envelope = 1.0;
+        if (i < 100) envelope = i / 100;
+        if (i > numSamples - 100) envelope = (numSamples - i) / 100;
+
+        final sample = (sin(2 * pi * freq * t) * 32767 * 0.3 * envelope).toInt();
+        byteData.setInt16(offset, sample, Endian.little);
+      }
       offset += 2;
     }
   }
