@@ -27,11 +27,11 @@ import '../models/p2p_models.dart';
 import '../protos/models.pb.dart' as pb;
 import '../services/map_cache_service.dart';
 import '../utils/bloom_filter.dart';
+import '../utils/constants.dart';
 import 'database_provider.dart';
 import 'local_user_provider.dart'; // <-- Added import
 import 'offline_regions_provider.dart';
 import 'settings_provider.dart';
-import '../utils/constants.dart';
 
 part 'p2p_provider.g.dart';
 
@@ -302,49 +302,19 @@ Future<Map<String, int>> _fetchTimestamps(
 Future<Map<String, dynamic>> _runVerifyPayloadInIsolate(
   Map<String, dynamic> args,
   void Function(double) onProgress,
-  Future<void> Function(Map<String, dynamic>) onBatch,
+  void Function(Map<String, dynamic>) onBatchForward,
 ) async {
   final receivePort = ReceivePort();
   args['sendPort'] = receivePort.sendPort;
   args['rootToken'] = RootIsolateToken.instance;
 
-  final isolate = await Isolate.spawn(
+  await Isolate.spawn(
     _verifyPayloadInIsolateWithProgress,
     args,
   );
 
   final completer = Completer<Map<String, dynamic>>();
 
-  StreamSubscription? sub;
-  sub = receivePort.listen((message) async {
-    if (message is double) {
-      onProgress(message);
-    } else if (message is Map<String, dynamic>) {
-      if (message['type'] == 'batch') {
-        sub?.pause();
-        try {
-          await onBatch(message['data']);
-        } catch (e, st) {
-          terminalLog("[-] Error processing batch: $e\n$st");
-        }
-        sub?.resume();
-      } else if (message['type'] == 'log') {
-        terminalLog(message['message']);
-      } else if (message['type'] == 'done') {
-        completer.complete({});
-        receivePort.close();
-        isolate.kill();
-      }
-    } else if (message is Exception || message is Error) {
-      completer.completeError(message);
-      receivePort.close();
-      isolate.kill();
-    } else {
-      completer.completeError(Exception(message.toString()));
-      receivePort.close();
-      isolate.kill();
-    }
-  });
 
   return completer.future;
 }
@@ -385,6 +355,7 @@ Future<void> _verifyPayloadInIsolate(
   final revokedKeys = (args['revokedKeys'] as List<String>).toSet();
   final serverPubKeyBytes = args['serverPubKeyBytes'] as List<int>;
   final deletedIds = args['deletedIds'] as Set<String>;
+  final isFromCloud = args['isFromCloud'] as bool;
 
   final markerTimestamps = args['markerTimestamps'] as Map<String, int>;
   final newsTimestamps = args['newsTimestamps'] as Map<String, int>;
@@ -429,7 +400,10 @@ Future<void> _verifyPayloadInIsolate(
     }
   }
 
-  void sendBatchIfNeeded({bool force = false}) {
+  final connection = await getSharedConnection();
+  final db = AppDatabase(connection);
+
+  Future<void> processBatchIfNeeded({bool force = false}) async {
     final totalValid =
         validMarkers.length +
         validNews.length +
@@ -439,9 +413,282 @@ Future<void> _verifyPayloadInIsolate(
         validDelegations.length +
         validRevocations.length;
     if (totalValid >= _verifyBatchSize || (force && totalValid > 0)) {
+      final batchStopwatch = Stopwatch()..start();
+      
+      final batchSeenIds = <SeenMessageIdsCompanion>[];
+      final validDelegationsCompanions = <AdminTrustedSendersCompanion>[];
+      for (final d in validDelegations) {
+        validDelegationsCompanions.add(
+          AdminTrustedSendersCompanion.insert(
+            publicKey: d.delegateePublicKey,
+            delegatorPublicKey: d.delegatorPublicKey,
+            timestamp: d.timestamp.toInt(),
+            signature: d.signature,
+          ),
+        );
+        batchSeenIds.add(
+          SeenMessageIdsCompanion.insert(
+            messageId: 'delg_${d.delegateePublicKey}_${d.timestamp}',
+            timestamp: DateTime.now().millisecondsSinceEpoch,
+            uploadedToCloud: Value(isFromCloud),
+          ),
+        );
+      }
+
+      final validRevocationsCompanions = <RevokedDelegationsCompanion>[];
+      for (final r in validRevocations) {
+        validRevocationsCompanions.add(
+          RevokedDelegationsCompanion.insert(
+            delegateePublicKey: r.delegateePublicKey,
+            delegatorPublicKey: r.delegatorPublicKey,
+            timestamp: r.timestamp.toInt(),
+            signature: r.signature,
+          ),
+        );
+        batchSeenIds.add(
+          SeenMessageIdsCompanion.insert(
+            messageId: 'rev_${r.delegateePublicKey}_${r.timestamp}',
+            timestamp: DateTime.now().millisecondsSinceEpoch,
+            uploadedToCloud: Value(isFromCloud),
+          ),
+        );
+      }
+
+      final validMarkersCompanions = <HazardMarkersCompanion>[];
+      for (final m in validMarkers) {
+        validMarkersCompanions.add(
+          HazardMarkersCompanion.insert(
+            id: m.id,
+            latitude: m.latitude,
+            longitude: m.longitude,
+            type: m.type,
+            description: m.description,
+            timestamp: m.timestamp.toInt(),
+            senderId: m.senderId,
+            signature: Value(m.signature),
+            trustTier: markerTrustTiers[m.id]!,
+            imageId: Value(m.imageId.isEmpty ? null : m.imageId),
+            expiresAt: Value(m.expiresAt == 0 ? null : m.expiresAt.toInt()),
+            isCritical: Value(m.isCritical),
+          ),
+        );
+        batchSeenIds.add(
+          SeenMessageIdsCompanion.insert(
+            messageId: '${m.id}_${m.timestamp}',
+            timestamp: DateTime.now().millisecondsSinceEpoch,
+            uploadedToCloud: Value(isFromCloud),
+          ),
+        );
+      }
+
+      final validNewsCompanions = <NewsItemsCompanion>[];
+      for (final n in validNews) {
+        validNewsCompanions.add(
+          NewsItemsCompanion.insert(
+            id: n.id,
+            title: n.title,
+            content: n.content,
+            timestamp: n.timestamp.toInt(),
+            senderId: n.senderId,
+            signature: Value(n.signature),
+            trustTier: newsTrustTiers[n.id]!,
+            expiresAt: Value(n.expiresAt == 0 ? null : n.expiresAt.toInt()),
+            imageId: Value(n.imageId.isEmpty ? null : n.imageId),
+            isCritical: Value(n.isCritical),
+          ),
+        );
+        batchSeenIds.add(
+          SeenMessageIdsCompanion.insert(
+            messageId: '${n.id}_${n.timestamp}',
+            timestamp: DateTime.now().millisecondsSinceEpoch,
+            uploadedToCloud: Value(isFromCloud),
+          ),
+        );
+      }
+
+      final validProfilesCompanions = <UserProfilesCompanion>[];
+      for (final p in validProfiles) {
+        validProfilesCompanions.add(
+          UserProfilesCompanion.insert(
+            publicKey: p.publicKey,
+            name: p.name,
+            contactInfo: p.contactInfo,
+            timestamp: p.timestamp.toInt(),
+            signature: p.signature,
+          ),
+        );
+        batchSeenIds.add(
+          SeenMessageIdsCompanion.insert(
+            messageId: '${p.publicKey}_${p.timestamp}',
+            timestamp: DateTime.now().millisecondsSinceEpoch,
+            uploadedToCloud: Value(isFromCloud),
+          ),
+        );
+      }
+
+      final validAreasCompanions = <AreasCompanion>[];
+      for (final a in validAreas) {
+        final coords = a.coordinates
+            .map((c) => {'lat': c.latitude, 'lng': c.longitude})
+            .toList();
+        validAreasCompanions.add(
+          AreasCompanion.insert(
+            id: a.id,
+            coordinates: coords,
+            type: a.type,
+            description: a.description,
+            timestamp: a.timestamp.toInt(),
+            senderId: a.senderId,
+            signature: Value(a.signature),
+            trustTier: areaTrustTiers[a.id]!,
+            expiresAt: Value(a.expiresAt == 0 ? null : a.expiresAt.toInt()),
+            isCritical: Value(a.isCritical),
+          ),
+        );
+        batchSeenIds.add(
+          SeenMessageIdsCompanion.insert(
+            messageId: '${a.id}_${a.timestamp}',
+            timestamp: DateTime.now().millisecondsSinceEpoch,
+            uploadedToCloud: Value(isFromCloud),
+          ),
+        );
+      }
+
+      final validPathsCompanions = <PathsCompanion>[];
+      for (final p in validPaths) {
+        final coords = p.coordinates
+            .map((c) => {'lat': c.latitude, 'lng': c.longitude})
+            .toList();
+        validPathsCompanions.add(
+          PathsCompanion.insert(
+            id: p.id,
+            coordinates: coords,
+            type: p.type,
+            description: p.description,
+            timestamp: p.timestamp.toInt(),
+            senderId: p.senderId,
+            signature: Value(p.signature),
+            trustTier: pathTrustTiers[p.id]!,
+            expiresAt: Value(p.expiresAt == 0 ? null : p.expiresAt.toInt()),
+            isCritical: Value(p.isCritical),
+          ),
+        );
+        batchSeenIds.add(
+          SeenMessageIdsCompanion.insert(
+            messageId: '${p.id}_${p.timestamp}',
+            timestamp: DateTime.now().millisecondsSinceEpoch,
+            uploadedToCloud: Value(isFromCloud),
+          ),
+        );
+      }
+
+      await db.batch((batch) {
+        batch.insertAll(
+          db.hazardMarkers,
+          validMarkersCompanions,
+          mode: InsertMode.insertOrReplace,
+        );
+        batch.insertAll(
+          db.newsItems,
+          validNewsCompanions,
+          mode: InsertMode.insertOrReplace,
+        );
+        batch.insertAll(
+          db.userProfiles,
+          validProfilesCompanions,
+          mode: InsertMode.insertOrReplace,
+        );
+        batch.insertAll(
+          db.areas,
+          validAreasCompanions,
+          mode: InsertMode.insertOrReplace,
+        );
+        batch.insertAll(
+          db.paths,
+          validPathsCompanions,
+          mode: InsertMode.insertOrReplace,
+        );
+        batch.insertAll(
+          db.seenMessageIds,
+          batchSeenIds,
+          mode: InsertMode.insertOrReplace,
+        );
+        batch.insertAll(
+          db.adminTrustedSenders,
+          validDelegationsCompanions,
+          mode: InsertMode.insertOrReplace,
+        );
+        batch.insertAll(
+          db.revokedDelegations,
+          validRevocationsCompanions,
+          mode: InsertMode.insertOrReplace,
+        );
+      });
+
+      // Update trust tiers for delegations/revocations in this batch
+      await db.transaction(() async {
+        for (final d in validDelegationsCompanions) {
+          if (revokedKeys.contains(d.publicKey.value)) continue;
+          await (db.update(db.hazardMarkers)..where(
+                (t) =>
+                    t.senderId.equals(d.publicKey.value) &
+                    t.trustTier.isBiggerThanValue(2),
+              ))
+              .write(const HazardMarkersCompanion(trustTier: Value(2)));
+          await (db.update(db.newsItems)..where(
+                (t) =>
+                    t.senderId.equals(d.publicKey.value) &
+                    t.trustTier.isBiggerThanValue(2),
+              ))
+              .write(const NewsItemsCompanion(trustTier: Value(2)));
+          await (db.update(db.areas)..where(
+                (t) =>
+                    t.senderId.equals(d.publicKey.value) &
+                    t.trustTier.isBiggerThanValue(2),
+              ))
+              .write(const AreasCompanion(trustTier: Value(2)));
+          await (db.update(db.paths)..where(
+                (t) =>
+                    t.senderId.equals(d.publicKey.value) &
+                    t.trustTier.isBiggerThanValue(2),
+              ))
+              .write(const PathsCompanion(trustTier: Value(2)));
+        }
+        for (final r in validRevocationsCompanions) {
+          final fallbackTier =
+              trustedKeys.contains(r.delegateePublicKey.value) ? 3 : 4;
+          await (db.update(db.hazardMarkers)..where(
+                (t) =>
+                    t.senderId.equals(r.delegateePublicKey.value) &
+                    t.trustTier.equals(2),
+              ))
+              .write(HazardMarkersCompanion(trustTier: Value(fallbackTier)));
+          await (db.update(db.newsItems)..where(
+                (t) =>
+                    t.senderId.equals(r.delegateePublicKey.value) &
+                    t.trustTier.equals(2),
+              ))
+              .write(NewsItemsCompanion(trustTier: Value(fallbackTier)));
+          await (db.update(db.areas)..where(
+                (t) =>
+                    t.senderId.equals(r.delegateePublicKey.value) &
+                    t.trustTier.equals(2),
+              ))
+              .write(AreasCompanion(trustTier: Value(fallbackTier)));
+          await (db.update(db.paths)..where(
+                (t) =>
+                    t.senderId.equals(r.delegateePublicKey.value) &
+                    t.trustTier.equals(2),
+              ))
+              .write(PathsCompanion(trustTier: Value(fallbackTier)));
+        }
+      });
+      
+      log("[+] Batch processed and saved to DB in ${batchStopwatch.elapsedMilliseconds}ms");
+
       if (sendPort != null) {
         sendPort.send({
-          'type': 'batch',
+          'type': 'batch_forward',
           'data': {
             'validMarkers': List<pb.HazardMarker>.from(validMarkers),
             'validNews': List<pb.NewsItem>.from(validNews),
@@ -452,10 +699,6 @@ Future<void> _verifyPayloadInIsolate(
             'validRevocations': List<pb.RevokedDelegation>.from(
               validRevocations,
             ),
-            'markerTrustTiers': Map<String, int>.from(markerTrustTiers),
-            'newsTrustTiers': Map<String, int>.from(newsTrustTiers),
-            'areaTrustTiers': Map<String, int>.from(areaTrustTiers),
-            'pathTrustTiers': Map<String, int>.from(pathTrustTiers),
           },
         });
       }
@@ -503,7 +746,7 @@ Future<void> _verifyPayloadInIsolate(
       }
     }
     reportProgress();
-    sendBatchIfNeeded();
+    await processBatchIfNeeded();
   }
   log("[*] Delegations processed in ${isolateStopwatch.elapsedMilliseconds}ms");
   isolateStopwatch.reset();
@@ -542,7 +785,7 @@ Future<void> _verifyPayloadInIsolate(
       }
     }
     reportProgress();
-    sendBatchIfNeeded();
+    await processBatchIfNeeded();
   }
   log("[*] Revocations processed in ${isolateStopwatch.elapsedMilliseconds}ms");
   isolateStopwatch.reset();
@@ -587,7 +830,7 @@ Future<void> _verifyPayloadInIsolate(
       }
     }
     reportProgress();
-    sendBatchIfNeeded();
+    await processBatchIfNeeded();
   }
   log("[*] Markers processed in ${isolateStopwatch.elapsedMilliseconds}ms");
   isolateStopwatch.reset();
@@ -632,7 +875,7 @@ Future<void> _verifyPayloadInIsolate(
       }
     }
     reportProgress();
-    sendBatchIfNeeded();
+    await processBatchIfNeeded();
   }
   log("[*] News processed in ${isolateStopwatch.elapsedMilliseconds}ms");
   isolateStopwatch.reset();
@@ -670,7 +913,7 @@ Future<void> _verifyPayloadInIsolate(
       if (p != null) validProfiles.add(p);
     }
     reportProgress();
-    sendBatchIfNeeded();
+    await processBatchIfNeeded();
   }
   log("[*] Profiles processed in ${isolateStopwatch.elapsedMilliseconds}ms");
   isolateStopwatch.reset();
@@ -717,7 +960,7 @@ Future<void> _verifyPayloadInIsolate(
       }
     }
     reportProgress();
-    sendBatchIfNeeded();
+    await processBatchIfNeeded();
   }
   log("[*] Areas processed in ${isolateStopwatch.elapsedMilliseconds}ms");
   isolateStopwatch.reset();
@@ -764,12 +1007,13 @@ Future<void> _verifyPayloadInIsolate(
       }
     }
     reportProgress();
-    sendBatchIfNeeded();
+    await processBatchIfNeeded();
   }
   log("[*] Paths processed in ${isolateStopwatch.elapsedMilliseconds}ms");
   isolateStopwatch.reset();
 
-  sendBatchIfNeeded(force: true);
+  await processBatchIfNeeded(force: true);
+  await db.close();
   if (sendPort != null) {
     sendPort.send({'type': 'done'});
   }
@@ -2329,7 +2573,7 @@ class P2pService extends _$P2pService {
     processStopwatch.reset();
 
     state = state.copyWith(
-      syncMessage: 'Verifying signatures in background...',
+      syncMessage: 'Verifying signatures & saving...',
       syncProgress: 0.0,
     );
 
@@ -2354,6 +2598,7 @@ class P2pService extends _$P2pService {
       'pathTimestamps': pathTimestamps,
       'delegationTimestamps': delegationTimestamps,
       'revocationTimestamps': revocationTimestamps,
+      'isFromCloud': isFromCloud,
     };
 
     // Accumulate all valid items to forward later
@@ -2369,315 +2614,23 @@ class P2pService extends _$P2pService {
       args,
       (progress) {
         state = state.copyWith(
-          syncMessage: 'Verifying signatures...',
+          syncMessage: 'Verifying signatures & saving...',
           syncProgress: progress,
         );
       },
-      (batchData) async {
-        // Process batch
-        final batchStopwatch = Stopwatch()..start();
-        final validMarkersPb =
-            batchData['validMarkers'] as List<pb.HazardMarker>;
-        final validNewsPb = batchData['validNews'] as List<pb.NewsItem>;
-        final validProfilesPb =
-            batchData['validProfiles'] as List<pb.UserProfile>;
-        final validAreasPb = batchData['validAreas'] as List<pb.AreaMarker>;
-        final validPathsPb = batchData['validPaths'] as List<pb.PathMarker>;
-        final validDelegationsPb =
-            batchData['validDelegations'] as List<pb.TrustDelegation>;
-        final validRevocationsPb =
-            batchData['validRevocations'] as List<pb.RevokedDelegation>;
-
-        final markerTrustTiers =
-            batchData['markerTrustTiers'] as Map<String, int>;
-        final newsTrustTiers = batchData['newsTrustTiers'] as Map<String, int>;
-        final areaTrustTiers = batchData['areaTrustTiers'] as Map<String, int>;
-        final pathTrustTiers = batchData['pathTrustTiers'] as Map<String, int>;
-
-        allValidMarkersPb.addAll(validMarkersPb);
-        allValidNewsPb.addAll(validNewsPb);
-        allValidProfilesPb.addAll(validProfilesPb);
-        allValidAreasPb.addAll(validAreasPb);
-        allValidPathsPb.addAll(validPathsPb);
-        allValidDelegationsPb.addAll(validDelegationsPb);
-        allValidRevocationsPb.addAll(validRevocationsPb);
-
-        final batchSeenIds = <SeenMessageIdsCompanion>[];
-        final validDelegations = <AdminTrustedSendersCompanion>[];
-        for (final d in validDelegationsPb) {
-          validDelegations.add(
-            AdminTrustedSendersCompanion.insert(
-              publicKey: d.delegateePublicKey,
-              delegatorPublicKey: d.delegatorPublicKey,
-              timestamp: d.timestamp.toInt(),
-              signature: d.signature,
-            ),
-          );
-          batchSeenIds.add(
-            SeenMessageIdsCompanion.insert(
-              messageId: 'delg_${d.delegateePublicKey}_${d.timestamp}',
-              timestamp: DateTime.now().millisecondsSinceEpoch,
-              uploadedToCloud: Value(isFromCloud),
-            ),
-          );
-        }
-
-        final validRevocations = <RevokedDelegationsCompanion>[];
-        for (final r in validRevocationsPb) {
-          validRevocations.add(
-            RevokedDelegationsCompanion.insert(
-              delegateePublicKey: r.delegateePublicKey,
-              delegatorPublicKey: r.delegatorPublicKey,
-              timestamp: r.timestamp.toInt(),
-              signature: r.signature,
-            ),
-          );
-          batchSeenIds.add(
-            SeenMessageIdsCompanion.insert(
-              messageId: 'rev_${r.delegateePublicKey}_${r.timestamp}',
-              timestamp: DateTime.now().millisecondsSinceEpoch,
-              uploadedToCloud: Value(isFromCloud),
-            ),
-          );
-        }
-
-        final validMarkers = <HazardMarkersCompanion>[];
-        for (final m in validMarkersPb) {
-          validMarkers.add(
-            HazardMarkersCompanion.insert(
-              id: m.id,
-              latitude: m.latitude,
-              longitude: m.longitude,
-              type: m.type,
-              description: m.description,
-              timestamp: m.timestamp.toInt(),
-              senderId: m.senderId,
-              signature: Value(m.signature),
-              trustTier: markerTrustTiers[m.id]!,
-              imageId: Value(m.imageId.isEmpty ? null : m.imageId),
-              expiresAt: Value(m.expiresAt == 0 ? null : m.expiresAt.toInt()),
-              isCritical: Value(m.isCritical),
-            ),
-          );
-          batchSeenIds.add(
-            SeenMessageIdsCompanion.insert(
-              messageId: '${m.id}_${m.timestamp}',
-              timestamp: DateTime.now().millisecondsSinceEpoch,
-              uploadedToCloud: Value(isFromCloud),
-            ),
-          );
-        }
-
-        final validNews = <NewsItemsCompanion>[];
-        for (final n in validNewsPb) {
-          validNews.add(
-            NewsItemsCompanion.insert(
-              id: n.id,
-              title: n.title,
-              content: n.content,
-              timestamp: n.timestamp.toInt(),
-              senderId: n.senderId,
-              signature: Value(n.signature),
-              trustTier: newsTrustTiers[n.id]!,
-              expiresAt: Value(n.expiresAt == 0 ? null : n.expiresAt.toInt()),
-              imageId: Value(n.imageId.isEmpty ? null : n.imageId),
-              isCritical: Value(n.isCritical),
-            ),
-          );
-          batchSeenIds.add(
-            SeenMessageIdsCompanion.insert(
-              messageId: '${n.id}_${n.timestamp}',
-              timestamp: DateTime.now().millisecondsSinceEpoch,
-              uploadedToCloud: Value(isFromCloud),
-            ),
-          );
-        }
-
-        final validProfiles = <UserProfilesCompanion>[];
-        for (final p in validProfilesPb) {
-          validProfiles.add(
-            UserProfilesCompanion.insert(
-              publicKey: p.publicKey,
-              name: p.name,
-              contactInfo: p.contactInfo,
-              timestamp: p.timestamp.toInt(),
-              signature: p.signature,
-            ),
-          );
-          batchSeenIds.add(
-            SeenMessageIdsCompanion.insert(
-              messageId: '${p.publicKey}_${p.timestamp}',
-              timestamp: DateTime.now().millisecondsSinceEpoch,
-              uploadedToCloud: Value(isFromCloud),
-            ),
-          );
-        }
-
-        final validAreas = <AreasCompanion>[];
-        for (final a in validAreasPb) {
-          final coords = a.coordinates
-              .map((c) => {'lat': c.latitude, 'lng': c.longitude})
-              .toList();
-          validAreas.add(
-            AreasCompanion.insert(
-              id: a.id,
-              coordinates: coords,
-              type: a.type,
-              description: a.description,
-              timestamp: a.timestamp.toInt(),
-              senderId: a.senderId,
-              signature: Value(a.signature),
-              trustTier: areaTrustTiers[a.id]!,
-              expiresAt: Value(a.expiresAt == 0 ? null : a.expiresAt.toInt()),
-              isCritical: Value(a.isCritical),
-            ),
-          );
-          batchSeenIds.add(
-            SeenMessageIdsCompanion.insert(
-              messageId: '${a.id}_${a.timestamp}',
-              timestamp: DateTime.now().millisecondsSinceEpoch,
-              uploadedToCloud: Value(isFromCloud),
-            ),
-          );
-        }
-
-        final validPaths = <PathsCompanion>[];
-        for (final p in validPathsPb) {
-          final coords = p.coordinates
-              .map((c) => {'lat': c.latitude, 'lng': c.longitude})
-              .toList();
-          validPaths.add(
-            PathsCompanion.insert(
-              id: p.id,
-              coordinates: coords,
-              type: p.type,
-              description: p.description,
-              timestamp: p.timestamp.toInt(),
-              senderId: p.senderId,
-              signature: Value(p.signature),
-              trustTier: pathTrustTiers[p.id]!,
-              expiresAt: Value(p.expiresAt == 0 ? null : p.expiresAt.toInt()),
-              isCritical: Value(p.isCritical),
-            ),
-          );
-          batchSeenIds.add(
-            SeenMessageIdsCompanion.insert(
-              messageId: '${p.id}_${p.timestamp}',
-              timestamp: DateTime.now().millisecondsSinceEpoch,
-              uploadedToCloud: Value(isFromCloud),
-            ),
-          );
-        }
-
-        await db.batch((batch) {
-          batch.insertAll(
-            db.hazardMarkers,
-            validMarkers,
-            mode: InsertMode.insertOrReplace,
-          );
-          batch.insertAll(
-            db.newsItems,
-            validNews,
-            mode: InsertMode.insertOrReplace,
-          );
-          batch.insertAll(
-            db.userProfiles,
-            validProfiles,
-            mode: InsertMode.insertOrReplace,
-          );
-          batch.insertAll(
-            db.areas,
-            validAreas,
-            mode: InsertMode.insertOrReplace,
-          );
-          batch.insertAll(
-            db.paths,
-            validPaths,
-            mode: InsertMode.insertOrReplace,
-          );
-          batch.insertAll(
-            db.seenMessageIds,
-            batchSeenIds,
-            mode: InsertMode.insertOrReplace,
-          );
-          batch.insertAll(
-            db.adminTrustedSenders,
-            validDelegations,
-            mode: InsertMode.insertOrReplace,
-          );
-          batch.insertAll(
-            db.revokedDelegations,
-            validRevocations,
-            mode: InsertMode.insertOrReplace,
-          );
-        });
-
-        // Update trust tiers for delegations/revocations in this batch
-        await db.transaction(() async {
-          for (final d in validDelegations) {
-            if (revokedKeys.contains(d.publicKey.value)) continue;
-            await (db.update(db.hazardMarkers)..where(
-                  (t) =>
-                      t.senderId.equals(d.publicKey.value) &
-                      t.trustTier.isBiggerThanValue(2),
-                ))
-                .write(const HazardMarkersCompanion(trustTier: Value(2)));
-            await (db.update(db.newsItems)..where(
-                  (t) =>
-                      t.senderId.equals(d.publicKey.value) &
-                      t.trustTier.isBiggerThanValue(2),
-                ))
-                .write(const NewsItemsCompanion(trustTier: Value(2)));
-            await (db.update(db.areas)..where(
-                  (t) =>
-                      t.senderId.equals(d.publicKey.value) &
-                      t.trustTier.isBiggerThanValue(2),
-                ))
-                .write(const AreasCompanion(trustTier: Value(2)));
-            await (db.update(db.paths)..where(
-                  (t) =>
-                      t.senderId.equals(d.publicKey.value) &
-                      t.trustTier.isBiggerThanValue(2),
-                ))
-                .write(const PathsCompanion(trustTier: Value(2)));
-          }
-          for (final r in validRevocations) {
-            final fallbackTier =
-                trustedKeys.contains(r.delegateePublicKey.value) ? 3 : 4;
-            await (db.update(db.hazardMarkers)..where(
-                  (t) =>
-                      t.senderId.equals(r.delegateePublicKey.value) &
-                      t.trustTier.equals(2),
-                ))
-                .write(HazardMarkersCompanion(trustTier: Value(fallbackTier)));
-            await (db.update(db.newsItems)..where(
-                  (t) =>
-                      t.senderId.equals(r.delegateePublicKey.value) &
-                      t.trustTier.equals(2),
-                ))
-                .write(NewsItemsCompanion(trustTier: Value(fallbackTier)));
-            await (db.update(db.areas)..where(
-                  (t) =>
-                      t.senderId.equals(r.delegateePublicKey.value) &
-                      t.trustTier.equals(2),
-                ))
-                .write(AreasCompanion(trustTier: Value(fallbackTier)));
-            await (db.update(db.paths)..where(
-                  (t) =>
-                      t.senderId.equals(r.delegateePublicKey.value) &
-                      t.trustTier.equals(2),
-                ))
-                .write(PathsCompanion(trustTier: Value(fallbackTier)));
-          }
-        });
-        terminalLog(
-          "[+] Batch processed and saved to DB in ${batchStopwatch.elapsedMilliseconds}ms",
-        );
+      (batchData) {
+        allValidMarkersPb.addAll(batchData['validMarkers'] as List<pb.HazardMarker>);
+        allValidNewsPb.addAll(batchData['validNews'] as List<pb.NewsItem>);
+        allValidProfilesPb.addAll(batchData['validProfiles'] as List<pb.UserProfile>);
+        allValidAreasPb.addAll(batchData['validAreas'] as List<pb.AreaMarker>);
+        allValidPathsPb.addAll(batchData['validPaths'] as List<pb.PathMarker>);
+        allValidDelegationsPb.addAll(batchData['validDelegations'] as List<pb.TrustDelegation>);
+        allValidRevocationsPb.addAll(batchData['validRevocations'] as List<pb.RevokedDelegation>);
       },
     );
 
     terminalLog(
-      "[+] Isolate verification completed in ${processStopwatch.elapsedMilliseconds}ms",
+      "[+] Isolate verification and DB insertion completed in ${processStopwatch.elapsedMilliseconds}ms",
     );
     processStopwatch.reset();
 
