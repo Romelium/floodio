@@ -241,6 +241,7 @@ class SyncBottomSheet extends ConsumerWidget {
                             HapticFeedback.lightImpact();
                             if (val) {
                               final enabled = await ensureServicesEnabled();
+                              if (!context.mounted) return;
                               if (enabled) {
                                 checkAndShowWifiWarning(context, () {
                                   p2pNotifier.toggleAutoSync();
