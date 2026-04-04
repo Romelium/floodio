@@ -288,10 +288,11 @@ Future<Map<String, int>> _fetchTimestamps(
   final res = <String, int>{};
   for (var i = 0; i < ids.length; i += 900) {
     final chunk = ids.skip(i).take(900).toList();
-    final existing = await (db.selectOnly(table)
-          ..addColumns([idCol, tsCol])
-          ..where(idCol.isIn(chunk)))
-        .get();
+    final existing =
+        await (db.selectOnly(table)
+              ..addColumns([idCol, tsCol])
+              ..where(idCol.isIn(chunk)))
+            .get();
     for (final row in existing) {
       res[row.read(idCol)!] = row.read(tsCol)!;
     }
@@ -308,13 +309,9 @@ Future<Map<String, dynamic>> _runVerifyPayloadInIsolate(
   args['sendPort'] = receivePort.sendPort;
   args['rootToken'] = RootIsolateToken.instance;
 
-  await Isolate.spawn(
-    _verifyPayloadInIsolateWithProgress,
-    args,
-  );
+  await Isolate.spawn(_verifyPayloadInIsolateWithProgress, args);
 
   final completer = Completer<Map<String, dynamic>>();
-
 
   return completer.future;
 }
@@ -414,7 +411,7 @@ Future<void> _verifyPayloadInIsolate(
         validRevocations.length;
     if (totalValid >= _verifyBatchSize || (force && totalValid > 0)) {
       final batchStopwatch = Stopwatch()..start();
-      
+
       final batchSeenIds = <SeenMessageIdsCompanion>[];
       final validDelegationsCompanions = <AdminTrustedSendersCompanion>[];
       for (final d in validDelegations) {
@@ -655,8 +652,9 @@ Future<void> _verifyPayloadInIsolate(
               .write(const PathsCompanion(trustTier: Value(2)));
         }
         for (final r in validRevocationsCompanions) {
-          final fallbackTier =
-              trustedKeys.contains(r.delegateePublicKey.value) ? 3 : 4;
+          final fallbackTier = trustedKeys.contains(r.delegateePublicKey.value)
+              ? 3
+              : 4;
           await (db.update(db.hazardMarkers)..where(
                 (t) =>
                     t.senderId.equals(r.delegateePublicKey.value) &
@@ -683,8 +681,10 @@ Future<void> _verifyPayloadInIsolate(
               .write(PathsCompanion(trustTier: Value(fallbackTier)));
         }
       });
-      
-      log("[+] Batch processed and saved to DB in ${batchStopwatch.elapsedMilliseconds}ms");
+
+      log(
+        "[+] Batch processed and saved to DB in ${batchStopwatch.elapsedMilliseconds}ms",
+      );
 
       if (sendPort != null) {
         sendPort.send({
@@ -2460,14 +2460,34 @@ class P2pService extends _$P2pService {
     final processStopwatch = Stopwatch()..start();
 
     // Deduplicate payload items to prevent redundant signature verification
-    _deduplicate<pb.HazardMarker>(payload.markers, (m) => m.id, (m) => m.timestamp);
+    _deduplicate<pb.HazardMarker>(
+      payload.markers,
+      (m) => m.id,
+      (m) => m.timestamp,
+    );
     _deduplicate<pb.NewsItem>(payload.news, (n) => n.id, (n) => n.timestamp);
-    _deduplicate<pb.UserProfile>(payload.profiles, (p) => p.publicKey, (p) => p.timestamp);
+    _deduplicate<pb.UserProfile>(
+      payload.profiles,
+      (p) => p.publicKey,
+      (p) => p.timestamp,
+    );
     _deduplicate<pb.AreaMarker>(payload.areas, (a) => a.id, (a) => a.timestamp);
     _deduplicate<pb.PathMarker>(payload.paths, (p) => p.id, (p) => p.timestamp);
-    _deduplicate<pb.TrustDelegation>(payload.delegations, (d) => d.delegateePublicKey, (d) => d.timestamp);
-    _deduplicate<pb.RevokedDelegation>(payload.revokedDelegations, (r) => r.delegateePublicKey, (r) => r.timestamp);
-    _deduplicate<pb.DeletedItem>(payload.deletedItems, (d) => d.id, (d) => d.timestamp);
+    _deduplicate<pb.TrustDelegation>(
+      payload.delegations,
+      (d) => d.delegateePublicKey,
+      (d) => d.timestamp,
+    );
+    _deduplicate<pb.RevokedDelegation>(
+      payload.revokedDelegations,
+      (r) => r.delegateePublicKey,
+      (r) => r.timestamp,
+    );
+    _deduplicate<pb.DeletedItem>(
+      payload.deletedItems,
+      (d) => d.id,
+      (d) => d.timestamp,
+    );
 
     if (payload.markers.isEmpty &&
         payload.news.isEmpty &&
@@ -2521,11 +2541,41 @@ class P2pService extends _$P2pService {
         .toList();
 
     // Fetch existing timestamps for LWW CRDT resolution (optimized with chunked isIn)
-    final markerTimestamps = await _fetchTimestamps(db, db.hazardMarkers, db.hazardMarkers.id, db.hazardMarkers.timestamp, payload.markers.map((m) => m.id).toList());
-    final newsTimestamps = await _fetchTimestamps(db, db.newsItems, db.newsItems.id, db.newsItems.timestamp, payload.news.map((n) => n.id).toList());
-    final profileTimestamps = await _fetchTimestamps(db, db.userProfiles, db.userProfiles.publicKey, db.userProfiles.timestamp, payload.profiles.map((p) => p.publicKey).toList());
-    final areaTimestamps = await _fetchTimestamps(db, db.areas, db.areas.id, db.areas.timestamp, payload.areas.map((a) => a.id).toList());
-    final pathTimestamps = await _fetchTimestamps(db, db.paths, db.paths.id, db.paths.timestamp, payload.paths.map((p) => p.id).toList());
+    final markerTimestamps = await _fetchTimestamps(
+      db,
+      db.hazardMarkers,
+      db.hazardMarkers.id,
+      db.hazardMarkers.timestamp,
+      payload.markers.map((m) => m.id).toList(),
+    );
+    final newsTimestamps = await _fetchTimestamps(
+      db,
+      db.newsItems,
+      db.newsItems.id,
+      db.newsItems.timestamp,
+      payload.news.map((n) => n.id).toList(),
+    );
+    final profileTimestamps = await _fetchTimestamps(
+      db,
+      db.userProfiles,
+      db.userProfiles.publicKey,
+      db.userProfiles.timestamp,
+      payload.profiles.map((p) => p.publicKey).toList(),
+    );
+    final areaTimestamps = await _fetchTimestamps(
+      db,
+      db.areas,
+      db.areas.id,
+      db.areas.timestamp,
+      payload.areas.map((a) => a.id).toList(),
+    );
+    final pathTimestamps = await _fetchTimestamps(
+      db,
+      db.paths,
+      db.paths.id,
+      db.paths.timestamp,
+      payload.paths.map((p) => p.id).toList(),
+    );
 
     final existingDeletedIds = deletedIds.toSet();
     final validDeleted = <DeletedItemsCompanion>[];
@@ -2619,13 +2669,21 @@ class P2pService extends _$P2pService {
         );
       },
       (batchData) {
-        allValidMarkersPb.addAll(batchData['validMarkers'] as List<pb.HazardMarker>);
+        allValidMarkersPb.addAll(
+          batchData['validMarkers'] as List<pb.HazardMarker>,
+        );
         allValidNewsPb.addAll(batchData['validNews'] as List<pb.NewsItem>);
-        allValidProfilesPb.addAll(batchData['validProfiles'] as List<pb.UserProfile>);
+        allValidProfilesPb.addAll(
+          batchData['validProfiles'] as List<pb.UserProfile>,
+        );
         allValidAreasPb.addAll(batchData['validAreas'] as List<pb.AreaMarker>);
         allValidPathsPb.addAll(batchData['validPaths'] as List<pb.PathMarker>);
-        allValidDelegationsPb.addAll(batchData['validDelegations'] as List<pb.TrustDelegation>);
-        allValidRevocationsPb.addAll(batchData['validRevocations'] as List<pb.RevokedDelegation>);
+        allValidDelegationsPb.addAll(
+          batchData['validDelegations'] as List<pb.TrustDelegation>,
+        );
+        allValidRevocationsPb.addAll(
+          batchData['validRevocations'] as List<pb.RevokedDelegation>,
+        );
       },
     );
 

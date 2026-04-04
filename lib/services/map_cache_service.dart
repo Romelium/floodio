@@ -213,7 +213,9 @@ class MapCacheSizeController extends _$MapCacheSizeController {
 }
 
 class MapCacheService {
-  final _memoryCache = LruCache<String, Uint8List>(200); // Cache up to 200 tiles in memory
+  final _memoryCache = LruCache<String, Uint8List>(
+    200,
+  ); // Cache up to 200 tiles in memory
   final HttpClient _httpClient = HttpClient();
 
   Future<File> getTileFile(int z, int x, int y) async {

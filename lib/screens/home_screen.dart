@@ -847,17 +847,28 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     );
   }
 
-  Future<int> _getTrustTier(String payloadToSignStr, String signature, String senderId) async {
+  Future<int> _getTrustTier(
+    String payloadToSignStr,
+    String signature,
+    String senderId,
+  ) async {
     final cryptoService = ref.read(cryptoServiceProvider.notifier);
     final trustedSendersAsync = ref.read(trustedSendersControllerProvider);
     final untrustedSendersAsync = ref.read(untrustedSendersControllerProvider);
     final revokedSendersAsync = ref.read(revokedDelegationsControllerProvider);
-    final adminTrustedSendersAsync = ref.read(adminTrustedSendersControllerProvider);
+    final adminTrustedSendersAsync = ref.read(
+      adminTrustedSendersControllerProvider,
+    );
 
-    final trustedKeys = trustedSendersAsync.value?.map((e) => e.publicKey).toList() ?? [];
-    final untrustedKeys = untrustedSendersAsync.value?.map((e) => e.publicKey).toList() ?? [];
-    final revokedKeys = revokedSendersAsync.value?.map((e) => e.delegateePublicKey).toList() ?? [];
-    final adminTrustedKeys = adminTrustedSendersAsync.value?.map((e) => e.publicKey).toList() ?? [];
+    final trustedKeys =
+        trustedSendersAsync.value?.map((e) => e.publicKey).toList() ?? [];
+    final untrustedKeys =
+        untrustedSendersAsync.value?.map((e) => e.publicKey).toList() ?? [];
+    final revokedKeys =
+        revokedSendersAsync.value?.map((e) => e.delegateePublicKey).toList() ??
+        [];
+    final adminTrustedKeys =
+        adminTrustedSendersAsync.value?.map((e) => e.publicKey).toList() ?? [];
 
     return await cryptoService.verifyAndGetTrustTier(
       data: utf8.encode(payloadToSignStr),
@@ -1736,7 +1747,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       signature = await cryptoService.signData(payloadToSign);
     }
 
-    final trustTier = await _getTrustTier(String.fromCharCodes(payloadToSign), signature, senderId);
+    final trustTier = await _getTrustTier(
+      String.fromCharCodes(payloadToSign),
+      signature,
+      senderId,
+    );
 
     final updatedMarker = HazardMarkerEntity(
       id: marker.id,
@@ -1819,7 +1834,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       signature = await cryptoService.signData(payloadToSign);
     }
 
-    final trustTier = await _getTrustTier(String.fromCharCodes(payloadToSign), signature, senderId);
+    final trustTier = await _getTrustTier(
+      String.fromCharCodes(payloadToSign),
+      signature,
+      senderId,
+    );
 
     final updatedArea = AreaEntity(
       id: area.id,
@@ -1899,7 +1918,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       signature = await cryptoService.signData(payloadToSign);
     }
 
-    final trustTier = await _getTrustTier(String.fromCharCodes(payloadToSign), signature, senderId);
+    final trustTier = await _getTrustTier(
+      String.fromCharCodes(payloadToSign),
+      signature,
+      senderId,
+    );
 
     final updatedPath = PathEntity(
       id: path.id,
@@ -1976,7 +1999,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       signature = await cryptoService.signData(payloadToSign);
     }
 
-    final trustTier = await _getTrustTier(String.fromCharCodes(payloadToSign), signature, senderId);
+    final trustTier = await _getTrustTier(
+      String.fromCharCodes(payloadToSign),
+      signature,
+      senderId,
+    );
 
     final updatedNews = NewsItemEntity(
       id: news.id,
@@ -2473,7 +2500,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   '$id${point.latitude}${point.longitude}$type$description$timestamp${imageId ?? ""}${expiresAt ?? ""}$isCriticalStr',
                 );
                 final signature = await cryptoService.signData(payloadToSign);
-                final trustTier = await _getTrustTier(String.fromCharCodes(payloadToSign), signature, senderId);
+                final trustTier = await _getTrustTier(
+                  String.fromCharCodes(payloadToSign),
+                  signature,
+                  senderId,
+                );
 
                 final newMarker = HazardMarkerEntity(
                   id: id,
@@ -2682,7 +2713,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   '$id$coordsStr$type$description$timestamp${expiresAt ?? ""}$isCriticalStr',
                 );
                 final signature = await cryptoService.signData(payloadToSign);
-                final trustTier = await _getTrustTier(String.fromCharCodes(payloadToSign), signature, senderId);
+                final trustTier = await _getTrustTier(
+                  String.fromCharCodes(payloadToSign),
+                  signature,
+                  senderId,
+                );
 
                 final coords = points
                     .map((p) => {'lat': p.latitude, 'lng': p.longitude})
@@ -2892,7 +2927,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   '$id$coordsStr$type$description$timestamp${expiresAt ?? ""}$isCriticalStr',
                 );
                 final signature = await cryptoService.signData(payloadToSign);
-                final trustTier = await _getTrustTier(String.fromCharCodes(payloadToSign), signature, senderId);
+                final trustTier = await _getTrustTier(
+                  String.fromCharCodes(payloadToSign),
+                  signature,
+                  senderId,
+                );
 
                 final coords = points
                     .map((p) => {'lat': p.latitude, 'lng': p.longitude})
@@ -3252,7 +3291,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 final (senderId, signature) =
                     await generateOfficialMarkerSignature(payloadToSign);
 
-                final trustTier = await _getTrustTier(String.fromCharCodes(payloadToSign), signature, senderId);
+                final trustTier = await _getTrustTier(
+                  String.fromCharCodes(payloadToSign),
+                  signature,
+                  senderId,
+                );
 
                 final newNews = NewsItemEntity(
                   id: id,
@@ -3375,7 +3418,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             FlutterMap(
               mapController: _mapController,
               options: MapOptions(
-                initialCenter: const LatLng(AppConstants.defaultLat, AppConstants.defaultLng),
+                initialCenter: const LatLng(
+                  AppConstants.defaultLat,
+                  AppConstants.defaultLng,
+                ),
                 initialZoom: 13.0,
                 onPositionChanged: (camera, hasGesture) {
                   if (hasGesture && _isTrackingLocation) {

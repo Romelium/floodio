@@ -21,7 +21,8 @@ class _TerminalOverlayState extends ConsumerState<TerminalOverlay> {
     super.initState();
     _scrollController.addListener(() {
       if (_scrollController.hasClients) {
-        _isAtBottom = _scrollController.position.pixels >=
+        _isAtBottom =
+            _scrollController.position.pixels >=
             _scrollController.position.maxScrollExtent - 50;
       }
     });

@@ -19,7 +19,8 @@ class _TerminalScreenState extends ConsumerState<TerminalScreen> {
     super.initState();
     _scrollController.addListener(() {
       if (_scrollController.hasClients) {
-        _isAtBottom = _scrollController.position.pixels >=
+        _isAtBottom =
+            _scrollController.position.pixels >=
             _scrollController.position.maxScrollExtent - 50;
       }
     });

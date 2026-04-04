@@ -282,8 +282,16 @@ class CloudSyncService extends _$CloudSyncService {
           .take(500)
           .toSet();
 
-      List<T> filterRecent<T>(List<T> items, String Function(T) getId, int Function(T) getTs) {
-        return items.where((item) => recentSeenSet.contains('${getId(item)}_${getTs(item)}')).toList();
+      List<T> filterRecent<T>(
+        List<T> items,
+        String Function(T) getId,
+        int Function(T) getTs,
+      ) {
+        return items
+            .where(
+              (item) => recentSeenSet.contains('${getId(item)}_${getTs(item)}'),
+            )
+            .toList();
       }
 
       final markers =
@@ -295,7 +303,11 @@ class CloudSyncService extends _$CloudSyncService {
                 return expr;
               }))
               .get();
-      final filteredMarkers = filterRecent(markers, (m) => m.id, (m) => m.timestamp);
+      final filteredMarkers = filterRecent(
+        markers,
+        (m) => m.id,
+        (m) => m.timestamp,
+      );
 
       final news =
           await (db.select(db.newsItems)..where((t) {
@@ -317,7 +329,11 @@ class CloudSyncService extends _$CloudSyncService {
                 return expr;
               }))
               .get();
-      final filteredAreas = filterRecent(areas, (a) => a.id, (a) => a.timestamp);
+      final filteredAreas = filterRecent(
+        areas,
+        (a) => a.id,
+        (a) => a.timestamp,
+      );
 
       final paths =
           await (db.select(db.paths)..where((t) {
@@ -328,7 +344,11 @@ class CloudSyncService extends _$CloudSyncService {
                 return expr;
               }))
               .get();
-      final filteredPaths = filterRecent(paths, (p) => p.id, (p) => p.timestamp);
+      final filteredPaths = filterRecent(
+        paths,
+        (p) => p.id,
+        (p) => p.timestamp,
+      );
 
       final profiles = (await db.select(db.userProfiles).get())
           .where((p) => recentSeenSet.contains('${p.publicKey}_${p.timestamp}'))

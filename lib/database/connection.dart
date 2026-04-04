@@ -32,7 +32,9 @@ void _databaseIsolateEntry(_IsolateStartRequest request) {
 }
 
 Future<QueryExecutor> getSharedConnection() async {
-  SendPort? port = IsolateNameServer.lookupPortByName(AppConstants.dbIsolateName);
+  SendPort? port = IsolateNameServer.lookupPortByName(
+    AppConstants.dbIsolateName,
+  );
 
   if (port != null) {
     try {
