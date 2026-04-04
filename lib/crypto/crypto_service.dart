@@ -1,33 +1,54 @@
 import 'dart:convert';
 import 'dart:isolate';
+import 'dart:math';
 
+import 'package:bip39/bip39.dart' as bip39;
 import 'package:cryptography/cryptography.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:hex/hex.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'crypto_service.g.dart';
 
+List<int> _generate16BytesEntropy() {
+  final random = Random.secure();
+  return List<int>.generate(16, (_) => random.nextInt(256));
+}
+
 Future<(SimpleKeyPairData, SimplePublicKey, String?)> _initKeysLogic(
-  String? privateKeyStr,
+  String? storedDataStr,
 ) async {
   final algorithm = Ed25519();
   SimpleKeyPair userKeyPair;
-  String? newPrivKeyStr;
+  String? newDataStr;
 
-  if (privateKeyStr != null) {
+  if (storedDataStr != null) {
     try {
-      final privateKeyBytes = base64Decode(privateKeyStr);
-      userKeyPair = await algorithm.newKeyPairFromSeed(privateKeyBytes);
+      final bytes = base64Decode(storedDataStr);
+      if (bytes.length == 32) {
+        // Legacy 32-byte seed
+        userKeyPair = await algorithm.newKeyPairFromSeed(bytes);
+      } else if (bytes.length == 16) {
+        // 16-byte entropy
+        final mnemonic = bip39.entropyToMnemonic(HEX.encode(bytes));
+        final seed32 = bip39.mnemonicToSeed(mnemonic).sublist(0, 32);
+        userKeyPair = await algorithm.newKeyPairFromSeed(seed32);
+      } else {
+        throw Exception('Invalid stored data length');
+      }
     } catch (e) {
-      // Fallback to generating new key if corrupted
-      userKeyPair = await algorithm.newKeyPair();
-      final privateKeyBytes = await userKeyPair.extractPrivateKeyBytes();
-      newPrivKeyStr = base64Encode(privateKeyBytes);
+      final entropy = _generate16BytesEntropy();
+      final mnemonic = bip39.entropyToMnemonic(HEX.encode(entropy));
+      final seed32 = bip39.mnemonicToSeed(mnemonic).sublist(0, 32);
+      userKeyPair = await algorithm.newKeyPairFromSeed(seed32);
+      newDataStr = base64Encode(entropy);
     }
   } else {
-    userKeyPair = await algorithm.newKeyPair();
-    final privateKeyBytes = await userKeyPair.extractPrivateKeyBytes();
-    newPrivKeyStr = base64Encode(privateKeyBytes);
+    final entropy = _generate16BytesEntropy();
+    final mnemonic = bip39.entropyToMnemonic(HEX.encode(entropy));
+    final seed32 = bip39.mnemonicToSeed(mnemonic).sublist(0, 32);
+    userKeyPair = await algorithm.newKeyPairFromSeed(seed32);
+    newDataStr = base64Encode(entropy);
   }
 
   final serverSeed = List<int>.filled(32, 1);
@@ -35,7 +56,7 @@ Future<(SimpleKeyPairData, SimplePublicKey, String?)> _initKeysLogic(
   final serverPubKey = await serverKeyPair.extractPublicKey();
 
   final userKeyPairExtracted = await userKeyPair.extract();
-  return (userKeyPairExtracted, serverPubKey, newPrivKeyStr);
+  return (userKeyPairExtracted, serverPubKey, newDataStr);
 }
 
 Future<String> signDataLogic(
@@ -209,6 +230,41 @@ class CryptoService extends _$CryptoService {
   Future<String> getPublicKeyString() async {
     final pubKey = await _userKeyPair.extractPublicKey();
     return base64Encode(pubKey.bytes);
+  }
+
+  Future<String> getSeedPhrase() async {
+    const secureStorage = FlutterSecureStorage(
+      aOptions: AndroidOptions(resetOnError: true),
+    );
+    final storedDataStr = await secureStorage.read(key: 'user_private_key');
+    if (storedDataStr != null) {
+      final bytes = base64Decode(storedDataStr);
+      return bip39.entropyToMnemonic(HEX.encode(bytes));
+    }
+    return '';
+  }
+
+  Future<bool> restoreFromSeedPhrase(String mnemonic) async {
+    try {
+      final cleanMnemonic = mnemonic.trim().replaceAll(RegExp(r'\s+'), ' ');
+      if (!bip39.validateMnemonic(cleanMnemonic)) return false;
+
+      final hexEntropy = bip39.mnemonicToEntropy(cleanMnemonic);
+      final bytes = HEX.decode(hexEntropy);
+
+      const secureStorage = FlutterSecureStorage(
+        aOptions: AndroidOptions(resetOnError: true),
+      );
+      await secureStorage.write(
+        key: 'user_private_key',
+        value: base64Encode(bytes),
+      );
+
+      await _initKeys();
+      return true;
+    } catch (e) {
+      return false;
+    }
   }
 
   Future<bool> verifyDelegation({

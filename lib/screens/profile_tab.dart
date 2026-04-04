@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:pretty_qr_code/pretty_qr_code.dart';
 
 import '../crypto/crypto_service.dart';
 import '../database/tables.dart';
@@ -25,6 +26,7 @@ import '../providers/user_profile_provider.dart';
 import '../services/map_cache_service.dart';
 import '../widgets/animated_empty_state.dart';
 import 'compass_screen.dart';
+import 'qr_scanner_screen.dart';
 import 'settings_screen.dart';
 
 class ProfileTab extends ConsumerStatefulWidget {
@@ -53,6 +55,160 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
     const suffixes = ["B", "KB", "MB", "GB", "TB"];
     var i = (log(bytes) / log(1024)).floor();
     return '${(bytes / pow(1024, i)).toStringAsFixed(2)} ${suffixes[i]}';
+  }
+
+  void _showBackupIdentityDialog() async {
+    HapticFeedback.selectionClick();
+    final seedPhrase =
+        await ref.read(cryptoServiceProvider.notifier).getSeedPhrase();
+
+    if (!mounted) return;
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Backup Identity'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Save this seed phrase in a secure location. It allows you to restore your identity and trust network on another device.',
+                style: TextStyle(fontSize: 14),
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.grey.shade300),
+                ),
+                child: Text(
+                  seedPhrase,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1.2,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: 200,
+                height: 200,
+                child: PrettyQrView.data(
+                  data: seedPhrase,
+                  errorCorrectLevel: QrErrorCorrectLevel.M,
+                  decoration: const PrettyQrDecoration(
+                    shape: PrettyQrSquaresSymbol(color: Colors.black),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Close'),
+          ),
+          FilledButton.icon(
+            onPressed: () {
+              Clipboard.setData(ClipboardData(text: seedPhrase));
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Seed phrase copied to clipboard'),
+                ),
+              );
+            },
+            icon: const Icon(Icons.copy, size: 18),
+            label: const Text('Copy'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showRestoreIdentityDialog() {
+    HapticFeedback.selectionClick();
+    final controller = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Restore Identity'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Enter your seed phrase to restore your identity. This will replace your current identity.',
+              style: TextStyle(fontSize: 14),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: controller,
+              maxLines: 3,
+              decoration: const InputDecoration(
+                hintText: 'Enter seed phrase...',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 16),
+            OutlinedButton.icon(
+              onPressed: () async {
+                final result = await Navigator.push<String>(
+                  context,
+                  MaterialPageRoute(builder: (_) => const QrScannerScreen()),
+                );
+                if (result != null && result.isNotEmpty) {
+                  controller.text = result;
+                }
+              },
+              icon: const Icon(Icons.qr_code_scanner),
+              label: const Text('Scan QR Code'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              final phrase = controller.text.trim();
+              if (phrase.isEmpty) return;
+
+              final success = await ref
+                  .read(cryptoServiceProvider.notifier)
+                  .restoreFromSeedPhrase(phrase);
+              if (success) {
+                ref.invalidate(localUserControllerProvider);
+                if (dialogContext.mounted) {
+                  Navigator.pop(dialogContext);
+                }
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Identity restored successfully!'),
+                    ),
+                  );
+                }
+              } else {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Invalid seed phrase.')),
+                  );
+                }
+              }
+            },
+            child: const Text('Restore'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showMuleHelp(BuildContext context) {
@@ -1204,6 +1360,29 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                               },
                               icon: const Icon(Icons.settings, size: 18),
                               label: const Text('Settings'),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            OutlinedButton.icon(
+                              onPressed: () {
+                                HapticFeedback.selectionClick();
+                                _showBackupIdentityDialog();
+                              },
+                              icon: const Icon(Icons.security, size: 18),
+                              label: const Text('Backup Identity'),
+                            ),
+                            const SizedBox(width: 12),
+                            OutlinedButton.icon(
+                              onPressed: () {
+                                HapticFeedback.selectionClick();
+                                _showRestoreIdentityDialog();
+                              },
+                              icon: const Icon(Icons.restore, size: 18),
+                              label: const Text('Restore'),
                             ),
                           ],
                         ),
