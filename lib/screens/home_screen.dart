@@ -44,16 +44,16 @@ import '../services/cloud_sync_service.dart';
 import '../services/gov_api_service.dart';
 import '../services/map_cache_service.dart';
 import '../utils/clear_data.dart';
+import '../utils/constants.dart';
 import '../utils/permission_utils.dart';
 import '../utils/ui_helpers.dart';
-import '../utils/constants.dart';
+import '../widgets/animated_empty_state.dart';
 import '../widgets/download_map_dialog.dart';
 import '../widgets/heatmap_layer.dart';
 import '../widgets/local_image_display.dart';
 import '../widgets/mesh_status_chip.dart';
 import '../widgets/pulse_marker.dart';
 import '../widgets/terminal_overlay.dart';
-import '../widgets/animated_empty_state.dart';
 import 'command_tab.dart';
 import 'compass_screen.dart';
 import 'guide_tab.dart';
@@ -284,6 +284,83 @@ class _CriticalAlertOverlayState extends ConsumerState<CriticalAlertOverlay>
   }
 }
 
+class _DraggablePoint extends StatefulWidget {
+  final int index;
+  final Color color;
+  final GlobalKey mapKey;
+  final Function(int, LatLng) onDrag;
+
+  const _DraggablePoint({
+    required this.index,
+    required this.color,
+    required this.mapKey,
+    required this.onDrag,
+  });
+
+  @override
+  State<_DraggablePoint> createState() => _DraggablePointState();
+}
+
+class _DraggablePointState extends State<_DraggablePoint> {
+  bool _isDragging = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final camera = MapCamera.of(context);
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onPanStart: (_) {
+        setState(() => _isDragging = true);
+        HapticFeedback.selectionClick();
+      },
+      onPanUpdate: (details) {
+        final RenderBox? mapBox =
+            widget.mapKey.currentContext?.findRenderObject() as RenderBox?;
+        if (mapBox != null) {
+          final localOffset = mapBox.globalToLocal(details.globalPosition);
+          final latLng = camera.screenOffsetToLatLng(localOffset);
+          widget.onDrag(widget.index, latLng);
+        }
+      },
+      onPanEnd: (_) {
+        setState(() => _isDragging = false);
+        HapticFeedback.lightImpact();
+      },
+      onPanCancel: () {
+        setState(() => _isDragging = false);
+      },
+      child: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: _isDragging
+              ? widget.color.withValues(alpha: 0.3)
+              : Colors.transparent,
+        ),
+        child: Center(
+          child: Container(
+            width: _isDragging ? 20 : 16,
+            height: _isDragging ? 20 : 16,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.white,
+              border: Border.all(color: widget.color, width: 3),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.2),
+                  blurRadius: 4,
+                  spreadRadius: 1,
+                )
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
@@ -296,6 +373,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   int _tapCount = 0;
   DateTime? _lastTapTime;
   final MapController _mapController = MapController();
+  final GlobalKey _mapKey = GlobalKey();
   bool _hasCenteredOnLocation = false;
   bool _isTrackingLocation = true;
   double _mapRotation = 0.0;
@@ -3417,6 +3495,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         return Stack(
           children: [
             FlutterMap(
+              key: _mapKey,
               mapController: _mapController,
               options: MapOptions(
                 initialCenter: const LatLng(
@@ -3579,17 +3658,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     if (drawingState.mode != DrawingMode.none &&
                         drawingState.points.isNotEmpty)
                       Polyline(
-                        points: drawingState.mode == DrawingMode.area
-                            ? (drawingState.points.length > 1
-                                  ? [
-                                      ...drawingState.points,
-                                      drawingState.points.first,
-                                    ]
-                                  : drawingState.points)
-                            : drawingState.points,
+                        points: drawingState.points,
                         color: drawingState.mode == DrawingMode.area
                             ? Colors.blue
                             : Colors.teal,
+                        strokeWidth: 4.0,
+                      ),
+                    if (drawingState.mode == DrawingMode.area &&
+                        drawingState.points.length >= 2)
+                      Polyline(
+                        points: [
+                          drawingState.points.last,
+                          drawingState.points.first,
+                        ],
+                        color: Colors.blue.withValues(alpha: 0.5),
                         strokeWidth: 4.0,
                         pattern: StrokePattern.dashed(segments: [10.0, 10.0]),
                       ),
@@ -3597,20 +3679,29 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 ),
                 if (drawingState.mode != DrawingMode.none &&
                     drawingState.points.isNotEmpty)
-                  CircleLayer(
-                    circles: drawingState.points
-                        .map(
-                          (p) => CircleMarker(
-                            point: p,
-                            radius: 6,
-                            color: Colors.white,
-                            borderColor: drawingState.mode == DrawingMode.area
-                                ? Colors.blue
-                                : Colors.teal,
-                            borderStrokeWidth: 2,
-                          ),
-                        )
-                        .toList(),
+                  MarkerLayer(
+                    markers: drawingState.points.asMap().entries.map((entry) {
+                      final index = entry.key;
+                      final point = entry.value;
+                      final color = drawingState.mode == DrawingMode.area
+                          ? Colors.blue
+                          : Colors.teal;
+                      return Marker(
+                        point: point,
+                        width: 40,
+                        height: 40,
+                        child: _DraggablePoint(
+                          index: index,
+                          color: color,
+                          mapKey: _mapKey,
+                          onDrag: (idx, newPoint) {
+                            ref
+                                .read(drawingControllerProvider.notifier)
+                                .updatePoint(idx, newPoint);
+                          },
+                        ),
+                      );
+                    }).toList(),
                   ),
                 CircleLayer(
                   circles: markers

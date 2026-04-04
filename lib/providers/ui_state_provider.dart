@@ -105,6 +105,14 @@ class DrawingController extends _$DrawingController {
     }
   }
 
+  void updatePoint(int index, LatLng newPoint) {
+    if (index >= 0 && index < state.points.length) {
+      final newPoints = List<LatLng>.from(state.points);
+      newPoints[index] = newPoint;
+      state = state.copyWith(points: newPoints);
+    }
+  }
+
   void cancel() {
     state = DrawingState();
   }
