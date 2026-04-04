@@ -26,7 +26,7 @@ class LruCache<K, V> {
 
   V? get(K key) {
     if (!_cache.containsKey(key)) return null;
-    final value = _cache.remove(key)!;
+    final value = _cache.remove(key) as V;
     _cache[key] = value;
     return value;
   }
