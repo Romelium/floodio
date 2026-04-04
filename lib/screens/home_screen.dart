@@ -3930,6 +3930,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 ),
               ],
             ),
+            if (drawingState.mode != DrawingMode.none)
+              Center(
+                child: IgnorePointer(
+                  child: Icon(
+                    Icons.add,
+                    color: drawingState.mode == DrawingMode.area
+                        ? Colors.blue
+                        : Colors.teal,
+                    size: 32,
+                    shadows: const [
+                      Shadow(color: Colors.white, blurRadius: 4),
+                      Shadow(color: Colors.white, blurRadius: 4),
+                    ],
+                  ),
+                ),
+              ),
             Positioned(
               top: 16,
               left: 16,
@@ -5859,44 +5875,75 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               data: (_) {
                 final drawingState = ref.watch(drawingControllerProvider);
                 if (drawingState.mode != DrawingMode.none) {
-                  return Row(
+                  return Column(
                     mainAxisAlignment: MainAxisAlignment.end,
+                    crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      FloatingActionButton.extended(
-                        heroTag: 'cancel_draw',
-                        onPressed: () {
-                          HapticFeedback.lightImpact();
-                          ref.read(drawingControllerProvider.notifier).cancel();
-                        },
-                        backgroundColor: Colors.red,
-                        icon: const Icon(Icons.close, color: Colors.white),
-                        label: const Text(
-                          'Cancel',
-                          style: TextStyle(color: Colors.white),
-                        ),
-                      ),
-                      const SizedBox(width: 16),
                       if (drawingState.points.isNotEmpty)
-                        FloatingActionButton.extended(
-                          heroTag: 'undo_draw',
-                          onPressed: () {
-                            HapticFeedback.lightImpact();
-                            ref
-                                .read(drawingControllerProvider.notifier)
-                                .removeLastPoint();
-                          },
-                          backgroundColor: Colors.orange,
-                          icon: const Icon(Icons.undo, color: Colors.white),
-                          label: const Text(
-                            'Undo',
-                            style: TextStyle(color: Colors.white),
-                          ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            FloatingActionButton.small(
+                              heroTag: 'clear_draw',
+                              onPressed: () {
+                                HapticFeedback.lightImpact();
+                                ref.read(drawingControllerProvider.notifier).clearAll();
+                              },
+                              backgroundColor: Colors.redAccent,
+                              child: const Icon(Icons.delete_sweep, color: Colors.white),
+                            ),
+                            const SizedBox(width: 16),
+                            FloatingActionButton.small(
+                              heroTag: 'undo_draw',
+                              onPressed: () {
+                                HapticFeedback.lightImpact();
+                                ref.read(drawingControllerProvider.notifier).removeLastPoint();
+                              },
+                              backgroundColor: Colors.orange,
+                              child: const Icon(Icons.undo, color: Colors.white),
+                            ),
+                          ],
                         ),
-                      const SizedBox(width: 16),
+                      if (drawingState.points.isNotEmpty)
+                        const SizedBox(height: 16),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          FloatingActionButton.extended(
+                            heroTag: 'cancel_draw',
+                            onPressed: () {
+                              HapticFeedback.lightImpact();
+                              ref.read(drawingControllerProvider.notifier).cancel();
+                            },
+                            backgroundColor: Colors.red,
+                            icon: const Icon(Icons.close, color: Colors.white),
+                            label: const Text(
+                              'Cancel',
+                              style: TextStyle(color: Colors.white),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          FloatingActionButton.extended(
+                            heroTag: 'add_point_draw',
+                            onPressed: () {
+                              HapticFeedback.selectionClick();
+                              final center = _mapController.camera.center;
+                              ref.read(drawingControllerProvider.notifier).addPoint(center);
+                            },
+                            backgroundColor: drawingState.mode == DrawingMode.area ? Colors.blue : Colors.teal,
+                            icon: const Icon(Icons.add_location_alt, color: Colors.white),
+                            label: const Text(
+                              'Add Point',
+                              style: TextStyle(color: Colors.white),
+                            ),
+                          ),
+                        ],
+                      ),
                       if ((drawingState.mode == DrawingMode.area &&
                               drawingState.points.length >= 3) ||
                           (drawingState.mode == DrawingMode.path &&
-                              drawingState.points.length >= 2))
+                              drawingState.points.length >= 2)) ...[
+                        const SizedBox(height: 16),
                         FloatingActionButton.extended(
                           heroTag: 'done_draw',
                           onPressed: () async {
@@ -5942,6 +5989,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                             style: TextStyle(color: Colors.white),
                           ),
                         ),
+                      ],
                     ],
                   );
                 }

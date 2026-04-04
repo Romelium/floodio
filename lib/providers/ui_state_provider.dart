@@ -116,4 +116,8 @@ class DrawingController extends _$DrawingController {
   void cancel() {
     state = DrawingState();
   }
+
+  void clearAll() {
+    state = state.copyWith(points: []);
+  }
 }
