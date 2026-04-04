@@ -7,6 +7,7 @@ import 'package:floodio/widgets/sync_bottom_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
@@ -42,6 +43,7 @@ import '../providers/untrusted_sender_provider.dart';
 import '../providers/user_profile_provider.dart';
 import '../services/cloud_sync_service.dart';
 import '../services/gov_api_service.dart';
+import '../services/background_service.dart';
 import '../services/map_cache_service.dart';
 import '../utils/clear_data.dart';
 import '../utils/constants.dart';
@@ -382,6 +384,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   bool _isRequestingPermissions = false;
   final LayerHitNotifier<String> _polygonHitNotifier = ValueNotifier(null);
   final LayerHitNotifier<String> _polylineHitNotifier = ValueNotifier(null);
+  StreamSubscription? _notificationSub;
 
   void _showTrustModelHelp(BuildContext context) {
     HapticFeedback.selectionClick();
@@ -513,6 +516,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     WidgetsBinding.instance.addObserver(this);
     _initPermissions();
     _checkTutorial();
+    _checkInitialNotification();
+    
+    _notificationSub = notificationPayloadStream.stream.listen((payload) {
+      _handleNotificationPayload(payload);
+    });
   }
 
   Future<void> _checkTutorial() async {
@@ -529,7 +537,31 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _notificationSub?.cancel();
     super.dispose();
+  }
+
+  Future<void> _checkInitialNotification() async {
+    final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+        FlutterLocalNotificationsPlugin();
+    final details = await flutterLocalNotificationsPlugin.getNotificationAppLaunchDetails();
+    if (details != null && details.didNotificationLaunchApp) {
+      _handleNotificationPayload(details.notificationResponse?.payload);
+    }
+  }
+
+  void _handleNotificationPayload(String? payload) {
+    if (payload != null && payload.contains(',')) {
+      final parts = payload.split(',');
+      if (parts.length == 2) {
+        final lat = double.tryParse(parts[0]);
+        final lng = double.tryParse(parts[1]);
+        if (lat != null && lng != null) {
+          ref.read(navigationIndexProvider.notifier).setIndex(0);
+          ref.read(mapTargetProvider.notifier).setTarget(LatLng(lat, lng));
+        }
+      }
+    }
   }
 
   @override

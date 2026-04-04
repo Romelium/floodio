@@ -16,11 +16,17 @@ class RedAlertState {
   final bool isActive;
   final bool isMuted;
   final String? latestAlertTitle;
+  final String? latestAlertId;
+  final double? latestAlertLat;
+  final double? latestAlertLng;
 
   RedAlertState({
     this.isActive = false,
     this.isMuted = false,
     this.latestAlertTitle,
+    this.latestAlertId,
+    this.latestAlertLat,
+    this.latestAlertLng,
   });
 }
 
@@ -61,30 +67,49 @@ class RedAlertController extends _$RedAlertController {
           activePaths.isNotEmpty;
 
       String? latestTitle;
+      String? latestId;
+      double? latestLat;
+      double? latestLng;
       int latestTs = 0;
 
       for (final m in activeMarkers) {
         if (m.timestamp > latestTs) {
           latestTs = m.timestamp;
           latestTitle = m.type;
+          latestId = m.id;
+          latestLat = m.latitude;
+          latestLng = m.longitude;
         }
       }
       for (final n in activeNews) {
         if (n.timestamp > latestTs) {
           latestTs = n.timestamp;
           latestTitle = n.title;
+          latestId = n.id;
+          latestLat = null;
+          latestLng = null;
         }
       }
       for (final a in activeAreas) {
         if (a.timestamp > latestTs) {
           latestTs = a.timestamp;
           latestTitle = a.type;
+          latestId = a.id;
+          if (a.coordinates.isNotEmpty) {
+            latestLat = a.coordinates.first['lat'];
+            latestLng = a.coordinates.first['lng'];
+          }
         }
       }
       for (final p in activePaths) {
         if (p.timestamp > latestTs) {
           latestTs = p.timestamp;
           latestTitle = p.type;
+          latestId = p.id;
+          if (p.coordinates.isNotEmpty) {
+            latestLat = p.coordinates.first['lat'];
+            latestLng = p.coordinates.first['lng'];
+          }
         }
       }
 
@@ -121,6 +146,9 @@ class RedAlertController extends _$RedAlertController {
           isActive: hasAlerts,
           isMuted: hasAlerts ? (newAlert ? false : state.isMuted) : false,
           latestAlertTitle: latestTitle,
+          latestAlertId: latestId,
+          latestAlertLat: latestLat,
+          latestAlertLng: latestLng,
         );
       }
 
@@ -285,6 +313,9 @@ class RedAlertController extends _$RedAlertController {
       isActive: state.isActive,
       isMuted: true,
       latestAlertTitle: state.latestAlertTitle,
+      latestAlertId: state.latestAlertId,
+      latestAlertLat: state.latestAlertLat,
+      latestAlertLng: state.latestAlertLng,
     );
   }
 }

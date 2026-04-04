@@ -28,6 +28,13 @@ import '../utils/constants.dart';
 bool isBackgroundIsolate = false;
 ServiceInstance? bgServiceInstance;
 
+final StreamController<String?> notificationPayloadStream = StreamController<String?>.broadcast();
+
+@pragma('vm:entry-point')
+void notificationTapBackground(NotificationResponse notificationResponse) {
+  // Ignore for now, the main isolate will check getNotificationAppLaunchDetails()
+}
+
 void terminalLog(String message) {
   print(message);
   if (isBackgroundIsolate) {
@@ -67,6 +74,10 @@ Future<void> initializeBackgroundService() async {
       settings: const InitializationSettings(
         android: AndroidInitializationSettings('ic_bg_service_small'),
       ),
+      onDidReceiveNotificationResponse: (NotificationResponse response) {
+        notificationPayloadStream.add(response.payload);
+      },
+      onDidReceiveBackgroundNotificationResponse: notificationTapBackground,
     );
   }
 
@@ -509,6 +520,11 @@ void onStart(ServiceInstance service) async {
       final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
           FlutterLocalNotificationsPlugin();
 
+      String? payload;
+      if (next.latestAlertLat != null && next.latestAlertLng != null) {
+        payload = '${next.latestAlertLat},${next.latestAlertLng}';
+      }
+
       flutterLocalNotificationsPlugin.show(
         id: 999,
         title: 'CRITICAL EMERGENCY',
@@ -528,6 +544,7 @@ void onStart(ServiceInstance service) async {
             fullScreenIntent: true,
           ),
         ),
+        payload: payload,
       );
     }
   });
