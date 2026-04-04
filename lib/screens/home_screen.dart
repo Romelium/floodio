@@ -2533,11 +2533,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                               ),
                             );
                           } else {
-                            try {
-                              setInnerState(() => selectedImage = image);
-                            } catch (_) {}
+                            setInnerState(() => selectedImage = finalImage);
                           }
-                              setInnerState(() => selectedImage = finalImage);
                         }
                       },
                       icon: const Icon(Icons.camera_alt),
@@ -3331,9 +3328,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                             ),
                           );
                         } else {
-                          setInnerState(() => selectedImage = image);
-                        }
                           setInnerState(() => selectedImage = finalImage);
+                        }
                       }
                     },
                     icon: const Icon(Icons.camera_alt),

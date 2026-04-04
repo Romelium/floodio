@@ -10,6 +10,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../database/connection.dart';
 import '../database/database.dart';
@@ -115,6 +116,17 @@ void onStart(ServiceInstance service) async {
   isBackgroundIsolate = true;
   bgServiceInstance = service;
   DartPluginRegistrant.ensureInitialized();
+
+  await Supabase.initialize(
+    url: const String.fromEnvironment(
+      'SUPABASE_URL',
+      defaultValue: 'https://placeholder.supabase.co',
+    ),
+    anonKey: const String.fromEnvironment(
+      'SUPABASE_ANON_KEY',
+      defaultValue: 'placeholder',
+    ),
+  );
 
   final connection = await getSharedConnection();
   final db = AppDatabase(connection);

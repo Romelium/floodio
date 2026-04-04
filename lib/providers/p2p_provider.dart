@@ -309,6 +309,24 @@ Future<Map<String, dynamic>> _runVerifyPayloadInIsolate(
 
   final completer = Completer<Map<String, dynamic>>();
 
+  receivePort.listen((message) {
+    if (message is Exception) {
+      completer.completeError(message);
+      receivePort.close();
+    } else if (message is double) {
+      onProgress(message);
+    } else if (message is Map<String, dynamic>) {
+      if (message['type'] == 'log') {
+        terminalLog(message['message'] as String);
+      } else if (message['type'] == 'batch_forward') {
+        onBatchForward(message['data'] as Map<String, dynamic>);
+      } else if (message['type'] == 'done') {
+        completer.complete({});
+        receivePort.close();
+      }
+    }
+  });
+
   return completer.future;
 }
 
@@ -2525,7 +2543,7 @@ class P2pService extends _$P2pService {
     }
   }
 
-  Future<void> processPayloadFromFile(String filePath) async {
+  Future<bool> processPayloadFromFile(String filePath) async {
     final stopwatch = Stopwatch()..start();
     _idleTicks = 0;
     terminalLog("[*] Processing payload from file: $filePath");
@@ -2569,9 +2587,10 @@ class P2pService extends _$P2pService {
         "[+] processPayloadFromFile completed in ${stopwatch.elapsedMilliseconds}ms",
       );
     }
+    return success;
   }
 
-  Future<void> processPayload(String base64Data, {bool isChunk = false}) async {
+  Future<bool> processPayload(String base64Data, {bool isChunk = false}) async {
     final stopwatch = Stopwatch()..start();
     _idleTicks = 0;
     terminalLog("[*] Processing base64 payload...");
@@ -2582,6 +2601,7 @@ class P2pService extends _$P2pService {
         clearSyncProgress: true,
       );
     }
+    bool success = false;
     try {
       if (!isChunk) {
         state = state.copyWith(
@@ -2601,6 +2621,7 @@ class P2pService extends _$P2pService {
         isFromCloud: false,
         isChunk: isChunk,
       );
+      success = true;
     } catch (e) {
       terminalLog("[-] Error handling payload: $e");
       if (!isChunk) {
@@ -2617,6 +2638,7 @@ class P2pService extends _$P2pService {
         "[+] processPayload completed in ${stopwatch.elapsedMilliseconds}ms",
       );
     }
+    return success;
   }
 
   Future<void> _processDecodedPayload(

@@ -16,6 +16,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../protos/models.pb.dart' as pb;
 import '../providers/database_provider.dart';
 import '../providers/ui_p2p_provider.dart';
+import '../providers/p2p_provider.dart';
 import 'background_service.dart';
 import '../utils/constants.dart';
 
@@ -795,34 +796,38 @@ class CloudSyncService extends _$CloudSyncService {
         );
         await tempFile.writeAsBytes(combinedPayload.writeToBuffer());
 
-        final completer = Completer<bool>();
-        final sub = FlutterBackgroundService()
-            .on('processPayloadComplete')
-            .listen((event) {
-              if (event != null && event['success'] == true) {
-                if (!completer.isCompleted) completer.complete(true);
-              } else {
-                if (!completer.isCompleted) completer.complete(false);
-              }
-            });
-
-        ref
-            .read(uiP2pServiceProvider.notifier)
-            .processPayloadFromFile(tempFile.path);
-
-        terminalLog(
-          '[*] Downloaded and sent new data to background service. Waiting for processing...',
-        );
-
         bool processSuccess = false;
-        try {
-          processSuccess = await completer.future.timeout(
-            const Duration(minutes: 5),
+        if (isBackgroundIsolate) {
+          processSuccess = await ref.read(p2pServiceProvider.notifier).processPayloadFromFile(tempFile.path);
+        } else {
+          final completer = Completer<bool>();
+          final sub = FlutterBackgroundService()
+              .on('processPayloadComplete')
+              .listen((event) {
+                if (event != null && event['success'] == true) {
+                  if (!completer.isCompleted) completer.complete(true);
+                } else {
+                  if (!completer.isCompleted) completer.complete(false);
+                }
+              });
+
+          ref
+              .read(uiP2pServiceProvider.notifier)
+              .processPayloadFromFile(tempFile.path);
+
+          terminalLog(
+            '[*] Downloaded and sent new data to background service. Waiting for processing...',
           );
-        } catch (e) {
-          terminalLog('[-] Timeout waiting for payload processing.');
-        } finally {
-          sub.cancel();
+
+          try {
+            processSuccess = await completer.future.timeout(
+              const Duration(minutes: 5),
+            );
+          } catch (e) {
+            terminalLog('[-] Timeout waiting for payload processing.');
+          } finally {
+            sub.cancel();
+          }
         }
 
         if (!processSuccess) {
