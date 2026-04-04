@@ -15,7 +15,7 @@ class SosFlashlightController extends _$SosFlashlightController {
   // Gap between symbols = 200ms
   // Gap between letters = 600ms
   // Gap between words = 1400ms
-  
+
   // Sequence of (isOn, durationMs)
   final List<(bool, int)> _sosSequence = const [
     // S (...)
@@ -62,7 +62,7 @@ class SosFlashlightController extends _$SosFlashlightController {
 
     state = true;
     _sequenceIndex = 0;
-    
+
     // Since we just turned it on, wait for the first step's duration
     final duration = _sosSequence[0].$2;
     _timer = Timer(Duration(milliseconds: duration), () {
@@ -70,7 +70,7 @@ class SosFlashlightController extends _$SosFlashlightController {
       _sequenceIndex = 1;
       _processNextStep();
     });
-    
+
     return true;
   }
 

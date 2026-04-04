@@ -23,9 +23,7 @@ class _CompassScreenState extends ConsumerState<CompassScreen> {
     final currentPosition = locationAsync.value;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Offline Compass'),
-      ),
+      appBar: AppBar(title: const Text('Offline Compass')),
       body: currentPosition == null
           ? const Center(
               child: Column(
@@ -90,7 +88,10 @@ class _CompassScreenState extends ConsumerState<CompassScreen> {
                   children: [
                     Text(
                       widget.title,
-                      style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                      ),
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 8),
@@ -114,10 +115,15 @@ class _CompassScreenState extends ConsumerState<CompassScreen> {
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
                               border: Border.all(
-                                color: Theme.of(context).colorScheme.outlineVariant,
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.outlineVariant,
                                 width: 4,
                               ),
-                              color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .surfaceContainerHighest
+                                  .withValues(alpha: 0.3),
                             ),
                           ),
                           // North indicator (rotates with heading)
@@ -156,9 +162,14 @@ class _CompassScreenState extends ConsumerState<CompassScreen> {
                     ),
                     const SizedBox(height: 60),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 12,
+                      ),
                       decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.surfaceContainerHighest,
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: Row(

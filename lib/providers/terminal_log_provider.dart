@@ -11,7 +11,8 @@ class TerminalLogController extends _$TerminalLogController {
 
   void addLog(String log) {
     final now = DateTime.now();
-    final timeStr = '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')}';
+    final timeStr =
+        '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')}';
     state = [...state, '[$timeStr] $log'];
     if (state.length > 200) {
       state = state.sublist(state.length - 200);

@@ -50,10 +50,7 @@ class _Cluster {
   double sumY;
   int count;
 
-  _Cluster(Offset offset)
-      : sumX = offset.dx,
-        sumY = offset.dy,
-        count = 1;
+  _Cluster(Offset offset) : sumX = offset.dx, sumY = offset.dy, count = 1;
 
   void add(Offset offset) {
     sumX += offset.dx;
@@ -88,16 +85,15 @@ class _HeatmapPainter extends CustomPainter {
     // 1. Save layer with blur to blend the points smoothly
     canvas.saveLayer(
       Offset.zero & size,
-      Paint()..imageFilter = ui.ImageFilter.blur(sigmaX: blurSigma, sigmaY: blurSigma),
+      Paint()
+        ..imageFilter = ui.ImageFilter.blur(
+          sigmaX: blurSigma,
+          sigmaY: blurSigma,
+        ),
     );
 
     // 2. Create the radial gradient shader
-    final shader = ui.Gradient.radial(
-      Offset.zero,
-      radius,
-      colors,
-      stops,
-    );
+    final shader = ui.Gradient.radial(Offset.zero, radius, colors, stops);
 
     final paint = Paint()
       ..shader = shader

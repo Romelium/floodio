@@ -36,20 +36,39 @@ class SyncBottomSheet extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('Mesh Auto-Sync', style: TextStyle(fontWeight: FontWeight.bold)),
-              Text('Automatically switches between hosting and scanning to find nearby devices and exchange data seamlessly in the background.'),
+              Text(
+                'Mesh Auto-Sync',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              Text(
+                'Automatically switches between hosting and scanning to find nearby devices and exchange data seamlessly in the background.',
+              ),
               SizedBox(height: 12),
               Text('Host Mode', style: TextStyle(fontWeight: FontWeight.bold)),
-              Text('Creates a Wi-Fi Direct group. Other devices can scan and connect to you to receive and send data.'),
+              Text(
+                'Creates a Wi-Fi Direct group. Other devices can scan and connect to you to receive and send data.',
+              ),
               SizedBox(height: 12),
               Text('Join Mode', style: TextStyle(fontWeight: FontWeight.bold)),
-              Text('Scans for nearby Hosts using Bluetooth. Once found, it connects to their Wi-Fi Direct group to sync data.'),
+              Text(
+                'Scans for nearby Hosts using Bluetooth. Once found, it connects to their Wi-Fi Direct group to sync data.',
+              ),
               SizedBox(height: 12),
-              Text('Cloud Gateway', style: TextStyle(fontWeight: FontWeight.bold)),
-              Text('When you have internet access, use this to upload local mesh data to the cloud and download global updates.'),
+              Text(
+                'Cloud Gateway',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              Text(
+                'When you have internet access, use this to upload local mesh data to the cloud and download global updates.',
+              ),
               SizedBox(height: 12),
-              Text('Available Peer Maps', style: TextStyle(fontWeight: FontWeight.bold)),
-              Text('If a connected peer has downloaded an offline map, you can request it directly from them without needing internet.'),
+              Text(
+                'Available Peer Maps',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              Text(
+                'If a connected peer has downloaded an offline map, you can request it directly from them without needing internet.',
+              ),
             ],
           ),
         ),
@@ -75,7 +94,8 @@ class SyncBottomSheet extends ConsumerWidget {
     final isConnected =
         (p2pState.isHosting && p2pState.hostState?.isActive == true) ||
         p2pState.clientState?.isActive == true;
-    final hasPeers = (p2pState.isHosting && p2pState.connectedClients.isNotEmpty) ||
+    final hasPeers =
+        (p2pState.isHosting && p2pState.connectedClients.isNotEmpty) ||
         (p2pState.clientState?.isActive == true);
     final isBusy =
         p2pState.isSyncing || p2pState.isConnecting || p2pState.isScanning;
@@ -128,7 +148,9 @@ class SyncBottomSheet extends ConsumerWidget {
                           tooltip: 'Diagnostics Terminal',
                           onPressed: () {
                             Navigator.pop(context);
-                            ref.read(showTerminalOverlayProvider.notifier).toggle();
+                            ref
+                                .read(showTerminalOverlayProvider.notifier)
+                                .toggle();
                           },
                           style: IconButton.styleFrom(
                             backgroundColor: Colors.black87,
@@ -144,7 +166,9 @@ class SyncBottomSheet extends ConsumerWidget {
                             if (!isMeshTopologyOpen) {
                               Navigator.push(
                                 context,
-                                MaterialPageRoute(builder: (_) => const MeshTopologyScreen()),
+                                MaterialPageRoute(
+                                  builder: (_) => const MeshTopologyScreen(),
+                                ),
                               );
                             }
                           },
@@ -177,58 +201,91 @@ class SyncBottomSheet extends ConsumerWidget {
                 const SizedBox(height: 16),
 
                 // 1. Network Status
-                _buildNetworkStatusCard(context, ref, p2pState, isConnected, hasPeers, isBusy, isSyncingOrConnecting, isPowerSave),
+                _buildNetworkStatusCard(
+                  context,
+                  ref,
+                  p2pState,
+                  isConnected,
+                  hasPeers,
+                  isBusy,
+                  isSyncingOrConnecting,
+                  isPowerSave,
+                ),
 
                 const SizedBox(height: 24),
-                const Text('Connection Mode', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
+                const Text(
+                  'Connection Mode',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+                ),
                 const SizedBox(height: 12),
 
                 // 2. Auto-Sync
-                Consumer(builder: (context, ref, child) {
-                  final battery = ref.watch(batteryControllerProvider);
-                  final isBatteryLow = battery.isPowerSaveMode || battery.level < 20;
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildModeCard(
-                        context: context,
-                        title: 'Mesh Auto-Sync',
-                        subtitle: 'Automatically switch between hosting and scanning to relay data.',
-                        icon: Icons.autorenew,
-                        activeColor: Colors.blue.shade700,
-                        isActive: p2pState.isAutoSyncing,
-                        isDisabled: false,
-                        onChanged: (val) async {
-                          HapticFeedback.lightImpact();
-                          if (val) {
-                            final enabled = await ensureServicesEnabled();
-                            if (enabled) p2pNotifier.toggleAutoSync();
-                          } else {
-                            p2pNotifier.toggleAutoSync();
-                          }
-                        },
-                      ),
-                      if (p2pState.isAutoSyncing)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 8.0, left: 8.0, right: 8.0),
-                          child: Row(
-                            children: [
-                              Icon(isBatteryLow ? Icons.battery_alert : Icons.eco, size: 16, color: isBatteryLow ? Colors.orange.shade700 : Colors.green.shade700),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  isBatteryLow
-                                      ? 'Battery is low or in Power Save mode. Sync interval is automatically reduced to conserve power.'
-                                      : 'Smart-Sync active: Paused while stationary to save 80% battery.',
-                                  style: TextStyle(fontSize: 12, color: isBatteryLow ? Colors.orange.shade800 : Colors.green.shade800),
-                                ),
-                              ),
-                            ],
-                          ),
+                Consumer(
+                  builder: (context, ref, child) {
+                    final battery = ref.watch(batteryControllerProvider);
+                    final isBatteryLow =
+                        battery.isPowerSaveMode || battery.level < 20;
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildModeCard(
+                          context: context,
+                          title: 'Mesh Auto-Sync',
+                          subtitle:
+                              'Automatically switch between hosting and scanning to relay data.',
+                          icon: Icons.autorenew,
+                          activeColor: Colors.blue.shade700,
+                          isActive: p2pState.isAutoSyncing,
+                          isDisabled: false,
+                          onChanged: (val) async {
+                            HapticFeedback.lightImpact();
+                            if (val) {
+                              final enabled = await ensureServicesEnabled();
+                              if (enabled) p2pNotifier.toggleAutoSync();
+                            } else {
+                              p2pNotifier.toggleAutoSync();
+                            }
+                          },
                         ),
-                    ],
-                  );
-                }),
+                        if (p2pState.isAutoSyncing)
+                          Padding(
+                            padding: const EdgeInsets.only(
+                              top: 8.0,
+                              left: 8.0,
+                              right: 8.0,
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  isBatteryLow
+                                      ? Icons.battery_alert
+                                      : Icons.eco,
+                                  size: 16,
+                                  color: isBatteryLow
+                                      ? Colors.orange.shade700
+                                      : Colors.green.shade700,
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    isBatteryLow
+                                        ? 'Battery is low or in Power Save mode. Sync interval is automatically reduced to conserve power.'
+                                        : 'Smart-Sync active: Paused while stationary to save 80% battery.',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: isBatteryLow
+                                          ? Colors.orange.shade800
+                                          : Colors.green.shade800,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                      ],
+                    );
+                  },
+                ),
                 const SizedBox(height: 12),
 
                 // 3. Manual Controls Row
@@ -242,11 +299,14 @@ class SyncBottomSheet extends ConsumerWidget {
                         icon: Icons.router,
                         activeColor: Colors.green.shade700,
                         isActive: p2pState.isHosting,
-                        isDisabled: p2pState.isScanning || p2pState.isAutoSyncing,
+                        isDisabled:
+                            p2pState.isScanning || p2pState.isAutoSyncing,
                         onChanged: (val) async {
                           HapticFeedback.lightImpact();
                           if (val) {
-                            final enabled = await ensureServicesEnabled(isHosting: true);
+                            final enabled = await ensureServicesEnabled(
+                              isHosting: true,
+                            );
                             if (enabled) p2pNotifier.startHosting();
                           } else {
                             p2pNotifier.stopHosting();
@@ -262,8 +322,11 @@ class SyncBottomSheet extends ConsumerWidget {
                         subtitle: 'Scan nodes',
                         icon: Icons.radar,
                         activeColor: Colors.teal.shade700,
-                        isActive: p2pState.isScanning || p2pState.clientState?.isActive == true,
-                        isDisabled: p2pState.isHosting || p2pState.isAutoSyncing,
+                        isActive:
+                            p2pState.isScanning ||
+                            p2pState.clientState?.isActive == true,
+                        isDisabled:
+                            p2pState.isHosting || p2pState.isAutoSyncing,
                         onChanged: (val) async {
                           HapticFeedback.lightImpact();
                           if (val) {
@@ -279,7 +342,8 @@ class SyncBottomSheet extends ConsumerWidget {
                 ),
 
                 // If hosting and has clients, show them
-                if (p2pState.hostState?.isActive == true && p2pState.connectedClients.isNotEmpty) ...[
+                if (p2pState.hostState?.isActive == true &&
+                    p2pState.connectedClients.isNotEmpty) ...[
                   const SizedBox(height: 12),
                   Container(
                     padding: const EdgeInsets.all(12),
@@ -291,25 +355,49 @@ class SyncBottomSheet extends ConsumerWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Connected Peers (${p2pState.connectedClients.length})', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.green.shade900)),
-                        const SizedBox(height: 8),
-                        ...p2pState.connectedClients.map((client) => Padding(
-                          padding: const EdgeInsets.only(bottom: 4.0),
-                          child: Row(
-                            children: [
-                              Icon(Icons.smartphone, size: 14, color: Colors.green.shade700),
-                              const SizedBox(width: 8),
-                              Expanded(child: Text(client.username.isEmpty ? 'Unknown Client' : client.username, style: TextStyle(fontSize: 13, color: Colors.green.shade900))),
-                            ],
+                        Text(
+                          'Connected Peers (${p2pState.connectedClients.length})',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.green.shade900,
                           ),
-                        )),
+                        ),
+                        const SizedBox(height: 8),
+                        ...p2pState.connectedClients.map(
+                          (client) => Padding(
+                            padding: const EdgeInsets.only(bottom: 4.0),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.smartphone,
+                                  size: 14,
+                                  color: Colors.green.shade700,
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    client.username.isEmpty
+                                        ? 'Unknown Client'
+                                        : client.username,
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: Colors.green.shade900,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                   ),
                 ],
 
                 // If scanning and found devices, show them
-                if (p2pState.isScanning && p2pState.discoveredDevices.isNotEmpty && p2pState.clientState?.isActive != true) ...[
+                if (p2pState.isScanning &&
+                    p2pState.discoveredDevices.isNotEmpty &&
+                    p2pState.clientState?.isActive != true) ...[
                   const SizedBox(height: 12),
                   Container(
                     padding: const EdgeInsets.all(12),
@@ -321,33 +409,70 @@ class SyncBottomSheet extends ConsumerWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Discovered Nodes (${p2pState.discoveredDevices.length})', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.teal.shade900)),
-                        const SizedBox(height: 8),
-                        ...p2pState.discoveredDevices.map((device) => Padding(
-                          padding: const EdgeInsets.only(bottom: 4.0),
-                          child: Row(
-                            children: [
-                              Icon(Icons.bluetooth, size: 14, color: Colors.teal.shade700),
-                              const SizedBox(width: 8),
-                              Expanded(child: Text(device.deviceName.isEmpty ? 'Unknown Device' : device.deviceName, style: TextStyle(fontSize: 13, color: Colors.teal.shade900))),
-                              SizedBox(
-                                height: 28,
-                                child: FilledButton(
-                                  style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 12), backgroundColor: Colors.teal.shade600),
-                                  onPressed: p2pState.isConnecting ? null : () => p2pNotifier.connectToDevice(device),
-                                  child: const Text('Connect', style: TextStyle(fontSize: 11)),
-                                ),
-                              ),
-                            ],
+                        Text(
+                          'Discovered Nodes (${p2pState.discoveredDevices.length})',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.teal.shade900,
                           ),
-                        )),
+                        ),
+                        const SizedBox(height: 8),
+                        ...p2pState.discoveredDevices.map(
+                          (device) => Padding(
+                            padding: const EdgeInsets.only(bottom: 4.0),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.bluetooth,
+                                  size: 14,
+                                  color: Colors.teal.shade700,
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    device.deviceName.isEmpty
+                                        ? 'Unknown Device'
+                                        : device.deviceName,
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: Colors.teal.shade900,
+                                    ),
+                                  ),
+                                ),
+                                SizedBox(
+                                  height: 28,
+                                  child: FilledButton(
+                                    style: FilledButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                      ),
+                                      backgroundColor: Colors.teal.shade600,
+                                    ),
+                                    onPressed: p2pState.isConnecting
+                                        ? null
+                                        : () => p2pNotifier.connectToDevice(
+                                            device,
+                                          ),
+                                    child: const Text(
+                                      'Connect',
+                                      style: TextStyle(fontSize: 11),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                   ),
                 ],
 
                 const SizedBox(height: 24),
-                const Text('Cloud & Maps', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
+                const Text(
+                  'Cloud & Maps',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+                ),
                 const SizedBox(height: 12),
 
                 // 4. Cloud Sync Section
@@ -590,11 +715,29 @@ class SyncBottomSheet extends ConsumerWidget {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          gradient: isActive ? LinearGradient(colors: [activeColor, activeColor.withValues(alpha: 0.8)]) : null,
-          color: isActive ? null : Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+          gradient: isActive
+              ? LinearGradient(
+                  colors: [activeColor, activeColor.withValues(alpha: 0.8)],
+                )
+              : null,
+          color: isActive
+              ? null
+              : Theme.of(
+                  context,
+                ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: isActive ? activeColor : Colors.grey.shade300),
-          boxShadow: isActive ? [BoxShadow(color: activeColor.withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 4))] : null,
+          border: Border.all(
+            color: isActive ? activeColor : Colors.grey.shade300,
+          ),
+          boxShadow: isActive
+              ? [
+                  BoxShadow(
+                    color: activeColor.withValues(alpha: 0.3),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ]
+              : null,
         ),
         child: Opacity(
           opacity: isDisabled ? 0.5 : 1.0,
@@ -603,19 +746,38 @@ class SyncBottomSheet extends ConsumerWidget {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: isActive ? Colors.white.withValues(alpha: 0.2) : Colors.white,
+                  color: isActive
+                      ? Colors.white.withValues(alpha: 0.2)
+                      : Colors.white,
                   shape: BoxShape.circle,
                 ),
-                child: Icon(icon, color: isActive ? Colors.white : activeColor, size: 28),
+                child: Icon(
+                  icon,
+                  color: isActive ? Colors.white : activeColor,
+                  size: 28,
+                ),
               ),
               const SizedBox(width: 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(title, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: isActive ? Colors.white : null)),
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                        color: isActive ? Colors.white : null,
+                      ),
+                    ),
                     const SizedBox(height: 4),
-                    Text(subtitle, style: TextStyle(fontSize: 13, color: isActive ? Colors.white70 : Colors.grey.shade600)),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: isActive ? Colors.white70 : Colors.grey.shade600,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -648,9 +810,15 @@ class SyncBottomSheet extends ConsumerWidget {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: isActive ? activeColor : Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+          color: isActive
+              ? activeColor
+              : Theme.of(
+                  context,
+                ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: isActive ? activeColor : Colors.grey.shade300),
+          border: Border.all(
+            color: isActive ? activeColor : Colors.grey.shade300,
+          ),
         ),
         child: Opacity(
           opacity: isDisabled ? 0.5 : 1.0,
@@ -660,7 +828,11 @@ class SyncBottomSheet extends ConsumerWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Icon(icon, color: isActive ? Colors.white : activeColor, size: 24),
+                  Icon(
+                    icon,
+                    color: isActive ? Colors.white : activeColor,
+                    size: 24,
+                  ),
                   Switch(
                     value: isActive,
                     onChanged: isDisabled ? null : onChanged,
@@ -671,9 +843,22 @@ class SyncBottomSheet extends ConsumerWidget {
                 ],
               ),
               const SizedBox(height: 12),
-              Text(title, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: isActive ? Colors.white : null)),
+              Text(
+                title,
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  color: isActive ? Colors.white : null,
+                ),
+              ),
               const SizedBox(height: 4),
-              Text(subtitle, style: TextStyle(fontSize: 12, color: isActive ? Colors.white70 : Colors.grey.shade600)),
+              Text(
+                subtitle,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: isActive ? Colors.white70 : Colors.grey.shade600,
+                ),
+              ),
             ],
           ),
         ),
@@ -696,7 +881,9 @@ class SyncBottomSheet extends ConsumerWidget {
           ? Colors.green.shade50
           : (p2pState.isAutoSyncing
                 ? Colors.orange.shade50
-                : Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5)),
+                : Theme.of(
+                    context,
+                  ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5)),
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20),
@@ -721,17 +908,31 @@ class SyncBottomSheet extends ConsumerWidget {
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     color: Theme.of(context).colorScheme.surface,
-                    boxShadow: isPowerSave ? null : [
-                      BoxShadow(
-                        color: (p2pState.isScanning ? Colors.teal : Colors.green).withValues(alpha: 0.2),
-                        blurRadius: 24,
-                        spreadRadius: 4,
-                      )
-                    ]
+                    boxShadow: isPowerSave
+                        ? null
+                        : [
+                            BoxShadow(
+                              color:
+                                  (p2pState.isScanning
+                                          ? Colors.teal
+                                          : Colors.green)
+                                      .withValues(alpha: 0.2),
+                              blurRadius: 24,
+                              spreadRadius: 4,
+                            ),
+                          ],
                   ),
                   child: p2pState.isScanning
-                    ? RadarAnimation(size: 140, color: Colors.teal.shade600, isPowerSave: isPowerSave)
-                    : RippleAnimation(size: 140, color: Colors.green.shade600, isPowerSave: isPowerSave),
+                      ? RadarAnimation(
+                          size: 140,
+                          color: Colors.teal.shade600,
+                          isPowerSave: isPowerSave,
+                        )
+                      : RippleAnimation(
+                          size: 140,
+                          color: Colors.green.shade600,
+                          isPowerSave: isPowerSave,
+                        ),
                 ),
               ),
               const SizedBox(height: 8),
@@ -747,7 +948,8 @@ class SyncBottomSheet extends ConsumerWidget {
                       strokeWidth: 3,
                     ),
                   )
-                else if (!p2pState.isScanning && !(p2pState.isHosting && !hasPeers))
+                else if (!p2pState.isScanning &&
+                    !(p2pState.isHosting && !hasPeers))
                   Icon(
                     hasPeers
                         ? Icons.check_circle
@@ -761,7 +963,8 @@ class SyncBottomSheet extends ConsumerWidget {
                               : Colors.grey),
                     size: 24,
                   ),
-                if (!p2pState.isScanning && !(p2pState.isHosting && !hasPeers)) const SizedBox(width: 12),
+                if (!p2pState.isScanning && !(p2pState.isHosting && !hasPeers))
+                  const SizedBox(width: 12),
                 Expanded(
                   child: Text(
                     hasPeers
@@ -783,7 +986,11 @@ class SyncBottomSheet extends ConsumerWidget {
                       fontWeight: FontWeight.bold,
                       letterSpacing: 0.5,
                     ),
-                    textAlign: (p2pState.isScanning || (p2pState.isHosting && !hasPeers)) ? TextAlign.center : TextAlign.left,
+                    textAlign:
+                        (p2pState.isScanning ||
+                            (p2pState.isHosting && !hasPeers))
+                        ? TextAlign.center
+                        : TextAlign.left,
                   ),
                 ),
               ],
@@ -805,7 +1012,11 @@ class SyncBottomSheet extends ConsumerWidget {
               ),
               child: Row(
                 children: [
-                  Icon(Icons.info_outline, size: 16, color: Colors.grey.shade700),
+                  Icon(
+                    Icons.info_outline,
+                    size: 16,
+                    color: Colors.grey.shade700,
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -831,7 +1042,11 @@ class SyncBottomSheet extends ConsumerWidget {
               ),
               child: Row(
                 children: [
-                  Icon(Icons.access_time, size: 16, color: Colors.grey.shade700),
+                  Icon(
+                    Icons.access_time,
+                    size: 16,
+                    color: Colors.grey.shade700,
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -855,15 +1070,21 @@ class SyncBottomSheet extends ConsumerWidget {
                 children: [
                   _buildStatusItem(
                     context,
-                    icon: p2pState.hostState?.isActive == true ? Icons.router : Icons.smartphone,
+                    icon: p2pState.hostState?.isActive == true
+                        ? Icons.router
+                        : Icons.smartphone,
                     label: 'Role',
-                    value: p2pState.hostState?.isActive == true ? 'Host' : 'Client',
+                    value: p2pState.hostState?.isActive == true
+                        ? 'Host'
+                        : 'Client',
                   ),
                   _buildStatusItem(
                     context,
                     icon: Icons.people,
                     label: 'Peers',
-                    value: p2pState.hostState?.isActive == true ? '${p2pState.connectedClients.length}' : '1 (Host)',
+                    value: p2pState.hostState?.isActive == true
+                        ? '${p2pState.connectedClients.length}'
+                        : '1 (Host)',
                   ),
                 ],
               ),
@@ -884,7 +1105,9 @@ class SyncBottomSheet extends ConsumerWidget {
                           );
                         },
                   icon: const Icon(Icons.sync),
-                  label: Text(p2pState.isSyncing ? 'Syncing...' : 'Force 2-Way Sync Now'),
+                  label: Text(
+                    p2pState.isSyncing ? 'Syncing...' : 'Force 2-Way Sync Now',
+                  ),
                   style: FilledButton.styleFrom(
                     backgroundColor: Colors.green.shade600,
                     padding: const EdgeInsets.symmetric(vertical: 12),

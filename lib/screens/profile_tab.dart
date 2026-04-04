@@ -89,12 +89,20 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
         const SizedBox(height: 8),
         Text(
           value,
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: color),
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
         ),
         const SizedBox(height: 4),
         Text(
           label,
-          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.grey.shade700),
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            color: Colors.grey.shade700,
+          ),
         ),
       ],
     );
@@ -1207,7 +1215,9 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                 // Hero Stats Card
                 Consumer(
                   builder: (context, ref, child) {
-                    final heroStatsAsync = ref.watch(heroStatsControllerProvider);
+                    final heroStatsAsync = ref.watch(
+                      heroStatsControllerProvider,
+                    );
                     final stats = heroStatsAsync.value;
                     if (stats == null) return const SizedBox.shrink();
 
@@ -1216,7 +1226,10 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                       children: [
                         Row(
                           children: [
-                            const Icon(Icons.military_tech, color: Colors.amber),
+                            const Icon(
+                              Icons.military_tech,
+                              color: Colors.amber,
+                            ),
                             const SizedBox(width: 8),
                             const Text(
                               'Data Mule Stats',
@@ -1227,7 +1240,11 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                             ),
                             const Spacer(),
                             IconButton(
-                              icon: const Icon(Icons.help_outline, size: 20, color: Colors.amber),
+                              icon: const Icon(
+                                Icons.help_outline,
+                                size: 20,
+                                color: Colors.amber,
+                              ),
                               onPressed: () => _showMuleHelp(context),
                             ),
                           ],
@@ -1236,7 +1253,10 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                         Card(
                           elevation: 0,
                           shape: RoundedRectangleBorder(
-                            side: BorderSide(color: Colors.amber.shade300, width: 1.5),
+                            side: BorderSide(
+                              color: Colors.amber.shade300,
+                              width: 1.5,
+                            ),
                             borderRadius: BorderRadius.circular(16),
                           ),
                           color: Colors.amber.shade50,
@@ -1252,12 +1272,16 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                                         color: Colors.amber.shade100,
                                         shape: BoxShape.circle,
                                       ),
-                                      child: Icon(Icons.star, color: Colors.amber.shade800),
+                                      child: Icon(
+                                        Icons.star,
+                                        color: Colors.amber.shade800,
+                                      ),
                                     ),
                                     const SizedBox(width: 12),
                                     Expanded(
                                       child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
                                           Text(
                                             'Status: ${stats.status}',
@@ -1281,12 +1305,15 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                                 ),
                                 const SizedBox(height: 16),
                                 Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceAround,
                                   children: [
                                     _buildHeroStatItem(
                                       context,
                                       icon: Icons.data_usage,
-                                      value: _formatBytes(stats.dataCarriedBytes),
+                                      value: _formatBytes(
+                                        stats.dataCarriedBytes,
+                                      ),
                                       label: 'Data Carried',
                                       color: Colors.blue.shade700,
                                     ),
@@ -2014,7 +2041,10 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                                               context,
                                               MaterialPageRoute(
                                                 builder: (_) => CompassScreen(
-                                                  target: LatLng(item.latitude, item.longitude),
+                                                  target: LatLng(
+                                                    item.latitude,
+                                                    item.longitude,
+                                                  ),
                                                   title: item.type,
                                                 ),
                                               ),
@@ -2211,7 +2241,14 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                                                 context,
                                                 MaterialPageRoute(
                                                   builder: (_) => CompassScreen(
-                                                    target: LatLng(item.coordinates.first['lat']!, item.coordinates.first['lng']!),
+                                                    target: LatLng(
+                                                      item
+                                                          .coordinates
+                                                          .first['lat']!,
+                                                      item
+                                                          .coordinates
+                                                          .first['lng']!,
+                                                    ),
                                                     title: item.type,
                                                   ),
                                                 ),
@@ -2311,7 +2348,14 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                                                 context,
                                                 MaterialPageRoute(
                                                   builder: (_) => CompassScreen(
-                                                    target: LatLng(item.coordinates.first['lat']!, item.coordinates.first['lng']!),
+                                                    target: LatLng(
+                                                      item
+                                                          .coordinates
+                                                          .first['lat']!,
+                                                      item
+                                                          .coordinates
+                                                          .first['lng']!,
+                                                    ),
                                                     title: item.type,
                                                   ),
                                                 ),

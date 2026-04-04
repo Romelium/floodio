@@ -20,7 +20,8 @@ class PulseMarker extends StatefulWidget {
   State<PulseMarker> createState() => _PulseMarkerState();
 }
 
-class _PulseMarkerState extends State<PulseMarker> with SingleTickerProviderStateMixin {
+class _PulseMarkerState extends State<PulseMarker>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
 
   @override
@@ -88,7 +89,7 @@ class _PulsePainter extends CustomPainter {
 
       // Ease out curve for expanding
       double curvedProgress = Curves.easeOutQuart.transform(currentProgress);
-      
+
       final startRadius = baseSize / 2;
       final radius = startRadius + (maxRadius - startRadius) * curvedProgress;
       final opacity = 1.0 - curvedProgress;
@@ -134,10 +135,12 @@ class _PulsePainter extends CustomPainter {
         true,
         sweepPaint,
       );
-      
+
       // Draw scanner line
       final lineAngle = progress * 2 * pi - pi / 2;
-      final lineEnd = center + Offset(cos(lineAngle) * maxRadius, sin(lineAngle) * maxRadius);
+      final lineEnd =
+          center +
+          Offset(cos(lineAngle) * maxRadius, sin(lineAngle) * maxRadius);
 
       final linePaint = Paint()
         ..color = color.withValues(alpha: 0.8)
@@ -150,9 +153,9 @@ class _PulsePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _PulsePainter oldDelegate) {
-    return oldDelegate.progress != progress || 
-           oldDelegate.color != color ||
-           oldDelegate.baseSize != baseSize ||
-           oldDelegate.isRadar != isRadar;
+    return oldDelegate.progress != progress ||
+        oldDelegate.color != color ||
+        oldDelegate.baseSize != baseSize ||
+        oldDelegate.isRadar != isRadar;
   }
 }

@@ -112,7 +112,9 @@ class P2pState {
           ? null
           : (syncEstimatedSeconds ?? this.syncEstimatedSeconds),
       lastSyncTime: lastSyncTime ?? this.lastSyncTime,
-      lastSyncSummary: clearLastSyncSummary ? null : (lastSyncSummary ?? this.lastSyncSummary),
+      lastSyncSummary: clearLastSyncSummary
+          ? null
+          : (lastSyncSummary ?? this.lastSyncSummary),
       hostState: clearHostState ? null : (hostState ?? this.hostState),
       clientState: clearClientState ? null : (clientState ?? this.clientState),
       discoveredDevices: discoveredDevices ?? this.discoveredDevices,
@@ -267,7 +269,10 @@ Future<Map<String, dynamic>> _runVerifyPayloadInIsolate(
   args['sendPort'] = receivePort.sendPort;
   args['rootToken'] = RootIsolateToken.instance;
 
-  final isolate = await Isolate.spawn(_verifyPayloadInIsolateWithProgress, args);
+  final isolate = await Isolate.spawn(
+    _verifyPayloadInIsolateWithProgress,
+    args,
+  );
 
   final completer = Completer<Map<String, dynamic>>();
 
@@ -305,7 +310,9 @@ Future<Map<String, dynamic>> _runVerifyPayloadInIsolate(
   return completer.future;
 }
 
-Future<void> _verifyPayloadInIsolateWithProgress(Map<String, dynamic> args) async {
+Future<void> _verifyPayloadInIsolateWithProgress(
+  Map<String, dynamic> args,
+) async {
   final sendPort = args['sendPort'] as SendPort;
   try {
     final token = args['rootToken'] as RootIsolateToken?;
@@ -318,7 +325,10 @@ Future<void> _verifyPayloadInIsolateWithProgress(Map<String, dynamic> args) asyn
   }
 }
 
-Future<void> _verifyPayloadInIsolate(Map<String, dynamic> args, [SendPort? sendPort]) async {
+Future<void> _verifyPayloadInIsolate(
+  Map<String, dynamic> args, [
+  SendPort? sendPort,
+]) async {
   final isolateStopwatch = Stopwatch()..start();
 
   void log(String msg) {
@@ -336,7 +346,7 @@ Future<void> _verifyPayloadInIsolate(Map<String, dynamic> args, [SendPort? sendP
   final revokedKeys = (args['revokedKeys'] as List<String>).toSet();
   final serverPubKeyBytes = args['serverPubKeyBytes'] as List<int>;
   final deletedIds = args['deletedIds'] as Set<String>;
-  
+
   final markerTimestamps = args['markerTimestamps'] as Map<String, int>;
   final newsTimestamps = args['newsTimestamps'] as Map<String, int>;
   final profileTimestamps = args['profileTimestamps'] as Map<String, int>;
@@ -352,13 +362,14 @@ Future<void> _verifyPayloadInIsolate(Map<String, dynamic> args, [SendPort? sendP
   final validPaths = <pb.PathMarker>[];
   final validDelegations = <pb.TrustDelegation>[];
   final validRevocations = <pb.RevokedDelegation>[];
-  
+
   final markerTrustTiers = <String, int>{};
   final newsTrustTiers = <String, int>{};
   final areaTrustTiers = <String, int>{};
   final pathTrustTiers = <String, int>{};
 
-  final totalItems = payload.delegations.length +
+  final totalItems =
+      payload.delegations.length +
       payload.revokedDelegations.length +
       payload.markers.length +
       payload.news.length +
@@ -380,8 +391,14 @@ Future<void> _verifyPayloadInIsolate(Map<String, dynamic> args, [SendPort? sendP
   }
 
   void sendBatchIfNeeded({bool force = false}) {
-    final totalValid = validMarkers.length + validNews.length + validProfiles.length + 
-                       validAreas.length + validPaths.length + validDelegations.length + validRevocations.length;
+    final totalValid =
+        validMarkers.length +
+        validNews.length +
+        validProfiles.length +
+        validAreas.length +
+        validPaths.length +
+        validDelegations.length +
+        validRevocations.length;
     if (totalValid >= _verifyBatchSize || (force && totalValid > 0)) {
       if (sendPort != null) {
         sendPort.send({
@@ -393,12 +410,14 @@ Future<void> _verifyPayloadInIsolate(Map<String, dynamic> args, [SendPort? sendP
             'validAreas': List<pb.AreaMarker>.from(validAreas),
             'validPaths': List<pb.PathMarker>.from(validPaths),
             'validDelegations': List<pb.TrustDelegation>.from(validDelegations),
-            'validRevocations': List<pb.RevokedDelegation>.from(validRevocations),
+            'validRevocations': List<pb.RevokedDelegation>.from(
+              validRevocations,
+            ),
             'markerTrustTiers': Map<String, int>.from(markerTrustTiers),
             'newsTrustTiers': Map<String, int>.from(newsTrustTiers),
             'areaTrustTiers': Map<String, int>.from(areaTrustTiers),
             'pathTrustTiers': Map<String, int>.from(pathTrustTiers),
-          }
+          },
         });
       }
       validMarkers.clear();
@@ -418,21 +437,25 @@ Future<void> _verifyPayloadInIsolate(Map<String, dynamic> args, [SendPort? sendP
   // Process delegations
   for (var i = 0; i < payload.delegations.length; i += _verifyBatchSize) {
     final chunk = payload.delegations.skip(i).take(_verifyBatchSize);
-    final results = await Future.wait(chunk.map((d) async {
-      final itemSw = Stopwatch()..start();
-      final existingTs = delegationTimestamps[d.delegateePublicKey] ?? 0;
-      if (d.timestamp.toInt() <= existingTs) return null;
-      final isValid = await verifyDelegationLogic(
-        d.delegateePublicKey,
-        d.timestamp.toInt(),
-        d.signature,
-        d.delegatorPublicKey,
-        serverPubKeyBytes,
-      );
-      log("[+] Verified delegation ${d.delegateePublicKey} in ${itemSw.elapsedMilliseconds}ms");
-      if (isValid) return d;
-      return null;
-    }));
+    final results = await Future.wait(
+      chunk.map((d) async {
+        final itemSw = Stopwatch()..start();
+        final existingTs = delegationTimestamps[d.delegateePublicKey] ?? 0;
+        if (d.timestamp.toInt() <= existingTs) return null;
+        final isValid = await verifyDelegationLogic(
+          d.delegateePublicKey,
+          d.timestamp.toInt(),
+          d.signature,
+          d.delegatorPublicKey,
+          serverPubKeyBytes,
+        );
+        log(
+          "[+] Verified delegation ${d.delegateePublicKey} in ${itemSw.elapsedMilliseconds}ms",
+        );
+        if (isValid) return d;
+        return null;
+      }),
+    );
     for (final d in results) {
       processed++;
       if (d != null) {
@@ -447,23 +470,31 @@ Future<void> _verifyPayloadInIsolate(Map<String, dynamic> args, [SendPort? sendP
   isolateStopwatch.reset();
 
   // Process revocations
-  for (var i = 0; i < payload.revokedDelegations.length; i += _verifyBatchSize) {
+  for (
+    var i = 0;
+    i < payload.revokedDelegations.length;
+    i += _verifyBatchSize
+  ) {
     final chunk = payload.revokedDelegations.skip(i).take(_verifyBatchSize);
-    final results = await Future.wait(chunk.map((r) async {
-      final itemSw = Stopwatch()..start();
-      final existingTs = revocationTimestamps[r.delegateePublicKey] ?? 0;
-      if (r.timestamp.toInt() <= existingTs) return null;
-      final isValid = await verifyRevocationLogic(
-        r.delegateePublicKey,
-        r.timestamp.toInt(),
-        r.signature,
-        r.delegatorPublicKey,
-        serverPubKeyBytes,
-      );
-      log("[+] Verified revocation ${r.delegateePublicKey} in ${itemSw.elapsedMilliseconds}ms");
-      if (isValid) return r;
-      return null;
-    }));
+    final results = await Future.wait(
+      chunk.map((r) async {
+        final itemSw = Stopwatch()..start();
+        final existingTs = revocationTimestamps[r.delegateePublicKey] ?? 0;
+        if (r.timestamp.toInt() <= existingTs) return null;
+        final isValid = await verifyRevocationLogic(
+          r.delegateePublicKey,
+          r.timestamp.toInt(),
+          r.signature,
+          r.delegatorPublicKey,
+          serverPubKeyBytes,
+        );
+        log(
+          "[+] Verified revocation ${r.delegateePublicKey} in ${itemSw.elapsedMilliseconds}ms",
+        );
+        if (isValid) return r;
+        return null;
+      }),
+    );
     for (final r in results) {
       processed++;
       if (r != null) {
@@ -480,31 +511,35 @@ Future<void> _verifyPayloadInIsolate(Map<String, dynamic> args, [SendPort? sendP
   // Process markers
   for (var i = 0; i < payload.markers.length; i += _verifyBatchSize) {
     final chunk = payload.markers.skip(i).take(_verifyBatchSize);
-    final results = await Future.wait(chunk.map((m) async {
-      final itemSw = Stopwatch()..start();
-      if (deletedIds.contains(m.id)) return null;
-      final existingTs = markerTimestamps[m.id] ?? 0;
-      if (m.timestamp.toInt() <= existingTs) return null;
+    final results = await Future.wait(
+      chunk.map((m) async {
+        final itemSw = Stopwatch()..start();
+        if (deletedIds.contains(m.id)) return null;
+        final existingTs = markerTimestamps[m.id] ?? 0;
+        if (m.timestamp.toInt() <= existingTs) return null;
 
-      final imageIdStr = m.imageId.isEmpty ? "" : m.imageId;
-      final expiresAtStr = m.expiresAt == 0 ? "" : m.expiresAt.toString();
-      final isCriticalStr = m.isCritical ? "1" : "0";
-      final payloadToSign = utf8.encode(
-        '${m.id}${m.latitude}${m.longitude}${m.type}${m.description}${m.timestamp}$imageIdStr$expiresAtStr$isCriticalStr',
-      );
-      final trustTier = await verifyDataLogic(
-        payloadToSign,
-        m.signature,
-        m.senderId,
-        serverPubKeyBytes,
-        trustedKeys,
-        adminTrustedKeys,
-        untrustedKeys,
-      );
-      log("[+] Verified Ed25519 signature for marker ${m.id} in ${itemSw.elapsedMilliseconds}ms");
-      if (trustTier != 5) return MapEntry(m, trustTier);
-      return null;
-    }));
+        final imageIdStr = m.imageId.isEmpty ? "" : m.imageId;
+        final expiresAtStr = m.expiresAt == 0 ? "" : m.expiresAt.toString();
+        final isCriticalStr = m.isCritical ? "1" : "0";
+        final payloadToSign = utf8.encode(
+          '${m.id}${m.latitude}${m.longitude}${m.type}${m.description}${m.timestamp}$imageIdStr$expiresAtStr$isCriticalStr',
+        );
+        final trustTier = await verifyDataLogic(
+          payloadToSign,
+          m.signature,
+          m.senderId,
+          serverPubKeyBytes,
+          trustedKeys,
+          adminTrustedKeys,
+          untrustedKeys,
+        );
+        log(
+          "[+] Verified Ed25519 signature for marker ${m.id} in ${itemSw.elapsedMilliseconds}ms",
+        );
+        if (trustTier != 5) return MapEntry(m, trustTier);
+        return null;
+      }),
+    );
     for (final res in results) {
       processed++;
       if (res != null) {
@@ -521,31 +556,35 @@ Future<void> _verifyPayloadInIsolate(Map<String, dynamic> args, [SendPort? sendP
   // Process news
   for (var i = 0; i < payload.news.length; i += _verifyBatchSize) {
     final chunk = payload.news.skip(i).take(_verifyBatchSize);
-    final results = await Future.wait(chunk.map((n) async {
-      final itemSw = Stopwatch()..start();
-      if (deletedIds.contains(n.id)) return null;
-      final existingTs = newsTimestamps[n.id] ?? 0;
-      if (n.timestamp.toInt() <= existingTs) return null;
+    final results = await Future.wait(
+      chunk.map((n) async {
+        final itemSw = Stopwatch()..start();
+        if (deletedIds.contains(n.id)) return null;
+        final existingTs = newsTimestamps[n.id] ?? 0;
+        if (n.timestamp.toInt() <= existingTs) return null;
 
-      final imageIdStr = n.imageId.isEmpty ? "" : n.imageId;
-      final expiresAtStr = n.expiresAt == 0 ? "" : n.expiresAt.toString();
-      final isCriticalStr = n.isCritical ? "1" : "0";
-      final payloadToSign = utf8.encode(
-        '${n.id}${n.title}${n.content}${n.timestamp}$imageIdStr$expiresAtStr$isCriticalStr',
-      );
-      final trustTier = await verifyDataLogic(
-        payloadToSign,
-        n.signature,
-        n.senderId,
-        serverPubKeyBytes,
-        trustedKeys,
-        adminTrustedKeys,
-        untrustedKeys,
-      );
-      log("[+] Verified Ed25519 signature for news ${n.id} in ${itemSw.elapsedMilliseconds}ms");
-      if (trustTier != 5) return MapEntry(n, trustTier);
-      return null;
-    }));
+        final imageIdStr = n.imageId.isEmpty ? "" : n.imageId;
+        final expiresAtStr = n.expiresAt == 0 ? "" : n.expiresAt.toString();
+        final isCriticalStr = n.isCritical ? "1" : "0";
+        final payloadToSign = utf8.encode(
+          '${n.id}${n.title}${n.content}${n.timestamp}$imageIdStr$expiresAtStr$isCriticalStr',
+        );
+        final trustTier = await verifyDataLogic(
+          payloadToSign,
+          n.signature,
+          n.senderId,
+          serverPubKeyBytes,
+          trustedKeys,
+          adminTrustedKeys,
+          untrustedKeys,
+        );
+        log(
+          "[+] Verified Ed25519 signature for news ${n.id} in ${itemSw.elapsedMilliseconds}ms",
+        );
+        if (trustTier != 5) return MapEntry(n, trustTier);
+        return null;
+      }),
+    );
     for (final res in results) {
       processed++;
       if (res != null) {
@@ -562,27 +601,31 @@ Future<void> _verifyPayloadInIsolate(Map<String, dynamic> args, [SendPort? sendP
   // Process profiles
   for (var i = 0; i < payload.profiles.length; i += _verifyBatchSize) {
     final chunk = payload.profiles.skip(i).take(_verifyBatchSize);
-    final results = await Future.wait(chunk.map((p) async {
-      final itemSw = Stopwatch()..start();
-      final existingTs = profileTimestamps[p.publicKey] ?? 0;
-      if (p.timestamp.toInt() <= existingTs) return null;
+    final results = await Future.wait(
+      chunk.map((p) async {
+        final itemSw = Stopwatch()..start();
+        final existingTs = profileTimestamps[p.publicKey] ?? 0;
+        if (p.timestamp.toInt() <= existingTs) return null;
 
-      final payloadToSign = utf8.encode(
-        '${p.publicKey}${p.name}${p.contactInfo}${p.timestamp}',
-      );
-      final trustTier = await verifyDataLogic(
-        payloadToSign,
-        p.signature,
-        p.publicKey,
-        serverPubKeyBytes,
-        trustedKeys,
-        adminTrustedKeys,
-        untrustedKeys,
-      );
-      log("[+] Verified Ed25519 signature for profile ${p.publicKey} in ${itemSw.elapsedMilliseconds}ms");
-      if (trustTier != 5) return p;
-      return null;
-    }));
+        final payloadToSign = utf8.encode(
+          '${p.publicKey}${p.name}${p.contactInfo}${p.timestamp}',
+        );
+        final trustTier = await verifyDataLogic(
+          payloadToSign,
+          p.signature,
+          p.publicKey,
+          serverPubKeyBytes,
+          trustedKeys,
+          adminTrustedKeys,
+          untrustedKeys,
+        );
+        log(
+          "[+] Verified Ed25519 signature for profile ${p.publicKey} in ${itemSw.elapsedMilliseconds}ms",
+        );
+        if (trustTier != 5) return p;
+        return null;
+      }),
+    );
     for (final p in results) {
       processed++;
       if (p != null) validProfiles.add(p);
@@ -596,33 +639,37 @@ Future<void> _verifyPayloadInIsolate(Map<String, dynamic> args, [SendPort? sendP
   // Process areas
   for (var i = 0; i < payload.areas.length; i += _verifyBatchSize) {
     final chunk = payload.areas.skip(i).take(_verifyBatchSize);
-    final results = await Future.wait(chunk.map((a) async {
-      final itemSw = Stopwatch()..start();
-      if (deletedIds.contains(a.id)) return null;
-      final existingTs = areaTimestamps[a.id] ?? 0;
-      if (a.timestamp.toInt() <= existingTs) return null;
+    final results = await Future.wait(
+      chunk.map((a) async {
+        final itemSw = Stopwatch()..start();
+        if (deletedIds.contains(a.id)) return null;
+        final existingTs = areaTimestamps[a.id] ?? 0;
+        if (a.timestamp.toInt() <= existingTs) return null;
 
-      final expiresAtStr = a.expiresAt == 0 ? "" : a.expiresAt.toString();
-      final isCriticalStr = a.isCritical ? "1" : "0";
-      final coordsStr = a.coordinates
-          .map((c) => '${c.latitude},${c.longitude}')
-          .join('|');
-      final payloadToSign = utf8.encode(
-        '${a.id}$coordsStr${a.type}${a.description}${a.timestamp}$expiresAtStr$isCriticalStr',
-      );
-      final trustTier = await verifyDataLogic(
-        payloadToSign,
-        a.signature,
-        a.senderId,
-        serverPubKeyBytes,
-        trustedKeys,
-        adminTrustedKeys,
-        untrustedKeys,
-      );
-      log("[+] Verified Ed25519 signature for area ${a.id} in ${itemSw.elapsedMilliseconds}ms");
-      if (trustTier != 5) return MapEntry(a, trustTier);
-      return null;
-    }));
+        final expiresAtStr = a.expiresAt == 0 ? "" : a.expiresAt.toString();
+        final isCriticalStr = a.isCritical ? "1" : "0";
+        final coordsStr = a.coordinates
+            .map((c) => '${c.latitude},${c.longitude}')
+            .join('|');
+        final payloadToSign = utf8.encode(
+          '${a.id}$coordsStr${a.type}${a.description}${a.timestamp}$expiresAtStr$isCriticalStr',
+        );
+        final trustTier = await verifyDataLogic(
+          payloadToSign,
+          a.signature,
+          a.senderId,
+          serverPubKeyBytes,
+          trustedKeys,
+          adminTrustedKeys,
+          untrustedKeys,
+        );
+        log(
+          "[+] Verified Ed25519 signature for area ${a.id} in ${itemSw.elapsedMilliseconds}ms",
+        );
+        if (trustTier != 5) return MapEntry(a, trustTier);
+        return null;
+      }),
+    );
     for (final res in results) {
       processed++;
       if (res != null) {
@@ -639,33 +686,37 @@ Future<void> _verifyPayloadInIsolate(Map<String, dynamic> args, [SendPort? sendP
   // Process paths
   for (var i = 0; i < payload.paths.length; i += _verifyBatchSize) {
     final chunk = payload.paths.skip(i).take(_verifyBatchSize);
-    final results = await Future.wait(chunk.map((p) async {
-      final itemSw = Stopwatch()..start();
-      if (deletedIds.contains(p.id)) return null;
-      final existingTs = pathTimestamps[p.id] ?? 0;
-      if (p.timestamp.toInt() <= existingTs) return null;
+    final results = await Future.wait(
+      chunk.map((p) async {
+        final itemSw = Stopwatch()..start();
+        if (deletedIds.contains(p.id)) return null;
+        final existingTs = pathTimestamps[p.id] ?? 0;
+        if (p.timestamp.toInt() <= existingTs) return null;
 
-      final expiresAtStr = p.expiresAt == 0 ? "" : p.expiresAt.toString();
-      final isCriticalStr = p.isCritical ? "1" : "0";
-      final coordsStr = p.coordinates
-          .map((c) => '${c.latitude},${c.longitude}')
-          .join('|');
-      final payloadToSign = utf8.encode(
-        '${p.id}$coordsStr${p.type}${p.description}${p.timestamp}$expiresAtStr$isCriticalStr',
-      );
-      final trustTier = await verifyDataLogic(
-        payloadToSign,
-        p.signature,
-        p.senderId,
-        serverPubKeyBytes,
-        trustedKeys,
-        adminTrustedKeys,
-        untrustedKeys,
-      );
-      log("[+] Verified Ed25519 signature for path ${p.id} in ${itemSw.elapsedMilliseconds}ms");
-      if (trustTier != 5) return MapEntry(p, trustTier);
-      return null;
-    }));
+        final expiresAtStr = p.expiresAt == 0 ? "" : p.expiresAt.toString();
+        final isCriticalStr = p.isCritical ? "1" : "0";
+        final coordsStr = p.coordinates
+            .map((c) => '${c.latitude},${c.longitude}')
+            .join('|');
+        final payloadToSign = utf8.encode(
+          '${p.id}$coordsStr${p.type}${p.description}${p.timestamp}$expiresAtStr$isCriticalStr',
+        );
+        final trustTier = await verifyDataLogic(
+          payloadToSign,
+          p.signature,
+          p.senderId,
+          serverPubKeyBytes,
+          trustedKeys,
+          adminTrustedKeys,
+          untrustedKeys,
+        );
+        log(
+          "[+] Verified Ed25519 signature for path ${p.id} in ${itemSw.elapsedMilliseconds}ms",
+        );
+        if (trustTier != 5) return MapEntry(p, trustTier);
+        return null;
+      }),
+    );
     for (final res in results) {
       processed++;
       if (res != null) {
@@ -765,7 +816,7 @@ class P2pService extends _$P2pService {
     final prefs = ref.read(sharedPreferencesProvider);
     final current = prefs.getInt(key) ?? 0;
     await prefs.setInt(key, current + amount);
-    
+
     if (isBackgroundIsolate) {
       bgServiceInstance?.invoke('reloadHeroStats');
     } else {
@@ -820,7 +871,9 @@ class P2pService extends _$P2pService {
     await _client.initialize();
 
     _hostStateSub = _host.streamHotspotState().listen((hotspotState) {
-      terminalLog("[+] Host state updated: isActive=${hotspotState.isActive}, ssid=${hotspotState.ssid}");
+      terminalLog(
+        "[+] Host state updated: isActive=${hotspotState.isActive}, ssid=${hotspotState.ssid}",
+      );
       state = state.copyWith(
         hostState: AppHostState(
           isActive: hotspotState.isActive,
@@ -879,7 +932,9 @@ class P2pService extends _$P2pService {
 
     _clientStateSub = _client.streamHotspotState().listen((hotspotState) {
       final wasActive = state.clientState?.isActive ?? false;
-      terminalLog("[+] Client state updated: isActive=${hotspotState.isActive}, hostSsid=${hotspotState.hostSsid}");
+      terminalLog(
+        "[+] Client state updated: isActive=${hotspotState.isActive}, hostSsid=${hotspotState.hostSsid}",
+      );
       state = state.copyWith(
         clientState: AppClientState(
           isActive: hotspotState.isActive,
@@ -920,7 +975,9 @@ class P2pService extends _$P2pService {
   Future<void> toggleAutoSync() async {
     if (_isToggling) return;
     _isToggling = true;
-    terminalLog("[*] Toggling Auto-Sync. Current state: ${state.isAutoSyncing}");
+    terminalLog(
+      "[*] Toggling Auto-Sync. Current state: ${state.isAutoSyncing}",
+    );
     try {
       _autoSyncTimer?.cancel();
       if (state.isAutoSyncing) {
@@ -971,7 +1028,9 @@ class P2pService extends _$P2pService {
 
       // If idle for 30 seconds (6 * 5s) while connected, disconnect to find new peers
       if (_idleTicks >= 6) {
-        terminalLog("[-] Idle timeout reached while connected. Forcing role switch to find new peers.");
+        terminalLog(
+          "[-] Idle timeout reached while connected. Forcing role switch to find new peers.",
+        );
         _idleTicks = 0;
         _isSwitchingRoles = true;
         try {
@@ -1049,10 +1108,11 @@ class P2pService extends _$P2pService {
       } catch (_) {}
 
       // Large jitter to prevent perfect sync loops between two devices.
-      int nextCycleSeconds = (baseInterval * batteryMultiplier) + Random().nextInt(20);
-      
+      int nextCycleSeconds =
+          (baseInterval * batteryMultiplier) + Random().nextInt(20);
+
       if (state.isHosting) {
-        // Give the host extra time so clients have a chance to discover and 
+        // Give the host extra time so clients have a chance to discover and
         // complete the connection process before the host tears down the group.
         nextCycleSeconds += 15;
       }
@@ -1296,7 +1356,9 @@ class P2pService extends _$P2pService {
             appDevices.isNotEmpty &&
             state.clientState?.isActive != true &&
             !state.isConnecting) {
-          terminalLog("[+] Auto-Sync: Found device, attempting connection to ${appDevices.first.deviceAddress}");
+          terminalLog(
+            "[+] Auto-Sync: Found device, attempting connection to ${appDevices.first.deviceAddress}",
+          );
           connectToDeviceByAddress(appDevices.first.deviceAddress);
         }
       });
@@ -1572,7 +1634,9 @@ class P2pService extends _$P2pService {
                     ref.read(offlineRegionsProvider.notifier).addRegion(region);
                   }
                 } catch (e, st) {
-                  terminalLog("[-] Failed to parse region from map filename: $e");
+                  terminalLog(
+                    "[-] Failed to parse region from map filename: $e",
+                  );
                   terminalLog("[-] Stacktrace: $st");
                 }
               }
@@ -1666,7 +1730,9 @@ class P2pService extends _$P2pService {
         'offlineRegions': offlineRegions.map((r) => r.toJson()).toList(),
       };
 
-      terminalLog("[+] Manifest generated. Bloom size: $bloomSize. Broadcasting...");
+      terminalLog(
+        "[+] Manifest generated. Bloom size: $bloomSize. Broadcasting...",
+      );
       await broadcastText(jsonEncode(manifest));
       state = state.copyWith(
         syncMessage: 'Sync data sent. Waiting for peer...',
@@ -1830,8 +1896,11 @@ class P2pService extends _$P2pService {
         return;
       }
 
-      final summary = 'Sent ${newHazards.length} markers, ${newNews.length} news, ${newProfiles.length} profiles, ${newAreas.length} areas, ${newPaths.length} paths, ${newDeleted.length} deletions, ${newDelegations.length} delegations, ${newRevocations.length} revocations.';
-      terminalLog("[+] Preparing payload with ${newHazards.length} markers, ${newNews.length} news...");
+      final summary =
+          'Sent ${newHazards.length} markers, ${newNews.length} news, ${newProfiles.length} profiles, ${newAreas.length} areas, ${newPaths.length} paths, ${newDeleted.length} deletions, ${newDelegations.length} delegations, ${newRevocations.length} revocations.';
+      terminalLog(
+        "[+] Preparing payload with ${newHazards.length} markers, ${newNews.length} news...",
+      );
       state = state.copyWith(
         syncMessage:
             'Sending ${newHazards.length} markers, ${newNews.length} news, ${newProfiles.length} profiles, ${newAreas.length} areas, ${newPaths.length} paths, ${newDeleted.length} deletions, ${newDelegations.length} delegations, ${newRevocations.length} revocations...',
@@ -1958,7 +2027,9 @@ class P2pService extends _$P2pService {
         );
       }
 
-      final encoded = await Isolate.run(() => base64Encode(payload.writeToBuffer()));
+      final encoded = await Isolate.run(
+        () => base64Encode(payload.writeToBuffer()),
+      );
       await broadcastText(jsonEncode({'type': 'payload', 'data': encoded}));
       state = state.copyWith(
         syncMessage: 'Data sent successfully.',
@@ -2032,9 +2103,12 @@ class P2pService extends _$P2pService {
       final data = await file.readAsBytes();
       await file.delete(); // Clean up
 
-      state = state.copyWith(syncMessage: 'Decoding payload...', clearSyncProgress: true);
+      state = state.copyWith(
+        syncMessage: 'Decoding payload...',
+        clearSyncProgress: true,
+      );
       _incrementHeroStat('hero_data_carried', data.length);
-      
+
       final payload = await Isolate.run(() => pb.SyncPayload.fromBuffer(data));
       terminalLog("[+] Payload decoded in ${stopwatch.elapsedMilliseconds}ms");
 
@@ -2050,9 +2124,13 @@ class P2pService extends _$P2pService {
     } finally {
       state = state.copyWith(isSyncing: false, clearSyncProgress: true);
       if (isBackgroundIsolate) {
-        bgServiceInstance?.invoke('processPayloadComplete', {'success': success});
+        bgServiceInstance?.invoke('processPayloadComplete', {
+          'success': success,
+        });
       }
-      terminalLog("[+] processPayloadFromFile completed in ${stopwatch.elapsedMilliseconds}ms");
+      terminalLog(
+        "[+] processPayloadFromFile completed in ${stopwatch.elapsedMilliseconds}ms",
+      );
     }
   }
 
@@ -2066,10 +2144,13 @@ class P2pService extends _$P2pService {
       clearSyncProgress: true,
     );
     try {
-      state = state.copyWith(syncMessage: 'Decoding payload...', clearSyncProgress: true);
+      state = state.copyWith(
+        syncMessage: 'Decoding payload...',
+        clearSyncProgress: true,
+      );
       final data = await Isolate.run(() => base64Decode(base64Data));
       _incrementHeroStat('hero_data_carried', data.length);
-      
+
       final payload = await Isolate.run(() => pb.SyncPayload.fromBuffer(data));
       terminalLog("[+] Payload decoded in ${stopwatch.elapsedMilliseconds}ms");
 
@@ -2083,11 +2164,16 @@ class P2pService extends _$P2pService {
       );
     } finally {
       state = state.copyWith(isSyncing: false, clearSyncProgress: true);
-      terminalLog("[+] processPayload completed in ${stopwatch.elapsedMilliseconds}ms");
+      terminalLog(
+        "[+] processPayload completed in ${stopwatch.elapsedMilliseconds}ms",
+      );
     }
   }
 
-  Future<void> _processDecodedPayload(pb.SyncPayload payload, {required bool isFromCloud}) async {
+  Future<void> _processDecodedPayload(
+    pb.SyncPayload payload, {
+    required bool isFromCloud,
+  }) async {
     final processStopwatch = Stopwatch()..start();
 
     // Deduplicate payload items to prevent redundant signature verification
@@ -2227,9 +2313,15 @@ class P2pService extends _$P2pService {
     final payloadMarkerIds = payload.markers.map((m) => m.id).toList();
     for (var i = 0; i < payloadMarkerIds.length; i += 900) {
       final chunk = payloadMarkerIds.skip(i).take(900).toList();
-      final existing = await (db.selectOnly(db.hazardMarkers)..addColumns([db.hazardMarkers.id, db.hazardMarkers.timestamp])..where(db.hazardMarkers.id.isIn(chunk))).get();
+      final existing =
+          await (db.selectOnly(db.hazardMarkers)
+                ..addColumns([db.hazardMarkers.id, db.hazardMarkers.timestamp])
+                ..where(db.hazardMarkers.id.isIn(chunk)))
+              .get();
       for (final m in existing) {
-        markerTimestamps[m.read(db.hazardMarkers.id)!] = m.read(db.hazardMarkers.timestamp)!;
+        markerTimestamps[m.read(db.hazardMarkers.id)!] = m.read(
+          db.hazardMarkers.timestamp,
+        )!;
       }
     }
 
@@ -2237,19 +2329,36 @@ class P2pService extends _$P2pService {
     final payloadNewsIds = payload.news.map((n) => n.id).toList();
     for (var i = 0; i < payloadNewsIds.length; i += 900) {
       final chunk = payloadNewsIds.skip(i).take(900).toList();
-      final existing = await (db.selectOnly(db.newsItems)..addColumns([db.newsItems.id, db.newsItems.timestamp])..where(db.newsItems.id.isIn(chunk))).get();
+      final existing =
+          await (db.selectOnly(db.newsItems)
+                ..addColumns([db.newsItems.id, db.newsItems.timestamp])
+                ..where(db.newsItems.id.isIn(chunk)))
+              .get();
       for (final n in existing) {
-        newsTimestamps[n.read(db.newsItems.id)!] = n.read(db.newsItems.timestamp)!;
+        newsTimestamps[n.read(db.newsItems.id)!] = n.read(
+          db.newsItems.timestamp,
+        )!;
       }
     }
 
     final profileTimestamps = <String, int>{};
-    final payloadProfileKeys = payload.profiles.map((p) => p.publicKey).toList();
+    final payloadProfileKeys = payload.profiles
+        .map((p) => p.publicKey)
+        .toList();
     for (var i = 0; i < payloadProfileKeys.length; i += 900) {
       final chunk = payloadProfileKeys.skip(i).take(900).toList();
-      final existing = await (db.selectOnly(db.userProfiles)..addColumns([db.userProfiles.publicKey, db.userProfiles.timestamp])..where(db.userProfiles.publicKey.isIn(chunk))).get();
+      final existing =
+          await (db.selectOnly(db.userProfiles)
+                ..addColumns([
+                  db.userProfiles.publicKey,
+                  db.userProfiles.timestamp,
+                ])
+                ..where(db.userProfiles.publicKey.isIn(chunk)))
+              .get();
       for (final p in existing) {
-        profileTimestamps[p.read(db.userProfiles.publicKey)!] = p.read(db.userProfiles.timestamp)!;
+        profileTimestamps[p.read(db.userProfiles.publicKey)!] = p.read(
+          db.userProfiles.timestamp,
+        )!;
       }
     }
 
@@ -2257,7 +2366,11 @@ class P2pService extends _$P2pService {
     final payloadAreaIds = payload.areas.map((a) => a.id).toList();
     for (var i = 0; i < payloadAreaIds.length; i += 900) {
       final chunk = payloadAreaIds.skip(i).take(900).toList();
-      final existing = await (db.selectOnly(db.areas)..addColumns([db.areas.id, db.areas.timestamp])..where(db.areas.id.isIn(chunk))).get();
+      final existing =
+          await (db.selectOnly(db.areas)
+                ..addColumns([db.areas.id, db.areas.timestamp])
+                ..where(db.areas.id.isIn(chunk)))
+              .get();
       for (final a in existing) {
         areaTimestamps[a.read(db.areas.id)!] = a.read(db.areas.timestamp)!;
       }
@@ -2267,7 +2380,11 @@ class P2pService extends _$P2pService {
     final payloadPathIds = payload.paths.map((p) => p.id).toList();
     for (var i = 0; i < payloadPathIds.length; i += 900) {
       final chunk = payloadPathIds.skip(i).take(900).toList();
-      final existing = await (db.selectOnly(db.paths)..addColumns([db.paths.id, db.paths.timestamp])..where(db.paths.id.isIn(chunk))).get();
+      final existing =
+          await (db.selectOnly(db.paths)
+                ..addColumns([db.paths.id, db.paths.timestamp])
+                ..where(db.paths.id.isIn(chunk)))
+              .get();
       for (final p in existing) {
         pathTimestamps[p.read(db.paths.id)!] = p.read(db.paths.timestamp)!;
       }
@@ -2300,12 +2417,22 @@ class P2pService extends _$P2pService {
     // Insert deleted items immediately
     if (validDeleted.isNotEmpty || seenIds.isNotEmpty) {
       await db.batch((batch) {
-        batch.insertAll(db.deletedItems, validDeleted, mode: InsertMode.insertOrReplace);
-        batch.insertAll(db.seenMessageIds, seenIds, mode: InsertMode.insertOrReplace);
+        batch.insertAll(
+          db.deletedItems,
+          validDeleted,
+          mode: InsertMode.insertOrReplace,
+        );
+        batch.insertAll(
+          db.seenMessageIds,
+          seenIds,
+          mode: InsertMode.insertOrReplace,
+        );
       });
     }
-    
-    terminalLog("[+] DB queries for existing timestamps took ${processStopwatch.elapsedMilliseconds}ms");
+
+    terminalLog(
+      "[+] DB queries for existing timestamps took ${processStopwatch.elapsedMilliseconds}ms",
+    );
     processStopwatch.reset();
 
     state = state.copyWith(
@@ -2345,242 +2472,320 @@ class P2pService extends _$P2pService {
     final allValidDelegationsPb = <pb.TrustDelegation>[];
     final allValidRevocationsPb = <pb.RevokedDelegation>[];
 
-    await _runVerifyPayloadInIsolate(args, (progress) {
-      state = state.copyWith(
-        syncMessage: 'Verifying signatures...',
-        syncProgress: progress,
-      );
-    }, (batchData) async {
-      // Process batch
-      final batchStopwatch = Stopwatch()..start();
-      final validMarkersPb = batchData['validMarkers'] as List<pb.HazardMarker>;
-      final validNewsPb = batchData['validNews'] as List<pb.NewsItem>;
-      final validProfilesPb = batchData['validProfiles'] as List<pb.UserProfile>;
-      final validAreasPb = batchData['validAreas'] as List<pb.AreaMarker>;
-      final validPathsPb = batchData['validPaths'] as List<pb.PathMarker>;
-      final validDelegationsPb = batchData['validDelegations'] as List<pb.TrustDelegation>;
-      final validRevocationsPb = batchData['validRevocations'] as List<pb.RevokedDelegation>;
+    await _runVerifyPayloadInIsolate(
+      args,
+      (progress) {
+        state = state.copyWith(
+          syncMessage: 'Verifying signatures...',
+          syncProgress: progress,
+        );
+      },
+      (batchData) async {
+        // Process batch
+        final batchStopwatch = Stopwatch()..start();
+        final validMarkersPb =
+            batchData['validMarkers'] as List<pb.HazardMarker>;
+        final validNewsPb = batchData['validNews'] as List<pb.NewsItem>;
+        final validProfilesPb =
+            batchData['validProfiles'] as List<pb.UserProfile>;
+        final validAreasPb = batchData['validAreas'] as List<pb.AreaMarker>;
+        final validPathsPb = batchData['validPaths'] as List<pb.PathMarker>;
+        final validDelegationsPb =
+            batchData['validDelegations'] as List<pb.TrustDelegation>;
+        final validRevocationsPb =
+            batchData['validRevocations'] as List<pb.RevokedDelegation>;
 
-      final markerTrustTiers = batchData['markerTrustTiers'] as Map<String, int>;
-      final newsTrustTiers = batchData['newsTrustTiers'] as Map<String, int>;
-      final areaTrustTiers = batchData['areaTrustTiers'] as Map<String, int>;
-      final pathTrustTiers = batchData['pathTrustTiers'] as Map<String, int>;
+        final markerTrustTiers =
+            batchData['markerTrustTiers'] as Map<String, int>;
+        final newsTrustTiers = batchData['newsTrustTiers'] as Map<String, int>;
+        final areaTrustTiers = batchData['areaTrustTiers'] as Map<String, int>;
+        final pathTrustTiers = batchData['pathTrustTiers'] as Map<String, int>;
 
-      allValidMarkersPb.addAll(validMarkersPb);
-      allValidNewsPb.addAll(validNewsPb);
-      allValidProfilesPb.addAll(validProfilesPb);
-      allValidAreasPb.addAll(validAreasPb);
-      allValidPathsPb.addAll(validPathsPb);
-      allValidDelegationsPb.addAll(validDelegationsPb);
-      allValidRevocationsPb.addAll(validRevocationsPb);
+        allValidMarkersPb.addAll(validMarkersPb);
+        allValidNewsPb.addAll(validNewsPb);
+        allValidProfilesPb.addAll(validProfilesPb);
+        allValidAreasPb.addAll(validAreasPb);
+        allValidPathsPb.addAll(validPathsPb);
+        allValidDelegationsPb.addAll(validDelegationsPb);
+        allValidRevocationsPb.addAll(validRevocationsPb);
 
-      final batchSeenIds = <SeenMessageIdsCompanion>[];
-      final validDelegations = <AdminTrustedSendersCompanion>[];
-      for (final d in validDelegationsPb) {
-        validDelegations.add(
-          AdminTrustedSendersCompanion.insert(
-            publicKey: d.delegateePublicKey,
-            delegatorPublicKey: d.delegatorPublicKey,
-            timestamp: d.timestamp.toInt(),
-            signature: d.signature,
-          ),
-        );
-        batchSeenIds.add(
-          SeenMessageIdsCompanion.insert(
-            messageId: 'delg_${d.delegateePublicKey}_${d.timestamp}',
-            timestamp: DateTime.now().millisecondsSinceEpoch,
-            uploadedToCloud: Value(isFromCloud),
-          ),
-        );
-      }
-
-      final validRevocations = <RevokedDelegationsCompanion>[];
-      for (final r in validRevocationsPb) {
-        validRevocations.add(
-          RevokedDelegationsCompanion.insert(
-            delegateePublicKey: r.delegateePublicKey,
-            delegatorPublicKey: r.delegatorPublicKey,
-            timestamp: r.timestamp.toInt(),
-            signature: r.signature,
-          ),
-        );
-        batchSeenIds.add(
-          SeenMessageIdsCompanion.insert(
-            messageId: 'rev_${r.delegateePublicKey}_${r.timestamp}',
-            timestamp: DateTime.now().millisecondsSinceEpoch,
-            uploadedToCloud: Value(isFromCloud),
-          ),
-        );
-      }
-
-      final validMarkers = <HazardMarkersCompanion>[];
-      for (final m in validMarkersPb) {
-        validMarkers.add(
-          HazardMarkersCompanion.insert(
-            id: m.id,
-            latitude: m.latitude,
-            longitude: m.longitude,
-            type: m.type,
-            description: m.description,
-            timestamp: m.timestamp.toInt(),
-            senderId: m.senderId,
-            signature: Value(m.signature),
-            trustTier: markerTrustTiers[m.id]!,
-            imageId: Value(m.imageId.isEmpty ? null : m.imageId),
-            expiresAt: Value(m.expiresAt == 0 ? null : m.expiresAt.toInt()),
-            isCritical: Value(m.isCritical),
-          ),
-        );
-        batchSeenIds.add(
-          SeenMessageIdsCompanion.insert(
-            messageId: '${m.id}_${m.timestamp}',
-            timestamp: DateTime.now().millisecondsSinceEpoch,
-            uploadedToCloud: Value(isFromCloud),
-          ),
-        );
-      }
-
-      final validNews = <NewsItemsCompanion>[];
-      for (final n in validNewsPb) {
-        validNews.add(
-          NewsItemsCompanion.insert(
-            id: n.id,
-            title: n.title,
-            content: n.content,
-            timestamp: n.timestamp.toInt(),
-            senderId: n.senderId,
-            signature: Value(n.signature),
-            trustTier: newsTrustTiers[n.id]!,
-            expiresAt: Value(n.expiresAt == 0 ? null : n.expiresAt.toInt()),
-            imageId: Value(n.imageId.isEmpty ? null : n.imageId),
-            isCritical: Value(n.isCritical),
-          ),
-        );
-        batchSeenIds.add(
-          SeenMessageIdsCompanion.insert(
-            messageId: '${n.id}_${n.timestamp}',
-            timestamp: DateTime.now().millisecondsSinceEpoch,
-            uploadedToCloud: Value(isFromCloud),
-          ),
-        );
-      }
-
-      final validProfiles = <UserProfilesCompanion>[];
-      for (final p in validProfilesPb) {
-        validProfiles.add(
-          UserProfilesCompanion.insert(
-            publicKey: p.publicKey,
-            name: p.name,
-            contactInfo: p.contactInfo,
-            timestamp: p.timestamp.toInt(),
-            signature: p.signature,
-          ),
-        );
-        batchSeenIds.add(
-          SeenMessageIdsCompanion.insert(
-            messageId: '${p.publicKey}_${p.timestamp}',
-            timestamp: DateTime.now().millisecondsSinceEpoch,
-            uploadedToCloud: Value(isFromCloud),
-          ),
-        );
-      }
-
-      final validAreas = <AreasCompanion>[];
-      for (final a in validAreasPb) {
-        final coords = a.coordinates
-            .map((c) => {'lat': c.latitude, 'lng': c.longitude})
-            .toList();
-        validAreas.add(
-          AreasCompanion.insert(
-            id: a.id,
-            coordinates: coords,
-            type: a.type,
-            description: a.description,
-            timestamp: a.timestamp.toInt(),
-            senderId: a.senderId,
-            signature: Value(a.signature),
-            trustTier: areaTrustTiers[a.id]!,
-            expiresAt: Value(a.expiresAt == 0 ? null : a.expiresAt.toInt()),
-            isCritical: Value(a.isCritical),
-          ),
-        );
-        batchSeenIds.add(
-          SeenMessageIdsCompanion.insert(
-            messageId: '${a.id}_${a.timestamp}',
-            timestamp: DateTime.now().millisecondsSinceEpoch,
-            uploadedToCloud: Value(isFromCloud),
-          ),
-        );
-      }
-
-      final validPaths = <PathsCompanion>[];
-      for (final p in validPathsPb) {
-        final coords = p.coordinates
-            .map((c) => {'lat': c.latitude, 'lng': c.longitude})
-            .toList();
-        validPaths.add(
-          PathsCompanion.insert(
-            id: p.id,
-            coordinates: coords,
-            type: p.type,
-            description: p.description,
-            timestamp: p.timestamp.toInt(),
-            senderId: p.senderId,
-            signature: Value(p.signature),
-            trustTier: pathTrustTiers[p.id]!,
-            expiresAt: Value(p.expiresAt == 0 ? null : p.expiresAt.toInt()),
-            isCritical: Value(p.isCritical),
-          ),
-        );
-        batchSeenIds.add(
-          SeenMessageIdsCompanion.insert(
-            messageId: '${p.id}_${p.timestamp}',
-            timestamp: DateTime.now().millisecondsSinceEpoch,
-            uploadedToCloud: Value(isFromCloud),
-          ),
-        );
-      }
-
-      await db.batch((batch) {
-        batch.insertAll(db.hazardMarkers, validMarkers, mode: InsertMode.insertOrReplace);
-        batch.insertAll(db.newsItems, validNews, mode: InsertMode.insertOrReplace);
-        batch.insertAll(db.userProfiles, validProfiles, mode: InsertMode.insertOrReplace);
-        batch.insertAll(db.areas, validAreas, mode: InsertMode.insertOrReplace);
-        batch.insertAll(db.paths, validPaths, mode: InsertMode.insertOrReplace);
-        batch.insertAll(db.seenMessageIds, batchSeenIds, mode: InsertMode.insertOrReplace);
-        batch.insertAll(db.adminTrustedSenders, validDelegations, mode: InsertMode.insertOrReplace);
-        batch.insertAll(db.revokedDelegations, validRevocations, mode: InsertMode.insertOrReplace);
-      });
-
-      // Update trust tiers for delegations/revocations in this batch
-      await db.transaction(() async {
-        for (final d in validDelegations) {
-          if (revokedKeys.contains(d.publicKey.value)) continue;
-          await (db.update(db.hazardMarkers)..where((t) => t.senderId.equals(d.publicKey.value) & t.trustTier.isBiggerThanValue(2)))
-              .write(const HazardMarkersCompanion(trustTier: Value(2)));
-          await (db.update(db.newsItems)..where((t) => t.senderId.equals(d.publicKey.value) & t.trustTier.isBiggerThanValue(2)))
-              .write(const NewsItemsCompanion(trustTier: Value(2)));
-          await (db.update(db.areas)..where((t) => t.senderId.equals(d.publicKey.value) & t.trustTier.isBiggerThanValue(2)))
-              .write(const AreasCompanion(trustTier: Value(2)));
-          await (db.update(db.paths)..where((t) => t.senderId.equals(d.publicKey.value) & t.trustTier.isBiggerThanValue(2)))
-              .write(const PathsCompanion(trustTier: Value(2)));
+        final batchSeenIds = <SeenMessageIdsCompanion>[];
+        final validDelegations = <AdminTrustedSendersCompanion>[];
+        for (final d in validDelegationsPb) {
+          validDelegations.add(
+            AdminTrustedSendersCompanion.insert(
+              publicKey: d.delegateePublicKey,
+              delegatorPublicKey: d.delegatorPublicKey,
+              timestamp: d.timestamp.toInt(),
+              signature: d.signature,
+            ),
+          );
+          batchSeenIds.add(
+            SeenMessageIdsCompanion.insert(
+              messageId: 'delg_${d.delegateePublicKey}_${d.timestamp}',
+              timestamp: DateTime.now().millisecondsSinceEpoch,
+              uploadedToCloud: Value(isFromCloud),
+            ),
+          );
         }
-        for (final r in validRevocations) {
-          final fallbackTier = trustedKeys.contains(r.delegateePublicKey.value) ? 3 : 4;
-          await (db.update(db.hazardMarkers)..where((t) => t.senderId.equals(r.delegateePublicKey.value) & t.trustTier.equals(2)))
-              .write(HazardMarkersCompanion(trustTier: Value(fallbackTier)));
-          await (db.update(db.newsItems)..where((t) => t.senderId.equals(r.delegateePublicKey.value) & t.trustTier.equals(2)))
-              .write(NewsItemsCompanion(trustTier: Value(fallbackTier)));
-          await (db.update(db.areas)..where((t) => t.senderId.equals(r.delegateePublicKey.value) & t.trustTier.equals(2)))
-              .write(AreasCompanion(trustTier: Value(fallbackTier)));
-          await (db.update(db.paths)..where((t) => t.senderId.equals(r.delegateePublicKey.value) & t.trustTier.equals(2)))
-              .write(PathsCompanion(trustTier: Value(fallbackTier)));
-        }
-      });
-      terminalLog("[+] Batch processed and saved to DB in ${batchStopwatch.elapsedMilliseconds}ms");
-    });
 
-    terminalLog("[+] Isolate verification completed in ${processStopwatch.elapsedMilliseconds}ms");
+        final validRevocations = <RevokedDelegationsCompanion>[];
+        for (final r in validRevocationsPb) {
+          validRevocations.add(
+            RevokedDelegationsCompanion.insert(
+              delegateePublicKey: r.delegateePublicKey,
+              delegatorPublicKey: r.delegatorPublicKey,
+              timestamp: r.timestamp.toInt(),
+              signature: r.signature,
+            ),
+          );
+          batchSeenIds.add(
+            SeenMessageIdsCompanion.insert(
+              messageId: 'rev_${r.delegateePublicKey}_${r.timestamp}',
+              timestamp: DateTime.now().millisecondsSinceEpoch,
+              uploadedToCloud: Value(isFromCloud),
+            ),
+          );
+        }
+
+        final validMarkers = <HazardMarkersCompanion>[];
+        for (final m in validMarkersPb) {
+          validMarkers.add(
+            HazardMarkersCompanion.insert(
+              id: m.id,
+              latitude: m.latitude,
+              longitude: m.longitude,
+              type: m.type,
+              description: m.description,
+              timestamp: m.timestamp.toInt(),
+              senderId: m.senderId,
+              signature: Value(m.signature),
+              trustTier: markerTrustTiers[m.id]!,
+              imageId: Value(m.imageId.isEmpty ? null : m.imageId),
+              expiresAt: Value(m.expiresAt == 0 ? null : m.expiresAt.toInt()),
+              isCritical: Value(m.isCritical),
+            ),
+          );
+          batchSeenIds.add(
+            SeenMessageIdsCompanion.insert(
+              messageId: '${m.id}_${m.timestamp}',
+              timestamp: DateTime.now().millisecondsSinceEpoch,
+              uploadedToCloud: Value(isFromCloud),
+            ),
+          );
+        }
+
+        final validNews = <NewsItemsCompanion>[];
+        for (final n in validNewsPb) {
+          validNews.add(
+            NewsItemsCompanion.insert(
+              id: n.id,
+              title: n.title,
+              content: n.content,
+              timestamp: n.timestamp.toInt(),
+              senderId: n.senderId,
+              signature: Value(n.signature),
+              trustTier: newsTrustTiers[n.id]!,
+              expiresAt: Value(n.expiresAt == 0 ? null : n.expiresAt.toInt()),
+              imageId: Value(n.imageId.isEmpty ? null : n.imageId),
+              isCritical: Value(n.isCritical),
+            ),
+          );
+          batchSeenIds.add(
+            SeenMessageIdsCompanion.insert(
+              messageId: '${n.id}_${n.timestamp}',
+              timestamp: DateTime.now().millisecondsSinceEpoch,
+              uploadedToCloud: Value(isFromCloud),
+            ),
+          );
+        }
+
+        final validProfiles = <UserProfilesCompanion>[];
+        for (final p in validProfilesPb) {
+          validProfiles.add(
+            UserProfilesCompanion.insert(
+              publicKey: p.publicKey,
+              name: p.name,
+              contactInfo: p.contactInfo,
+              timestamp: p.timestamp.toInt(),
+              signature: p.signature,
+            ),
+          );
+          batchSeenIds.add(
+            SeenMessageIdsCompanion.insert(
+              messageId: '${p.publicKey}_${p.timestamp}',
+              timestamp: DateTime.now().millisecondsSinceEpoch,
+              uploadedToCloud: Value(isFromCloud),
+            ),
+          );
+        }
+
+        final validAreas = <AreasCompanion>[];
+        for (final a in validAreasPb) {
+          final coords = a.coordinates
+              .map((c) => {'lat': c.latitude, 'lng': c.longitude})
+              .toList();
+          validAreas.add(
+            AreasCompanion.insert(
+              id: a.id,
+              coordinates: coords,
+              type: a.type,
+              description: a.description,
+              timestamp: a.timestamp.toInt(),
+              senderId: a.senderId,
+              signature: Value(a.signature),
+              trustTier: areaTrustTiers[a.id]!,
+              expiresAt: Value(a.expiresAt == 0 ? null : a.expiresAt.toInt()),
+              isCritical: Value(a.isCritical),
+            ),
+          );
+          batchSeenIds.add(
+            SeenMessageIdsCompanion.insert(
+              messageId: '${a.id}_${a.timestamp}',
+              timestamp: DateTime.now().millisecondsSinceEpoch,
+              uploadedToCloud: Value(isFromCloud),
+            ),
+          );
+        }
+
+        final validPaths = <PathsCompanion>[];
+        for (final p in validPathsPb) {
+          final coords = p.coordinates
+              .map((c) => {'lat': c.latitude, 'lng': c.longitude})
+              .toList();
+          validPaths.add(
+            PathsCompanion.insert(
+              id: p.id,
+              coordinates: coords,
+              type: p.type,
+              description: p.description,
+              timestamp: p.timestamp.toInt(),
+              senderId: p.senderId,
+              signature: Value(p.signature),
+              trustTier: pathTrustTiers[p.id]!,
+              expiresAt: Value(p.expiresAt == 0 ? null : p.expiresAt.toInt()),
+              isCritical: Value(p.isCritical),
+            ),
+          );
+          batchSeenIds.add(
+            SeenMessageIdsCompanion.insert(
+              messageId: '${p.id}_${p.timestamp}',
+              timestamp: DateTime.now().millisecondsSinceEpoch,
+              uploadedToCloud: Value(isFromCloud),
+            ),
+          );
+        }
+
+        await db.batch((batch) {
+          batch.insertAll(
+            db.hazardMarkers,
+            validMarkers,
+            mode: InsertMode.insertOrReplace,
+          );
+          batch.insertAll(
+            db.newsItems,
+            validNews,
+            mode: InsertMode.insertOrReplace,
+          );
+          batch.insertAll(
+            db.userProfiles,
+            validProfiles,
+            mode: InsertMode.insertOrReplace,
+          );
+          batch.insertAll(
+            db.areas,
+            validAreas,
+            mode: InsertMode.insertOrReplace,
+          );
+          batch.insertAll(
+            db.paths,
+            validPaths,
+            mode: InsertMode.insertOrReplace,
+          );
+          batch.insertAll(
+            db.seenMessageIds,
+            batchSeenIds,
+            mode: InsertMode.insertOrReplace,
+          );
+          batch.insertAll(
+            db.adminTrustedSenders,
+            validDelegations,
+            mode: InsertMode.insertOrReplace,
+          );
+          batch.insertAll(
+            db.revokedDelegations,
+            validRevocations,
+            mode: InsertMode.insertOrReplace,
+          );
+        });
+
+        // Update trust tiers for delegations/revocations in this batch
+        await db.transaction(() async {
+          for (final d in validDelegations) {
+            if (revokedKeys.contains(d.publicKey.value)) continue;
+            await (db.update(db.hazardMarkers)..where(
+                  (t) =>
+                      t.senderId.equals(d.publicKey.value) &
+                      t.trustTier.isBiggerThanValue(2),
+                ))
+                .write(const HazardMarkersCompanion(trustTier: Value(2)));
+            await (db.update(db.newsItems)..where(
+                  (t) =>
+                      t.senderId.equals(d.publicKey.value) &
+                      t.trustTier.isBiggerThanValue(2),
+                ))
+                .write(const NewsItemsCompanion(trustTier: Value(2)));
+            await (db.update(db.areas)..where(
+                  (t) =>
+                      t.senderId.equals(d.publicKey.value) &
+                      t.trustTier.isBiggerThanValue(2),
+                ))
+                .write(const AreasCompanion(trustTier: Value(2)));
+            await (db.update(db.paths)..where(
+                  (t) =>
+                      t.senderId.equals(d.publicKey.value) &
+                      t.trustTier.isBiggerThanValue(2),
+                ))
+                .write(const PathsCompanion(trustTier: Value(2)));
+          }
+          for (final r in validRevocations) {
+            final fallbackTier =
+                trustedKeys.contains(r.delegateePublicKey.value) ? 3 : 4;
+            await (db.update(db.hazardMarkers)..where(
+                  (t) =>
+                      t.senderId.equals(r.delegateePublicKey.value) &
+                      t.trustTier.equals(2),
+                ))
+                .write(HazardMarkersCompanion(trustTier: Value(fallbackTier)));
+            await (db.update(db.newsItems)..where(
+                  (t) =>
+                      t.senderId.equals(r.delegateePublicKey.value) &
+                      t.trustTier.equals(2),
+                ))
+                .write(NewsItemsCompanion(trustTier: Value(fallbackTier)));
+            await (db.update(db.areas)..where(
+                  (t) =>
+                      t.senderId.equals(r.delegateePublicKey.value) &
+                      t.trustTier.equals(2),
+                ))
+                .write(AreasCompanion(trustTier: Value(fallbackTier)));
+            await (db.update(db.paths)..where(
+                  (t) =>
+                      t.senderId.equals(r.delegateePublicKey.value) &
+                      t.trustTier.equals(2),
+                ))
+                .write(PathsCompanion(trustTier: Value(fallbackTier)));
+          }
+        });
+        terminalLog(
+          "[+] Batch processed and saved to DB in ${batchStopwatch.elapsedMilliseconds}ms",
+        );
+      },
+    );
+
+    terminalLog(
+      "[+] Isolate verification completed in ${processStopwatch.elapsedMilliseconds}ms",
+    );
     processStopwatch.reset();
 
     state = state.copyWith(
@@ -2613,12 +2818,8 @@ class P2pService extends _$P2pService {
         await (db.delete(
           db.newsItems,
         )..where((t) => t.id.equals(d.id.value))).go();
-        await (db.delete(
-          db.areas,
-        )..where((t) => t.id.equals(d.id.value))).go();
-        await (db.delete(
-          db.paths,
-        )..where((t) => t.id.equals(d.id.value))).go();
+        await (db.delete(db.areas)..where((t) => t.id.equals(d.id.value))).go();
+        await (db.delete(db.paths)..where((t) => t.id.equals(d.id.value))).go();
       }
     });
 
@@ -2678,8 +2879,10 @@ class P2pService extends _$P2pService {
         }
       }
     }
-    
-    terminalLog("[+] Cleanup and image requests took ${processStopwatch.elapsedMilliseconds}ms");
+
+    terminalLog(
+      "[+] Cleanup and image requests took ${processStopwatch.elapsedMilliseconds}ms",
+    );
     processStopwatch.reset();
 
     state = state.copyWith(
@@ -2736,10 +2939,15 @@ class P2pService extends _$P2pService {
     if (hasNewData) {
       if (isFromCloud) {
         // If we got new data from the cloud, and we are connected to peers, forward it to them.
-        if ((state.isHosting && state.connectedClients.isNotEmpty) || state.clientState?.isActive == true) {
+        if ((state.isHosting && state.connectedClients.isNotEmpty) ||
+            state.clientState?.isActive == true) {
           final encoded = await _encodePayloadInIsolate(forwardPayload);
           await broadcastText(jsonEncode({'type': 'payload', 'data': encoded}));
-          int relayedCount = forwardPayload.markers.length + forwardPayload.news.length + forwardPayload.areas.length + forwardPayload.paths.length;
+          int relayedCount =
+              forwardPayload.markers.length +
+              forwardPayload.news.length +
+              forwardPayload.areas.length +
+              forwardPayload.paths.length;
           _incrementHeroStat('hero_reports_relayed', relayedCount);
           _incrementHeroStat('hero_data_carried', encoded.length);
         }
@@ -2749,7 +2957,11 @@ class P2pService extends _$P2pService {
           final encoded = await _encodePayloadInIsolate(forwardPayload);
           await broadcastText(jsonEncode({'type': 'payload', 'data': encoded}));
 
-          int relayedCount = forwardPayload.markers.length + forwardPayload.news.length + forwardPayload.areas.length + forwardPayload.paths.length;
+          int relayedCount =
+              forwardPayload.markers.length +
+              forwardPayload.news.length +
+              forwardPayload.areas.length +
+              forwardPayload.paths.length;
           _incrementHeroStat('hero_reports_relayed', relayedCount);
           _incrementHeroStat('hero_data_carried', encoded.length);
         } else {
@@ -2762,7 +2974,8 @@ class P2pService extends _$P2pService {
       }
     }
 
-    final summary = 'Received ${payload.markers.length} markers, ${payload.news.length} news, ${payload.profiles.length} profiles, ${payload.areas.length} areas, ${payload.paths.length} paths, ${payload.deletedItems.length} deletions, ${payload.delegations.length} delegations, ${payload.revokedDelegations.length} revocations.';
+    final summary =
+        'Received ${payload.markers.length} markers, ${payload.news.length} news, ${payload.profiles.length} profiles, ${payload.areas.length} areas, ${payload.paths.length} paths, ${payload.deletedItems.length} deletions, ${payload.delegations.length} delegations, ${payload.revokedDelegations.length} revocations.';
     state = state.copyWith(
       isSyncing: false,
       lastSyncTime: DateTime.now(),
@@ -2770,7 +2983,9 @@ class P2pService extends _$P2pService {
       lastSyncSummary: summary,
       clearSyncProgress: true,
     );
-    terminalLog("[+] Forwarding data took ${processStopwatch.elapsedMilliseconds}ms");
+    terminalLog(
+      "[+] Forwarding data took ${processStopwatch.elapsedMilliseconds}ms",
+    );
     terminalLog(
       "[+] Successfully synced ${payload.markers.length} markers, ${payload.news.length} news, ${payload.profiles.length} profiles, ${payload.areas.length} areas, ${payload.paths.length} paths, ${payload.deletedItems.length} deletions, ${payload.delegations.length} delegations, ${payload.revokedDelegations.length} revocations.",
     );
@@ -2818,7 +3033,8 @@ class P2pService extends _$P2pService {
 
   void mockDiscoveredDevice() {
     final newDevice = AppDiscoveredDevice(
-      deviceAddress: '00:11:22:33:44:${Random().nextInt(99).toString().padLeft(2, '0')}',
+      deviceAddress:
+          '00:11:22:33:44:${Random().nextInt(99).toString().padLeft(2, '0')}',
       deviceName: 'Mock Peer ${Random().nextInt(1000)}',
     );
     state = state.copyWith(
@@ -2842,10 +3058,10 @@ class P2pService extends _$P2pService {
     await ref.read(cryptoServiceProvider.future);
     final crypto = ref.read(cryptoServiceProvider.notifier);
     final myPubKey = await crypto.getPublicKeyString();
-    
+
     final id = 'mock_hazard_${DateTime.now().millisecondsSinceEpoch}';
     final timestamp = DateTime.now().millisecondsSinceEpoch;
-    
+
     Position? loc;
     try {
       loc = await Geolocator.getLastKnownPosition();
@@ -2867,7 +3083,7 @@ class P2pService extends _$P2pService {
       trustTier: 4,
       isCritical: const Value(false),
     );
-    
+
     await db.into(db.hazardMarkers).insert(newMarker);
   }
 
@@ -2937,7 +3153,7 @@ class P2pService extends _$P2pService {
       syncProgress: 0.0,
       syncEstimatedSeconds: 10,
     );
-    
+
     int progress = 0;
     Timer.periodic(const Duration(milliseconds: 500), (timer) {
       progress += 10;

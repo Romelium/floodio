@@ -89,7 +89,11 @@ class CommandTab extends ConsumerWidget {
                     ),
                     const Spacer(),
                     IconButton(
-                      icon: const Icon(Icons.help_outline, size: 20, color: Colors.blue),
+                      icon: const Icon(
+                        Icons.help_outline,
+                        size: 20,
+                        color: Colors.blue,
+                      ),
                       onPressed: () => _showCloudHelp(context),
                     ),
                   ],
@@ -115,7 +119,11 @@ class CommandTab extends ConsumerWidget {
                     ),
                     const Spacer(),
                     IconButton(
-                      icon: const Icon(Icons.help_outline, size: 20, color: Colors.orange),
+                      icon: const Icon(
+                        Icons.help_outline,
+                        size: 20,
+                        color: Colors.orange,
+                      ),
                       onPressed: () => _showMeshActionsHelp(context),
                     ),
                   ],
@@ -379,7 +387,10 @@ class CommandTab extends ConsumerWidget {
                         SizedBox(
                           width: 16,
                           height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2, value: cloudState.syncProgress),
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            value: cloudState.syncProgress,
+                          ),
                         ),
                         if (cloudState.syncMessage != null) ...[
                           const SizedBox(height: 4),
@@ -393,7 +404,7 @@ class CommandTab extends ConsumerWidget {
                             textAlign: TextAlign.right,
                             maxLines: 2,
                           ),
-                        ]
+                        ],
                       ],
                     ),
                   ),

@@ -98,14 +98,19 @@ class SeenMessageIdEntity {
   final int timestamp;
   final bool uploadedToCloud;
 
-  SeenMessageIdEntity({required this.messageId, required this.timestamp, this.uploadedToCloud = false});
+  SeenMessageIdEntity({
+    required this.messageId,
+    required this.timestamp,
+    this.uploadedToCloud = false,
+  });
 }
 
 @UseRowClass(SeenMessageIdEntity)
 class SeenMessageIds extends Table {
   TextColumn get messageId => text()();
   IntColumn get timestamp => integer()();
-  BoolColumn get uploadedToCloud => boolean().withDefault(const Constant(false))();
+  BoolColumn get uploadedToCloud =>
+      boolean().withDefault(const Constant(false))();
 
   @override
   Set<Column> get primaryKey => {messageId};
@@ -132,14 +137,19 @@ class DeletedItemEntity {
   final int timestamp;
   final bool uploadedToCloud;
 
-  DeletedItemEntity({required this.id, required this.timestamp, this.uploadedToCloud = false});
+  DeletedItemEntity({
+    required this.id,
+    required this.timestamp,
+    this.uploadedToCloud = false,
+  });
 }
 
 @UseRowClass(DeletedItemEntity)
 class DeletedItems extends Table {
   TextColumn get id => text()();
   IntColumn get timestamp => integer()();
-  BoolColumn get uploadedToCloud => boolean().withDefault(const Constant(false))();
+  BoolColumn get uploadedToCloud =>
+      boolean().withDefault(const Constant(false))();
 
   @override
   Set<Column> get primaryKey => {id};

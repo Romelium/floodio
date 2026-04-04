@@ -65,7 +65,9 @@ class CloudSyncState {
       syncTextOnly: syncTextOnly ?? this.syncTextOnly,
       onlyTier1And2: onlyTier1And2 ?? this.onlyTier1And2,
       syncMessage: clearSyncMessage ? null : (syncMessage ?? this.syncMessage),
-      syncProgress: clearSyncProgress ? null : (syncProgress ?? this.syncProgress),
+      syncProgress: clearSyncProgress
+          ? null
+          : (syncProgress ?? this.syncProgress),
     );
   }
 
@@ -119,7 +121,9 @@ class CloudSyncService extends _$CloudSyncService {
         final isPowerSave = await battery.isInBatterySaveMode;
         final level = await battery.batteryLevel;
         if (isPowerSave || level < 15) {
-          terminalLog("[*] Skipping background cloud sync due to battery constraints (PowerSave: $isPowerSave, Level: $level%)");
+          terminalLog(
+            "[*] Skipping background cloud sync due to battery constraints (PowerSave: $isPowerSave, Level: $level%)",
+          );
           return;
         }
       } catch (_) {}
@@ -147,9 +151,11 @@ class CloudSyncService extends _$CloudSyncService {
     final prefs = await SharedPreferences.getInstance();
     final timestamp = prefs.getInt('last_cloud_sync_time');
     final eventId = prefs.getInt('last_sync_event_id') ?? 0;
-    
+
     state = state.copyWith(
-      lastSyncTime: timestamp != null ? DateTime.fromMillisecondsSinceEpoch(timestamp) : null,
+      lastSyncTime: timestamp != null
+          ? DateTime.fromMillisecondsSinceEpoch(timestamp)
+          : null,
       lastSyncEventId: eventId,
     );
   }
@@ -172,49 +178,68 @@ class CloudSyncService extends _$CloudSyncService {
       final skippedMessageIds = <String>{};
 
       if (state.onlyTier1And2) {
-        final markers = await (db.selectOnly(db.hazardMarkers)
-              ..addColumns([db.hazardMarkers.id, db.hazardMarkers.timestamp])
-              ..where(db.hazardMarkers.trustTier.isBiggerThanValue(2)))
-            .get();
+        final markers =
+            await (db.selectOnly(db.hazardMarkers)
+                  ..addColumns([
+                    db.hazardMarkers.id,
+                    db.hazardMarkers.timestamp,
+                  ])
+                  ..where(db.hazardMarkers.trustTier.isBiggerThanValue(2)))
+                .get();
         for (final row in markers) {
-          skippedMessageIds.add('${row.read(db.hazardMarkers.id)}_${row.read(db.hazardMarkers.timestamp)}');
+          skippedMessageIds.add(
+            '${row.read(db.hazardMarkers.id)}_${row.read(db.hazardMarkers.timestamp)}',
+          );
         }
-        
-        final news = await (db.selectOnly(db.newsItems)
-              ..addColumns([db.newsItems.id, db.newsItems.timestamp])
-              ..where(db.newsItems.trustTier.isBiggerThanValue(2)))
-            .get();
+
+        final news =
+            await (db.selectOnly(db.newsItems)
+                  ..addColumns([db.newsItems.id, db.newsItems.timestamp])
+                  ..where(db.newsItems.trustTier.isBiggerThanValue(2)))
+                .get();
         for (final row in news) {
-          skippedMessageIds.add('${row.read(db.newsItems.id)}_${row.read(db.newsItems.timestamp)}');
+          skippedMessageIds.add(
+            '${row.read(db.newsItems.id)}_${row.read(db.newsItems.timestamp)}',
+          );
         }
 
-        final areas = await (db.selectOnly(db.areas)
-              ..addColumns([db.areas.id, db.areas.timestamp])
-              ..where(db.areas.trustTier.isBiggerThanValue(2)))
-            .get();
+        final areas =
+            await (db.selectOnly(db.areas)
+                  ..addColumns([db.areas.id, db.areas.timestamp])
+                  ..where(db.areas.trustTier.isBiggerThanValue(2)))
+                .get();
         for (final row in areas) {
-          skippedMessageIds.add('${row.read(db.areas.id)}_${row.read(db.areas.timestamp)}');
+          skippedMessageIds.add(
+            '${row.read(db.areas.id)}_${row.read(db.areas.timestamp)}',
+          );
         }
 
-        final paths = await (db.selectOnly(db.paths)
-              ..addColumns([db.paths.id, db.paths.timestamp])
-              ..where(db.paths.trustTier.isBiggerThanValue(2)))
-            .get();
+        final paths =
+            await (db.selectOnly(db.paths)
+                  ..addColumns([db.paths.id, db.paths.timestamp])
+                  ..where(db.paths.trustTier.isBiggerThanValue(2)))
+                .get();
         for (final row in paths) {
-          skippedMessageIds.add('${row.read(db.paths.id)}_${row.read(db.paths.timestamp)}');
+          skippedMessageIds.add(
+            '${row.read(db.paths.id)}_${row.read(db.paths.timestamp)}',
+          );
         }
       }
 
       pending = recentSeenSet.difference(skippedMessageIds).length;
     } catch (_) {}
 
-    terminalLog("[+] Cloud status updated. HasInternet: $internet, PendingUploads: $pending");
+    terminalLog(
+      "[+] Cloud status updated. HasInternet: $internet, PendingUploads: $pending",
+    );
     state = state.copyWith(hasInternet: internet, pendingUploads: pending);
   }
 
   Future<bool> _hasInternet() async {
     try {
-      final result = await InternetAddress.lookup('google.com').timeout(const Duration(seconds: 5));
+      final result = await InternetAddress.lookup(
+        'google.com',
+      ).timeout(const Duration(seconds: 5));
       if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
         return true;
       }
@@ -237,7 +262,7 @@ class CloudSyncService extends _$CloudSyncService {
     }
 
     state = state.copyWith(
-      isSyncing: true, 
+      isSyncing: true,
       hasInternet: true,
       syncMessage: 'Preparing data for upload...',
       syncProgress: 0.1,
@@ -249,52 +274,73 @@ class CloudSyncService extends _$CloudSyncService {
       final recentSeen = await (db.select(
         db.seenMessageIds,
       )..where((t) => t.uploadedToCloud.equals(false))).get();
-      
+
       // Limit upload batch size to prevent massive payloads and timeouts
-      final recentSeenSet = recentSeen.map((e) => e.messageId).take(500).toSet();
+      final recentSeenSet = recentSeen
+          .map((e) => e.messageId)
+          .take(500)
+          .toSet();
 
-      final markers = await (db.select(db.hazardMarkers)..where((t) {
-        Expression<bool> expr = const Constant(true);
-        if (state.onlyTier1And2) {
-          expr = expr & t.trustTier.isSmallerOrEqualValue(2);
-        }
-        return expr;
-      })).get();
-      final filteredMarkers = markers.where((m) => recentSeenSet.contains('${m.id}_${m.timestamp}')).toList();
+      final markers =
+          await (db.select(db.hazardMarkers)..where((t) {
+                Expression<bool> expr = const Constant(true);
+                if (state.onlyTier1And2) {
+                  expr = expr & t.trustTier.isSmallerOrEqualValue(2);
+                }
+                return expr;
+              }))
+              .get();
+      final filteredMarkers = markers
+          .where((m) => recentSeenSet.contains('${m.id}_${m.timestamp}'))
+          .toList();
 
-      final news = await (db.select(db.newsItems)..where((t) {
-        Expression<bool> expr = const Constant(true);
-        if (state.onlyTier1And2) {
-          expr = expr & t.trustTier.isSmallerOrEqualValue(2);
-        }
-        return expr;
-      })).get();
-      final filteredNews = news.where((n) => recentSeenSet.contains('${n.id}_${n.timestamp}')).toList();
+      final news =
+          await (db.select(db.newsItems)..where((t) {
+                Expression<bool> expr = const Constant(true);
+                if (state.onlyTier1And2) {
+                  expr = expr & t.trustTier.isSmallerOrEqualValue(2);
+                }
+                return expr;
+              }))
+              .get();
+      final filteredNews = news
+          .where((n) => recentSeenSet.contains('${n.id}_${n.timestamp}'))
+          .toList();
 
-      final areas = await (db.select(db.areas)..where((t) {
-        Expression<bool> expr = const Constant(true);
-        if (state.onlyTier1And2) {
-          expr = expr & t.trustTier.isSmallerOrEqualValue(2);
-        }
-        return expr;
-      })).get();
-      final filteredAreas = areas.where((a) => recentSeenSet.contains('${a.id}_${a.timestamp}')).toList();
+      final areas =
+          await (db.select(db.areas)..where((t) {
+                Expression<bool> expr = const Constant(true);
+                if (state.onlyTier1And2) {
+                  expr = expr & t.trustTier.isSmallerOrEqualValue(2);
+                }
+                return expr;
+              }))
+              .get();
+      final filteredAreas = areas
+          .where((a) => recentSeenSet.contains('${a.id}_${a.timestamp}'))
+          .toList();
 
-      final paths = await (db.select(db.paths)..where((t) {
-        Expression<bool> expr = const Constant(true);
-        if (state.onlyTier1And2) {
-          expr = expr & t.trustTier.isSmallerOrEqualValue(2);
-        }
-        return expr;
-      })).get();
-      final filteredPaths = paths.where((p) => recentSeenSet.contains('${p.id}_${p.timestamp}')).toList();
+      final paths =
+          await (db.select(db.paths)..where((t) {
+                Expression<bool> expr = const Constant(true);
+                if (state.onlyTier1And2) {
+                  expr = expr & t.trustTier.isSmallerOrEqualValue(2);
+                }
+                return expr;
+              }))
+              .get();
+      final filteredPaths = paths
+          .where((p) => recentSeenSet.contains('${p.id}_${p.timestamp}'))
+          .toList();
 
       final profiles = (await db.select(db.userProfiles).get())
           .where((p) => recentSeenSet.contains('${p.publicKey}_${p.timestamp}'))
           .toList();
-      final deleted = await (db.select(db.deletedItems)..where((t) => t.uploadedToCloud.equals(false))).get();
+      final deleted = await (db.select(
+        db.deletedItems,
+      )..where((t) => t.uploadedToCloud.equals(false))).get();
       final filteredDeleted = deleted.take(500).toList();
-      
+
       final delegations = (await db.select(db.adminTrustedSenders).get())
           .where(
             (d) => recentSeenSet.contains('delg_${d.publicKey}_${d.timestamp}'),
@@ -441,46 +487,63 @@ class CloudSyncService extends _$CloudSyncService {
       final skippedMessageIds = <String>{};
 
       if (state.onlyTier1And2) {
-        final skippedMarkers = await (db.selectOnly(db.hazardMarkers)
-              ..addColumns([db.hazardMarkers.id, db.hazardMarkers.timestamp])
-              ..where(db.hazardMarkers.trustTier.isBiggerThanValue(2)))
-            .get();
+        final skippedMarkers =
+            await (db.selectOnly(db.hazardMarkers)
+                  ..addColumns([
+                    db.hazardMarkers.id,
+                    db.hazardMarkers.timestamp,
+                  ])
+                  ..where(db.hazardMarkers.trustTier.isBiggerThanValue(2)))
+                .get();
         for (final row in skippedMarkers) {
-          skippedMessageIds.add('${row.read(db.hazardMarkers.id)}_${row.read(db.hazardMarkers.timestamp)}');
+          skippedMessageIds.add(
+            '${row.read(db.hazardMarkers.id)}_${row.read(db.hazardMarkers.timestamp)}',
+          );
         }
 
-        final skippedNews = await (db.selectOnly(db.newsItems)
-              ..addColumns([db.newsItems.id, db.newsItems.timestamp])
-              ..where(db.newsItems.trustTier.isBiggerThanValue(2)))
-            .get();
+        final skippedNews =
+            await (db.selectOnly(db.newsItems)
+                  ..addColumns([db.newsItems.id, db.newsItems.timestamp])
+                  ..where(db.newsItems.trustTier.isBiggerThanValue(2)))
+                .get();
         for (final row in skippedNews) {
-          skippedMessageIds.add('${row.read(db.newsItems.id)}_${row.read(db.newsItems.timestamp)}');
+          skippedMessageIds.add(
+            '${row.read(db.newsItems.id)}_${row.read(db.newsItems.timestamp)}',
+          );
         }
 
-        final skippedAreas = await (db.selectOnly(db.areas)
-              ..addColumns([db.areas.id, db.areas.timestamp])
-              ..where(db.areas.trustTier.isBiggerThanValue(2)))
-            .get();
+        final skippedAreas =
+            await (db.selectOnly(db.areas)
+                  ..addColumns([db.areas.id, db.areas.timestamp])
+                  ..where(db.areas.trustTier.isBiggerThanValue(2)))
+                .get();
         for (final row in skippedAreas) {
-          skippedMessageIds.add('${row.read(db.areas.id)}_${row.read(db.areas.timestamp)}');
+          skippedMessageIds.add(
+            '${row.read(db.areas.id)}_${row.read(db.areas.timestamp)}',
+          );
         }
 
-        final skippedPaths = await (db.selectOnly(db.paths)
-              ..addColumns([db.paths.id, db.paths.timestamp])
-              ..where(db.paths.trustTier.isBiggerThanValue(2)))
-            .get();
+        final skippedPaths =
+            await (db.selectOnly(db.paths)
+                  ..addColumns([db.paths.id, db.paths.timestamp])
+                  ..where(db.paths.trustTier.isBiggerThanValue(2)))
+                .get();
         for (final row in skippedPaths) {
-          skippedMessageIds.add('${row.read(db.paths.id)}_${row.read(db.paths.timestamp)}');
+          skippedMessageIds.add(
+            '${row.read(db.paths.id)}_${row.read(db.paths.timestamp)}',
+          );
         }
       }
 
       final orphanedIds = recentSeenSet
           .difference(uploadedMessageIds.toSet())
           .difference(skippedMessageIds);
-      
+
       uploadedMessageIds.addAll(orphanedIds);
 
-      terminalLog("[+] DB queries for upload took ${syncStopwatch.elapsedMilliseconds}ms");
+      terminalLog(
+        "[+] DB queries for upload took ${syncStopwatch.elapsedMilliseconds}ms",
+      );
       syncStopwatch.reset();
 
       if (!state.syncTextOnly) {
@@ -508,13 +571,15 @@ class CloudSyncService extends _$CloudSyncService {
                   .timeout(const Duration(seconds: 30));
             } catch (e) {
               terminalLog('[-] Image upload error (might already exist): $e');
-              // We don't throw here. If an image fails to upload (e.g. due to size limits, 
+              // We don't throw here. If an image fails to upload (e.g. due to size limits,
               // network blip, or it already exists), we still want the text payload to sync.
               // The image will just be missing on the other end, which the app handles gracefully.
             }
           }
         }
-        terminalLog("[+] Image uploads took ${syncStopwatch.elapsedMilliseconds}ms");
+        terminalLog(
+          "[+] Image uploads took ${syncStopwatch.elapsedMilliseconds}ms",
+        );
         syncStopwatch.reset();
       }
 
@@ -526,17 +591,19 @@ class CloudSyncService extends _$CloudSyncService {
           payload.deletedItems.isNotEmpty ||
           payload.delegations.isNotEmpty ||
           payload.revokedDelegations.isNotEmpty) {
-        
         state = state.copyWith(
           syncMessage: 'Uploading to cloud...',
           syncProgress: 0.3,
         );
-        final encoded = await Isolate.run(() => base64Encode(payload.writeToBuffer()));
-        
+        final encoded = await Isolate.run(
+          () => base64Encode(payload.writeToBuffer()),
+        );
+
         try {
-          await Supabase.instance.client.from('sync_events').insert({
-            'payload_base64': encoded,
-          }).timeout(const Duration(seconds: 30));
+          await Supabase.instance.client
+              .from('sync_events')
+              .insert({'payload_base64': encoded})
+              .timeout(const Duration(seconds: 30));
           terminalLog(
             '[+] Uploaded ${payload.markers.length} markers, ${payload.news.length} news, ${payload.areas.length} areas, ${payload.paths.length} paths to the cloud.',
           );
@@ -550,20 +617,28 @@ class CloudSyncService extends _$CloudSyncService {
         if (uploadedMessageIds.isNotEmpty) {
           for (var i = 0; i < uploadedMessageIds.length; i += 500) {
             final chunk = uploadedMessageIds.skip(i).take(500).toList();
-            await (db.update(db.seenMessageIds)..where((t) => t.messageId.isIn(chunk)))
-                .write(const SeenMessageIdsCompanion(uploadedToCloud: Value(true)));
+            await (db.update(
+              db.seenMessageIds,
+            )..where((t) => t.messageId.isIn(chunk))).write(
+              const SeenMessageIdsCompanion(uploadedToCloud: Value(true)),
+            );
           }
         }
         if (uploadedDeletedIds.isNotEmpty) {
           for (var i = 0; i < uploadedDeletedIds.length; i += 500) {
             final chunk = uploadedDeletedIds.skip(i).take(500).toList();
-            await (db.update(db.deletedItems)..where((t) => t.id.isIn(chunk)))
-                .write(const DeletedItemsCompanion(uploadedToCloud: Value(true)));
+            await (db.update(
+              db.deletedItems,
+            )..where((t) => t.id.isIn(chunk))).write(
+              const DeletedItemsCompanion(uploadedToCloud: Value(true)),
+            );
           }
         }
       });
-      
-      terminalLog("[+] Upload to cloud took ${syncStopwatch.elapsedMilliseconds}ms");
+
+      terminalLog(
+        "[+] Upload to cloud took ${syncStopwatch.elapsedMilliseconds}ms",
+      );
       syncStopwatch.reset();
 
       // 2. "Download" new data from cloud
@@ -571,12 +646,14 @@ class CloudSyncService extends _$CloudSyncService {
         syncMessage: 'Checking for new data...',
         syncProgress: 0.5,
       );
-      
+
       bool hasMore = true;
       int currentLastId = state.lastSyncEventId;
       bool downloadedAny = false;
       final tempDir = await getTemporaryDirectory();
-      final tempFile = File('${tempDir.path}/cloud_sync_payload_${DateTime.now().millisecondsSinceEpoch}.dat');
+      final tempFile = File(
+        '${tempDir.path}/cloud_sync_payload_${DateTime.now().millisecondsSinceEpoch}.dat',
+      );
       final combinedPayload = pb.SyncPayload();
 
       final seenMarkerIds = <String>{};
@@ -589,7 +666,8 @@ class CloudSyncService extends _$CloudSyncService {
       final seenRevocationIds = <String>{};
 
       int downloadBatches = 0;
-      while (hasMore && downloadBatches < 10) { // Limit to 10 batches (500 events) per sync to avoid OOM/timeouts
+      while (hasMore && downloadBatches < 10) {
+        // Limit to 10 batches (500 events) per sync to avoid OOM/timeouts
         downloadBatches++;
         try {
           final response = await Supabase.instance.client
@@ -649,12 +727,16 @@ class CloudSyncService extends _$CloudSyncService {
                     }
                   }
                   for (final d in payload.delegations) {
-                    if (seenDelegationIds.add('${d.delegateePublicKey}_${d.timestamp}')) {
+                    if (seenDelegationIds.add(
+                      '${d.delegateePublicKey}_${d.timestamp}',
+                    )) {
                       combinedPayload.delegations.add(d);
                     }
                   }
                   for (final r in payload.revokedDelegations) {
-                    if (seenRevocationIds.add('${r.delegateePublicKey}_${r.timestamp}')) {
+                    if (seenRevocationIds.add(
+                      '${r.delegateePublicKey}_${r.timestamp}',
+                    )) {
                       combinedPayload.revokedDelegations.add(r);
                     }
                   }
@@ -673,11 +755,14 @@ class CloudSyncService extends _$CloudSyncService {
           }
         }
       }
-      
-      terminalLog("[+] Download from cloud took ${syncStopwatch.elapsedMilliseconds}ms");
+
+      terminalLog(
+        "[+] Download from cloud took ${syncStopwatch.elapsedMilliseconds}ms",
+      );
       syncStopwatch.reset();
 
-      bool hasCombinedData = combinedPayload.markers.isNotEmpty ||
+      bool hasCombinedData =
+          combinedPayload.markers.isNotEmpty ||
           combinedPayload.news.isNotEmpty ||
           combinedPayload.profiles.isNotEmpty ||
           combinedPayload.deletedItems.isNotEmpty ||
@@ -692,23 +777,31 @@ class CloudSyncService extends _$CloudSyncService {
           syncProgress: 0.9,
         );
         await tempFile.writeAsBytes(combinedPayload.writeToBuffer());
-        
+
         final completer = Completer<bool>();
-        final sub = FlutterBackgroundService().on('processPayloadComplete').listen((event) {
-          if (event != null && event['success'] == true) {
-            if (!completer.isCompleted) completer.complete(true);
-          } else {
-            if (!completer.isCompleted) completer.complete(false);
-          }
-        });
+        final sub = FlutterBackgroundService()
+            .on('processPayloadComplete')
+            .listen((event) {
+              if (event != null && event['success'] == true) {
+                if (!completer.isCompleted) completer.complete(true);
+              } else {
+                if (!completer.isCompleted) completer.complete(false);
+              }
+            });
 
-        ref.read(uiP2pServiceProvider.notifier).processPayloadFromFile(tempFile.path);
+        ref
+            .read(uiP2pServiceProvider.notifier)
+            .processPayloadFromFile(tempFile.path);
 
-        terminalLog('[*] Downloaded and sent new data to background service. Waiting for processing...');
-        
+        terminalLog(
+          '[*] Downloaded and sent new data to background service. Waiting for processing...',
+        );
+
         bool processSuccess = false;
         try {
-          processSuccess = await completer.future.timeout(const Duration(minutes: 5));
+          processSuccess = await completer.future.timeout(
+            const Duration(minutes: 5),
+          );
         } catch (e) {
           terminalLog('[-] Timeout waiting for payload processing.');
         } finally {
@@ -718,8 +811,10 @@ class CloudSyncService extends _$CloudSyncService {
         if (!processSuccess) {
           throw Exception('Failed to process downloaded payload');
         }
-        
-        terminalLog("[+] Waiting for payload processing took ${syncStopwatch.elapsedMilliseconds}ms");
+
+        terminalLog(
+          "[+] Waiting for payload processing took ${syncStopwatch.elapsedMilliseconds}ms",
+        );
         syncStopwatch.reset();
       } else {
         terminalLog('[*] No new data found in the cloud.');
@@ -741,7 +836,9 @@ class CloudSyncService extends _$CloudSyncService {
         clearSyncMessage: true,
         clearSyncProgress: true,
       );
-      terminalLog("[+] Total cloud sync took ${totalSyncStopwatch.elapsedMilliseconds}ms");
+      terminalLog(
+        "[+] Total cloud sync took ${totalSyncStopwatch.elapsedMilliseconds}ms",
+      );
       return true;
     } catch (e) {
       terminalLog('[-] Error syncing with cloud: $e');
@@ -750,8 +847,13 @@ class CloudSyncService extends _$CloudSyncService {
         syncMessage: 'Error: $e',
         clearSyncProgress: true,
       );
-      Future.delayed(const Duration(seconds: 3), () => state = state.copyWith(clearSyncMessage: true));
-      terminalLog("[-] Total cloud sync (failed) took ${totalSyncStopwatch.elapsedMilliseconds}ms");
+      Future.delayed(
+        const Duration(seconds: 3),
+        () => state = state.copyWith(clearSyncMessage: true),
+      );
+      terminalLog(
+        "[-] Total cloud sync (failed) took ${totalSyncStopwatch.elapsedMilliseconds}ms",
+      );
       return false;
     }
   }

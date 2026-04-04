@@ -34,7 +34,9 @@ class _TerminalOverlayState extends ConsumerState<TerminalOverlay> {
       width: double.infinity,
       decoration: BoxDecoration(
         color: Colors.black.withValues(alpha: 0.85),
-        border: const Border(top: BorderSide(color: Colors.greenAccent, width: 2)),
+        border: const Border(
+          top: BorderSide(color: Colors.greenAccent, width: 2),
+        ),
       ),
       padding: const EdgeInsets.all(8),
       child: Column(
@@ -55,19 +57,31 @@ class _TerminalOverlayState extends ConsumerState<TerminalOverlay> {
               Row(
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.delete_sweep, color: Colors.greenAccent, size: 18),
-                    onPressed: () => ref.read(terminalLogControllerProvider.notifier).clear(),
+                    icon: const Icon(
+                      Icons.delete_sweep,
+                      color: Colors.greenAccent,
+                      size: 18,
+                    ),
+                    onPressed: () => ref
+                        .read(terminalLogControllerProvider.notifier)
+                        .clear(),
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),
                   ),
                   const SizedBox(width: 16),
                   IconButton(
-                    icon: const Icon(Icons.open_in_full, color: Colors.greenAccent, size: 18),
+                    icon: const Icon(
+                      Icons.open_in_full,
+                      color: Colors.greenAccent,
+                      size: 18,
+                    ),
                     onPressed: () {
                       ref.read(showTerminalOverlayProvider.notifier).toggle();
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (_) => const TerminalScreen()),
+                        MaterialPageRoute(
+                          builder: (_) => const TerminalScreen(),
+                        ),
                       );
                     },
                     padding: EdgeInsets.zero,
@@ -75,13 +89,18 @@ class _TerminalOverlayState extends ConsumerState<TerminalOverlay> {
                   ),
                   const SizedBox(width: 16),
                   IconButton(
-                    icon: const Icon(Icons.close, color: Colors.greenAccent, size: 18),
-                    onPressed: () => ref.read(showTerminalOverlayProvider.notifier).toggle(),
+                    icon: const Icon(
+                      Icons.close,
+                      color: Colors.greenAccent,
+                      size: 18,
+                    ),
+                    onPressed: () =>
+                        ref.read(showTerminalOverlayProvider.notifier).toggle(),
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),
                   ),
                 ],
-              )
+              ),
             ],
           ),
           const Divider(color: Colors.greenAccent),
@@ -93,7 +112,7 @@ class _TerminalOverlayState extends ConsumerState<TerminalOverlay> {
                 final log = logs[index];
                 final isError = log.contains('[-]');
                 final isInfo = log.contains('[*]');
-                
+
                 Color textColor = Colors.greenAccent;
                 if (isError) textColor = Colors.redAccent;
                 if (isInfo) textColor = Colors.cyanAccent;

@@ -54,8 +54,11 @@ Future<QueryExecutor> getSharedConnection() async {
   );
 
   final isolate = await receivePort.first as DriftIsolate;
-  
-  final registered = IsolateNameServer.registerPortWithName(isolate.connectPort, _dbIsolateName);
+
+  final registered = IsolateNameServer.registerPortWithName(
+    isolate.connectPort,
+    _dbIsolateName,
+  );
   if (!registered) {
     try {
       final redundantConnection = await isolate.connect();

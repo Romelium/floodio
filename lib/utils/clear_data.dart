@@ -66,9 +66,7 @@ Future<void> clearAllAppData(BuildContext context, WidgetRef ref) async {
 
   // Clear Secure Storage
   const secureStorage = FlutterSecureStorage(
-    aOptions: AndroidOptions(
-      resetOnError: true,
-    ),
+    aOptions: AndroidOptions(resetOnError: true),
   );
   await secureStorage.deleteAll();
 
@@ -96,9 +94,7 @@ Future<void> clearAllAppData(BuildContext context, WidgetRef ref) async {
   );
 
   Navigator.of(context).pushAndRemoveUntil(
-    MaterialPageRoute(
-      builder: (_) => const InitializerScreen(),
-    ),
+    MaterialPageRoute(builder: (_) => const InitializerScreen()),
     (route) => false,
   );
 }

@@ -45,13 +45,17 @@ class _TerminalScreenState extends ConsumerState<TerminalScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.delete_sweep),
-            onPressed: () => ref.read(terminalLogControllerProvider.notifier).clear(),
+            onPressed: () =>
+                ref.read(terminalLogControllerProvider.notifier).clear(),
           ),
         ],
       ),
       body: Container(
         decoration: BoxDecoration(
-          border: Border.all(color: Colors.greenAccent.withValues(alpha: 0.3), width: 2),
+          border: Border.all(
+            color: Colors.greenAccent.withValues(alpha: 0.3),
+            width: 2,
+          ),
         ),
         margin: const EdgeInsets.all(8.0),
         child: ListView.builder(
@@ -62,7 +66,7 @@ class _TerminalScreenState extends ConsumerState<TerminalScreen> {
             final log = logs[index];
             final isError = log.contains('[-]');
             final isInfo = log.contains('[*]');
-            
+
             Color textColor = Colors.greenAccent;
             if (isError) textColor = Colors.redAccent;
             if (isInfo) textColor = Colors.cyanAccent;

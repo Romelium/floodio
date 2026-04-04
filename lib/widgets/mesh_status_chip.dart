@@ -25,10 +25,9 @@ class _MeshStatusChipState extends ConsumerState<MeshStatusChip>
       vsync: this,
       duration: const Duration(milliseconds: 800),
     )..repeat(reverse: true);
-    _animation = Tween<double>(
-      begin: 0.2,
-      end: 1.0,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOutSine));
+    _animation = Tween<double>(begin: 0.2, end: 1.0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOutSine),
+    );
   }
 
   @override
@@ -61,7 +60,7 @@ class _MeshStatusChipState extends ConsumerState<MeshStatusChip>
         animation: _animation,
         builder: (context, child) {
           final glowColor = isConnected ? Colors.green : Colors.orange;
-          
+
           return Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
@@ -69,20 +68,26 @@ class _MeshStatusChipState extends ConsumerState<MeshStatusChip>
                   ? Colors.green.shade600
                   : (p2pState.isAutoSyncing
                         ? Colors.orange.shade600
-                        : Theme.of(context).colorScheme.surfaceContainerHighest),
+                        : Theme.of(
+                            context,
+                          ).colorScheme.surfaceContainerHighest),
               borderRadius: BorderRadius.circular(24),
               border: Border.all(
                 color: isConnected || p2pState.isAutoSyncing
                     ? Colors.transparent
-                    : Theme.of(context).colorScheme.outline.withValues(alpha: 0.5),
+                    : Theme.of(
+                        context,
+                      ).colorScheme.outline.withValues(alpha: 0.5),
               ),
               boxShadow: (isSyncing && !isPowerSave)
                   ? [
                       BoxShadow(
-                        color: glowColor.withValues(alpha: 0.6 * _animation.value),
+                        color: glowColor.withValues(
+                          alpha: 0.6 * _animation.value,
+                        ),
                         blurRadius: 12 * _animation.value,
                         spreadRadius: 2 * _animation.value,
-                      )
+                      ),
                     ]
                   : null,
             ),
@@ -124,7 +129,9 @@ class _MeshStatusChipState extends ConsumerState<MeshStatusChip>
                                     : 'HOST (${p2pState.connectedClients.length})')
                               : 'CONNECTED')
                         : (p2pState.isAutoSyncing
-                              ? (p2pState.isScanning ? 'SCANNING' : 'STARTING...')
+                              ? (p2pState.isScanning
+                                    ? 'SCANNING'
+                                    : 'STARTING...')
                               : 'STANDBY'),
                     style: TextStyle(
                       color: isConnected || p2pState.isAutoSyncing

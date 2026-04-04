@@ -36,7 +36,14 @@ class MeshEdge {
   final bool flowForward;
   final bool flowBackward;
 
-  MeshEdge(this.source, this.target, this.isConnected, {this.isSyncing = false, this.flowForward = false, this.flowBackward = false});
+  MeshEdge(
+    this.source,
+    this.target,
+    this.isConnected, {
+    this.isSyncing = false,
+    this.flowForward = false,
+    this.flowBackward = false,
+  });
 }
 
 class MeshTopologyScreen extends ConsumerStatefulWidget {
@@ -50,11 +57,12 @@ class _MeshTopologyScreenState extends ConsumerState<MeshTopologyScreen>
     with TickerProviderStateMixin {
   late AnimationController _pulseController;
   late AnimationController _flowController;
-  
+
   List<MeshNode> _nodes = [];
   List<MeshEdge> _edges = [];
-  
-  final TransformationController _transformationController = TransformationController();
+
+  final TransformationController _transformationController =
+      TransformationController();
 
   @override
   void initState() {
@@ -91,9 +99,14 @@ class _MeshTopologyScreenState extends ConsumerState<MeshTopologyScreen>
 
     if (isSyncing) {
       final msg = p2pState.syncMessage?.toLowerCase() ?? '';
-      if (msg.contains('downloading') || msg.contains('receiving') || msg.contains('unpacking')) {
+      if (msg.contains('downloading') ||
+          msg.contains('receiving') ||
+          msg.contains('unpacking')) {
         flowToMe = true;
-      } else if (msg.contains('sending') || msg.contains('broadcasting') || msg.contains('forwarding') || msg.contains('packing')) {
+      } else if (msg.contains('sending') ||
+          msg.contains('broadcasting') ||
+          msg.contains('forwarding') ||
+          msg.contains('packing')) {
         flowFromMe = true;
       } else {
         flowToMe = true;
@@ -124,7 +137,16 @@ class _MeshTopologyScreenState extends ConsumerState<MeshTopologyScreen>
         );
         newNodes.add(n);
         orbit1.add(n);
-        newEdges.add(MeshEdge(meNode, n, true, isSyncing: isSyncing, flowForward: flowFromMe, flowBackward: flowToMe));
+        newEdges.add(
+          MeshEdge(
+            meNode,
+            n,
+            true,
+            isSyncing: isSyncing,
+            flowForward: flowFromMe,
+            flowBackward: flowToMe,
+          ),
+        );
       }
       for (var device in p2pState.discoveredDevices) {
         final n = MeshNode(
@@ -144,11 +166,20 @@ class _MeshTopologyScreenState extends ConsumerState<MeshTopologyScreen>
       );
       newNodes.add(hostNode);
       centerNode = hostNode;
-      
+
       meNode.type = NodeType.connectedClient; // I am a client
       meNode.label = '$myName (You)';
       orbit1.add(meNode);
-      newEdges.add(MeshEdge(hostNode, meNode, true, isSyncing: isSyncing, flowForward: flowToMe, flowBackward: flowFromMe));
+      newEdges.add(
+        MeshEdge(
+          hostNode,
+          meNode,
+          true,
+          isSyncing: isSyncing,
+          flowForward: flowToMe,
+          flowBackward: flowFromMe,
+        ),
+      );
 
       for (var client in p2pState.connectedClients) {
         if (client.id != 'me' && !client.isHost) {
@@ -159,7 +190,16 @@ class _MeshTopologyScreenState extends ConsumerState<MeshTopologyScreen>
           );
           newNodes.add(n);
           orbit1.add(n);
-          newEdges.add(MeshEdge(hostNode, n, true, isSyncing: isSyncing, flowForward: flowToMe, flowBackward: flowFromMe));
+          newEdges.add(
+            MeshEdge(
+              hostNode,
+              n,
+              true,
+              isSyncing: isSyncing,
+              flowForward: flowToMe,
+              flowBackward: flowFromMe,
+            ),
+          );
         }
       }
       for (var device in p2pState.discoveredDevices) {
@@ -193,15 +233,15 @@ class _MeshTopologyScreenState extends ConsumerState<MeshTopologyScreen>
     for (int i = 0; i < orbit1.length; i++) {
       if (orbit1[i] == centerNode) continue;
       final angle = (2 * pi / orbit1.length) * i - pi / 2;
-      orbit1[i].targetPosition = center +
-          Offset(cos(angle) * orbit1Radius, sin(angle) * orbit1Radius);
+      orbit1[i].targetPosition =
+          center + Offset(cos(angle) * orbit1Radius, sin(angle) * orbit1Radius);
     }
 
     final orbit2Radius = 260.0;
     for (int i = 0; i < orbit2.length; i++) {
       final angle = (2 * pi / orbit2.length) * i - pi / 4;
-      orbit2[i].targetPosition = center +
-          Offset(cos(angle) * orbit2Radius, sin(angle) * orbit2Radius);
+      orbit2[i].targetPosition =
+          center + Offset(cos(angle) * orbit2Radius, sin(angle) * orbit2Radius);
     }
 
     // Interpolate positions for smooth movement
@@ -221,7 +261,7 @@ class _MeshTopologyScreenState extends ConsumerState<MeshTopologyScreen>
   void _handleNodeTap(Offset tapPosition) {
     // Convert tap position to scene coordinates
     final scenePoint = _transformationController.toScene(tapPosition);
-    
+
     for (var node in _nodes) {
       if ((node.targetPosition - scenePoint).distance < 30) {
         HapticFeedback.selectionClick();
@@ -246,7 +286,7 @@ class _MeshTopologyScreenState extends ConsumerState<MeshTopologyScreen>
         IconData icon;
         Color color;
         String role;
-        
+
         switch (node.type) {
           case NodeType.me:
             icon = Icons.person;
@@ -300,7 +340,8 @@ class _MeshTopologyScreenState extends ConsumerState<MeshTopologyScreen>
                   ),
                 ),
                 const SizedBox(height: 24),
-                if (node.type == NodeType.connectedClient || node.type == NodeType.host)
+                if (node.type == NodeType.connectedClient ||
+                    node.type == NodeType.host)
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(16),
@@ -316,13 +357,24 @@ class _MeshTopologyScreenState extends ConsumerState<MeshTopologyScreen>
                           children: [
                             Icon(Icons.sync, color: color, size: 16),
                             const SizedBox(width: 8),
-                            Text('Connection Status', style: TextStyle(color: color, fontWeight: FontWeight.bold)),
+                            Text(
+                              'Connection Status',
+                              style: TextStyle(
+                                color: color,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                           ],
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          p2pState.isSyncing ? 'Active Transfer: $msg' : 'Connected (Idle)',
-                          style: const TextStyle(color: Colors.white70, fontSize: 13),
+                          p2pState.isSyncing
+                              ? 'Active Transfer: $msg'
+                              : 'Connected (Idle)',
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 13,
+                          ),
                         ),
                         if (summary != null) ...[
                           const Padding(
@@ -333,15 +385,24 @@ class _MeshTopologyScreenState extends ConsumerState<MeshTopologyScreen>
                             children: [
                               Icon(Icons.history, color: color, size: 16),
                               const SizedBox(width: 8),
-                              Text('Last Exchange', style: TextStyle(color: color, fontWeight: FontWeight.bold)),
+                              Text(
+                                'Last Exchange',
+                                style: TextStyle(
+                                  color: color,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                             ],
                           ),
                           const SizedBox(height: 8),
                           Text(
                             summary,
-                            style: const TextStyle(color: Colors.white70, fontSize: 13),
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 13,
+                            ),
                           ),
-                        ]
+                        ],
                       ],
                     ),
                   ),
@@ -352,13 +413,19 @@ class _MeshTopologyScreenState extends ConsumerState<MeshTopologyScreen>
                       Navigator.pop(context);
                       // Connect logic
                       final p2pState = ref.read(uiP2pServiceProvider);
-                      final device = p2pState.discoveredDevices.firstWhere((d) => d.deviceAddress == node.id);
-                      ref.read(uiP2pServiceProvider.notifier).connectToDevice(device);
+                      final device = p2pState.discoveredDevices.firstWhere(
+                        (d) => d.deviceAddress == node.id,
+                      );
+                      ref
+                          .read(uiP2pServiceProvider.notifier)
+                          .connectToDevice(device);
                     },
                     icon: const Icon(Icons.link),
                     label: const Text('Connect'),
-                    style: FilledButton.styleFrom(backgroundColor: Colors.orange),
-                  )
+                    style: FilledButton.styleFrom(
+                      backgroundColor: Colors.orange,
+                    ),
+                  ),
               ],
             ),
           ),
@@ -369,7 +436,9 @@ class _MeshTopologyScreenState extends ConsumerState<MeshTopologyScreen>
 
   @override
   Widget build(BuildContext context) {
-    final isSyncing = ref.watch(uiP2pServiceProvider.select((s) => s.isSyncing || s.isConnecting));
+    final isSyncing = ref.watch(
+      uiP2pServiceProvider.select((s) => s.isSyncing || s.isConnecting),
+    );
     final battery = ref.watch(batteryControllerProvider);
     final isPowerSave = battery.isPowerSaveMode;
 
@@ -403,19 +472,32 @@ class _MeshTopologyScreenState extends ConsumerState<MeshTopologyScreen>
                       width: size.width,
                       height: size.height,
                       child: AnimatedBuilder(
-                        animation: Listenable.merge([_pulseController, _flowController]),
+                        animation: Listenable.merge([
+                          _pulseController,
+                          _flowController,
+                        ]),
                         builder: (context, child) {
                           // Simple lerp for positions
                           for (var node in _nodes) {
-                            node.position = Offset.lerp(node.position, node.targetPosition, 0.1) ?? node.targetPosition;
+                            node.position =
+                                Offset.lerp(
+                                  node.position,
+                                  node.targetPosition,
+                                  0.1,
+                                ) ??
+                                node.targetPosition;
                           }
 
                           return CustomPaint(
                             painter: TopologyPainter(
                               nodes: _nodes,
                               edges: _edges,
-                              pulseValue: isPowerSave ? 0.0 : _pulseController.value,
-                              flowValue: isPowerSave ? 0.0 : _flowController.value,
+                              pulseValue: isPowerSave
+                                  ? 0.0
+                                  : _pulseController.value,
+                              flowValue: isPowerSave
+                                  ? 0.0
+                                  : _flowController.value,
                               isSyncing: isSyncing && !isPowerSave,
                             ),
                           );
@@ -470,7 +552,11 @@ class _MeshTopologyScreenState extends ConsumerState<MeshTopologyScreen>
             color: color,
             shape: BoxShape.circle,
             boxShadow: [
-              BoxShadow(color: color.withValues(alpha: 0.5), blurRadius: 6, spreadRadius: 2),
+              BoxShadow(
+                color: color.withValues(alpha: 0.5),
+                blurRadius: 6,
+                spreadRadius: 2,
+              ),
             ],
           ),
         ),
@@ -523,7 +609,7 @@ class TopologyPainter extends CustomPainter {
     final paint = Paint()
       ..color = Colors.white.withValues(alpha: 0.03)
       ..strokeWidth = 1;
-    
+
     const double step = 40;
     for (double x = 0; x < size.width; x += step) {
       canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
@@ -551,7 +637,7 @@ class TopologyPainter extends CustomPainter {
     // Draw curved line
     final path = Path();
     path.moveTo(p1.dx, p1.dy);
-    
+
     // Add a slight curve
     final midPoint = Offset((p1.dx + p2.dx) / 2, (p1.dy + p2.dy) / 2);
     final normal = Offset(-(p2.dy - p1.dy), p2.dx - p1.dx);
@@ -650,7 +736,7 @@ class TopologyPainter extends CustomPainter {
         ..color = nodeColor.withValues(alpha: 0.2 * (1 - pulseValue))
         ..style = PaintingStyle.fill;
       canvas.drawCircle(node.position, 28 + (20 * pulseValue), pulsePaint);
-      
+
       final pulsePaint2 = Paint()
         ..color = nodeColor.withValues(alpha: 0.1 * (1 - pulseValue))
         ..style = PaintingStyle.fill;
@@ -709,22 +795,26 @@ class TopologyPainter extends CustomPainter {
       textAlign: TextAlign.center,
     );
     labelPainter.layout(maxWidth: 120);
-    
+
     final labelRect = Rect.fromCenter(
       center: node.position + const Offset(0, 36),
       width: labelPainter.width + 12,
       height: labelPainter.height + 6,
     );
-    
+
     final labelBgPaint = Paint()
       ..color = Colors.black.withValues(alpha: 0.6)
       ..style = PaintingStyle.fill;
-    canvas.drawRRect(RRect.fromRectAndRadius(labelRect, const Radius.circular(12)), labelBgPaint);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(labelRect, const Radius.circular(12)),
+      labelBgPaint,
+    );
 
     // Draw Label
     labelPainter.paint(
       canvas,
-      node.position + Offset(-labelPainter.width / 2, 36 - labelPainter.height / 2),
+      node.position +
+          Offset(-labelPainter.width / 2, 36 - labelPainter.height / 2),
     );
   }
 

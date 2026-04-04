@@ -67,7 +67,9 @@ class LocationController extends _$LocationController {
     }
 
     return await Geolocator.getCurrentPosition(
-      locationSettings: LocationSettings(accuracy: isPowerSave ? LocationAccuracy.medium : LocationAccuracy.high),
+      locationSettings: LocationSettings(
+        accuracy: isPowerSave ? LocationAccuracy.medium : LocationAccuracy.high,
+      ),
     );
   }
 }

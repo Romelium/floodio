@@ -131,15 +131,22 @@ class RedAlertBanner extends ConsumerStatefulWidget {
   ConsumerState<RedAlertBanner> createState() => _RedAlertBannerState();
 }
 
-class _RedAlertBannerState extends ConsumerState<RedAlertBanner> with SingleTickerProviderStateMixin {
+class _RedAlertBannerState extends ConsumerState<RedAlertBanner>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<Color?> _colorAnimation;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 300))..repeat(reverse: true);
-    _colorAnimation = ColorTween(begin: Colors.red.shade900, end: Colors.redAccent).animate(_controller);
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    )..repeat(reverse: true);
+    _colorAnimation = ColorTween(
+      begin: Colors.red.shade900,
+      end: Colors.redAccent,
+    ).animate(_controller);
   }
 
   @override
@@ -166,7 +173,11 @@ class _RedAlertBannerState extends ConsumerState<RedAlertBanner> with SingleTick
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               child: Row(
                 children: [
-                  const Icon(Icons.warning_amber_rounded, color: Colors.white, size: 28),
+                  const Icon(
+                    Icons.warning_amber_rounded,
+                    color: Colors.white,
+                    size: 28,
+                  ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
@@ -175,12 +186,21 @@ class _RedAlertBannerState extends ConsumerState<RedAlertBanner> with SingleTick
                       children: [
                         const Text(
                           'CRITICAL EMERGENCY',
-                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16, letterSpacing: 1.2),
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 16,
+                            letterSpacing: 1.2,
+                          ),
                         ),
                         if (alertState.latestAlertTitle != null)
                           Text(
                             alertState.latestAlertTitle!,
-                            style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -192,17 +212,23 @@ class _RedAlertBannerState extends ConsumerState<RedAlertBanner> with SingleTick
                       icon: const Icon(Icons.volume_off, color: Colors.white),
                       tooltip: 'Mute Alarm',
                       onPressed: () {
-                        ref.read(redAlertControllerProvider.notifier).stopAlarm();
+                        ref
+                            .read(redAlertControllerProvider.notifier)
+                            .stopAlarm();
                       },
                     )
                   else
-                    const Icon(Icons.volume_off, color: Colors.white54, size: 20),
+                    const Icon(
+                      Icons.volume_off,
+                      color: Colors.white54,
+                      size: 20,
+                    ),
                 ],
               ),
             ),
           ),
         );
-      }
+      },
     );
   }
 }
@@ -210,18 +236,26 @@ class _RedAlertBannerState extends ConsumerState<RedAlertBanner> with SingleTick
 class CriticalAlertOverlay extends ConsumerStatefulWidget {
   const CriticalAlertOverlay({super.key});
   @override
-  ConsumerState<CriticalAlertOverlay> createState() => _CriticalAlertOverlayState();
+  ConsumerState<CriticalAlertOverlay> createState() =>
+      _CriticalAlertOverlayState();
 }
 
-class _CriticalAlertOverlayState extends ConsumerState<CriticalAlertOverlay> with SingleTickerProviderStateMixin {
+class _CriticalAlertOverlayState extends ConsumerState<CriticalAlertOverlay>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _opacityAnimation;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 300))..repeat(reverse: true);
-    _opacityAnimation = Tween<double>(begin: 0.0, end: 0.5).animate(_controller);
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    )..repeat(reverse: true);
+    _opacityAnimation = Tween<double>(
+      begin: 0.0,
+      end: 0.5,
+    ).animate(_controller);
   }
 
   @override
@@ -242,7 +276,7 @@ class _CriticalAlertOverlayState extends ConsumerState<CriticalAlertOverlay> wit
           return Container(
             color: Colors.red.withValues(alpha: _opacityAnimation.value),
           );
-        }
+        },
       ),
     );
   }
@@ -279,19 +313,58 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('To prevent misinformation, every report is cryptographically signed and categorized:', style: TextStyle(fontSize: 13, color: Colors.grey)),
+              Text(
+                'To prevent misinformation, every report is cryptographically signed and categorized:',
+                style: TextStyle(fontSize: 13, color: Colors.grey),
+              ),
               SizedBox(height: 16),
-              Text('🔵 Tier 1: OFFICIAL', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue)),
-              Text('Reports from Government, NGOs, or Emergency Services. Always prioritized.', style: TextStyle(fontSize: 13)),
+              Text(
+                '🔵 Tier 1: OFFICIAL',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.blue,
+                ),
+              ),
+              Text(
+                'Reports from Government, NGOs, or Emergency Services. Always prioritized.',
+                style: TextStyle(fontSize: 13),
+              ),
               SizedBox(height: 12),
-              Text('🟣 Tier 2: VERIFIED', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.purple)),
-              Text('Reports from vetted volunteers. Used to verify crowdsourced data.', style: TextStyle(fontSize: 13)),
+              Text(
+                '🟣 Tier 2: VERIFIED',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.purple,
+                ),
+              ),
+              Text(
+                'Reports from vetted volunteers. Used to verify crowdsourced data.',
+                style: TextStyle(fontSize: 13),
+              ),
               SizedBox(height: 12),
-              Text('🟢 Tier 3: TRUSTED', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.green)),
-              Text('People you have personally marked as "Trusted". Prioritized on your device only.', style: TextStyle(fontSize: 13)),
+              Text(
+                '🟢 Tier 3: TRUSTED',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.green,
+                ),
+              ),
+              Text(
+                'People you have personally marked as "Trusted". Prioritized on your device only.',
+                style: TextStyle(fontSize: 13),
+              ),
               SizedBox(height: 12),
-              Text('⚪ Tier 4: UNVERIFIED', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
-              Text('General public reports. Unverified until endorsed by a Tier 1 or Tier 2 user.', style: TextStyle(fontSize: 13)),
+              Text(
+                '⚪ Tier 4: UNVERIFIED',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey,
+                ),
+              ),
+              Text(
+                'General public reports. Unverified until endorsed by a Tier 1 or Tier 2 user.',
+                style: TextStyle(fontSize: 13),
+              ),
             ],
           ),
         ),
@@ -337,7 +410,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               Text('• 🟠 Orange: Unverified / Hazard'),
               Text('• 🔴 Red: CRITICAL Emergency'),
               SizedBox(height: 12),
-              Text('Tap any marker, area, or path to view details, navigate with the compass, or endorse/resolve it.'),
+              Text(
+                'Tap any marker, area, or path to view details, navigate with the compass, or endorse/resolve it.',
+              ),
             ],
           ),
         ),
@@ -582,7 +657,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   onTap: () async {
                     HapticFeedback.mediumImpact();
                     Navigator.pop(sheetContext);
-                    final localUser = ref.read(localUserControllerProvider).value;
+                    final localUser = ref
+                        .read(localUserControllerProvider)
+                        .value;
                     final myPubKey = localUser?.publicKey;
                     if (myPubKey == null) return;
                     await ref
@@ -591,19 +668,26 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     if (!mounted) return;
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
-                        content: Text('You are now an Admin-Trusted Volunteer!'),
+                        content: Text(
+                          'You are now an Admin-Trusted Volunteer!',
+                        ),
                         behavior: SnackBarBehavior.floating,
                       ),
                     );
                   },
                 ),
                 ListTile(
-                  leading: const Icon(Icons.remove_moderator, color: Colors.red),
+                  leading: const Icon(
+                    Icons.remove_moderator,
+                    color: Colors.red,
+                  ),
                   title: const Text('Revoke My Admin Trust'),
                   onTap: () async {
                     HapticFeedback.heavyImpact();
                     Navigator.pop(sheetContext);
-                    final localUser = ref.read(localUserControllerProvider).value;
+                    final localUser = ref
+                        .read(localUserControllerProvider)
+                        .value;
                     final myPubKey = localUser?.publicKey;
                     if (myPubKey == null) return;
                     await ref
@@ -624,15 +708,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   onTap: () async {
                     HapticFeedback.selectionClick();
                     Navigator.pop(sheetContext);
-                    final current = ref.read(appSettingsProvider).isOfficialMode;
+                    final current = ref
+                        .read(appSettingsProvider)
+                        .isOfficialMode;
                     await ref
                         .read(appSettingsProvider.notifier)
                         .setOfficialMode(!current);
-  
+
                     if (current && ref.read(navigationIndexProvider) == 4) {
                       ref.read(navigationIndexProvider.notifier).setIndex(3);
                     }
-  
+
                     if (!mounted) return;
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
@@ -646,12 +732,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 ),
                 const Divider(),
                 const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 16.0,
+                    vertical: 8.0,
+                  ),
                   child: Align(
                     alignment: Alignment.centerLeft,
                     child: Text(
                       'Mock Actions',
-                      style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey,
+                      ),
                     ),
                   ),
                 ),
@@ -661,7 +753,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   onTap: () {
                     HapticFeedback.selectionClick();
                     Navigator.pop(sheetContext);
-                    ref.read(uiP2pServiceProvider.notifier).mockDiscoveredDevice();
+                    ref
+                        .read(uiP2pServiceProvider.notifier)
+                        .mockDiscoveredDevice();
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('Mock peer added')),
                     );
@@ -673,7 +767,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   onTap: () {
                     HapticFeedback.selectionClick();
                     Navigator.pop(sheetContext);
-                    ref.read(uiP2pServiceProvider.notifier).mockConnectedClient();
+                    ref
+                        .read(uiP2pServiceProvider.notifier)
+                        .mockConnectedClient();
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('Mock client added')),
                     );
@@ -685,7 +781,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   onTap: () {
                     HapticFeedback.selectionClick();
                     Navigator.pop(sheetContext);
-                    ref.read(uiP2pServiceProvider.notifier).mockReceivedHazard();
+                    ref
+                        .read(uiP2pServiceProvider.notifier)
+                        .mockReceivedHazard();
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('Mock hazard added')),
                     );
@@ -697,9 +795,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   onTap: () {
                     HapticFeedback.selectionClick();
                     Navigator.pop(sheetContext);
-                    ref.read(uiP2pServiceProvider.notifier).mockReceivedCriticalHazard();
+                    ref
+                        .read(uiP2pServiceProvider.notifier)
+                        .mockReceivedCriticalHazard();
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Mock critical hazard added')),
+                      const SnackBar(
+                        content: Text('Mock critical hazard added'),
+                      ),
                     );
                   },
                 ),
@@ -744,7 +846,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     );
   }
 
-  void _showMarkerDetailsDialog(HazardMarkerEntity m, List<UserProfileEntity> profiles, bool isAdmin, AppSettingsData settings) {
+  void _showMarkerDetailsDialog(
+    HazardMarkerEntity m,
+    List<UserProfileEntity> profiles,
+    bool isAdmin,
+    AppSettingsData settings,
+  ) {
     HapticFeedback.selectionClick();
     final canEndorse = isAdmin && (m.trustTier == 3 || m.trustTier == 4);
     final color = getHazardColor(m.type, m.trustTier);
@@ -752,9 +859,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Row(
           children: [
             Icon(getHazardIcon(m.type), color: color),
@@ -769,19 +874,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             children: [
               buildTrustBadge(m.trustTier),
               const SizedBox(height: 16),
-              Text(
-                m.description,
-                style: const TextStyle(fontSize: 16),
-              ),
+              Text(m.description, style: const TextStyle(fontSize: 16)),
               if (m.imageId != null && m.imageId!.isNotEmpty)
                 LocalImageDisplay(imageId: m.imageId!),
               const SizedBox(height: 8),
               Text(
                 'Reported: ${formatTimestamp(m.timestamp)}',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey.shade600,
-                ),
+                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
               ),
               Builder(
                 builder: (context) {
@@ -799,10 +898,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   } else {
                     return const Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Divider(),
-                        Text('Reported by: Unknown User'),
-                      ],
+                      children: [Divider(), Text('Reported by: Unknown User')],
                     );
                   }
                 },
@@ -882,7 +978,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                       label: const Text('Block'),
                       style: TextButton.styleFrom(foregroundColor: Colors.red),
                     ),
-                  if (m.trustTier == 4 || (settings.isOfficialMode && m.trustTier == 3))
+                  if (m.trustTier == 4 ||
+                      (settings.isOfficialMode && m.trustTier == 3))
                     FilledButton.tonalIcon(
                       onPressed: () {
                         HapticFeedback.selectionClick();
@@ -894,13 +991,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                         }
                       },
                       icon: Icon(
-                        settings.isOfficialMode ? Icons.admin_panel_settings : Icons.verified_user,
+                        settings.isOfficialMode
+                            ? Icons.admin_panel_settings
+                            : Icons.verified_user,
                         size: 16,
                       ),
-                      label: Text(settings.isOfficialMode ? 'Make Volunteer' : 'Trust'),
+                      label: Text(
+                        settings.isOfficialMode ? 'Make Volunteer' : 'Trust',
+                      ),
                       style: FilledButton.styleFrom(
-                        foregroundColor: settings.isOfficialMode ? Colors.purple.shade700 : Colors.green.shade700,
-                        backgroundColor: settings.isOfficialMode ? Colors.purple.shade50 : Colors.green.shade50,
+                        foregroundColor: settings.isOfficialMode
+                            ? Colors.purple.shade700
+                            : Colors.green.shade700,
+                        backgroundColor: settings.isOfficialMode
+                            ? Colors.purple.shade50
+                            : Colors.green.shade50,
                       ),
                     ),
                 ],
@@ -918,21 +1023,25 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     );
   }
 
-  void _showAreaDetailsDialog(AreaEntity a, List<UserProfileEntity> profiles, bool isAdmin, AppSettingsData settings) {
+  void _showAreaDetailsDialog(
+    AreaEntity a,
+    List<UserProfileEntity> profiles,
+    bool isAdmin,
+    AppSettingsData settings,
+  ) {
     HapticFeedback.selectionClick();
     final canEndorse = isAdmin && (a.trustTier == 3 || a.trustTier == 4);
     final color = a.isCritical
         ? Colors.red
-        : (a.type.toLowerCase().contains('safe') || a.type.toLowerCase().contains('evacuation')
-            ? Colors.green
-            : Colors.orange);
+        : (a.type.toLowerCase().contains('safe') ||
+                  a.type.toLowerCase().contains('evacuation')
+              ? Colors.green
+              : Colors.orange);
 
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Row(
           children: [
             Icon(Icons.format_shapes, color: color),
@@ -947,17 +1056,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             children: [
               buildTrustBadge(a.trustTier),
               const SizedBox(height: 16),
-              Text(
-                a.description,
-                style: const TextStyle(fontSize: 16),
-              ),
+              Text(a.description, style: const TextStyle(fontSize: 16)),
               const SizedBox(height: 8),
               Text(
                 'Reported: ${formatTimestamp(a.timestamp)}',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey.shade600,
-                ),
+                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
               ),
               Builder(
                 builder: (context) {
@@ -975,10 +1078,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   } else {
                     return const Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Divider(),
-                        Text('Reported by: Unknown User'),
-                      ],
+                      children: [Divider(), Text('Reported by: Unknown User')],
                     );
                   }
                 },
@@ -1025,7 +1125,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                           context,
                           MaterialPageRoute(
                             builder: (_) => CompassScreen(
-                              target: LatLng(a.coordinates.first['lat']!, a.coordinates.first['lng']!),
+                              target: LatLng(
+                                a.coordinates.first['lat']!,
+                                a.coordinates.first['lng']!,
+                              ),
                               title: a.type,
                             ),
                           ),
@@ -1059,7 +1162,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                       label: const Text('Block'),
                       style: TextButton.styleFrom(foregroundColor: Colors.red),
                     ),
-                  if (a.trustTier == 4 || (settings.isOfficialMode && a.trustTier == 3))
+                  if (a.trustTier == 4 ||
+                      (settings.isOfficialMode && a.trustTier == 3))
                     FilledButton.tonalIcon(
                       onPressed: () {
                         HapticFeedback.selectionClick();
@@ -1071,13 +1175,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                         }
                       },
                       icon: Icon(
-                        settings.isOfficialMode ? Icons.admin_panel_settings : Icons.verified_user,
+                        settings.isOfficialMode
+                            ? Icons.admin_panel_settings
+                            : Icons.verified_user,
                         size: 16,
                       ),
-                      label: Text(settings.isOfficialMode ? 'Make Volunteer' : 'Trust'),
+                      label: Text(
+                        settings.isOfficialMode ? 'Make Volunteer' : 'Trust',
+                      ),
                       style: FilledButton.styleFrom(
-                        foregroundColor: settings.isOfficialMode ? Colors.purple.shade700 : Colors.green.shade700,
-                        backgroundColor: settings.isOfficialMode ? Colors.purple.shade50 : Colors.green.shade50,
+                        foregroundColor: settings.isOfficialMode
+                            ? Colors.purple.shade700
+                            : Colors.green.shade700,
+                        backgroundColor: settings.isOfficialMode
+                            ? Colors.purple.shade50
+                            : Colors.green.shade50,
                       ),
                     ),
                 ],
@@ -1095,21 +1207,25 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     );
   }
 
-  void _showPathDetailsDialog(PathEntity p, List<UserProfileEntity> profiles, bool isAdmin, AppSettingsData settings) {
+  void _showPathDetailsDialog(
+    PathEntity p,
+    List<UserProfileEntity> profiles,
+    bool isAdmin,
+    AppSettingsData settings,
+  ) {
     HapticFeedback.selectionClick();
     final canEndorse = isAdmin && (p.trustTier == 3 || p.trustTier == 4);
     final color = p.isCritical
         ? Colors.red
-        : (p.type.toLowerCase().contains('safe') || p.type.toLowerCase().contains('evacuation')
-            ? Colors.green
-            : Colors.orange);
+        : (p.type.toLowerCase().contains('safe') ||
+                  p.type.toLowerCase().contains('evacuation')
+              ? Colors.green
+              : Colors.orange);
 
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Row(
           children: [
             Icon(Icons.route, color: color),
@@ -1124,17 +1240,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             children: [
               buildTrustBadge(p.trustTier),
               const SizedBox(height: 16),
-              Text(
-                p.description,
-                style: const TextStyle(fontSize: 16),
-              ),
+              Text(p.description, style: const TextStyle(fontSize: 16)),
               const SizedBox(height: 8),
               Text(
                 'Reported: ${formatTimestamp(p.timestamp)}',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey.shade600,
-                ),
+                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
               ),
               Builder(
                 builder: (context) {
@@ -1152,10 +1262,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   } else {
                     return const Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Divider(),
-                        Text('Reported by: Unknown User'),
-                      ],
+                      children: [Divider(), Text('Reported by: Unknown User')],
                     );
                   }
                 },
@@ -1202,7 +1309,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                           context,
                           MaterialPageRoute(
                             builder: (_) => CompassScreen(
-                              target: LatLng(p.coordinates.first['lat']!, p.coordinates.first['lng']!),
+                              target: LatLng(
+                                p.coordinates.first['lat']!,
+                                p.coordinates.first['lng']!,
+                              ),
                               title: p.type,
                             ),
                           ),
@@ -1236,7 +1346,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                       label: const Text('Block'),
                       style: TextButton.styleFrom(foregroundColor: Colors.red),
                     ),
-                  if (p.trustTier == 4 || (settings.isOfficialMode && p.trustTier == 3))
+                  if (p.trustTier == 4 ||
+                      (settings.isOfficialMode && p.trustTier == 3))
                     FilledButton.tonalIcon(
                       onPressed: () {
                         HapticFeedback.selectionClick();
@@ -1248,13 +1359,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                         }
                       },
                       icon: Icon(
-                        settings.isOfficialMode ? Icons.admin_panel_settings : Icons.verified_user,
+                        settings.isOfficialMode
+                            ? Icons.admin_panel_settings
+                            : Icons.verified_user,
                         size: 16,
                       ),
-                      label: Text(settings.isOfficialMode ? 'Make Volunteer' : 'Trust'),
+                      label: Text(
+                        settings.isOfficialMode ? 'Make Volunteer' : 'Trust',
+                      ),
                       style: FilledButton.styleFrom(
-                        foregroundColor: settings.isOfficialMode ? Colors.purple.shade700 : Colors.green.shade700,
-                        backgroundColor: settings.isOfficialMode ? Colors.purple.shade50 : Colors.green.shade50,
+                        foregroundColor: settings.isOfficialMode
+                            ? Colors.purple.shade700
+                            : Colors.green.shade700,
+                        backgroundColor: settings.isOfficialMode
+                            ? Colors.purple.shade50
+                            : Colors.green.shade50,
                       ),
                     ),
                 ],
@@ -3757,12 +3876,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                         point: LatLng(m.latitude, m.longitude),
                         width: m.isCritical ? 200 : 40,
                         height: m.isCritical ? 200 : 40,
-                        alignment: m.isCritical ? Alignment.center : Alignment.topCenter,
+                        alignment: m.isCritical
+                            ? Alignment.center
+                            : Alignment.topCenter,
                         child: GestureDetector(
                           behavior: HitTestBehavior.opaque,
                           onTap: () {
                             HapticFeedback.selectionClick();
-                            _showMarkerDetailsDialog(m, profiles, isAdmin, settings);
+                            _showMarkerDetailsDialog(
+                              m,
+                              profiles,
+                              isAdmin,
+                              settings,
+                            );
                           },
                           child: m.isCritical
                               ? PulseMarker(
@@ -3774,10 +3900,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                                     decoration: BoxDecoration(
                                       color: Colors.red,
                                       shape: BoxShape.circle,
-                                      border: Border.all(color: Colors.white, width: 3),
+                                      border: Border.all(
+                                        color: Colors.white,
+                                        width: 3,
+                                      ),
                                       boxShadow: [
                                         BoxShadow(
-                                          color: Colors.red.withValues(alpha: 0.5),
+                                          color: Colors.red.withValues(
+                                            alpha: 0.5,
+                                          ),
                                           blurRadius: 8,
                                           spreadRadius: 2,
                                         ),
@@ -3840,8 +3971,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   builder: (context, ref, child) {
                     final locationAsync = ref.watch(locationControllerProvider);
                     final currentPosition = locationAsync.value;
-                    final isSosActive = ref.watch(sosFlashlightControllerProvider);
-                    
+                    final isSosActive = ref.watch(
+                      sosFlashlightControllerProvider,
+                    );
+
                     if (currentPosition == null) return const SizedBox.shrink();
                     return MarkerLayer(
                       markers: [
@@ -3863,18 +3996,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                               decoration: BoxDecoration(
                                 color: isSosActive ? Colors.red : Colors.blue,
                                 shape: BoxShape.circle,
-                                border: Border.all(color: Colors.white, width: 3),
+                                border: Border.all(
+                                  color: Colors.white,
+                                  width: 3,
+                                ),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: (isSosActive ? Colors.red : Colors.blue).withValues(alpha: 0.5),
+                                    color:
+                                        (isSosActive ? Colors.red : Colors.blue)
+                                            .withValues(alpha: 0.5),
                                     blurRadius: 10,
                                     spreadRadius: 5,
                                   ),
                                 ],
                               ),
-                              child: isSosActive 
-                                ? const Icon(Icons.sos, color: Colors.white, size: 16)
-                                : null,
+                              child: isSosActive
+                                  ? const Icon(
+                                      Icons.sos,
+                                      color: Colors.white,
+                                      size: 16,
+                                    )
+                                  : null,
                             ),
                           ),
                         ),
@@ -4394,18 +4536,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                                             context,
                                             MaterialPageRoute(
                                               builder: (_) => CompassScreen(
-                                                target: LatLng(item.latitude, item.longitude),
+                                                target: LatLng(
+                                                  item.latitude,
+                                                  item.longitude,
+                                                ),
                                                 title: item.type,
                                               ),
                                             ),
                                           );
                                         },
-                                        icon: const Icon(Icons.explore, size: 16),
+                                        icon: const Icon(
+                                          Icons.explore,
+                                          size: 16,
+                                        ),
                                         label: const Text('Compass'),
                                         style: FilledButton.styleFrom(
                                           foregroundColor: Colors.blue.shade700,
                                           backgroundColor: Colors.blue.shade50,
-                                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 12,
+                                            vertical: 8,
+                                          ),
                                         ),
                                       ),
                                       TextButton.icon(
@@ -4898,19 +5049,32 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                                               context,
                                               MaterialPageRoute(
                                                 builder: (_) => CompassScreen(
-                                                  target: LatLng(item.coordinates.first['lat']!, item.coordinates.first['lng']!),
+                                                  target: LatLng(
+                                                    item
+                                                        .coordinates
+                                                        .first['lat']!,
+                                                    item
+                                                        .coordinates
+                                                        .first['lng']!,
+                                                  ),
                                                   title: item.type,
                                                 ),
                                               ),
                                             );
                                           }
                                         },
-                                        icon: const Icon(Icons.explore, size: 16),
+                                        icon: const Icon(
+                                          Icons.explore,
+                                          size: 16,
+                                        ),
                                         label: const Text('Compass'),
                                         style: FilledButton.styleFrom(
                                           foregroundColor: Colors.blue.shade700,
                                           backgroundColor: Colors.blue.shade50,
-                                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 12,
+                                            vertical: 8,
+                                          ),
                                         ),
                                       ),
                                       TextButton.icon(
@@ -5171,19 +5335,32 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                                               context,
                                               MaterialPageRoute(
                                                 builder: (_) => CompassScreen(
-                                                  target: LatLng(item.coordinates.first['lat']!, item.coordinates.first['lng']!),
+                                                  target: LatLng(
+                                                    item
+                                                        .coordinates
+                                                        .first['lat']!,
+                                                    item
+                                                        .coordinates
+                                                        .first['lng']!,
+                                                  ),
                                                   title: item.type,
                                                 ),
                                               ),
                                             );
                                           }
                                         },
-                                        icon: const Icon(Icons.explore, size: 16),
+                                        icon: const Icon(
+                                          Icons.explore,
+                                          size: 16,
+                                        ),
                                         label: const Text('Compass'),
                                         style: FilledButton.styleFrom(
                                           foregroundColor: Colors.blue.shade700,
                                           backgroundColor: Colors.blue.shade50,
-                                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 12,
+                                            vertical: 8,
+                                          ),
                                         ),
                                       ),
                                       TextButton.icon(
@@ -5373,8 +5550,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                       selected: filter.trustFilter == tier,
                       onSelected: (selected) {
                         HapticFeedback.selectionClick();
-                        filterNotifier
-                          .updateTrustFilter(selected ? tier : null);
+                        filterNotifier.updateTrustFilter(
+                          selected ? tier : null,
+                        );
                       },
                       showCheckmark: false,
                       selectedColor: getTierColor(tier).withValues(alpha: 0.2),
@@ -5481,17 +5659,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   @override
   Widget build(BuildContext context) {
-    ref.listen<bool>(uiP2pServiceProvider.select((s) => s.isSyncing || s.isConnecting), (prev, next) {
-      if (next == true && (prev == false || prev == null)) {
-        final drawingState = ref.read(drawingControllerProvider);
-        if (!isMeshTopologyOpen && drawingState.mode == DrawingMode.none) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const MeshTopologyScreen()),
-          );
+    ref.listen<bool>(
+      uiP2pServiceProvider.select((s) => s.isSyncing || s.isConnecting),
+      (prev, next) {
+        if (next == true && (prev == false || prev == null)) {
+          final drawingState = ref.read(drawingControllerProvider);
+          if (!isMeshTopologyOpen && drawingState.mode == DrawingMode.none) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const MeshTopologyScreen()),
+            );
+          }
         }
-      }
-    });
+      },
+    );
 
     final cryptoState = ref.watch(cryptoServiceProvider);
     final downloadProgress = ref.watch(mapDownloaderProvider);
@@ -5506,696 +5687,662 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     }
 
     Widget content = Scaffold(
-          appBar: AppBar(
-            title: downloadProgress.isDownloading
-                ? Row(
-                    children: [
-                      const Text(
-                        'FLOODIO',
-                        style: TextStyle(
-                          letterSpacing: 2,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          'Downloading map: ${(downloadProgress.percentage * 100).toStringAsFixed(1)}%',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.normal,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  )
-                : const Text(
+      appBar: AppBar(
+        title: downloadProgress.isDownloading
+            ? Row(
+                children: [
+                  const Text(
                     'FLOODIO',
                     style: TextStyle(
                       letterSpacing: 2,
                       fontWeight: FontWeight.w900,
                     ),
                   ),
-            bottom: downloadProgress.isDownloading
-                ? PreferredSize(
-                    preferredSize: const Size.fromHeight(4.0),
-                    child: LinearProgressIndicator(
-                      value: downloadProgress.percentage,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Downloading map: ${(downloadProgress.percentage * 100).toStringAsFixed(1)}%',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.normal,
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
-                  )
-                : null,
-            actions: [
-              Consumer(
-                builder: (context, ref, child) {
-                  final p2pState = ref.watch(uiP2pServiceProvider);
-                  final isConnected =
-                      p2pState.hostState?.isActive == true ||
-                      p2pState.clientState?.isActive == true;
-
-                  if (!isConnected) return const SizedBox.shrink();
-
-                  return IconButton(
-                    icon: const Icon(Icons.sync),
-                    tooltip: 'Manual Mesh Sync',
-                    onPressed: p2pState.isSyncing
-                        ? null
-                        : () {
-                            HapticFeedback.mediumImpact();
-                            ref
-                                .read(uiP2pServiceProvider.notifier)
-                                .triggerSync();
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Triggered manual mesh sync...'),
-                                behavior: SnackBarBehavior.floating,
-                              ),
-                            );
-                          },
-                  );
-                },
+                  ),
+                ],
+              )
+            : const Text(
+                'FLOODIO',
+                style: TextStyle(letterSpacing: 2, fontWeight: FontWeight.w900),
               ),
-              Consumer(
-                builder: (context, ref, child) {
-                  final hasInternet = ref.watch(
-                    cloudSyncServiceProvider.select((s) => s.hasInternet),
-                  );
-                  final isSyncing = ref.watch(
-                    cloudSyncServiceProvider.select((s) => s.isSyncing),
-                  );
-                  final pendingUploads = ref.watch(
-                    cloudSyncServiceProvider.select((s) => s.pendingUploads),
-                  );
+        bottom: downloadProgress.isDownloading
+            ? PreferredSize(
+                preferredSize: const Size.fromHeight(4.0),
+                child: LinearProgressIndicator(
+                  value: downloadProgress.percentage,
+                ),
+              )
+            : null,
+        actions: [
+          Consumer(
+            builder: (context, ref, child) {
+              final p2pState = ref.watch(uiP2pServiceProvider);
+              final isConnected =
+                  p2pState.hostState?.isActive == true ||
+                  p2pState.clientState?.isActive == true;
 
-                  if (isSyncing) {
-                    return const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 12.0),
-                      child: Center(
-                        child: SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2,
+              if (!isConnected) return const SizedBox.shrink();
+
+              return IconButton(
+                icon: const Icon(Icons.sync),
+                tooltip: 'Manual Mesh Sync',
+                onPressed: p2pState.isSyncing
+                    ? null
+                    : () {
+                        HapticFeedback.mediumImpact();
+                        ref.read(uiP2pServiceProvider.notifier).triggerSync();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Triggered manual mesh sync...'),
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                      },
+              );
+            },
+          ),
+          Consumer(
+            builder: (context, ref, child) {
+              final hasInternet = ref.watch(
+                cloudSyncServiceProvider.select((s) => s.hasInternet),
+              );
+              final isSyncing = ref.watch(
+                cloudSyncServiceProvider.select((s) => s.isSyncing),
+              );
+              final pendingUploads = ref.watch(
+                cloudSyncServiceProvider.select((s) => s.pendingUploads),
+              );
+
+              if (isSyncing) {
+                return const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 12.0),
+                  child: Center(
+                    child: SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    ),
+                  ),
+                );
+              }
+
+              return Stack(
+                alignment: Alignment.center,
+                children: [
+                  IconButton(
+                    icon: Icon(
+                      hasInternet ? Icons.cloud_done : Icons.cloud_off,
+                      color: hasInternet ? Colors.white : Colors.white54,
+                    ),
+                    tooltip: hasInternet ? 'Cloud Connected' : 'No Internet',
+                    onPressed: () {
+                      HapticFeedback.mediumImpact();
+                      if (hasInternet) {
+                        ref
+                            .read(cloudSyncServiceProvider.notifier)
+                            .syncWithCloud();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Syncing with cloud...'),
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('No internet connection available.'),
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                      }
+                    },
+                  ),
+                  if (pendingUploads > 0)
+                    Positioned(
+                      right: 8,
+                      top: 8,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: const BoxDecoration(
+                          color: Colors.red,
+                          shape: BoxShape.circle,
+                        ),
+                        constraints: const BoxConstraints(
+                          minWidth: 16,
+                          minHeight: 16,
+                        ),
+                        child: Center(
+                          child: Text(
+                            pendingUploads > 99 ? '99+' : '$pendingUploads',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 9,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            textAlign: TextAlign.center,
                           ),
                         ),
                       ),
-                    );
-                  }
-
-                  return Stack(
-                    alignment: Alignment.center,
+                    ),
+                ],
+              );
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.terminal),
+            tooltip: 'Diagnostics Terminal',
+            onPressed: () {
+              HapticFeedback.selectionClick();
+              ref.read(showTerminalOverlayProvider.notifier).toggle();
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.device_hub),
+            tooltip: 'Mesh Topology',
+            onPressed: () {
+              HapticFeedback.selectionClick();
+              if (!isMeshTopologyOpen) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const MeshTopologyScreen()),
+                );
+              }
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.share),
+            tooltip: 'Share App (APK)',
+            onPressed: () {
+              HapticFeedback.selectionClick();
+              _shareApk();
+            },
+          ),
+          if (downloadProgress.isDownloading)
+            IconButton(
+              icon: const Icon(Icons.cancel),
+              tooltip: 'Cancel Download',
+              onPressed: () {
+                HapticFeedback.selectionClick();
+                ref.read(mapDownloaderProvider.notifier).cancelDownload();
+              },
+            )
+          else
+            IconButton(
+              icon: const Icon(Icons.download),
+              tooltip: 'Download Offline Map',
+              onPressed: () {
+                HapticFeedback.selectionClick();
+                _showDownloadMapDialog();
+              },
+            ),
+          const Padding(
+            padding: EdgeInsets.only(right: 8),
+            child: MeshStatusChip(),
+          ),
+        ],
+      ),
+      body: Column(
+        children: [
+          if (isRedAlert) const RedAlertBanner(),
+          Expanded(
+            child: Stack(
+              children: [
+                IndexedStack(
+                  index: displayIndex,
+                  children: [
+                    _buildMap(),
+                    _buildFeed(),
+                    const GuideTab(),
+                    ProfileTab(
+                      onEditAreaShape: (area) {
+                        ref.read(navigationIndexProvider.notifier).setIndex(0);
+                        ref
+                            .read(drawingControllerProvider.notifier)
+                            .startDrawingArea(
+                              area.id,
+                              area.coordinates
+                                  .map((c) => LatLng(c['lat']!, c['lng']!))
+                                  .toList(),
+                            );
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Edit the area shape on the map.'),
+                          ),
+                        );
+                      },
+                      onEditPathShape: (path) {
+                        ref.read(navigationIndexProvider.notifier).setIndex(0);
+                        ref
+                            .read(drawingControllerProvider.notifier)
+                            .startDrawingPath(
+                              path.id,
+                              path.coordinates
+                                  .map((c) => LatLng(c['lat']!, c['lng']!))
+                                  .toList(),
+                            );
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Edit the path shape on the map.'),
+                          ),
+                        );
+                      },
+                      onNavigateToMap: (point) {
+                        ref.read(navigationIndexProvider.notifier).setIndex(0);
+                        ref.read(mapTargetProvider.notifier).setTarget(point);
+                      },
+                    ),
+                    if (settings.isOfficialMode) const CommandTab(),
+                  ],
+                ),
+                if (ref.watch(showTerminalOverlayProvider))
+                  const Positioned(
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    child: TerminalOverlay(),
+                  ),
+                if (isRedAlert) const CriticalAlertOverlay(),
+              ],
+            ),
+          ),
+        ],
+      ),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: displayIndex,
+        onDestinationSelected: (index) {
+          HapticFeedback.selectionClick();
+          ref.read(navigationIndexProvider.notifier).setIndex(index);
+        },
+        destinations: [
+          const NavigationDestination(
+            icon: Icon(Icons.map_outlined),
+            selectedIcon: Icon(Icons.map),
+            label: 'Map',
+          ),
+          const NavigationDestination(
+            icon: Icon(Icons.view_list_outlined),
+            selectedIcon: Icon(Icons.view_list),
+            label: 'Feed',
+          ),
+          const NavigationDestination(
+            icon: Icon(Icons.help_outline),
+            selectedIcon: Icon(Icons.help),
+            label: 'Guide',
+          ),
+          const NavigationDestination(
+            icon: Icon(Icons.person_outline),
+            selectedIcon: Icon(Icons.person),
+            label: 'Profile',
+          ),
+          if (settings.isOfficialMode)
+            const NavigationDestination(
+              icon: Icon(Icons.admin_panel_settings_outlined),
+              selectedIcon: Icon(Icons.admin_panel_settings),
+              label: 'Command',
+            ),
+        ],
+      ),
+      floatingActionButton: (displayIndex >= 2)
+          ? null
+          : cryptoState.when(
+              data: (_) {
+                final drawingState = ref.watch(drawingControllerProvider);
+                if (drawingState.mode != DrawingMode.none) {
+                  return Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
                     children: [
-                      IconButton(
-                        icon: Icon(
-                          hasInternet ? Icons.cloud_done : Icons.cloud_off,
-                          color: hasInternet ? Colors.white : Colors.white54,
-                        ),
-                        tooltip: hasInternet
-                            ? 'Cloud Connected'
-                            : 'No Internet',
+                      FloatingActionButton.extended(
+                        heroTag: 'cancel_draw',
                         onPressed: () {
-                          HapticFeedback.mediumImpact();
-                          if (hasInternet) {
-                            ref
-                                .read(cloudSyncServiceProvider.notifier)
-                                .syncWithCloud();
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Syncing with cloud...'),
-                                behavior: SnackBarBehavior.floating,
-                              ),
-                            );
-                          } else {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  'No internet connection available.',
-                                ),
-                                behavior: SnackBarBehavior.floating,
-                              ),
-                            );
-                          }
+                          HapticFeedback.lightImpact();
+                          ref.read(drawingControllerProvider.notifier).cancel();
                         },
+                        backgroundColor: Colors.red,
+                        icon: const Icon(Icons.close, color: Colors.white),
+                        label: const Text(
+                          'Cancel',
+                          style: TextStyle(color: Colors.white),
+                        ),
                       ),
-                      if (pendingUploads > 0)
-                        Positioned(
-                          right: 8,
-                          top: 8,
-                          child: Container(
-                            padding: const EdgeInsets.all(4),
-                            decoration: const BoxDecoration(
-                              color: Colors.red,
-                              shape: BoxShape.circle,
-                            ),
-                            constraints: const BoxConstraints(
-                              minWidth: 16,
-                              minHeight: 16,
-                            ),
-                            child: Center(
-                              child: Text(
-                                pendingUploads > 99 ? '99+' : '$pendingUploads',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 9,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                            ),
+                      const SizedBox(width: 16),
+                      if (drawingState.points.isNotEmpty)
+                        FloatingActionButton.extended(
+                          heroTag: 'undo_draw',
+                          onPressed: () {
+                            HapticFeedback.lightImpact();
+                            ref
+                                .read(drawingControllerProvider.notifier)
+                                .removeLastPoint();
+                          },
+                          backgroundColor: Colors.orange,
+                          icon: const Icon(Icons.undo, color: Colors.white),
+                          label: const Text(
+                            'Undo',
+                            style: TextStyle(color: Colors.white),
+                          ),
+                        ),
+                      const SizedBox(width: 16),
+                      if ((drawingState.mode == DrawingMode.area &&
+                              drawingState.points.length >= 3) ||
+                          (drawingState.mode == DrawingMode.path &&
+                              drawingState.points.length >= 2))
+                        FloatingActionButton.extended(
+                          heroTag: 'done_draw',
+                          onPressed: () async {
+                            HapticFeedback.mediumImpact();
+                            if (drawingState.mode == DrawingMode.area) {
+                              AreaEntity? existingArea;
+                              if (drawingState.editingId != null) {
+                                final areas =
+                                    ref.read(areasControllerProvider).value ??
+                                    [];
+                                try {
+                                  existingArea = areas.firstWhere(
+                                    (a) => a.id == drawingState.editingId,
+                                  );
+                                } catch (_) {}
+                              }
+                              _showAddAreaDialog(
+                                existingArea: existingArea,
+                                points: drawingState.points,
+                              );
+                            } else {
+                              PathEntity? existingPath;
+                              if (drawingState.editingId != null) {
+                                final paths =
+                                    ref.read(pathsControllerProvider).value ??
+                                    [];
+                                try {
+                                  existingPath = paths.firstWhere(
+                                    (p) => p.id == drawingState.editingId,
+                                  );
+                                } catch (_) {}
+                              }
+                              _showAddPathDialog(
+                                existingPath: existingPath,
+                                points: drawingState.points,
+                              );
+                            }
+                          },
+                          backgroundColor: Colors.green,
+                          icon: const Icon(Icons.check, color: Colors.white),
+                          label: const Text(
+                            'Done',
+                            style: TextStyle(color: Colors.white),
                           ),
                         ),
                     ],
                   );
-                },
-              ),
-              IconButton(
-                icon: const Icon(Icons.terminal),
-                tooltip: 'Diagnostics Terminal',
-                onPressed: () {
-                  HapticFeedback.selectionClick();
-                  ref.read(showTerminalOverlayProvider.notifier).toggle();
-                },
-              ),
-              IconButton(
-                icon: const Icon(Icons.device_hub),
-                tooltip: 'Mesh Topology',
-                onPressed: () {
-                  HapticFeedback.selectionClick();
-                  if (!isMeshTopologyOpen) {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const MeshTopologyScreen()),
-                    );
-                  }
-                },
-              ),
-              IconButton(
-                icon: const Icon(Icons.share),
-                tooltip: 'Share App (APK)',
-                onPressed: () {
-                  HapticFeedback.selectionClick();
-                  _shareApk();
-                },
-              ),
-              if (downloadProgress.isDownloading)
-                IconButton(
-                  icon: const Icon(Icons.cancel),
-                  tooltip: 'Cancel Download',
-                  onPressed: () {
-                    HapticFeedback.selectionClick();
-                    ref.read(mapDownloaderProvider.notifier).cancelDownload();
-                  },
-                )
-              else
-                IconButton(
-                  icon: const Icon(Icons.download),
-                  tooltip: 'Download Offline Map',
-                  onPressed: () {
-                    HapticFeedback.selectionClick();
-                    _showDownloadMapDialog();
-                  },
-                ),
-              const Padding(
-                padding: EdgeInsets.only(right: 8),
-                child: MeshStatusChip(),
-              ),
-            ],
-          ),
-          body: Column(
-            children: [
-              if (isRedAlert) const RedAlertBanner(),
-              Expanded(
-                child: Stack(
+                }
+
+                final locationState = ref.watch(locationControllerProvider);
+                final isLocationLoading =
+                    locationState.isLoading && locationState.value == null;
+
+                return Column(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    IndexedStack(
-                      index: displayIndex,
-                      children: [
-                        _buildMap(),
-                        _buildFeed(),
-                        const GuideTab(),
-                        ProfileTab(
-                          onEditAreaShape: (area) {
-                            ref.read(navigationIndexProvider.notifier).setIndex(0);
-                            ref
-                                .read(drawingControllerProvider.notifier)
-                                .startDrawingArea(
-                                  area.id,
-                                  area.coordinates
-                                      .map((c) => LatLng(c['lat']!, c['lng']!))
-                                      .toList(),
-                                );
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Edit the area shape on the map.'),
-                              ),
-                            );
-                          },
-                          onEditPathShape: (path) {
-                            ref.read(navigationIndexProvider.notifier).setIndex(0);
-                            ref
-                                .read(drawingControllerProvider.notifier)
-                                .startDrawingPath(
-                                  path.id,
-                                  path.coordinates
-                                      .map((c) => LatLng(c['lat']!, c['lng']!))
-                                      .toList(),
-                                );
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Edit the path shape on the map.'),
-                              ),
-                            );
-                          },
-                          onNavigateToMap: (point) {
-                            ref.read(navigationIndexProvider.notifier).setIndex(0);
-                            ref.read(mapTargetProvider.notifier).setTarget(point);
-                          },
-                        ),
-                        if (settings.isOfficialMode) const CommandTab(),
-                      ],
-                    ),
-                    if (ref.watch(showTerminalOverlayProvider))
-                      const Positioned(
-                        bottom: 0,
-                        left: 0,
-                        right: 0,
-                        child: TerminalOverlay(),
-                      ),
-                    if (isRedAlert) const CriticalAlertOverlay(),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          bottomNavigationBar: NavigationBar(
-            selectedIndex: displayIndex,
-            onDestinationSelected: (index) {
-              HapticFeedback.selectionClick();
-              ref.read(navigationIndexProvider.notifier).setIndex(index);
-            },
-            destinations: [
-              const NavigationDestination(
-                icon: Icon(Icons.map_outlined),
-                selectedIcon: Icon(Icons.map),
-                label: 'Map',
-              ),
-              const NavigationDestination(
-                icon: Icon(Icons.view_list_outlined),
-                selectedIcon: Icon(Icons.view_list),
-                label: 'Feed',
-              ),
-              const NavigationDestination(
-                icon: Icon(Icons.help_outline),
-                selectedIcon: Icon(Icons.help),
-                label: 'Guide',
-              ),
-              const NavigationDestination(
-                icon: Icon(Icons.person_outline),
-                selectedIcon: Icon(Icons.person),
-                label: 'Profile',
-              ),
-              if (settings.isOfficialMode)
-                const NavigationDestination(
-                  icon: Icon(Icons.admin_panel_settings_outlined),
-                  selectedIcon: Icon(Icons.admin_panel_settings),
-                  label: 'Command',
-                ),
-            ],
-          ),
-          floatingActionButton: (displayIndex >= 2)
-              ? null
-              : cryptoState.when(
-                  data: (_) {
-                    final drawingState = ref.watch(drawingControllerProvider);
-                    if (drawingState.mode != DrawingMode.none) {
-                      return Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          FloatingActionButton.extended(
-                            heroTag: 'cancel_draw',
-                            onPressed: () {
-                              HapticFeedback.lightImpact();
-                              ref
-                                  .read(drawingControllerProvider.notifier)
-                                  .cancel();
-                            },
-                            backgroundColor: Colors.red,
-                            icon: const Icon(Icons.close, color: Colors.white),
-                            label: const Text(
-                              'Cancel',
-                              style: TextStyle(color: Colors.white),
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          if (drawingState.points.isNotEmpty)
-                            FloatingActionButton.extended(
-                              heroTag: 'undo_draw',
-                              onPressed: () {
-                                HapticFeedback.lightImpact();
-                                ref
-                                    .read(drawingControllerProvider.notifier)
-                                    .removeLastPoint();
-                              },
-                              backgroundColor: Colors.orange,
-                              icon: const Icon(Icons.undo, color: Colors.white),
-                              label: const Text(
-                                'Undo',
-                                style: TextStyle(color: Colors.white),
-                              ),
-                            ),
-                          const SizedBox(width: 16),
-                          if ((drawingState.mode == DrawingMode.area &&
-                                  drawingState.points.length >= 3) ||
-                              (drawingState.mode == DrawingMode.path &&
-                                  drawingState.points.length >= 2))
-                            FloatingActionButton.extended(
-                              heroTag: 'done_draw',
-                              onPressed: () async {
-                                HapticFeedback.mediumImpact();
-                                if (drawingState.mode == DrawingMode.area) {
-                                  AreaEntity? existingArea;
-                                  if (drawingState.editingId != null) {
-                                    final areas =
-                                        ref
-                                            .read(areasControllerProvider)
-                                            .value ??
-                                        [];
-                                    try {
-                                      existingArea = areas.firstWhere(
-                                        (a) => a.id == drawingState.editingId,
-                                      );
-                                    } catch (_) {}
-                                  }
-                                  _showAddAreaDialog(
-                                    existingArea: existingArea,
-                                    points: drawingState.points,
-                                  );
-                                } else {
-                                  PathEntity? existingPath;
-                                  if (drawingState.editingId != null) {
-                                    final paths =
-                                        ref
-                                            .read(pathsControllerProvider)
-                                            .value ??
-                                        [];
-                                    try {
-                                      existingPath = paths.firstWhere(
-                                        (p) => p.id == drawingState.editingId,
-                                      );
-                                    } catch (_) {}
-                                  }
-                                  _showAddPathDialog(
-                                    existingPath: existingPath,
-                                    points: drawingState.points,
-                                  );
-                                }
-                              },
-                              backgroundColor: Colors.green,
-                              icon: const Icon(
-                                Icons.check,
-                                color: Colors.white,
-                              ),
-                              label: const Text(
-                                'Done',
-                                style: TextStyle(color: Colors.white),
-                              ),
-                            ),
-                        ],
-                      );
-                    }
-
-                    final locationState = ref.watch(locationControllerProvider);
-                    final isLocationLoading =
-                        locationState.isLoading && locationState.value == null;
-
-                    return Column(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        if (displayIndex == 0) ...[
-                          if (_mapRotation != 0.0) ...[
-                            FloatingActionButton.small(
-                              heroTag: 'reset_rotation',
-                              onPressed: () {
-                                HapticFeedback.lightImpact();
-                                _mapController.rotate(0);
-                              },
-                              backgroundColor: Theme.of(
-                                context,
-                              ).colorScheme.surface,
-                              foregroundColor: Theme.of(
-                                context,
-                              ).colorScheme.primary,
-                              child: const Icon(Icons.explore),
-                            ),
-                            const SizedBox(height: 16),
-                          ],
-                          FloatingActionButton.small(
-                            heroTag: 'zoom_in',
-                            onPressed: () {
-                              HapticFeedback.lightImpact();
-                              try {
-                                final currentZoom = _mapController.camera.zoom;
-                                _mapController.move(
-                                  _mapController.camera.center,
-                                  currentZoom + 1,
-                                );
-                              } catch (e) {
-                                debugPrint('Map not ready: $e');
-                              }
-                            },
-                            backgroundColor: Theme.of(
-                              context,
-                            ).colorScheme.surface,
-                            foregroundColor: Theme.of(
-                              context,
-                            ).colorScheme.primary,
-                            child: const Icon(Icons.add),
-                          ),
-                          const SizedBox(height: 8),
-                          FloatingActionButton.small(
-                            heroTag: 'zoom_out',
-                            onPressed: () {
-                              HapticFeedback.lightImpact();
-                              try {
-                                final currentZoom = _mapController.camera.zoom;
-                                _mapController.move(
-                                  _mapController.camera.center,
-                                  currentZoom - 1,
-                                );
-                              } catch (e) {
-                                debugPrint('Map not ready: $e');
-                              }
-                            },
-                            backgroundColor: Theme.of(
-                              context,
-                            ).colorScheme.surface,
-                            foregroundColor: Theme.of(
-                              context,
-                            ).colorScheme.primary,
-                            child: const Icon(Icons.remove),
-                          ),
-                          const SizedBox(height: 16),
-                          FloatingActionButton.small(
-                            heroTag: 'map_help',
-                            onPressed: () {
-                              HapticFeedback.selectionClick();
-                              _showMapHelp(context);
-                            },
-                            backgroundColor: Theme.of(
-                              context,
-                            ).colorScheme.surface,
-                            foregroundColor: Theme.of(
-                              context,
-                            ).colorScheme.primary,
-                            child: const Icon(Icons.help_outline),
-                          ),
-                          const SizedBox(height: 16),
-                          FloatingActionButton.small(
-                            heroTag: 'layers',
-                            onPressed: () {
-                              HapticFeedback.selectionClick();
-                              ref
-                                  .read(showOfflineRegionsProvider.notifier)
-                                  .toggle();
-                              final show = ref.read(showOfflineRegionsProvider);
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                    show
-                                        ? 'Showing offline regions'
-                                        : 'Hiding offline regions',
-                                  ),
-                                  behavior: SnackBarBehavior.floating,
-                                ),
-                              );
-                            },
-                            backgroundColor: Theme.of(
-                              context,
-                            ).colorScheme.surface,
-                            foregroundColor: Theme.of(
-                              context,
-                            ).colorScheme.primary,
-                            child: const Icon(Icons.layers),
-                          ),
-                          const SizedBox(height: 16),
-                          FloatingActionButton.small(
-                            heroTag: 'heatmap',
-                            onPressed: () {
-                              HapticFeedback.selectionClick();
-                              ref.read(showHeatmapProvider.notifier).toggle();
-                              final show = ref.read(showHeatmapProvider);
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                    show
-                                        ? 'Showing heatmap'
-                                        : 'Hiding heatmap',
-                                  ),
-                                  behavior: SnackBarBehavior.floating,
-                                ),
-                              );
-                            },
-                            backgroundColor: showHeatmap
-                                ? Theme.of(context).colorScheme.primary
-                                : Theme.of(context).colorScheme.surface,
-                            foregroundColor: showHeatmap
-                                ? Theme.of(context).colorScheme.onPrimary
-                                : Theme.of(context).colorScheme.primary,
-                            child: const Icon(Icons.whatshot),
-                          ),
-                          const SizedBox(height: 16),
-                          FloatingActionButton.small(
-                            heroTag: 'center_map',
-                            onPressed: () async {
-                              HapticFeedback.selectionClick();
-                              setState(() {
-                                _isTrackingLocation = true;
-                              });
-                              try {
-                                final pos = await ref
-                                    .read(locationControllerProvider.notifier)
-                                    .getCurrentPosition();
-                                if (pos != null) {
-                                  final zoom = _mapController.camera.zoom < 10.0
-                                      ? 15.0
-                                      : _mapController.camera.zoom;
-                                  _mapController.move(
-                                    LatLng(pos.latitude, pos.longitude),
-                                    zoom,
-                                  );
-                                } else {
-                                  if (mounted) {
-                                    ScaffoldMessenger.of(
-                                      this.context,
-                                    ).showSnackBar(
-                                      const SnackBar(
-                                        content: Text(
-                                          'Location not available. Please check permissions.',
-                                        ),
-                                        behavior: SnackBarBehavior.floating,
-                                      ),
-                                    );
-                                  }
-                                }
-                              } catch (e) {
-                                debugPrint('Map not ready yet: $e');
-                              }
-                            },
-                            backgroundColor: _isTrackingLocation
-                                ? Theme.of(context).colorScheme.primary
-                                : Theme.of(context).colorScheme.surface,
-                            foregroundColor: _isTrackingLocation
-                                ? Theme.of(context).colorScheme.onPrimary
-                                : Theme.of(context).colorScheme.primary,
-                            child: isLocationLoading
-                                ? Padding(
-                                    padding: const EdgeInsets.all(8.0),
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: _isTrackingLocation
-                                          ? Theme.of(
-                                              context,
-                                            ).colorScheme.onPrimary
-                                          : Theme.of(
-                                              context,
-                                            ).colorScheme.primary,
-                                    ),
-                                  )
-                                : const Icon(Icons.my_location),
-                          ),
-                          const SizedBox(height: 16),
-                          FloatingActionButton.small(
-                            heroTag: 'sos_beacon',
-                            onPressed: () async {
-                              HapticFeedback.heavyImpact();
-                              final notifier = ref.read(sosFlashlightControllerProvider.notifier);
-                              final wasActive = ref.read(sosFlashlightControllerProvider);
-                              
-                              if (wasActive) {
-                                await notifier.toggle();
-                                if (context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('SOS Beacon Deactivated'),
-                                      behavior: SnackBarBehavior.floating,
-                                    ),
-                                  );
-                                }
-                              } else {
-                                final success = await notifier.toggle();
-                                if (context.mounted) {
-                                  if (success) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text('SOS Beacon Activated'),
-                                        behavior: SnackBarBehavior.floating,
-                                      ),
-                                    );
-                                  } else {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text('Flashlight not available on this device.'),
-                                        behavior: SnackBarBehavior.floating,
-                                      ),
-                                    );
-                                  }
-                                }
-                              }
-                            },
-                            backgroundColor: ref.watch(sosFlashlightControllerProvider)
-                                ? Colors.red
-                                : Theme.of(context).colorScheme.surface,
-                            foregroundColor: ref.watch(sosFlashlightControllerProvider)
-                                ? Colors.white
-                                : Colors.red,
-                            child: const Icon(Icons.sos),
-                          ),
-                          const SizedBox(height: 16),
-                        ],
-                        FloatingActionButton.extended(
-                          heroTag: 'create_report',
+                    if (displayIndex == 0) ...[
+                      if (_mapRotation != 0.0) ...[
+                        FloatingActionButton.small(
+                          heroTag: 'reset_rotation',
                           onPressed: () {
-                            HapticFeedback.selectionClick();
-                            _showReportOptions();
+                            HapticFeedback.lightImpact();
+                            _mapController.rotate(0);
                           },
-                          icon: const Icon(Icons.add),
-                          label: const Text('Create Report'),
+                          backgroundColor: Theme.of(
+                            context,
+                          ).colorScheme.surface,
+                          foregroundColor: Theme.of(
+                            context,
+                          ).colorScheme.primary,
+                          child: const Icon(Icons.explore),
                         ),
+                        const SizedBox(height: 16),
                       ],
-                    );
-                  },
-                  loading: () => const FloatingActionButton(
-                    onPressed: null,
-                    child: CircularProgressIndicator(),
-                  ),
-                  error: (e, st) => const FloatingActionButton(
-                    onPressed: null,
-                    child: Icon(Icons.error),
-                  ),
-                ),
+                      FloatingActionButton.small(
+                        heroTag: 'zoom_in',
+                        onPressed: () {
+                          HapticFeedback.lightImpact();
+                          try {
+                            final currentZoom = _mapController.camera.zoom;
+                            _mapController.move(
+                              _mapController.camera.center,
+                              currentZoom + 1,
+                            );
+                          } catch (e) {
+                            debugPrint('Map not ready: $e');
+                          }
+                        },
+                        backgroundColor: Theme.of(context).colorScheme.surface,
+                        foregroundColor: Theme.of(context).colorScheme.primary,
+                        child: const Icon(Icons.add),
+                      ),
+                      const SizedBox(height: 8),
+                      FloatingActionButton.small(
+                        heroTag: 'zoom_out',
+                        onPressed: () {
+                          HapticFeedback.lightImpact();
+                          try {
+                            final currentZoom = _mapController.camera.zoom;
+                            _mapController.move(
+                              _mapController.camera.center,
+                              currentZoom - 1,
+                            );
+                          } catch (e) {
+                            debugPrint('Map not ready: $e');
+                          }
+                        },
+                        backgroundColor: Theme.of(context).colorScheme.surface,
+                        foregroundColor: Theme.of(context).colorScheme.primary,
+                        child: const Icon(Icons.remove),
+                      ),
+                      const SizedBox(height: 16),
+                      FloatingActionButton.small(
+                        heroTag: 'map_help',
+                        onPressed: () {
+                          HapticFeedback.selectionClick();
+                          _showMapHelp(context);
+                        },
+                        backgroundColor: Theme.of(context).colorScheme.surface,
+                        foregroundColor: Theme.of(context).colorScheme.primary,
+                        child: const Icon(Icons.help_outline),
+                      ),
+                      const SizedBox(height: 16),
+                      FloatingActionButton.small(
+                        heroTag: 'layers',
+                        onPressed: () {
+                          HapticFeedback.selectionClick();
+                          ref
+                              .read(showOfflineRegionsProvider.notifier)
+                              .toggle();
+                          final show = ref.read(showOfflineRegionsProvider);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                show
+                                    ? 'Showing offline regions'
+                                    : 'Hiding offline regions',
+                              ),
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                        },
+                        backgroundColor: Theme.of(context).colorScheme.surface,
+                        foregroundColor: Theme.of(context).colorScheme.primary,
+                        child: const Icon(Icons.layers),
+                      ),
+                      const SizedBox(height: 16),
+                      FloatingActionButton.small(
+                        heroTag: 'heatmap',
+                        onPressed: () {
+                          HapticFeedback.selectionClick();
+                          ref.read(showHeatmapProvider.notifier).toggle();
+                          final show = ref.read(showHeatmapProvider);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                show ? 'Showing heatmap' : 'Hiding heatmap',
+                              ),
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                        },
+                        backgroundColor: showHeatmap
+                            ? Theme.of(context).colorScheme.primary
+                            : Theme.of(context).colorScheme.surface,
+                        foregroundColor: showHeatmap
+                            ? Theme.of(context).colorScheme.onPrimary
+                            : Theme.of(context).colorScheme.primary,
+                        child: const Icon(Icons.whatshot),
+                      ),
+                      const SizedBox(height: 16),
+                      FloatingActionButton.small(
+                        heroTag: 'center_map',
+                        onPressed: () async {
+                          HapticFeedback.selectionClick();
+                          setState(() {
+                            _isTrackingLocation = true;
+                          });
+                          try {
+                            final pos = await ref
+                                .read(locationControllerProvider.notifier)
+                                .getCurrentPosition();
+                            if (pos != null) {
+                              final zoom = _mapController.camera.zoom < 10.0
+                                  ? 15.0
+                                  : _mapController.camera.zoom;
+                              _mapController.move(
+                                LatLng(pos.latitude, pos.longitude),
+                                zoom,
+                              );
+                            } else {
+                              if (mounted) {
+                                ScaffoldMessenger.of(this.context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                      'Location not available. Please check permissions.',
+                                    ),
+                                    behavior: SnackBarBehavior.floating,
+                                  ),
+                                );
+                              }
+                            }
+                          } catch (e) {
+                            debugPrint('Map not ready yet: $e');
+                          }
+                        },
+                        backgroundColor: _isTrackingLocation
+                            ? Theme.of(context).colorScheme.primary
+                            : Theme.of(context).colorScheme.surface,
+                        foregroundColor: _isTrackingLocation
+                            ? Theme.of(context).colorScheme.onPrimary
+                            : Theme.of(context).colorScheme.primary,
+                        child: isLocationLoading
+                            ? Padding(
+                                padding: const EdgeInsets.all(8.0),
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: _isTrackingLocation
+                                      ? Theme.of(context).colorScheme.onPrimary
+                                      : Theme.of(context).colorScheme.primary,
+                                ),
+                              )
+                            : const Icon(Icons.my_location),
+                      ),
+                      const SizedBox(height: 16),
+                      FloatingActionButton.small(
+                        heroTag: 'sos_beacon',
+                        onPressed: () async {
+                          HapticFeedback.heavyImpact();
+                          final notifier = ref.read(
+                            sosFlashlightControllerProvider.notifier,
+                          );
+                          final wasActive = ref.read(
+                            sosFlashlightControllerProvider,
+                          );
+
+                          if (wasActive) {
+                            await notifier.toggle();
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('SOS Beacon Deactivated'),
+                                  behavior: SnackBarBehavior.floating,
+                                ),
+                              );
+                            }
+                          } else {
+                            final success = await notifier.toggle();
+                            if (context.mounted) {
+                              if (success) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('SOS Beacon Activated'),
+                                    behavior: SnackBarBehavior.floating,
+                                  ),
+                                );
+                              } else {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                      'Flashlight not available on this device.',
+                                    ),
+                                    behavior: SnackBarBehavior.floating,
+                                  ),
+                                );
+                              }
+                            }
+                          }
+                        },
+                        backgroundColor:
+                            ref.watch(sosFlashlightControllerProvider)
+                            ? Colors.red
+                            : Theme.of(context).colorScheme.surface,
+                        foregroundColor:
+                            ref.watch(sosFlashlightControllerProvider)
+                            ? Colors.white
+                            : Colors.red,
+                        child: const Icon(Icons.sos),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+                    FloatingActionButton.extended(
+                      heroTag: 'create_report',
+                      onPressed: () {
+                        HapticFeedback.selectionClick();
+                        _showReportOptions();
+                      },
+                      icon: const Icon(Icons.add),
+                      label: const Text('Create Report'),
+                    ),
+                  ],
+                );
+              },
+              loading: () => const FloatingActionButton(
+                onPressed: null,
+                child: CircularProgressIndicator(),
+              ),
+              error: (e, st) => const FloatingActionButton(
+                onPressed: null,
+                child: Icon(Icons.error),
+              ),
+            ),
     );
 
     if (_showTutorial) {

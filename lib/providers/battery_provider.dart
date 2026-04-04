@@ -34,7 +34,11 @@ class BatteryController extends _$BatteryController {
       _fetch();
     });
 
-    return BatteryInfo(level: 100, state: BatteryState.unknown, isPowerSaveMode: false);
+    return BatteryInfo(
+      level: 100,
+      state: BatteryState.unknown,
+      isPowerSaveMode: false,
+    );
   }
 
   Future<void> _fetch() async {
@@ -42,7 +46,11 @@ class BatteryController extends _$BatteryController {
       final level = await _battery.batteryLevel;
       final state = await _battery.batteryState;
       final isPowerSave = await _battery.isInBatterySaveMode;
-      this.state = BatteryInfo(level: level, state: state, isPowerSaveMode: isPowerSave);
+      this.state = BatteryInfo(
+        level: level,
+        state: state,
+        isPowerSaveMode: isPowerSave,
+      );
     } catch (e) {
       // Ignore battery fetch errors, but log them for debugging
     }

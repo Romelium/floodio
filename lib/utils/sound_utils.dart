@@ -32,14 +32,14 @@ Uint8List _generateTones(List<(double freq, double duration)> tones) {
   for (var tone in tones) {
     totalSamples += (sampleRate * tone.$2).toInt();
   }
-  
+
   final byteData = ByteData(44 + totalSamples * 2);
-  
+
   // RIFF header
   byteData.setUint32(0, 0x52494646, Endian.big); // 'RIFF'
   byteData.setUint32(4, 36 + totalSamples * 2, Endian.little);
   byteData.setUint32(8, 0x57415645, Endian.big); // 'WAVE'
-  
+
   // fmt chunk
   byteData.setUint32(12, 0x666D7420, Endian.big); // 'fmt '
   byteData.setUint32(16, 16, Endian.little);
@@ -49,20 +49,20 @@ Uint8List _generateTones(List<(double freq, double duration)> tones) {
   byteData.setUint32(28, sampleRate * 2, Endian.little); // Byte rate
   byteData.setUint16(32, 2, Endian.little); // Block align
   byteData.setUint16(34, 16, Endian.little); // Bits per sample
-  
+
   // data chunk
   byteData.setUint32(36, 0x64617461, Endian.big); // 'data'
   byteData.setUint32(40, totalSamples * 2, Endian.little);
-  
+
   int offset = 44;
   for (final tone in tones) {
     final freq = tone.$1;
     final duration = tone.$2;
     final numSamples = (sampleRate * duration).toInt();
-    
+
     final attackSamples = (sampleRate * 0.01).toInt(); // 10ms attack
     final releaseSamples = (sampleRate * 0.02).toInt(); // 20ms release
-    
+
     for (int i = 0; i < numSamples; i++) {
       if (freq == 0.0) {
         byteData.setInt16(offset, 0, Endian.little);
@@ -79,13 +79,14 @@ Uint8List _generateTones(List<(double freq, double duration)> tones) {
         // Add a slight harmonic (e.g., 1st overtone at half amplitude) to make it sound less harsh
         final fundamental = sin(2 * pi * freq * t);
         final harmonic = 0.3 * sin(2 * pi * (freq * 2) * t);
-        
-        final sample = ((fundamental + harmonic) * 32767 * 0.25 * envelope).toInt();
+
+        final sample = ((fundamental + harmonic) * 32767 * 0.25 * envelope)
+            .toInt();
         byteData.setInt16(offset, sample, Endian.little);
       }
       offset += 2;
     }
   }
-  
+
   return byteData.buffer.asUint8List();
 }

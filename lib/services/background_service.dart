@@ -283,7 +283,10 @@ void onStart(ServiceInstance service) async {
   });
 
   container.listen(redAlertControllerProvider, (previous, next) async {
-    if (next.isActive && (previous == null || !previous.isActive || (next.latestAlertTitle != previous.latestAlertTitle))) {
+    if (next.isActive &&
+        (previous == null ||
+            !previous.isActive ||
+            (next.latestAlertTitle != previous.latestAlertTitle))) {
       final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
           FlutterLocalNotificationsPlugin();
 

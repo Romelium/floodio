@@ -44,13 +44,14 @@ class UiP2pService extends _$UiP2pService {
     service.on('p2pStateUpdate').listen((event) {
       if (event != null) {
         final newState = P2pState.fromMap(Map<String, dynamic>.from(event));
-        
+
         if (state.isSyncing && !newState.isSyncing) {
-          if (newState.syncMessage == 'Successfully synced data.' || 
+          if (newState.syncMessage == 'Successfully synced data.' ||
               newState.syncMessage == 'Up to date.' ||
               newState.syncMessage == 'Map updated successfully.') {
             playSuccess();
-          } else if (newState.syncMessage?.startsWith('Error') == true || newState.syncMessage?.startsWith('Failed') == true) {
+          } else if (newState.syncMessage?.startsWith('Error') == true ||
+              newState.syncMessage?.startsWith('Failed') == true) {
             playError();
           } else {
             playChirp();
@@ -96,23 +97,26 @@ class UiP2pService extends _$UiP2pService {
 
   void playSuccess() => _playSound(_successBytes, HapticFeedback.mediumImpact);
   void playError() => _playSound(_errorBytes, HapticFeedback.heavyImpact);
-  void playConnection() => _playSound(_connectionBytes, HapticFeedback.lightImpact);
-  void playNotification() => _playSound(_notificationBytes, HapticFeedback.lightImpact);
+  void playConnection() =>
+      _playSound(_connectionBytes, HapticFeedback.lightImpact);
+  void playNotification() =>
+      _playSound(_notificationBytes, HapticFeedback.lightImpact);
   void playChirp() => _playSound(_chirpBytes, HapticFeedback.selectionClick);
 
   void _playSound(Uint8List? bytes, Future<void> Function() haptic) async {
     try {
       haptic();
     } catch (_) {}
-    
+
     if (bytes != null) {
       try {
         RingerModeStatus ringerStatus = RingerModeStatus.unknown;
         try {
           ringerStatus = await SoundMode.ringerModeStatus;
         } catch (_) {}
-        
-        if (ringerStatus == RingerModeStatus.normal || ringerStatus == RingerModeStatus.unknown) {
+
+        if (ringerStatus == RingerModeStatus.normal ||
+            ringerStatus == RingerModeStatus.unknown) {
           await _audioPlayer.play(BytesSource(bytes));
         }
       } catch (e) {
@@ -188,7 +192,9 @@ class UiP2pService extends _$UiP2pService {
   }
 
   void processPayloadFromFile(String filePath) {
-    FlutterBackgroundService().invoke('processPayloadFromFile', {'filePath': filePath});
+    FlutterBackgroundService().invoke('processPayloadFromFile', {
+      'filePath': filePath,
+    });
   }
 
   void mockDiscoveredDevice() {

@@ -41,12 +41,24 @@ class RedAlertController extends _$RedAlertController {
 
     void check() {
       final now = DateTime.now().millisecondsSinceEpoch;
-      final activeMarkers = _markers.where((t) => t.expiresAt == null || t.expiresAt! > now).toList();
-      final activeNews = _news.where((t) => t.expiresAt == null || t.expiresAt! > now).toList();
-      final activeAreas = _areas.where((t) => t.expiresAt == null || t.expiresAt! > now).toList();
-      final activePaths = _paths.where((t) => t.expiresAt == null || t.expiresAt! > now).toList();
+      final activeMarkers = _markers
+          .where((t) => t.expiresAt == null || t.expiresAt! > now)
+          .toList();
+      final activeNews = _news
+          .where((t) => t.expiresAt == null || t.expiresAt! > now)
+          .toList();
+      final activeAreas = _areas
+          .where((t) => t.expiresAt == null || t.expiresAt! > now)
+          .toList();
+      final activePaths = _paths
+          .where((t) => t.expiresAt == null || t.expiresAt! > now)
+          .toList();
 
-      final hasAlerts = activeMarkers.isNotEmpty || activeNews.isNotEmpty || activeAreas.isNotEmpty || activePaths.isNotEmpty;
+      final hasAlerts =
+          activeMarkers.isNotEmpty ||
+          activeNews.isNotEmpty ||
+          activeAreas.isNotEmpty ||
+          activePaths.isNotEmpty;
 
       String? latestTitle;
       int latestTs = 0;
@@ -102,7 +114,9 @@ class RedAlertController extends _$RedAlertController {
         }
       }
 
-      if (hasAlerts != state.isActive || latestTitle != state.latestAlertTitle || newAlert) {
+      if (hasAlerts != state.isActive ||
+          latestTitle != state.latestAlertTitle ||
+          newAlert) {
         state = RedAlertState(
           isActive: hasAlerts,
           isMuted: hasAlerts ? (newAlert ? false : state.isMuted) : false,
@@ -128,22 +142,38 @@ class RedAlertController extends _$RedAlertController {
       }
     }
 
-    final mSub = (db.select(db.hazardMarkers)..where((t) => t.trustTier.equals(1) & t.isCritical.equals(true))).watch().listen((data) {
-      _markers = data;
-      check();
-    });
-    final nSub = (db.select(db.newsItems)..where((t) => t.trustTier.equals(1) & t.isCritical.equals(true))).watch().listen((data) {
-      _news = data;
-      check();
-    });
-    final aSub = (db.select(db.areas)..where((t) => t.trustTier.equals(1) & t.isCritical.equals(true))).watch().listen((data) {
-      _areas = data;
-      check();
-    });
-    final pSub = (db.select(db.paths)..where((t) => t.trustTier.equals(1) & t.isCritical.equals(true))).watch().listen((data) {
-      _paths = data;
-      check();
-    });
+    final mSub =
+        (db.select(db.hazardMarkers)
+              ..where((t) => t.trustTier.equals(1) & t.isCritical.equals(true)))
+            .watch()
+            .listen((data) {
+              _markers = data;
+              check();
+            });
+    final nSub =
+        (db.select(db.newsItems)
+              ..where((t) => t.trustTier.equals(1) & t.isCritical.equals(true)))
+            .watch()
+            .listen((data) {
+              _news = data;
+              check();
+            });
+    final aSub =
+        (db.select(db.areas)
+              ..where((t) => t.trustTier.equals(1) & t.isCritical.equals(true)))
+            .watch()
+            .listen((data) {
+              _areas = data;
+              check();
+            });
+    final pSub =
+        (db.select(db.paths)
+              ..where((t) => t.trustTier.equals(1) & t.isCritical.equals(true)))
+            .watch()
+            .listen((data) {
+              _paths = data;
+              check();
+            });
 
     ref.onDispose(() {
       mSub.cancel();
@@ -165,16 +195,16 @@ class RedAlertController extends _$RedAlertController {
 
   void _triggerAlarm() async {
     if (state.isMuted) return;
-    
+
     final startLoops = !_isVibrating && !_isFlashing;
     _isVibrating = true;
     _isFlashing = true;
-    
+
     if (startLoops) {
       _vibrateLoop();
       _flashLoop();
     }
-    
+
     try {
       try {
         await SoundMode.setSoundMode(RingerModeStatus.normal);
@@ -190,7 +220,11 @@ class RedAlertController extends _$RedAlertController {
 
       _audioPlayer.setReleaseMode(ReleaseMode.loop);
       if (_audioPlayer.state != PlayerState.playing) {
-        await _audioPlayer.play(UrlSource('https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg'));
+        await _audioPlayer.play(
+          UrlSource(
+            'https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg',
+          ),
+        );
       }
     } catch (e) {
       print("[RedAlertController] Error triggering alarm: $e");

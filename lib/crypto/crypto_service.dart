@@ -182,9 +182,7 @@ class CryptoService extends _$CryptoService {
 
   Future<void> _initKeys() async {
     const secureStorage = FlutterSecureStorage(
-      aOptions: AndroidOptions(
-        resetOnError: true,
-      ),
+      aOptions: AndroidOptions(resetOnError: true),
     );
     final privateKeyStr = await secureStorage.read(key: 'user_private_key');
 
@@ -192,7 +190,10 @@ class CryptoService extends _$CryptoService {
         await Isolate.run(() => _initKeysLogic(privateKeyStr));
 
     if (newPrivateKeyStr != null) {
-      await secureStorage.write(key: 'user_private_key', value: newPrivateKeyStr);
+      await secureStorage.write(
+        key: 'user_private_key',
+        value: newPrivateKeyStr,
+      );
     }
 
     _userKeyPair = userKeyPairData;

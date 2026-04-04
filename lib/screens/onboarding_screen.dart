@@ -158,7 +158,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                   MaterialPageRoute(builder: (_) => const HomeScreen()),
                 );
               },
-              child: const Text('Skip for now', style: TextStyle(color: Colors.grey)),
+              child: const Text(
+                'Skip for now',
+                style: TextStyle(color: Colors.grey),
+              ),
             ),
           ],
         ),
