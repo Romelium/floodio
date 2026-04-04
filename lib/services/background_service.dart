@@ -368,29 +368,51 @@ void onStart(ServiceInstance service) async {
     service.invoke('p2pStateUpdate', state.toMap());
   });
 
-  container.listen(p2pServiceProvider, (previous, next) async {
-    if (service is AndroidServiceInstance) {
-      if (await service.isForegroundService()) {
-        final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
-            FlutterLocalNotificationsPlugin();
+  DateTime lastStateUpdateTime = DateTime.now();
+  Timer? stateUpdateTimer;
+  String? lastNotificationMessage;
 
-        flutterLocalNotificationsPlugin.show(
-          id: 888,
-          title: 'Floodio Sync Active',
-          body: next.syncMessage ?? 'Running in background',
-          notificationDetails: const NotificationDetails(
-            android: AndroidNotificationDetails(
-              AppConstants.bgServiceChannel,
-              'Floodio Background Sync',
-              icon: 'ic_bg_service_small',
-              ongoing: true,
-            ),
-          ),
-        );
+  container.listen(p2pServiceProvider, (previous, next) {
+    void sendUpdate() async {
+      lastStateUpdateTime = DateTime.now();
+      service.invoke('p2pStateUpdate', next.toMap());
+
+      if (service is AndroidServiceInstance &&
+          next.syncMessage != lastNotificationMessage) {
+        lastNotificationMessage = next.syncMessage;
+        try {
+          if (await service.isForegroundService()) {
+            final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+                FlutterLocalNotificationsPlugin();
+
+            flutterLocalNotificationsPlugin.show(
+              id: 888,
+              title: 'Floodio Sync Active',
+              body: next.syncMessage ?? 'Running in background',
+              notificationDetails: const NotificationDetails(
+                android: AndroidNotificationDetails(
+                  AppConstants.bgServiceChannel,
+                  'Floodio Background Sync',
+                  icon: 'ic_bg_service_small',
+                  ongoing: true,
+                ),
+              ),
+            );
+          }
+        } catch (e) {
+          print("Error updating notification: $e");
+        }
       }
     }
 
-    service.invoke('p2pStateUpdate', next.toMap());
+    final now = DateTime.now();
+    if (now.difference(lastStateUpdateTime).inMilliseconds > 250) {
+      stateUpdateTimer?.cancel();
+      sendUpdate();
+    } else {
+      stateUpdateTimer?.cancel();
+      stateUpdateTimer = Timer(const Duration(milliseconds: 250), sendUpdate);
+    }
   });
 
   container.listen(redAlertControllerProvider, (previous, next) async {
