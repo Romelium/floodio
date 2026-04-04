@@ -265,7 +265,7 @@ void onStart(ServiceInstance service) async {
     if (event == null || isMapDownloading) return;
     isMapDownloadCancelled = false;
     isMapDownloading = true;
-    
+
     final bounds = LatLngBounds(
       LatLng(event['south'], event['west']),
       LatLng(event['north'], event['east']),
@@ -275,7 +275,7 @@ void onStart(ServiceInstance service) async {
     final urlTemplate = event['urlTemplate'] as String;
 
     final cacheService = container.read(mapCacheServiceProvider);
-    
+
     List<MapTile> tilesToDownload = [];
     for (int z = minZoom; z <= maxZoom; z++) {
       final minX = lon2tilex(bounds.west, z);
@@ -292,7 +292,7 @@ void onStart(ServiceInstance service) async {
 
     mapDownloadTotal = tilesToDownload.length;
     mapDownloadDownloaded = 0;
-    
+
     service.invoke('mapDownloadProgress', {
       'total': mapDownloadTotal,
       'downloaded': mapDownloadDownloaded,
@@ -319,10 +319,12 @@ void onStart(ServiceInstance service) async {
     }
 
     if (!isMapDownloadCancelled) {
-      container.read(offlineRegionsProvider.notifier).addRegion(
-        OfflineRegion(bounds: bounds, minZoom: minZoom, maxZoom: maxZoom),
-      );
-      
+      container
+          .read(offlineRegionsProvider.notifier)
+          .addRegion(
+            OfflineRegion(bounds: bounds, minZoom: minZoom, maxZoom: maxZoom),
+          );
+
       if (service is AndroidServiceInstance) {
         final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
             FlutterLocalNotificationsPlugin();
@@ -382,8 +384,8 @@ void onStart(ServiceInstance service) async {
         lastNotificationMessage = next.syncMessage;
         try {
           if (await service.isForegroundService()) {
-            final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
-                FlutterLocalNotificationsPlugin();
+            final FlutterLocalNotificationsPlugin
+            flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
 
             flutterLocalNotificationsPlugin.show(
               id: 888,

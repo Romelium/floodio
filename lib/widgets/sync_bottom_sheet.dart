@@ -457,9 +457,14 @@ class SyncBottomSheet extends ConsumerWidget {
                                         ? null
                                         : () {
                                             HapticFeedback.selectionClick();
-                                            checkAndShowWifiWarning(context, () {
-                                              p2pNotifier.connectToDevice(device);
-                                            });
+                                            checkAndShowWifiWarning(
+                                              context,
+                                              () {
+                                                p2pNotifier.connectToDevice(
+                                                  device,
+                                                );
+                                              },
+                                            );
                                           },
                                     child: const Text(
                                       'Connect',

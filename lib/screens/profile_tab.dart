@@ -1380,7 +1380,8 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                           const CompactAnimatedEmptyState(
                             icon: Icons.verified_user_outlined,
                             title: 'No Trusted Senders',
-                            subtitle: 'Trust senders from the feed to prioritize their reports.',
+                            subtitle:
+                                'Trust senders from the feed to prioritize their reports.',
                             color: Colors.green,
                           )
                         else
@@ -1710,7 +1711,8 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                                   child: CompactAnimatedEmptyState(
                                     icon: Icons.map_outlined,
                                     title: 'No Offline Maps',
-                                    subtitle: 'Download maps from the Map tab to use them offline.',
+                                    subtitle:
+                                        'Download maps from the Map tab to use them offline.',
                                     color: Colors.orange,
                                   ),
                                 ),

@@ -351,7 +351,7 @@ class _DraggablePointState extends State<_DraggablePoint> {
                   color: Colors.black.withValues(alpha: 0.2),
                   blurRadius: 4,
                   spreadRadius: 1,
-                )
+                ),
               ],
             ),
           ),
@@ -4019,7 +4019,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     return AnimatedEmptyState(
       icon: Icons.inbox_outlined,
       title: 'No reports found',
-      subtitle: 'Try adjusting your filters, or sync with nearby devices to receive the latest updates.',
+      subtitle:
+          'Try adjusting your filters, or sync with nearby devices to receive the latest updates.',
       action: FilledButton.icon(
         onPressed: () {
           showModalBottomSheet(
@@ -4032,10 +4033,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         icon: const Icon(Icons.sync),
         label: const Text('Open Sync Menu'),
         style: FilledButton.styleFrom(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 24,
-            vertical: 16,
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
         ),
       ),
     );

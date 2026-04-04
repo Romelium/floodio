@@ -39,9 +39,9 @@ class _Cluster {
   late LatLng center;
 
   _Cluster(LatLng point)
-      : sumLat = point.latitude,
-        sumLng = point.longitude,
-        count = 1;
+    : sumLat = point.latitude,
+      sumLng = point.longitude,
+      count = 1;
 
   void add(LatLng point) {
     sumLat += point.latitude;

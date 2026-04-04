@@ -257,7 +257,6 @@ class P2pState {
   }
 }
 
-
 void _deduplicate<T>(
   List<T> items,
   String Function(T) getId,
@@ -1787,7 +1786,9 @@ class P2pService extends _$P2pService {
         } else if (json['type'] == 'payload_chunk') {
           final chunkIndex = json['chunkIndex'] as int? ?? 0;
           final totalChunks = json['totalChunks'] as int? ?? 1;
-          terminalLog("[*] Message type: payload_chunk ${chunkIndex + 1}/$totalChunks");
+          terminalLog(
+            "[*] Message type: payload_chunk ${chunkIndex + 1}/$totalChunks",
+          );
           await _enqueuePayload(json['data'], chunkIndex, totalChunks);
           return;
         } else if (json['type'] == 'payload') {
@@ -1821,13 +1822,17 @@ class P2pService extends _$P2pService {
     state = state.copyWith(receivedTexts: [...state.receivedTexts, text]);
   }
 
-  Future<void> _enqueuePayload(String base64Data, int chunkIndex, int totalChunks) async {
+  Future<void> _enqueuePayload(
+    String base64Data,
+    int chunkIndex,
+    int totalChunks,
+  ) async {
     _payloadQueue.add({
       'data': base64Data,
       'chunkIndex': chunkIndex,
       'totalChunks': totalChunks,
     });
-    
+
     if (!_isProcessingQueue) {
       _processPayloadQueue();
     }
@@ -1842,7 +1847,7 @@ class P2pService extends _$P2pService {
       final base64Data = item['data'] as String;
       final chunkIndex = item['chunkIndex'] as int;
       final totalChunks = item['totalChunks'] as int;
-      
+
       state = state.copyWith(
         isSyncing: true,
         syncMessage: 'Processing chunk ${chunkIndex + 1}/$totalChunks...',
@@ -1850,14 +1855,14 @@ class P2pService extends _$P2pService {
       );
 
       await processPayload(base64Data, isChunk: true);
-      
+
       if (chunkIndex == totalChunks - 1) {
         await broadcastText(jsonEncode({'type': 'up_to_date'}));
       }
     }
 
     _isProcessingQueue = false;
-    
+
     if (!_disposed) {
       state = state.copyWith(
         isSyncing: false,
@@ -2440,12 +2445,14 @@ class P2pService extends _$P2pService {
       final p = payloads[i];
       final encoded = await Isolate.run(() => base64Encode(p.writeToBuffer()));
       _incrementHeroStat('hero_data_carried', encoded.length);
-      await broadcastText(jsonEncode({
-        'type': 'payload_chunk',
-        'data': encoded,
-        'chunkIndex': i,
-        'totalChunks': payloads.length,
-      }));
+      await broadcastText(
+        jsonEncode({
+          'type': 'payload_chunk',
+          'data': encoded,
+          'chunkIndex': i,
+          'totalChunks': payloads.length,
+        }),
+      );
       await Future.delayed(const Duration(milliseconds: 200));
     }
   }
@@ -2563,7 +2570,11 @@ class P2pService extends _$P2pService {
       terminalLog("[+] Payload decoded in ${stopwatch.elapsedMilliseconds}ms");
 
       stopwatch.reset();
-      await _processDecodedPayload(payload, isFromCloud: false, isChunk: isChunk);
+      await _processDecodedPayload(
+        payload,
+        isFromCloud: false,
+        isChunk: isChunk,
+      );
     } catch (e) {
       terminalLog("[-] Error handling payload: $e");
       if (!isChunk) {

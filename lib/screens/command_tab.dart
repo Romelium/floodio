@@ -189,7 +189,8 @@ class CommandTab extends ConsumerWidget {
                           const CompactAnimatedEmptyState(
                             icon: Icons.admin_panel_settings_outlined,
                             title: 'No Active Volunteers',
-                            subtitle: 'You can promote trusted users from the feed.',
+                            subtitle:
+                                'You can promote trusted users from the feed.',
                             color: Colors.purple,
                           )
                         else

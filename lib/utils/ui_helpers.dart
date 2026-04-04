@@ -128,7 +128,10 @@ UserProfileEntity? getProfile(
   }
 }
 
-Future<void> checkAndShowWifiWarning(BuildContext context, VoidCallback onProceed) async {
+Future<void> checkAndShowWifiWarning(
+  BuildContext context,
+  VoidCallback onProceed,
+) async {
   final prefs = await SharedPreferences.getInstance();
   final hasSeen = prefs.getBool('has_seen_wifi_warning') ?? false;
   if (hasSeen) {

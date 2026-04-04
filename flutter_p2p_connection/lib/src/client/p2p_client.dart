@@ -282,8 +282,10 @@ class FlutterP2pClient extends FlutterP2pConnectionBase {
           "Client: Waiting a moment for hotspot to become visible in scans...");
       await Future.delayed(const Duration(milliseconds: 1500));
 
-      debugPrint("Client: Attempting to connect to hotspot: $ssid on port ${port ?? defaultP2pTransportPort}");
-      await connectWithCredentials(ssid!, psk!, port: port ?? defaultP2pTransportPort);
+      debugPrint(
+          "Client: Attempting to connect to hotspot: $ssid on port ${port ?? defaultP2pTransportPort}");
+      await connectWithCredentials(ssid!, psk!,
+          port: port ?? defaultP2pTransportPort);
       debugPrint("Client: Successfully connected to hotspot: $ssid");
     } catch (e) {
       debugPrint("Client: Error during connectWithDevice: $e");
