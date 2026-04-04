@@ -11,6 +11,7 @@ import '../services/cloud_sync_service.dart';
 import '../services/gov_api_service.dart';
 import '../utils/ui_helpers.dart';
 import '../widgets/animated_empty_state.dart';
+import 'qr_scanner_screen.dart';
 
 class CommandTab extends ConsumerWidget {
   const CommandTab({super.key});
@@ -30,6 +31,43 @@ class CommandTab extends ConsumerWidget {
           FilledButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmMakeVolunteer(BuildContext context, WidgetRef ref, String publicKey) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Make Official Volunteer?'),
+        content: Text(
+          'Are you sure you want to promote this user to an Official Volunteer?\n\nKey: $publicKey',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.purple),
+            onPressed: () async {
+              HapticFeedback.mediumImpact();
+              Navigator.pop(dialogContext);
+              await ref
+                  .read(govApiServiceProvider.notifier)
+                  .delegateAdminTrust(publicKey);
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('User upgraded to Official Volunteer!'),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              }
+            },
+            child: const Text('Promote'),
           ),
         ],
       ),
@@ -170,14 +208,32 @@ class CommandTab extends ConsumerWidget {
                               color: Colors.purple,
                             ),
                             const SizedBox(width: 8),
-                            const Text(
-                              'Active Volunteers (Tier 2)',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
+                            const Expanded(
+                              child: Text(
+                                'Active Volunteers (Tier 2)',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
-                            const Spacer(),
+                            IconButton(
+                              icon: const Icon(Icons.qr_code_scanner, color: Colors.purple),
+                              tooltip: 'Scan Public Key',
+                              onPressed: () async {
+                                HapticFeedback.selectionClick();
+                                final result = await Navigator.push<String>(
+                                  context,
+                                  MaterialPageRoute(builder: (_) => const QrScannerScreen()),
+                                );
+                                if (result != null && result.isNotEmpty) {
+                                  if (context.mounted) {
+                                    _confirmMakeVolunteer(context, ref, result);
+                                  }
+                                }
+                              },
+                            ),
                             Chip(
                               label: Text('${activeVolunteers.length}'),
                               visualDensity: VisualDensity.compact,

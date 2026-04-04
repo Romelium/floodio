@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:pretty_qr_code/pretty_qr_code.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../crypto/crypto_service.dart';
 import '../database/tables.dart';
@@ -55,6 +56,90 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
     const suffixes = ["B", "KB", "MB", "GB", "TB"];
     var i = (log(bytes) / log(1024)).floor();
     return '${(bytes / pow(1024, i)).toStringAsFixed(2)} ${suffixes[i]}';
+  }
+
+  void _showPublicKeyDialog(String publicKey) {
+    HapticFeedback.selectionClick();
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Your Public Key'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Share this key with an Official to request Volunteer (Tier 2) status, or let them scan the QR code.',
+                style: TextStyle(fontSize: 14),
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.only(left: 12, right: 4, top: 8, bottom: 8),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.grey.shade300),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        publicKey,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontFamily: 'monospace',
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.copy, size: 20),
+                      onPressed: () {
+                        Clipboard.setData(ClipboardData(text: publicKey));
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Public Key copied to clipboard'),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: 200,
+                height: 200,
+                child: PrettyQrView.data(
+                  data: publicKey,
+                  errorCorrectLevel: QrErrorCorrectLevel.M,
+                  decoration: const PrettyQrDecoration(
+                    shape: PrettyQrSquaresSymbol(color: Colors.black),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Close'),
+          ),
+          FilledButton.icon(
+            onPressed: () {
+              SharePlus.instance.share(
+                ShareParams(
+                  text: 'My Floodio Public Key:\n$publicKey',
+                ),
+              );
+            },
+            icon: const Icon(Icons.share, size: 18),
+            label: const Text('Share'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showBackupIdentityDialog() async {
@@ -263,6 +348,41 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
           ),
         ),
       ],
+    );
+  }
+
+  void _confirmTrustSender(String publicKey) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Trust Sender?'),
+        content: Text(
+          'Are you sure you want to trust this sender? Their reports will be prioritized and marked as Trusted on your device only.\n\nKey: $publicKey',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.green),
+            onPressed: () {
+              HapticFeedback.mediumImpact();
+              Navigator.pop(dialogContext);
+              ref
+                  .read(trustedSendersControllerProvider.notifier)
+                  .addTrustedSender(publicKey, 'Trusted User');
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Sender marked as trusted!'),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            },
+            child: const Text('Trust'),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1281,17 +1401,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                           onTap: () {
                             HapticFeedback.selectionClick();
                             if (myPublicKey != null) {
-                              Clipboard.setData(
-                                ClipboardData(text: myPublicKey),
-                              );
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text(
-                                    'Public Key copied to clipboard',
-                                  ),
-                                  behavior: SnackBarBehavior.floating,
-                                ),
-                              );
+                              _showPublicKeyDialog(myPublicKey);
                             }
                           },
                           child: Container(
@@ -1309,7 +1419,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Icon(
-                                  Icons.key,
+                                  Icons.qr_code,
                                   size: 16,
                                   color: Theme.of(context).colorScheme.primary,
                                 ),
@@ -1328,7 +1438,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                                 ),
                                 const SizedBox(width: 8),
                                 Icon(
-                                  Icons.copy,
+                                  Icons.share,
                                   size: 14,
                                   color: Theme.of(context).colorScheme.primary,
                                 ),
@@ -1541,14 +1651,32 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                               color: Colors.green,
                             ),
                             const SizedBox(width: 8),
-                            const Text(
-                              'Trusted Senders',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
+                            const Expanded(
+                              child: Text(
+                                'Trusted Senders',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
-                            const Spacer(),
+                            IconButton(
+                              icon: const Icon(Icons.qr_code_scanner, color: Colors.green),
+                              tooltip: 'Scan Public Key',
+                              onPressed: () async {
+                                HapticFeedback.selectionClick();
+                                final result = await Navigator.push<String>(
+                                  context,
+                                  MaterialPageRoute(builder: (_) => const QrScannerScreen()),
+                                );
+                                if (result != null && result.isNotEmpty) {
+                                  if (context.mounted) {
+                                    _confirmTrustSender(result);
+                                  }
+                                }
+                              },
+                            ),
                             Chip(
                               label: Text('${trustedSenders.length}'),
                               visualDensity: VisualDensity.compact,
