@@ -50,6 +50,7 @@ import '../widgets/download_map_dialog.dart';
 import '../widgets/heatmap_layer.dart';
 import '../widgets/local_image_display.dart';
 import '../widgets/mesh_status_chip.dart';
+import '../widgets/pulse_marker.dart';
 import '../widgets/terminal_overlay.dart';
 import 'command_tab.dart';
 import 'compass_screen.dart';
@@ -3675,43 +3676,59 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                       final color = getHazardColor(m.type, m.trustTier);
                       return Marker(
                         point: LatLng(m.latitude, m.longitude),
-                        width: m.isCritical ? 50 : 40,
-                        height: m.isCritical ? 50 : 40,
-                        alignment: Alignment.topCenter,
+                        width: m.isCritical ? 120 : 40,
+                        height: m.isCritical ? 120 : 40,
+                        alignment: m.isCritical ? Alignment.center : Alignment.topCenter,
                         child: GestureDetector(
                           behavior: HitTestBehavior.opaque,
                           onTap: () {
                             _showMarkerDetailsDialog(m, profiles, isAdmin, settings);
                           },
-                          child: Stack(
-                            alignment: Alignment.center,
-                            clipBehavior: Clip.none,
-                            children: [
-                              Icon(
-                                Icons.location_on,
-                                color: color,
-                                size: m.isCritical ? 50 : 40,
-                              ),
-                              Positioned(
-                                top: m.isCritical ? 8 : 6,
-                                child: Icon(
-                                  getHazardIcon(m.type),
-                                  color: Colors.white,
-                                  size: m.isCritical ? 20 : 16,
-                                ),
-                              ),
-                              if (m.isCritical)
-                                const Positioned(
-                                  right: -4,
-                                  top: -4,
-                                  child: Icon(
-                                    Icons.warning,
-                                    color: Colors.red,
-                                    size: 20,
+                          child: m.isCritical
+                              ? PulseMarker(
+                                  color: Colors.red,
+                                  size: 48,
+                                  child: Container(
+                                    width: 48,
+                                    height: 48,
+                                    decoration: BoxDecoration(
+                                      color: Colors.red,
+                                      shape: BoxShape.circle,
+                                      border: Border.all(color: Colors.white, width: 3),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.red.withValues(alpha: 0.5),
+                                          blurRadius: 8,
+                                          spreadRadius: 2,
+                                        ),
+                                      ],
+                                    ),
+                                    child: Icon(
+                                      getHazardIcon(m.type),
+                                      color: Colors.white,
+                                      size: 24,
+                                    ),
                                   ),
+                                )
+                              : Stack(
+                                  alignment: Alignment.center,
+                                  clipBehavior: Clip.none,
+                                  children: [
+                                    Icon(
+                                      Icons.location_on,
+                                      color: color,
+                                      size: 40,
+                                    ),
+                                    Positioned(
+                                      top: 6,
+                                      child: Icon(
+                                        getHazardIcon(m.type),
+                                        color: Colors.white,
+                                        size: 16,
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                            ],
-                          ),
                         ),
                       );
                     }),
@@ -3743,6 +3760,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   builder: (context, ref, child) {
                     final locationAsync = ref.watch(locationControllerProvider);
                     final currentPosition = locationAsync.value;
+                    final isSosActive = ref.watch(sosFlashlightControllerProvider);
+                    
                     if (currentPosition == null) return const SizedBox.shrink();
                     return MarkerLayer(
                       markers: [
@@ -3751,21 +3770,30 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                             currentPosition.latitude,
                             currentPosition.longitude,
                           ),
-                          width: 24,
-                          height: 24,
+                          width: 120,
+                          height: 120,
                           alignment: Alignment.center,
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: Colors.blue,
-                              shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white, width: 3),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.blue.withValues(alpha: 0.5),
-                                  blurRadius: 10,
-                                  spreadRadius: 5,
-                                ),
-                              ],
+                          child: PulseMarker(
+                            color: isSosActive ? Colors.red : Colors.blue,
+                            size: isSosActive ? 32 : 24,
+                            child: Container(
+                              width: isSosActive ? 32 : 24,
+                              height: isSosActive ? 32 : 24,
+                              decoration: BoxDecoration(
+                                color: isSosActive ? Colors.red : Colors.blue,
+                                shape: BoxShape.circle,
+                                border: Border.all(color: Colors.white, width: 3),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: (isSosActive ? Colors.red : Colors.blue).withValues(alpha: 0.5),
+                                    blurRadius: 10,
+                                    spreadRadius: 5,
+                                  ),
+                                ],
+                              ),
+                              child: isSosActive 
+                                ? const Icon(Icons.sos, color: Colors.white, size: 16)
+                                : null,
                             ),
                           ),
                         ),
