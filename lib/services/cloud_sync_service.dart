@@ -229,7 +229,9 @@ class CloudSyncService extends _$CloudSyncService {
       }
 
       pending = recentSeenSet.difference(skippedMessageIds).length;
-    } catch (_) {}
+    } catch (e) {
+      terminalLog('[-] Error updating cloud status: $e');
+    }
 
     terminalLog(
       "[+] Cloud status updated. HasInternet: $internet, PendingUploads: $pending",
@@ -579,6 +581,7 @@ class CloudSyncService extends _$CloudSyncService {
               .where((id) => id != null && id.isNotEmpty),
         ];
 
+        int failedImageUploads = 0;
         for (final imageId in imageIds) {
           final file = File('${dir.path}/$imageId');
           if (await file.exists()) {
@@ -587,13 +590,22 @@ class CloudSyncService extends _$CloudSyncService {
                   .from(AppConstants.imagesBucket)
                   .upload(imageId!, file)
                   .timeout(const Duration(seconds: 30));
+            } on StorageException catch (e) {
+              final msg = e.message.toLowerCase();
+              if (e.statusCode == '409' || msg.contains('duplicate') || msg.contains('already exists')) {
+                // Ignore duplicate
+              } else {
+                terminalLog('[-] Image upload error: $e');
+                failedImageUploads++;
+              }
             } catch (e) {
-              terminalLog('[-] Image upload error (might already exist): $e');
-              // We don't throw here. If an image fails to upload (e.g. due to size limits,
-              // network blip, or it already exists), we still want the text payload to sync.
-              // The image will just be missing on the other end, which the app handles gracefully.
+              terminalLog('[-] Image upload error: $e');
+              failedImageUploads++;
             }
           }
+        }
+        if (failedImageUploads > 0) {
+          throw Exception('Failed to upload $failedImageUploads images to the cloud.');
         }
         terminalLog(
           "[+] Image uploads took ${syncStopwatch.elapsedMilliseconds}ms",
@@ -761,16 +773,14 @@ class CloudSyncService extends _$CloudSyncService {
                 }
               } catch (e) {
                 terminalLog('[-] Error decoding payload from cloud: $e');
+                throw Exception('Error decoding payload from cloud: $e');
               }
               currentLastId = row['id'] as int;
             }
           }
         } catch (e) {
           terminalLog('[-] Error downloading from cloud: $e');
-          hasMore = false; // Stop downloading, but process what we have so far
-          if (!downloadedAny) {
-            throw Exception('Failed to download from cloud: $e');
-          }
+          throw Exception('Failed to download from cloud: $e');
         }
       }
 
