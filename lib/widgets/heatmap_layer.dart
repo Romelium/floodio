@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
-class HeatmapLayer extends StatelessWidget {
+class HeatmapLayer extends StatefulWidget {
   final List<LatLng> points;
   final double radius;
   final double blurSigma;
@@ -29,40 +29,91 @@ class HeatmapLayer extends StatelessWidget {
   });
 
   @override
+  State<HeatmapLayer> createState() => _HeatmapLayerState();
+}
+
+class _Cluster {
+  double sumLat;
+  double sumLng;
+  int count;
+  late LatLng center;
+
+  _Cluster(LatLng point)
+      : sumLat = point.latitude,
+        sumLng = point.longitude,
+        count = 1;
+
+  void add(LatLng point) {
+    sumLat += point.latitude;
+    sumLng += point.longitude;
+    count++;
+  }
+
+  void computeCenter() {
+    center = LatLng(sumLat / count, sumLng / count);
+  }
+}
+
+class _HeatmapLayerState extends State<HeatmapLayer> {
+  List<_Cluster> _cachedClusters = [];
+  int _cachedZoom = -1;
+  List<LatLng> _cachedPoints = [];
+
+  void _updateClusters(MapCamera camera) {
+    final zoom = camera.zoom.round();
+    if (_cachedZoom == zoom && identical(_cachedPoints, widget.points)) {
+      return;
+    }
+
+    _cachedZoom = zoom;
+    _cachedPoints = widget.points;
+
+    final cellSize = widget.radius / 2.0;
+    final Map<math.Point<int>, _Cluster> grid = {};
+
+    for (final point in widget.points) {
+      final globalPos = camera.projectAtZoom(point, zoom.toDouble());
+
+      final gridX = (globalPos.dx / cellSize).floor();
+      final gridY = (globalPos.dy / cellSize).floor();
+      final gridPoint = math.Point(gridX, gridY);
+
+      final existing = grid[gridPoint];
+      if (existing != null) {
+        existing.add(point);
+      } else {
+        grid[gridPoint] = _Cluster(point);
+      }
+    }
+
+    for (final cluster in grid.values) {
+      cluster.computeCenter();
+    }
+
+    _cachedClusters = grid.values.toList();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final camera = MapCamera.of(context);
+    _updateClusters(camera);
+
     return CustomPaint(
       size: camera.size,
       painter: _HeatmapPainter(
-        points: points,
+        clusters: _cachedClusters,
         camera: camera,
-        radius: radius,
-        blurSigma: blurSigma,
-        colors: colors,
-        stops: stops,
+        radius: widget.radius,
+        blurSigma: widget.blurSigma,
+        colors: widget.colors,
+        stops: widget.stops,
       ),
     );
   }
 }
 
-class _Cluster {
-  double sumX;
-  double sumY;
-  int count;
-
-  _Cluster(Offset offset) : sumX = offset.dx, sumY = offset.dy, count = 1;
-
-  void add(Offset offset) {
-    sumX += offset.dx;
-    sumY += offset.dy;
-    count++;
-  }
-
-  Offset get center => Offset(sumX / count, sumY / count);
-}
-
 class _HeatmapPainter extends CustomPainter {
-  final List<LatLng> points;
+  final List<_Cluster> clusters;
   final MapCamera camera;
   final double radius;
   final double blurSigma;
@@ -70,7 +121,7 @@ class _HeatmapPainter extends CustomPainter {
   final List<double> stops;
 
   _HeatmapPainter({
-    required this.points,
+    required this.clusters,
     required this.camera,
     required this.radius,
     required this.blurSigma,
@@ -80,9 +131,8 @@ class _HeatmapPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    if (points.isEmpty) return;
+    if (clusters.isEmpty) return;
 
-    // 1. Save layer with blur to blend the points smoothly
     canvas.saveLayer(
       Offset.zero & size,
       Paint()
@@ -92,7 +142,6 @@ class _HeatmapPainter extends CustomPainter {
         ),
     );
 
-    // 2. Create the radial gradient shader
     final shader = ui.Gradient.radial(Offset.zero, radius, colors, stops);
 
     final paint = Paint()
@@ -101,14 +150,9 @@ class _HeatmapPainter extends CustomPainter {
 
     final margin = radius * 2.0;
 
-    // 3. Cluster points to improve performance and visual density
-    final cellSize = radius / 2.0;
-    final Map<math.Point<int>, _Cluster> grid = {};
+    for (final cluster in clusters) {
+      final offset = camera.latLngToScreenOffset(cluster.center);
 
-    for (final point in points) {
-      final offset = camera.latLngToScreenOffset(point);
-
-      // Cull points outside the visible area
       if (offset.dx < -margin ||
           offset.dx > size.width + margin ||
           offset.dy < -margin ||
@@ -116,28 +160,12 @@ class _HeatmapPainter extends CustomPainter {
         continue;
       }
 
-      final gridX = (offset.dx / cellSize).floor();
-      final gridY = (offset.dy / cellSize).floor();
-      final gridPoint = math.Point(gridX, gridY);
-
-      if (grid.containsKey(gridPoint)) {
-        grid[gridPoint]!.add(offset);
-      } else {
-        grid[gridPoint] = _Cluster(offset);
-      }
-    }
-
-    // 4. Draw the clustered points
-    for (final cluster in grid.values) {
-      final offset = cluster.center;
       final weight = cluster.count;
+      final drawCount = math.min(weight, 5);
 
       canvas.save();
       canvas.translate(offset.dx, offset.dy);
 
-      // Draw multiple times based on weight to increase intensity
-      // Cap the weight to prevent excessive overdraw and pure white blowouts
-      final drawCount = math.min(weight, 5);
       for (int i = 0; i < drawCount; i++) {
         canvas.drawCircle(Offset.zero, radius, paint);
       }
@@ -150,7 +178,7 @@ class _HeatmapPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _HeatmapPainter oldDelegate) {
-    return oldDelegate.points != points ||
+    return oldDelegate.clusters != clusters ||
         oldDelegate.camera != camera ||
         oldDelegate.radius != radius ||
         oldDelegate.blurSigma != blurSigma ||
