@@ -10,21 +10,22 @@ import 'package:latlong2/latlong.dart';
 
 import '../crypto/crypto_service.dart';
 import '../database/tables.dart';
+import '../protos/models.pb.dart' as pb;
 import '../providers/area_provider.dart';
 import '../providers/hazard_marker_provider.dart';
+import '../providers/hero_stats_provider.dart';
 import '../providers/local_user_provider.dart';
 import '../providers/news_item_provider.dart';
 import '../providers/offline_regions_provider.dart';
 import '../providers/path_provider.dart';
 import '../providers/trusted_sender_provider.dart';
+import '../providers/ui_p2p_provider.dart';
 import '../providers/untrusted_sender_provider.dart';
 import '../providers/user_profile_provider.dart';
 import '../services/map_cache_service.dart';
-import '../providers/ui_p2p_provider.dart';
-import '../protos/models.pb.dart' as pb;
-import 'settings_screen.dart';
+import '../widgets/animated_empty_state.dart';
 import 'compass_screen.dart';
-import '../providers/hero_stats_provider.dart';
+import 'settings_screen.dart';
 
 class ProfileTab extends ConsumerStatefulWidget {
   final Function(AreaEntity) onEditAreaShape;
@@ -1376,31 +1377,11 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                         ),
                         const SizedBox(height: 12),
                         if (trustedSenders.isEmpty)
-                          Container(
-                            padding: const EdgeInsets.all(20),
-                            decoration: BoxDecoration(
-                              color: Colors.green.shade50,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Colors.green.shade100),
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(
-                                  Icons.verified_user_outlined,
-                                  color: Colors.green.shade300,
-                                  size: 32,
-                                ),
-                                const SizedBox(width: 16),
-                                Expanded(
-                                  child: Text(
-                                    'You have not trusted any senders yet. Trust senders from the feed to prioritize their reports.',
-                                    style: TextStyle(
-                                      color: Colors.green.shade800,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
+                          const CompactAnimatedEmptyState(
+                            icon: Icons.verified_user_outlined,
+                            title: 'No Trusted Senders',
+                            subtitle: 'Trust senders from the feed to prioritize their reports.',
+                            color: Colors.green,
                           )
                         else
                           Card(
@@ -1514,31 +1495,11 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                         ),
                         const SizedBox(height: 12),
                         if (untrustedSenders.isEmpty)
-                          Container(
-                            padding: const EdgeInsets.all(20),
-                            decoration: BoxDecoration(
-                              color: Colors.red.shade50,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Colors.red.shade100),
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(
-                                  Icons.block_outlined,
-                                  color: Colors.red.shade300,
-                                  size: 32,
-                                ),
-                                const SizedBox(width: 16),
-                                Expanded(
-                                  child: Text(
-                                    'You have not blocked any senders.',
-                                    style: TextStyle(
-                                      color: Colors.red.shade800,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
+                          const CompactAnimatedEmptyState(
+                            icon: Icons.block_outlined,
+                            title: 'No Blocked Senders',
+                            subtitle: 'You have not blocked any senders.',
+                            color: Colors.red,
                           )
                         else
                           Card(
@@ -1743,6 +1704,16 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                                   },
                                 ),
                               ),
+                              if (offlineRegions.isEmpty)
+                                const Padding(
+                                  padding: EdgeInsets.all(16.0),
+                                  child: CompactAnimatedEmptyState(
+                                    icon: Icons.map_outlined,
+                                    title: 'No Offline Maps',
+                                    subtitle: 'Download maps from the Map tab to use them offline.',
+                                    color: Colors.orange,
+                                  ),
+                                ),
                               if (offlineRegions.isNotEmpty) ...[
                                 const Divider(height: 1),
                                 ListView.separated(
@@ -1917,31 +1888,11 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                         ),
                         const SizedBox(height: 12),
                         if (myReports.isEmpty)
-                          Container(
-                            padding: const EdgeInsets.all(20),
-                            decoration: BoxDecoration(
-                              color: Colors.blue.shade50,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Colors.blue.shade100),
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(
-                                  Icons.my_library_books_outlined,
-                                  color: Colors.blue.shade300,
-                                  size: 32,
-                                ),
-                                const SizedBox(width: 16),
-                                Expanded(
-                                  child: Text(
-                                    'You have not made any reports yet.',
-                                    style: TextStyle(
-                                      color: Colors.blue.shade800,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
+                          const CompactAnimatedEmptyState(
+                            icon: Icons.my_library_books_outlined,
+                            title: 'No Reports Yet',
+                            subtitle: 'You have not made any reports yet.',
+                            color: Colors.blue,
                           )
                         else
                           ListView.builder(

@@ -53,6 +53,7 @@ import '../widgets/local_image_display.dart';
 import '../widgets/mesh_status_chip.dart';
 import '../widgets/pulse_marker.dart';
 import '../widgets/terminal_overlay.dart';
+import '../widgets/animated_empty_state.dart';
 import 'command_tab.dart';
 import 'compass_screen.dart';
 import 'guide_tab.dart';
@@ -3924,65 +3925,26 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     if (isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(32),
-              decoration: BoxDecoration(
-                color: Theme.of(
-                  context,
-                ).colorScheme.primaryContainer.withValues(alpha: 0.5),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                Icons.inbox_outlined,
-                size: 72,
-                color: Theme.of(context).colorScheme.primary,
-              ),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              'No reports found',
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                color: Theme.of(context).colorScheme.onSurface,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'Try adjusting your filters, or sync with nearby devices to receive the latest updates.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-                fontSize: 16,
-                height: 1.4,
-              ),
-            ),
-            const SizedBox(height: 32),
-            FilledButton.icon(
-              onPressed: () {
-                showModalBottomSheet(
-                  context: context,
-                  isScrollControlled: true,
-                  backgroundColor: Colors.transparent,
-                  builder: (context) => const SyncBottomSheet(),
-                );
-              },
-              icon: const Icon(Icons.sync),
-              label: const Text('Open Sync Menu'),
-              style: FilledButton.styleFrom(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 16,
-                ),
-              ),
-            ),
-          ],
+    return AnimatedEmptyState(
+      icon: Icons.inbox_outlined,
+      title: 'No reports found',
+      subtitle: 'Try adjusting your filters, or sync with nearby devices to receive the latest updates.',
+      action: FilledButton.icon(
+        onPressed: () {
+          showModalBottomSheet(
+            context: context,
+            isScrollControlled: true,
+            backgroundColor: Colors.transparent,
+            builder: (context) => const SyncBottomSheet(),
+          );
+        },
+        icon: const Icon(Icons.sync),
+        label: const Text('Open Sync Menu'),
+        style: FilledButton.styleFrom(
+          padding: const EdgeInsets.symmetric(
+            horizontal: 24,
+            vertical: 16,
+          ),
         ),
       ),
     );

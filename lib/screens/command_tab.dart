@@ -10,6 +10,7 @@ import '../providers/user_profile_provider.dart';
 import '../services/cloud_sync_service.dart';
 import '../services/gov_api_service.dart';
 import '../utils/ui_helpers.dart';
+import '../widgets/animated_empty_state.dart';
 
 class CommandTab extends ConsumerWidget {
   const CommandTab({super.key});
@@ -185,31 +186,11 @@ class CommandTab extends ConsumerWidget {
                         ),
                         const SizedBox(height: 12),
                         if (activeVolunteers.isEmpty)
-                          Container(
-                            padding: const EdgeInsets.all(20),
-                            decoration: BoxDecoration(
-                              color: Colors.purple.shade50,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Colors.purple.shade100),
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(
-                                  Icons.admin_panel_settings_outlined,
-                                  color: Colors.purple.shade300,
-                                  size: 32,
-                                ),
-                                const SizedBox(width: 16),
-                                Expanded(
-                                  child: Text(
-                                    'No active volunteers. You can promote trusted users from the feed.',
-                                    style: TextStyle(
-                                      color: Colors.purple.shade800,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
+                          const CompactAnimatedEmptyState(
+                            icon: Icons.admin_panel_settings_outlined,
+                            title: 'No Active Volunteers',
+                            subtitle: 'You can promote trusted users from the feed.',
+                            color: Colors.purple,
                           )
                         else
                           Card(
