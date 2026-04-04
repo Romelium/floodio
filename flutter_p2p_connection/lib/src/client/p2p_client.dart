@@ -226,7 +226,9 @@ class FlutterP2pClient extends FlutterP2pConnectionBase {
 
     String? ssid;
     String? psk;
+    int? port;
     StreamSubscription<BleReceivedData>? bleDataSub;
+    StreamSubscription<BleConnectionState>? bleConnSub;
     final completer = Completer<void>();
 
     try {
@@ -235,29 +237,35 @@ class FlutterP2pClient extends FlutterP2pConnectionBase {
         (evt) {
           if (evt.deviceAddress == deviceAddress) {
             String value = String.fromCharCodes(evt.data);
-            if (ssid == null) {
+            final uuid = evt.characteristicUuid.toLowerCase();
+            if (uuid == '7a374008-fc31-4476-be4d-1b3347233f00') {
               ssid = value;
               debugPrint("Client: Received SSID via BLE: $ssid");
-            } else if (psk == null) {
+            } else if (uuid == '81a5ec62-a8b1-48b0-b533-938636a57ba4') {
               psk = value;
               debugPrint("Client: Received PSK via BLE (not logging value)");
-              if (!completer.isCompleted) completer.complete();
+            } else if (uuid == '92b6fd72-a8b1-48b0-b533-938636a57ba4') {
+              port = int.tryParse(value);
+              debugPrint("Client: Received Port via BLE: $port");
             }
           }
         },
-        onError: (error) {
-          if (!completer.isCompleted) {
-            completer.completeError(
-                Exception('Client: Error receiving BLE data: $error'));
-          }
-        },
-        onDone: () {
-          if (!completer.isCompleted) {
-            completer.completeError(Exception(
-                'Client: BLE data stream ended before receiving credentials.'));
-          }
-        },
       );
+
+      bleConnSub = FlutterP2pConnectionPlatform.instance
+          .streamBleConnectionState()
+          .listen((state) {
+        if (state.deviceAddress == deviceAddress && !state.isConnected) {
+          if (!completer.isCompleted) {
+            if (ssid != null && psk != null) {
+              completer.complete();
+            } else {
+              completer.completeError(Exception(
+                  'Client: BLE disconnected before receiving credentials.'));
+            }
+          }
+        }
+      });
 
       await completer.future.timeout(timeout, onTimeout: () {
         throw TimeoutException(
@@ -274,14 +282,15 @@ class FlutterP2pClient extends FlutterP2pConnectionBase {
           "Client: Waiting a moment for hotspot to become visible in scans...");
       await Future.delayed(const Duration(milliseconds: 1500));
 
-      debugPrint("Client: Attempting to connect to hotspot: $ssid");
-      await connectWithCredentials(ssid!, psk!);
+      debugPrint("Client: Attempting to connect to hotspot: $ssid on port ${port ?? defaultP2pTransportPort}");
+      await connectWithCredentials(ssid!, psk!, port: port ?? defaultP2pTransportPort);
       debugPrint("Client: Successfully connected to hotspot: $ssid");
     } catch (e) {
       debugPrint("Client: Error during connectWithDevice: $e");
       rethrow;
     } finally {
       await bleDataSub?.cancel();
+      await bleConnSub?.cancel();
       await FlutterP2pConnectionPlatform.instance
           .disconnectBleDevice(deviceAddress)
           .catchError((e) {
@@ -309,6 +318,7 @@ class FlutterP2pClient extends FlutterP2pConnectionBase {
   Future<void> connectWithCredentials(
     String ssid,
     String psk, {
+    int port = defaultP2pTransportPort,
     Duration timeout =
         const Duration(seconds: 60), // Increased default for Wi-Fi connection
   }) async {
@@ -351,7 +361,7 @@ class FlutterP2pClient extends FlutterP2pConnectionBase {
 
     _p2pTransport = P2pTransportClient(
       hostIp: state.hostGatewayIpAddress!,
-      defaultPort: defaultP2pTransportPort,
+      hostPort: port,
       defaultFilePort: defaultP2pTransportClientFileServerPort,
       username: username ??
           await FlutterP2pConnectionPlatform.instance.getPlatformModel(),

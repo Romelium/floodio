@@ -251,10 +251,11 @@ class FlutterP2pConnectionPlugin : FlutterPlugin, MethodCallHandler, ActivityAwa
                 "ble#startAdvertising" -> {
                      val ssid: String? = call.argument("ssid")
                      val psk: String? = call.argument("psk")
-                     if (ssid == null || psk == null) {
-                         result.error("INVALID_ARGS", "Missing 'ssid' or 'psk' argument for ble#startAdvertising", null)
+                     val port: Int? = call.argument("port")
+                     if (ssid == null || psk == null || port == null) {
+                         result.error("INVALID_ARGS", "Missing 'ssid', 'psk', or 'port' argument for ble#startAdvertising", null)
                      } else {
-                         bleManager.startBleAdvertising(result, ssid, psk)
+                         bleManager.startBleAdvertising(result, ssid, psk, port)
                      }
                 }
                 "ble#stopAdvertising" -> bleManager.stopBleAdvertising(result)

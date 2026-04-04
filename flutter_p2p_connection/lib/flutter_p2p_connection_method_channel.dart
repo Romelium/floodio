@@ -150,10 +150,10 @@ class MethodChannelFlutterP2pConnection extends FlutterP2pConnectionPlatform {
   /// Requires necessary Bluetooth permissions.
   /// Returns a [Future] that completes when advertising is started.
   @override
-  Future<void> startBleAdvertising(String ssid, String psk) async {
+  Future<void> startBleAdvertising(String ssid, String psk, int port) async {
     await methodChannel.invokeMethod(
       'ble#startAdvertising',
-      {'ssid': ssid, 'psk': psk},
+      {'ssid': ssid, 'psk': psk, 'port': port},
     );
   }
 

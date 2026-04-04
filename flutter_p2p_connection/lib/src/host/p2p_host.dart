@@ -136,6 +136,20 @@ class FlutterP2pHost extends FlutterP2pConnectionBase {
       rethrow;
     }
 
+    _p2pTransport = P2pTransportHost(
+      defaultPort: defaultP2pTransportPort,
+      username: username ??
+          await FlutterP2pConnectionPlatform.instance.getPlatformModel(),
+    );
+    try {
+      await _p2pTransport!.start();
+    } catch (e) {
+      debugPrint('Host: Failed to start P2P Transport: $e');
+      await removeGroup().catchError((removeError) => debugPrint(
+          "Host: Error during cleanup after P2P transport start failure: $removeError"));
+      throw Exception('Host: Failed to start P2P Transport: $e');
+    }
+
     if (advertise) {
       try {
         // Give the Android OS a moment to fully start broadcasting the Wi-Fi beacon frames
@@ -145,6 +159,7 @@ class FlutterP2pHost extends FlutterP2pConnectionBase {
         await FlutterP2pConnectionPlatform.instance.startBleAdvertising(
           state.ssid!,
           state.preSharedKey!,
+          _p2pTransport!.portInUse!,
         );
         _isBleAdvertising = true;
         debugPrint("Host: BLE advertising started.");
@@ -160,19 +175,6 @@ class FlutterP2pHost extends FlutterP2pConnectionBase {
       _isBleAdvertising = false;
     }
 
-    _p2pTransport = P2pTransportHost(
-      defaultPort: defaultP2pTransportPort,
-      username: username ??
-          await FlutterP2pConnectionPlatform.instance.getPlatformModel(),
-    );
-    try {
-      await _p2pTransport!.start();
-    } catch (e) {
-      debugPrint('Host: Failed to start P2P Transport: $e');
-      await removeGroup().catchError((removeError) => debugPrint(
-          "Host: Error during cleanup after P2P transport start failure: $removeError"));
-      throw Exception('Host: Failed to start P2P Transport: $e');
-    }
     return state;
   }
 

@@ -62,7 +62,7 @@ abstract class FlutterP2pConnectionPlatform extends PlatformInterface {
         'disconnectFromHotspot() has not been implemented.');
   }
 
-  Future<void> startBleAdvertising(String ssid, String psk) async {
+  Future<void> startBleAdvertising(String ssid, String psk, int port) async {
     throw UnimplementedError('startBleAdvertising() has not been implemented.');
   }
 

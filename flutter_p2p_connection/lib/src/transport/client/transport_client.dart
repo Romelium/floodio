@@ -21,8 +21,8 @@ class P2pTransportClient with FileRequestServerMixin {
   /// The IP address of the P2P host server.
   final String hostIp;
 
-  /// The default port to try connecting to the host's WebSocket server.
-  final int defaultPort;
+  /// The port of the host's WebSocket server.
+  final int hostPort;
 
   /// The default port for this client's local file server.
   final int defaultFilePort;
@@ -84,7 +84,7 @@ class P2pTransportClient with FileRequestServerMixin {
   /// [username] is the display name for this client.
   P2pTransportClient({
     required this.hostIp,
-    required this.defaultPort,
+    required this.hostPort,
     required this.defaultFilePort,
     required this.username,
   });
@@ -208,11 +208,10 @@ class P2pTransportClient with FileRequestServerMixin {
     }
 
     int attempts = 0;
-    int port = defaultPort;
     WebSocket? tempSocket;
     while (attempts < 10 && tempSocket == null) {
       final url = Uri.parse(
-          "ws://$hostIp:$port/connect?id=${Uri.encodeComponent(clientId)}&username=${Uri.encodeComponent(username)}&filePort=$_fileServerPortInUse");
+          "ws://$hostIp:$hostPort/connect?id=${Uri.encodeComponent(clientId)}&username=${Uri.encodeComponent(username)}&filePort=$_fileServerPortInUse");
       try {
         debugPrint(
             "$_logPrefix [$username]: Attempting WebSocket connect to $url...");
@@ -224,18 +223,18 @@ class P2pTransportClient with FileRequestServerMixin {
       } on TimeoutException {
         debugPrint(
             "$_logPrefix [$username]: Connection attempt to $url timed out.");
-        port++;
         attempts++;
+        await Future.delayed(const Duration(seconds: 1));
       } on SocketException catch (e) {
         debugPrint(
-            "$_logPrefix [$username]: SocketException connecting to $url: ${e.message}. Trying next...");
-        port++;
+            "$_logPrefix [$username]: SocketException connecting to $url: ${e.message}. Retrying...");
         attempts++;
+        await Future.delayed(const Duration(seconds: 1));
       } catch (e) {
         debugPrint(
-            "$_logPrefix [$username]: Error connecting to $url: $e. Trying next...");
-        port++;
+            "$_logPrefix [$username]: Error connecting to $url: $e. Retrying...");
         attempts++;
+        await Future.delayed(const Duration(seconds: 1));
       }
     }
 
@@ -243,7 +242,7 @@ class P2pTransportClient with FileRequestServerMixin {
       _isConnecting = false;
       // File server remains running as per original logic of not stopping on initial connect failure
       throw Exception(
-          "$_logPrefix [$username]: Could not connect to WebSocket server at $hostIp on any port in range $defaultPort-${port - 1}.");
+          "$_logPrefix [$username]: Could not connect to WebSocket server at $hostIp:$hostPort after 10 attempts.");
     }
 
     _socket = tempSocket;

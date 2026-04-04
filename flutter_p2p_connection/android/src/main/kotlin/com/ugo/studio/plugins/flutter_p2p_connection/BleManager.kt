@@ -50,6 +50,7 @@ class BleManager(
     private var serviceUuid: UUID = Constants.BLE_CREDENTIAL_SERVICE_UUID
     private val ssidCharacteristicUuid: UUID = Constants.BLE_SSID_CHARACTERISTIC_UUID
     private val pskCharacteristicUuid: UUID = Constants.BLE_PSK_CHARACTERISTIC_UUID
+    private val portCharacteristicUuid: UUID = Constants.BLE_PORT_CHARACTERISTIC_UUID
 
     // Event Sinks
     var scanResultSink: EventChannel.EventSink? = null
@@ -196,7 +197,7 @@ class BleManager(
 
     // --- Public Methods (Called from Plugin) ---
 
-    fun startBleAdvertising(result: Result?, ssid: String, psk: String) {
+    fun startBleAdvertising(result: Result?, ssid: String, psk: String, port: Int) {
         Log.d(TAG, "Attempting to start BLE advertising")
          if (!serviceManager.isBluetoothEnabled()) {
              Log.w(TAG, "Cannot advertise, Bluetooth is disabled.")
@@ -222,7 +223,7 @@ class BleManager(
             }
         }
 
-        setupGattServer(ssid, psk) { success ->
+        setupGattServer(ssid, psk, port) { success ->
             if (success) {
                 val settings = AdvertiseSettings.Builder()
                     .setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_LOW_LATENCY)
@@ -406,7 +407,7 @@ class BleManager(
         return ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
     }
 
-    private fun setupGattServer(ssid: String, psk: String, callback: (Boolean) -> Unit) {
+    private fun setupGattServer(ssid: String, psk: String, port: Int, callback: (Boolean) -> Unit) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !hasPermission(Manifest.permission.BLUETOOTH_CONNECT)) {
             Log.e(TAG, "Missing BLUETOOTH_CONNECT permission for GATT server.")
             callback(false)
@@ -450,9 +451,16 @@ class BleManager(
             readPermission
         )
         pskCharacteristic.value = psk.toByteArray(Charsets.UTF_8)
+        val portCharacteristic = BluetoothGattCharacteristic(
+            portCharacteristicUuid,
+            BluetoothGattCharacteristic.PROPERTY_READ,
+            readPermission
+        )
+        portCharacteristic.value = port.toString().toByteArray(Charsets.UTF_8)
 
         service.addCharacteristic(ssidCharacteristic)
         service.addCharacteristic(pskCharacteristic)
+        service.addCharacteristic(portCharacteristic)
 
         val serviceAdded = gattServer?.addService(service) ?: false
         if (serviceAdded) {
@@ -694,7 +702,7 @@ class BleManager(
                 return
             }
 
-            if (charUuid == ssidCharacteristicUuid || charUuid == pskCharacteristicUuid) {
+            if (charUuid == ssidCharacteristicUuid || charUuid == pskCharacteristicUuid || charUuid == portCharacteristicUuid) {
                 val charRequiresEncryption = (characteristic.permissions and BluetoothGattCharacteristic.PERMISSION_READ_ENCRYPTED) != 0
 
                 if (charRequiresEncryption) {
@@ -837,6 +845,7 @@ class BleManager(
 
                 val ssidChar = credentialService.getCharacteristic(ssidCharacteristicUuid)
                 val pskChar = credentialService.getCharacteristic(pskCharacteristicUuid)
+                val portChar = credentialService.getCharacteristic(portCharacteristicUuid)
 
                 if (ssidChar != null && pskChar != null) {
                     Log.d(TAG, "GATT Client: Found SSID (perms: ${ssidChar.permissions}) and PSK (perms: ${pskChar.permissions}) characteristics. Reading SSID...")
@@ -848,6 +857,7 @@ class BleManager(
                     val notFound = mutableListOf<String>()
                     if (ssidChar == null) notFound.add("SSID ($ssidCharacteristicUuid)")
                     if (pskChar == null) notFound.add("PSK ($pskCharacteristicUuid)")
+                    if (portChar == null) notFound.add("Port ($portCharacteristicUuid)")
                     Log.e(TAG, "GATT Client: Following characteristics not found: ${notFound.joinToString()}. Service has ${credentialService.characteristics.size} characteristics.")
                     credentialService.characteristics.forEach { Log.d(TAG, "  Available char: ${it.uuid}") }
                     gatt.disconnect()
@@ -884,7 +894,19 @@ class BleManager(
                         gatt.disconnect()
                     }
                 } else if (charUuid == pskCharacteristicUuid) {
-                    Log.i(TAG, "GATT Client: Read PSK successful. Credentials received.")
+                    Log.d(TAG, "GATT Client: Read PSK successful. Reading Port if available...")
+                    val portChar = gatt.getService(serviceUuid)?.getCharacteristic(portCharacteristicUuid)
+                    if (portChar != null) {
+                        if (!gatt.readCharacteristic(portChar)) {
+                            Log.e(TAG, "GATT Client: Failed to initiate read for Port characteristic.")
+                            gatt.disconnect()
+                        }
+                    } else {
+                        Log.i(TAG, "GATT Client: Port characteristic not found (legacy host). Credentials received.")
+                        gatt.disconnect()
+                    }
+                } else if (charUuid == portCharacteristicUuid) {
+                    Log.i(TAG, "GATT Client: Read Port successful. Credentials received.")
                     gatt.disconnect()
                 }
             } else if (status == BluetoothGatt.GATT_INSUFFICIENT_AUTHENTICATION || status == BluetoothGatt.GATT_INSUFFICIENT_ENCRYPTION) {
