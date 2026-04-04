@@ -2,8 +2,8 @@ import 'dart:convert';
 import 'dart:isolate';
 
 import 'package:cryptography/cryptography.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 part 'crypto_service.g.dart';
 
@@ -179,15 +179,18 @@ class CryptoService extends _$CryptoService {
   }
 
   Future<void> _initKeys() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.reload();
-    final privateKeyStr = prefs.getString('user_private_key');
+    const secureStorage = FlutterSecureStorage(
+      aOptions: AndroidOptions(
+        resetOnError: true,
+      ),
+    );
+    final privateKeyStr = await secureStorage.read(key: 'user_private_key');
 
     final (userKeyPairData, serverPublicKey, newPrivateKeyStr) =
         await Isolate.run(() => _initKeysLogic(privateKeyStr));
 
     if (newPrivateKeyStr != null) {
-      await prefs.setString('user_private_key', newPrivateKeyStr);
+      await secureStorage.write(key: 'user_private_key', value: newPrivateKeyStr);
     }
 
     _userKeyPair = userKeyPairData;

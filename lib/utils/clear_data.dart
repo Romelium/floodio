@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -62,6 +63,14 @@ Future<void> clearAllAppData(BuildContext context, WidgetRef ref) async {
   // Clear SharedPreferences
   final prefs = await SharedPreferences.getInstance();
   await prefs.clear();
+
+  // Clear Secure Storage
+  const secureStorage = FlutterSecureStorage(
+    aOptions: AndroidOptions(
+      resetOnError: true,
+    ),
+  );
+  await secureStorage.deleteAll();
 
   // Notify Background Service
   try {
