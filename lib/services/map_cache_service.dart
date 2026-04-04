@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:isolate';
 import 'dart:math';
 
+import 'package:floodio/utils/constants.dart';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -67,10 +68,10 @@ int _lat2tiley(double lat, int z) {
 Future<String> _isolatePackMap(MapPackData data) async {
   final mapDir = Directory('${data.dirPath}/map_tiles');
 
-  String fileName = 'offline_map.fmap';
+  String fileName = 'offline_map${AppConstants.mapExtension}';
   if (data.regionJson != null) {
     fileName =
-        'map_${data.regionJson!['n']}_${data.regionJson!['s']}_${data.regionJson!['e']}_${data.regionJson!['w']}_${data.regionJson!['minZ']}_${data.regionJson!['maxZ']}.fmap';
+        '${AppConstants.mapPrefix}${data.regionJson!['n']}_${data.regionJson!['s']}_${data.regionJson!['e']}_${data.regionJson!['w']}_${data.regionJson!['minZ']}_${data.regionJson!['maxZ']}${AppConstants.mapExtension}';
   }
   final packFile = File('${data.dirPath}/$fileName');
 
@@ -381,7 +382,7 @@ class MapCacheService {
     // Clean up old pack files
     final dirList = dir.listSync();
     for (var entity in dirList) {
-      if (entity is File && entity.path.endsWith('.fmap')) {
+      if (entity is File && entity.path.endsWith(AppConstants.mapExtension)) {
         try {
           await entity.delete();
         } catch (_) {}

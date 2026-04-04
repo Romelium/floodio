@@ -47,7 +47,7 @@ Future<QueryExecutor> getSharedConnection() async {
   }
 
   final dir = await getApplicationDocumentsDirectory();
-  final path = p.join(dir.path, 'floodio_db.sqlite');
+  final path = p.join(dir.path, AppConstants.dbFileName);
 
   final receivePort = ReceivePort();
   final isolateObj = await Isolate.spawn(

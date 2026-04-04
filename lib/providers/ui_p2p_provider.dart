@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:audioplayers/audioplayers.dart';
+import 'package:floodio/utils/constants.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -41,7 +42,7 @@ class UiP2pService extends _$UiP2pService {
 
     final service = FlutterBackgroundService();
 
-    service.on('p2pStateUpdate').listen((event) {
+    service.on(BgEvents.p2pStateUpdate).listen((event) {
       if (event != null) {
         final newState = P2pState.fromMap(Map<String, dynamic>.from(event));
 
@@ -66,31 +67,31 @@ class UiP2pService extends _$UiP2pService {
       }
     });
 
-    service.on('terminalLog').listen((event) {
+    service.on(BgEvents.terminalLog).listen((event) {
       if (event != null && event['log'] != null) {
         ref.read(terminalLogControllerProvider.notifier).addLog(event['log']);
       }
     });
 
-    service.on('reloadOfflineRegions').listen((_) async {
+    service.on(BgEvents.reloadOfflineRegions).listen((_) async {
       final prefs = await SharedPreferences.getInstance();
       await prefs.reload();
       ref.invalidate(offlineRegionsProvider);
     });
 
-    service.on('reloadSettings').listen((_) async {
+    service.on(BgEvents.reloadSettings).listen((_) async {
       final prefs = await SharedPreferences.getInstance();
       await prefs.reload();
       ref.invalidate(appSettingsProvider);
     });
 
-    service.on('reloadHeroStats').listen((_) async {
+    service.on(BgEvents.reloadHeroStats).listen((_) async {
       final prefs = await SharedPreferences.getInstance();
       await prefs.reload();
       ref.invalidate(heroStatsControllerProvider);
     });
 
-    service.invoke('requestState');
+    service.invoke(BgEvents.requestState);
 
     return const P2pState();
   }
@@ -127,101 +128,101 @@ class UiP2pService extends _$UiP2pService {
 
   void toggleAutoSync() {
     HapticFeedback.lightImpact();
-    FlutterBackgroundService().invoke('toggleAutoSync');
+    FlutterBackgroundService().invoke(BgEvents.toggleAutoSync);
   }
 
   void startHosting() {
     HapticFeedback.lightImpact();
-    FlutterBackgroundService().invoke('startHosting');
+    FlutterBackgroundService().invoke(BgEvents.startHosting);
   }
 
   void stopHosting() {
     HapticFeedback.lightImpact();
-    FlutterBackgroundService().invoke('stopHosting');
+    FlutterBackgroundService().invoke(BgEvents.stopHosting);
   }
 
   void startScanning() {
     HapticFeedback.lightImpact();
-    FlutterBackgroundService().invoke('startScanning');
+    FlutterBackgroundService().invoke(BgEvents.startScanning);
   }
 
   void stopScanning() {
     HapticFeedback.lightImpact();
-    FlutterBackgroundService().invoke('stopScanning');
+    FlutterBackgroundService().invoke(BgEvents.stopScanning);
   }
 
   void disconnect() {
     HapticFeedback.lightImpact();
-    FlutterBackgroundService().invoke('disconnect');
+    FlutterBackgroundService().invoke(BgEvents.disconnect);
   }
 
   void connectToDevice(AppDiscoveredDevice device) {
     HapticFeedback.mediumImpact();
-    FlutterBackgroundService().invoke('connectToDevice', {
+    FlutterBackgroundService().invoke(BgEvents.connectToDevice, {
       'deviceAddress': device.deviceAddress,
     });
   }
 
   void requestMapRegion(OfflineRegion region) {
     HapticFeedback.mediumImpact();
-    FlutterBackgroundService().invoke('requestMapRegion', region.toJson());
+    FlutterBackgroundService().invoke(BgEvents.requestMapRegion, region.toJson());
   }
 
   void broadcastMapRegion(OfflineRegion? region) {
     HapticFeedback.mediumImpact();
-    FlutterBackgroundService().invoke('broadcastMapRegion', {
+    FlutterBackgroundService().invoke(BgEvents.broadcastMapRegion, {
       'region': region?.toJson(),
     });
   }
 
   void triggerSync() {
     HapticFeedback.mediumImpact();
-    FlutterBackgroundService().invoke('triggerSync');
+    FlutterBackgroundService().invoke(BgEvents.triggerSync);
   }
 
   void broadcastText(String text) {
-    FlutterBackgroundService().invoke('broadcastText', {'text': text});
+    FlutterBackgroundService().invoke(BgEvents.broadcastText, {'text': text});
   }
 
   void broadcastFile(File file) {
-    FlutterBackgroundService().invoke('broadcastFile', {'filePath': file.path});
+    FlutterBackgroundService().invoke(BgEvents.broadcastFile, {'filePath': file.path});
   }
 
   void processPayload(String base64Data) {
-    FlutterBackgroundService().invoke('processPayload', {'data': base64Data});
+    FlutterBackgroundService().invoke(BgEvents.processPayload, {'data': base64Data});
   }
 
   void processPayloadFromFile(String filePath) {
-    FlutterBackgroundService().invoke('processPayloadFromFile', {
+    FlutterBackgroundService().invoke(BgEvents.processPayloadFromFile, {
       'filePath': filePath,
     });
   }
 
   void mockDiscoveredDevice() {
-    FlutterBackgroundService().invoke('mockDiscoveredDevice');
+    FlutterBackgroundService().invoke(BgEvents.mockDiscoveredDevice);
   }
 
   void mockConnectedClient() {
-    FlutterBackgroundService().invoke('mockConnectedClient');
+    FlutterBackgroundService().invoke(BgEvents.mockConnectedClient);
   }
 
   void mockReceivedHazard() {
-    FlutterBackgroundService().invoke('mockReceivedHazard');
+    FlutterBackgroundService().invoke(BgEvents.mockReceivedHazard);
   }
 
   void mockReceivedCriticalHazard() {
-    FlutterBackgroundService().invoke('mockReceivedCriticalHazard');
+    FlutterBackgroundService().invoke(BgEvents.mockReceivedCriticalHazard);
   }
 
   void mockHostState() {
-    FlutterBackgroundService().invoke('mockHostState');
+    FlutterBackgroundService().invoke(BgEvents.mockHostState);
   }
 
   void mockClientState() {
-    FlutterBackgroundService().invoke('mockClientState');
+    FlutterBackgroundService().invoke(BgEvents.mockClientState);
   }
 
   void mockSyncProgress() {
-    FlutterBackgroundService().invoke('mockSyncProgress');
+    FlutterBackgroundService().invoke(BgEvents.mockSyncProgress);
   }
 }

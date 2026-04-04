@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../database/tables.dart';
+import 'constants.dart';
 
 String getTrustTierName(int tier) {
   switch (tier) {
@@ -32,35 +33,31 @@ Color getTierColor(int tier) {
 
 Color getHazardColor(String type, int tier) {
   final lowerType = type.toLowerCase();
-  if (lowerType == 'supply') return Colors.indigo;
-  if (lowerType == 'medical triage') return Colors.pink;
-  if (lowerType == 'custom') return Colors.deepOrange;
+  if (lowerType == HazardTypes.supply.toLowerCase()) return Colors.indigo;
+  if (lowerType == HazardTypes.medicalTriage.toLowerCase()) return Colors.pink;
+  if (lowerType == HazardTypes.custom.toLowerCase()) return Colors.deepOrange;
 
   return getTierColor(tier);
 }
 
 IconData getHazardIcon(String type) {
-  switch (type.toLowerCase()) {
-    case 'flood':
-    case 'flooded area':
+  if (type.toLowerCase() == HazardTypes.flood.toLowerCase() || type.toLowerCase() == HazardTypes.floodedArea.toLowerCase()) {
       return Icons.water;
-    case 'fire':
-    case 'fire zone':
+  } else if (type.toLowerCase() == HazardTypes.fire.toLowerCase() || type.toLowerCase() == HazardTypes.fireZone.toLowerCase()) {
       return Icons.local_fire_department;
-    case 'roadblock':
+  } else if (type.toLowerCase() == HazardTypes.roadblock.toLowerCase()) {
       return Icons.remove_road;
-    case 'medical':
-    case 'medical triage':
+  } else if (type.toLowerCase() == HazardTypes.medical.toLowerCase() || type.toLowerCase() == HazardTypes.medicalTriage.toLowerCase()) {
       return Icons.medical_services;
-    case 'evacuation zone':
+  } else if (type.toLowerCase() == HazardTypes.evacuationZone.toLowerCase()) {
       return Icons.directions_run;
-    case 'safe zone':
+  } else if (type.toLowerCase() == HazardTypes.safeZone.toLowerCase()) {
       return Icons.health_and_safety;
-    case 'supply':
+  } else if (type.toLowerCase() == HazardTypes.supply.toLowerCase()) {
       return Icons.local_shipping;
-    case 'custom':
+  } else if (type.toLowerCase() == HazardTypes.custom.toLowerCase()) {
       return Icons.star;
-    default:
+  } else {
       return Icons.warning;
   }
 }
@@ -133,7 +130,7 @@ Future<void> checkAndShowWifiWarning(
   VoidCallback onProceed,
 ) async {
   final prefs = await SharedPreferences.getInstance();
-  final hasSeen = prefs.getBool('has_seen_wifi_warning') ?? false;
+  final hasSeen = prefs.getBool(PrefKeys.hasSeenWifiWarning) ?? false;
   if (hasSeen) {
     onProceed();
     return;
@@ -162,7 +159,7 @@ Future<void> checkAndShowWifiWarning(
         ),
         FilledButton(
           onPressed: () async {
-            await prefs.setBool('has_seen_wifi_warning', true);
+            await prefs.setBool(PrefKeys.hasSeenWifiWarning, true);
             if (!dialogContext.mounted) return;
             Navigator.pop(dialogContext);
             onProceed();

@@ -2,15 +2,16 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:fixnum/fixnum.dart';
+import 'package:floodio/utils/constants.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../crypto/crypto_service.dart';
 import '../database/tables.dart';
+import '../protos/models.pb.dart' as pb;
 import '../providers/admin_trusted_sender_provider.dart';
 import '../providers/revoked_delegation_provider.dart';
 import '../providers/ui_p2p_provider.dart';
-import '../protos/models.pb.dart' as pb;
 
 part 'gov_api_service.g.dart';
 
@@ -50,10 +51,10 @@ class GovApiService extends _$GovApiService {
     final encoded = base64Encode(payload.writeToBuffer());
     ref
         .read(uiP2pServiceProvider.notifier)
-        .broadcastText(jsonEncode({'type': 'payload', 'data': encoded}));
+        .broadcastText(jsonEncode({'type': SyncTypes.payload, 'data': encoded}));
 
     try {
-      await Supabase.instance.client.from('sync_events').insert({
+      await Supabase.instance.client.from(AppConstants.syncEventsTable).insert({
         'payload_base64': encoded,
       });
     } catch (_) {}
@@ -89,10 +90,10 @@ class GovApiService extends _$GovApiService {
     final encoded = base64Encode(payload.writeToBuffer());
     ref
         .read(uiP2pServiceProvider.notifier)
-        .broadcastText(jsonEncode({'type': 'payload', 'data': encoded}));
+        .broadcastText(jsonEncode({'type': SyncTypes.payload, 'data': encoded}));
 
     try {
-      await Supabase.instance.client.from('sync_events').insert({
+      await Supabase.instance.client.from(AppConstants.syncEventsTable).insert({
         'payload_base64': encoded,
       });
     } catch (_) {}

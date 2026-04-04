@@ -7,6 +7,7 @@ import '../providers/local_user_provider.dart';
 import '../providers/revoked_delegation_provider.dart';
 import '../providers/settings_provider.dart';
 import '../utils/ui_helpers.dart';
+import '../utils/constants.dart';
 
 class GuideTab extends ConsumerWidget {
   const GuideTab({super.key});
@@ -826,7 +827,7 @@ class _TutorialOverlayState extends State<TutorialOverlay> {
 
   void _finish() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('has_seen_tutorial', true);
+    await prefs.setBool(PrefKeys.hasSeenTutorial, true);
     widget.onComplete();
     setState(() => _showTutorial = false);
   }

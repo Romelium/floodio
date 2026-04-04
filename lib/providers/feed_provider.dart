@@ -3,6 +3,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../database/tables.dart';
 import 'database_provider.dart';
+import '../utils/constants.dart';
 
 part 'feed_provider.g.dart';
 
@@ -23,7 +24,7 @@ class FeedFilter {
 
   FeedFilter({
     this.searchQuery = '',
-    this.typeFilter = 'All',
+    this.typeFilter = FeedFilterTypes.all,
     this.trustFilter,
   });
 
@@ -183,16 +184,16 @@ List<dynamic> combinedFeed(Ref ref) {
 
   var combined = <dynamic>[];
 
-  if (filter.typeFilter == 'All' || filter.typeFilter == 'Hazards') {
+  if (filter.typeFilter == FeedFilterTypes.all || filter.typeFilter == FeedFilterTypes.hazards) {
     combined.addAll(markers);
   }
-  if (filter.typeFilter == 'All' || filter.typeFilter == 'News') {
+  if (filter.typeFilter == FeedFilterTypes.all || filter.typeFilter == FeedFilterTypes.news) {
     combined.addAll(news);
   }
-  if (filter.typeFilter == 'All' || filter.typeFilter == 'Areas') {
+  if (filter.typeFilter == FeedFilterTypes.all || filter.typeFilter == FeedFilterTypes.areas) {
     combined.addAll(areas);
   }
-  if (filter.typeFilter == 'All' || filter.typeFilter == 'Paths') {
+  if (filter.typeFilter == FeedFilterTypes.all || filter.typeFilter == FeedFilterTypes.paths) {
     combined.addAll(paths);
   }
 

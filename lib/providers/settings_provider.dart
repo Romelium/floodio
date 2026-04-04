@@ -82,10 +82,10 @@ class AppSettings extends _$AppSettings {
     final prefs = ref.read(sharedPreferencesProvider);
     await prefs.setInt(PrefKeys.mapStyle, style.index);
     if (isBackgroundIsolate) {
-      bgServiceInstance?.invoke('reloadSettings');
+      bgServiceInstance?.invoke(BgEvents.reloadSettings);
     } else {
       try {
-        FlutterBackgroundService().invoke('reloadSettings');
+        FlutterBackgroundService().invoke(BgEvents.reloadSettings);
       } catch (_) {}
     }
   }
@@ -95,10 +95,10 @@ class AppSettings extends _$AppSettings {
     final prefs = ref.read(sharedPreferencesProvider);
     await prefs.setInt(PrefKeys.syncInterval, seconds);
     if (isBackgroundIsolate) {
-      bgServiceInstance?.invoke('reloadSettings');
+      bgServiceInstance?.invoke(BgEvents.reloadSettings);
     } else {
       try {
-        FlutterBackgroundService().invoke('reloadSettings');
+        FlutterBackgroundService().invoke(BgEvents.reloadSettings);
       } catch (_) {}
     }
   }
@@ -108,10 +108,10 @@ class AppSettings extends _$AppSettings {
     final prefs = ref.read(sharedPreferencesProvider);
     await prefs.setBool(PrefKeys.isOfficialMode, isOfficial);
     if (isBackgroundIsolate) {
-      bgServiceInstance?.invoke('reloadSettings');
+      bgServiceInstance?.invoke(BgEvents.reloadSettings);
     } else {
       try {
-        FlutterBackgroundService().invoke('reloadSettings');
+        FlutterBackgroundService().invoke(BgEvents.reloadSettings);
       } catch (_) {}
     }
   }

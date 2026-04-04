@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:floodio/utils/constants.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -47,7 +48,7 @@ Future<void> clearAllAppData(BuildContext context, WidgetRef ref) async {
     for (final entity in entities) {
       if (entity is File) {
         final name = entity.path.split(Platform.pathSeparator).last;
-        if (name.startsWith('img_') || name.endsWith('.fmap')) {
+        if (name.startsWith(AppConstants.imagePrefix) || name.endsWith(AppConstants.mapExtension)) {
           try {
             await entity.delete();
           } catch (_) {}
@@ -72,9 +73,9 @@ Future<void> clearAllAppData(BuildContext context, WidgetRef ref) async {
 
   // Notify Background Service
   try {
-    FlutterBackgroundService().invoke('reloadSettings');
-    FlutterBackgroundService().invoke('reloadOfflineRegions');
-    FlutterBackgroundService().invoke('reloadHeroStats');
+    FlutterBackgroundService().invoke(BgEvents.reloadSettings);
+    FlutterBackgroundService().invoke(BgEvents.reloadOfflineRegions);
+    FlutterBackgroundService().invoke(BgEvents.reloadHeroStats);
   } catch (_) {}
 
   // Invalidate Providers

@@ -316,11 +316,11 @@ Future<Map<String, dynamic>> _runVerifyPayloadInIsolate(
     } else if (message is double) {
       onProgress(message);
     } else if (message is Map<String, dynamic>) {
-      if (message['type'] == 'log') {
+      if (message['type'] == BgEvents.terminalLog) {
         terminalLog(message['message'] as String);
-      } else if (message['type'] == 'batch_forward') {
+      } else if (message['type'] == 'batch_forward') { // Internal isolate message
         onBatchForward(message['data'] as Map<String, dynamic>);
-      } else if (message['type'] == 'done') {
+      } else if (message['type'] == 'done') { // Internal isolate message
         completer.complete({});
         receivePort.close();
       }
@@ -353,7 +353,7 @@ Future<void> _verifyPayloadInIsolate(
 
   void log(String msg) {
     if (sendPort != null) {
-      sendPort.send({'type': 'log', 'message': msg});
+      sendPort.send({'type': BgEvents.terminalLog, 'message': msg});
     } else {
       print(msg);
     }
@@ -1029,7 +1029,7 @@ Future<void> _verifyPayloadInIsolate(
   await processBatchIfNeeded(force: true);
   await db.close();
   if (sendPort != null) {
-    sendPort.send({'type': 'done'});
+    sendPort.send({'type': 'done'}); // Internal isolate message
   }
 }
 
@@ -1826,11 +1826,11 @@ class P2pService extends _$P2pService {
     try {
       final json = jsonDecode(text);
       if (json is Map<String, dynamic>) {
-        if (json['type'] == 'manifest') {
+        if (json['type'] == SyncTypes.manifest) {
           terminalLog("[*] Message type: manifest");
           await _handleManifest(json);
           return;
-        } else if (json['type'] == 'payload_chunk') {
+        } else if (json['type'] == SyncTypes.payloadChunk) {
           final chunkIndex = json['chunkIndex'] as int? ?? 0;
           final totalChunks = json['totalChunks'] as int? ?? 1;
           terminalLog(
@@ -1838,19 +1838,19 @@ class P2pService extends _$P2pService {
           );
           await _enqueuePayload(json['data'], chunkIndex, totalChunks);
           return;
-        } else if (json['type'] == 'payload') {
+        } else if (json['type'] == SyncTypes.payload) {
           terminalLog("[*] Message type: payload");
           await _enqueuePayload(json['data'], 0, 1);
           return;
-        } else if (json['type'] == 'request_map') {
+        } else if (json['type'] == SyncTypes.requestMap) {
           terminalLog("[*] Message type: request_map");
           await _handleRequestMap(json);
           return;
-        } else if (json['type'] == 'request_image') {
+        } else if (json['type'] == SyncTypes.requestImage) {
           terminalLog("[*] Message type: request_image");
           await _handleRequestImage(json['imageId']);
           return;
-        } else if (json['type'] == 'up_to_date') {
+        } else if (json['type'] == SyncTypes.upToDate) {
           terminalLog("[+] Message type: up_to_date");
           state = state.copyWith(
             isSyncing: false,
@@ -1904,7 +1904,7 @@ class P2pService extends _$P2pService {
       await processPayload(base64Data, isChunk: true);
 
       if (chunkIndex == totalChunks - 1) {
-        await broadcastText(jsonEncode({'type': 'up_to_date'}));
+        await broadcastText(jsonEncode({'type': SyncTypes.upToDate}));
       }
     }
 
@@ -1986,7 +1986,7 @@ class P2pService extends _$P2pService {
       } else if (file.state == ReceivableFileState.completed) {
         terminalLog("[+] Download completed for file: ${file.info.name}");
         _downloadStartTimes.remove(file.info.id);
-        if (file.info.name.endsWith('.fmap')) {
+        if (file.info.name.endsWith(AppConstants.mapExtension)) {
           final dir = await getApplicationDocumentsDirectory();
           final downloadedFile = File('${dir.path}/${file.info.name}');
           if (await downloadedFile.exists()) {
@@ -1999,10 +1999,10 @@ class P2pService extends _$P2pService {
               final mapCache = ref.read(mapCacheServiceProvider);
               await mapCache.unpackMap(downloadedFile);
 
-              if (file.info.name.startsWith('map_')) {
+              if (file.info.name.startsWith(AppConstants.mapPrefix)) {
                 try {
                   final parts = file.info.name
-                      .replaceAll('.fmap', '')
+                      .replaceAll(AppConstants.mapExtension, '')
                       .split('_');
                   if (parts.length == 7) {
                     final region = OfflineRegion(
@@ -2050,7 +2050,7 @@ class P2pService extends _$P2pService {
               }
             }
           }
-        } else if (file.info.name.startsWith('img_')) {
+        } else if (file.info.name.startsWith(AppConstants.imagePrefix)) {
           // Image downloaded, no special unpacking needed.
         }
       } else if (file.state == ReceivableFileState.downloading) {
@@ -2112,7 +2112,7 @@ class P2pService extends _$P2pService {
       final offlineRegions = ref.read(offlineRegionsProvider).value ?? [];
 
       final manifest = {
-        'type': 'manifest',
+        'type': SyncTypes.manifest,
         'bloomFilter': bloomBits,
         'bloomSize': bloomSize,
         'offlineRegions': offlineRegions.map((r) => r.toJson()).toList(),
@@ -2266,7 +2266,7 @@ class P2pService extends _$P2pService {
           newDelegations.isEmpty &&
           newRevocations.isEmpty) {
         terminalLog("[+] No new data to send. Sending up_to_date.");
-        await broadcastText(jsonEncode({'type': 'up_to_date'}));
+        await broadcastText(jsonEncode({'type': SyncTypes.upToDate}));
         state = state.copyWith(
           isSyncing: false,
           lastSyncTime: DateTime.now(),
@@ -2494,7 +2494,7 @@ class P2pService extends _$P2pService {
       _incrementHeroStat('hero_data_carried', encoded.length);
       await broadcastText(
         jsonEncode({
-          'type': 'payload_chunk',
+          'type': SyncTypes.payloadChunk,
           'data': encoded,
           'chunkIndex': i,
           'totalChunks': payloads.length,
@@ -2582,7 +2582,7 @@ class P2pService extends _$P2pService {
     } finally {
       state = state.copyWith(isSyncing: false, clearSyncProgress: true);
       if (isBackgroundIsolate) {
-        bgServiceInstance?.invoke('processPayloadComplete', {
+        bgServiceInstance?.invoke(BgEvents.processPayloadComplete, {
           'success': success,
         });
       }
@@ -2956,7 +2956,7 @@ class P2pService extends _$P2pService {
 
           if (!downloaded && !isFromCloud) {
             await broadcastText(
-              jsonEncode({'type': 'request_image', 'imageId': imageId}),
+              jsonEncode({'type': SyncTypes.requestImage, 'imageId': imageId}),
             );
           }
         }
@@ -2981,7 +2981,7 @@ class P2pService extends _$P2pService {
 
           if (!downloaded && !isFromCloud) {
             await broadcastText(
-              jsonEncode({'type': 'request_image', 'imageId': imageId}),
+              jsonEncode({'type': SyncTypes.requestImage, 'imageId': imageId}),
             );
           }
         }
@@ -3072,13 +3072,13 @@ class P2pService extends _$P2pService {
           _incrementHeroStat('hero_reports_relayed', relayedCount);
         } else {
           if (!isChunk) {
-            await broadcastText(jsonEncode({'type': 'up_to_date'}));
+            await broadcastText(jsonEncode({'type': SyncTypes.upToDate}));
           }
         }
       }
     } else {
       if (!isFromCloud && !isChunk) {
-        await broadcastText(jsonEncode({'type': 'up_to_date'}));
+        await broadcastText(jsonEncode({'type': SyncTypes.upToDate}));
       }
     }
 
@@ -3107,7 +3107,7 @@ class P2pService extends _$P2pService {
 
   Future<void> requestMapRegion(OfflineRegion region) async {
     await broadcastText(
-      jsonEncode({'type': 'request_map', 'region': region.toJson()}),
+      jsonEncode({'type': SyncTypes.requestMap, 'region': region.toJson()}),
     );
   }
 
@@ -3185,7 +3185,7 @@ class P2pService extends _$P2pService {
       id: id,
       latitude: lat + (Random().nextDouble() - 0.5) * 0.02,
       longitude: lng + (Random().nextDouble() - 0.5) * 0.02,
-      type: 'Flood',
+      type: HazardTypes.flood,
       description: 'Mocked flood report from debug menu',
       timestamp: timestamp,
       senderId: myPubKey,
@@ -3217,7 +3217,7 @@ class P2pService extends _$P2pService {
       id: id,
       latitude: lat + (Random().nextDouble() - 0.5) * 0.02,
       longitude: lng + (Random().nextDouble() - 0.5) * 0.02,
-      type: 'Evacuation Zone',
+      type: HazardTypes.evacuationZone,
       description: 'Mocked CRITICAL evacuation order from debug menu',
       timestamp: timestamp,
       senderId: myPubKey,

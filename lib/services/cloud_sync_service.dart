@@ -619,7 +619,7 @@ class CloudSyncService extends _$CloudSyncService {
 
         try {
           await Supabase.instance.client
-              .from(AppConstants.syncEventsTable)
+              .from(AppConstants.syncEventsTable) // Keep this as it's the table name
               .insert({'payload_base64': encoded})
               .timeout(const Duration(seconds: 30));
           terminalLog(
@@ -689,7 +689,7 @@ class CloudSyncService extends _$CloudSyncService {
         downloadBatches++;
         try {
           final response = await Supabase.instance.client
-              .from(AppConstants.syncEventsTable)
+              .from(AppConstants.syncEventsTable) // Keep this as it's the table name
               .select()
               .gt('id', currentLastId)
               .order('id', ascending: true)
@@ -804,7 +804,7 @@ class CloudSyncService extends _$CloudSyncService {
         } else {
           final completer = Completer<bool>();
           final sub = FlutterBackgroundService()
-              .on('processPayloadComplete')
+              .on(BgEvents.processPayloadComplete)
               .listen((event) {
                 if (event != null && event['success'] == true) {
                   if (!completer.isCompleted) completer.complete(true);

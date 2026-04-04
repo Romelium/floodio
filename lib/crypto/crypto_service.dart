@@ -8,6 +8,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:hex/hex.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import '../utils/constants.dart';
 part 'crypto_service.g.dart';
 
 List<int> _generate16BytesEntropy() {
@@ -205,14 +206,14 @@ class CryptoService extends _$CryptoService {
     const secureStorage = FlutterSecureStorage(
       aOptions: AndroidOptions(resetOnError: true),
     );
-    final privateKeyStr = await secureStorage.read(key: 'user_private_key');
+    final privateKeyStr = await secureStorage.read(key: PrefKeys.userPrivateKey);
 
     final (userKeyPairData, serverPublicKey, newPrivateKeyStr) =
         await Isolate.run(() => _initKeysLogic(privateKeyStr));
 
     if (newPrivateKeyStr != null) {
       await secureStorage.write(
-        key: 'user_private_key',
+        key: PrefKeys.userPrivateKey,
         value: newPrivateKeyStr,
       );
     }
@@ -236,7 +237,7 @@ class CryptoService extends _$CryptoService {
     const secureStorage = FlutterSecureStorage(
       aOptions: AndroidOptions(resetOnError: true),
     );
-    final storedDataStr = await secureStorage.read(key: 'user_private_key');
+    final storedDataStr = await secureStorage.read(key: PrefKeys.userPrivateKey);
     if (storedDataStr != null) {
       final bytes = base64Decode(storedDataStr);
       return bip39.entropyToMnemonic(HEX.encode(bytes));
@@ -256,7 +257,7 @@ class CryptoService extends _$CryptoService {
         aOptions: AndroidOptions(resetOnError: true),
       );
       await secureStorage.write(
-        key: 'user_private_key',
+        key: PrefKeys.userPrivateKey,
         value: base64Encode(bytes),
       );
 

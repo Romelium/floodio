@@ -31,10 +31,10 @@ ServiceInstance? bgServiceInstance;
 void terminalLog(String message) {
   print(message);
   if (isBackgroundIsolate) {
-    bgServiceInstance?.invoke('terminalLog', {'log': message});
+    bgServiceInstance?.invoke(BgEvents.terminalLog, {'log': message});
   } else {
     try {
-      FlutterBackgroundService().invoke('terminalLog', {'log': message});
+      FlutterBackgroundService().invoke(BgEvents.terminalLog, {'log': message});
     } catch (_) {}
   }
 }
@@ -145,50 +145,50 @@ void onStart(ServiceInstance service) async {
   final p2pNotifier = container.read(p2pServiceProvider.notifier);
 
   if (service is AndroidServiceInstance) {
-    service.on('setAsForeground').listen((event) {
+    service.on(BgEvents.setAsForeground).listen((event) {
       service.setAsForegroundService();
     });
 
-    service.on('setAsBackground').listen((event) {
+    service.on(BgEvents.setAsBackground).listen((event) {
       service.setAsBackgroundService();
     });
   }
 
-  service.on('stopService').listen((event) {
+  service.on(BgEvents.stopService).listen((event) {
     service.stopSelf();
   });
 
-  service.on('toggleAutoSync').listen((event) {
+  service.on(BgEvents.toggleAutoSync).listen((event) {
     p2pNotifier.toggleAutoSync();
   });
 
-  service.on('startHosting').listen((event) {
+  service.on(BgEvents.startHosting).listen((event) {
     p2pNotifier.startHosting();
   });
 
-  service.on('stopHosting').listen((event) {
+  service.on(BgEvents.stopHosting).listen((event) {
     p2pNotifier.stopHosting();
   });
 
-  service.on('startScanning').listen((event) {
+  service.on(BgEvents.startScanning).listen((event) {
     p2pNotifier.startScanning();
   });
 
-  service.on('stopScanning').listen((event) {
+  service.on(BgEvents.stopScanning).listen((event) {
     p2pNotifier.stopScanning();
   });
 
-  service.on('disconnect').listen((event) {
+  service.on(BgEvents.disconnect).listen((event) {
     p2pNotifier.disconnect();
   });
 
-  service.on('connectToDevice').listen((event) {
+  service.on(BgEvents.connectToDevice).listen((event) {
     if (event != null && event['deviceAddress'] != null) {
       p2pNotifier.connectToDeviceByAddress(event['deviceAddress']);
     }
   });
 
-  service.on('requestMapRegion').listen((event) {
+  service.on(BgEvents.requestMapRegion).listen((event) {
     if (event != null) {
       p2pNotifier.requestMapRegion(
         OfflineRegion.fromJson(Map<String, dynamic>.from(event)),
@@ -196,7 +196,7 @@ void onStart(ServiceInstance service) async {
     }
   });
 
-  service.on('broadcastMapRegion').listen((event) {
+  service.on(BgEvents.broadcastMapRegion).listen((event) {
     OfflineRegion? region;
     if (event != null && event['region'] != null) {
       region = OfflineRegion.fromJson(
@@ -206,59 +206,59 @@ void onStart(ServiceInstance service) async {
     p2pNotifier.broadcastMapRegion(region);
   });
 
-  service.on('triggerSync').listen((event) {
+  service.on(BgEvents.triggerSync).listen((event) {
     p2pNotifier.triggerSync();
   });
 
-  service.on('broadcastText').listen((event) {
+  service.on(BgEvents.broadcastText).listen((event) {
     if (event != null && event['text'] != null) {
       p2pNotifier.broadcastText(event['text']);
     }
   });
 
-  service.on('broadcastFile').listen((event) {
+  service.on(BgEvents.broadcastFile).listen((event) {
     if (event != null && event['filePath'] != null) {
       p2pNotifier.broadcastFile(File(event['filePath']));
     }
   });
 
-  service.on('processPayload').listen((event) {
+  service.on(BgEvents.processPayload).listen((event) {
     if (event != null && event['data'] != null) {
       p2pNotifier.processPayload(event['data']);
     }
   });
 
-  service.on('processPayloadFromFile').listen((event) {
+  service.on(BgEvents.processPayloadFromFile).listen((event) {
     if (event != null && event['filePath'] != null) {
       p2pNotifier.processPayloadFromFile(event['filePath']);
     }
   });
 
-  service.on('mockDiscoveredDevice').listen((_) {
+  service.on(BgEvents.mockDiscoveredDevice).listen((_) {
     p2pNotifier.mockDiscoveredDevice();
   });
 
-  service.on('mockConnectedClient').listen((_) {
+  service.on(BgEvents.mockConnectedClient).listen((_) {
     p2pNotifier.mockConnectedClient();
   });
 
-  service.on('mockReceivedHazard').listen((_) {
+  service.on(BgEvents.mockReceivedHazard).listen((_) {
     p2pNotifier.mockReceivedHazard();
   });
 
-  service.on('mockReceivedCriticalHazard').listen((_) {
+  service.on(BgEvents.mockReceivedCriticalHazard).listen((_) {
     p2pNotifier.mockReceivedCriticalHazard();
   });
 
-  service.on('mockHostState').listen((_) {
+  service.on(BgEvents.mockHostState).listen((_) {
     p2pNotifier.mockHostState();
   });
 
-  service.on('mockClientState').listen((_) {
+  service.on(BgEvents.mockClientState).listen((_) {
     p2pNotifier.mockClientState();
   });
 
-  service.on('mockSyncProgress').listen((_) {
+  service.on(BgEvents.mockSyncProgress).listen((_) {
     p2pNotifier.mockSyncProgress();
   });
 
@@ -267,15 +267,15 @@ void onStart(ServiceInstance service) async {
   int mapDownloadDownloaded = 0;
   bool isMapDownloading = false;
 
-  service.on('requestMapDownloadState').listen((_) {
-    service.invoke('mapDownloadProgress', {
+  service.on(BgEvents.requestMapDownloadState).listen((_) {
+    service.invoke(BgEvents.mapDownloadProgress, {
       'total': mapDownloadTotal,
       'downloaded': mapDownloadDownloaded,
       'isDownloading': isMapDownloading,
     });
   });
 
-  service.on('startMapDownload').listen((event) async {
+  service.on(BgEvents.startMapDownload).listen((event) async {
     if (event == null || isMapDownloading) return;
     isMapDownloadCancelled = false;
     isMapDownloading = true;
@@ -307,7 +307,7 @@ void onStart(ServiceInstance service) async {
     mapDownloadTotal = tilesToDownload.length;
     mapDownloadDownloaded = 0;
 
-    service.invoke('mapDownloadProgress', {
+    service.invoke(BgEvents.mapDownloadProgress, {
       'total': mapDownloadTotal,
       'downloaded': mapDownloadDownloaded,
       'isDownloading': isMapDownloading,
@@ -326,7 +326,7 @@ void onStart(ServiceInstance service) async {
       );
 
       mapDownloadDownloaded += batch.length;
-      service.invoke('mapDownloadProgress', {
+      service.invoke(BgEvents.mapDownloadProgress, {
         'total': mapDownloadTotal,
         'downloaded': mapDownloadDownloaded,
         'isDownloading': isMapDownloading,
@@ -391,38 +391,38 @@ void onStart(ServiceInstance service) async {
     }
 
     isMapDownloading = false;
-    service.invoke('mapDownloadProgress', {
+    service.invoke(BgEvents.mapDownloadProgress, {
       'total': mapDownloadTotal,
       'downloaded': mapDownloadDownloaded,
       'isDownloading': isMapDownloading,
     });
   });
 
-  service.on('cancelMapDownload').listen((_) {
+  service.on(BgEvents.cancelMapDownload).listen((_) {
     isMapDownloadCancelled = true;
     if (bgServiceInstance is AndroidServiceInstance) {
       FlutterLocalNotificationsPlugin().cancel(id: 778);
     }
   });
 
-  service.on('reloadSettings').listen((_) async {
+  service.on(BgEvents.reloadSettings).listen((_) async {
     await prefs.reload();
     container.invalidate(appSettingsProvider);
   });
 
-  service.on('reloadOfflineRegions').listen((_) async {
+  service.on(BgEvents.reloadOfflineRegions).listen((_) async {
     await prefs.reload();
     container.invalidate(offlineRegionsProvider);
   });
 
-  service.on('reloadHeroStats').listen((_) async {
+  service.on(BgEvents.reloadHeroStats).listen((_) async {
     await prefs.reload();
     container.invalidate(heroStatsControllerProvider);
   });
 
-  service.on('requestState').listen((event) {
+  service.on(BgEvents.requestState).listen((event) {
     final state = container.read(p2pServiceProvider);
-    service.invoke('p2pStateUpdate', state.toMap());
+    service.invoke(BgEvents.p2pStateUpdate, state.toMap());
   });
 
   DateTime lastStateUpdateTime = DateTime.now();
@@ -447,13 +447,13 @@ void onStart(ServiceInstance service) async {
         now.difference(lastStateUpdateTime).inMilliseconds > 500) {
       stateUpdateTimer?.cancel();
       lastStateUpdateTime = now;
-      service.invoke('p2pStateUpdate', next.toMap());
+      service.invoke(BgEvents.p2pStateUpdate, next.toMap());
       _updateNotification(service, next);
     } else {
       stateUpdateTimer?.cancel();
       stateUpdateTimer = Timer(const Duration(milliseconds: 500), () {
         lastStateUpdateTime = DateTime.now();
-        service.invoke('p2pStateUpdate', next.toMap());
+        service.invoke(BgEvents.p2pStateUpdate, next.toMap());
         _updateNotification(service, next);
       });
     }

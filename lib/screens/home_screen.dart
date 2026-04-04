@@ -517,7 +517,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   Future<void> _checkTutorial() async {
     final prefs = await SharedPreferences.getInstance();
-    if (!(prefs.getBool('has_seen_tutorial') ?? false)) {
+    if (!(prefs.getBool(PrefKeys.hasSeenTutorial) ?? false)) {
       setState(() => _showTutorial = true);
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -1575,7 +1575,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               ref
                   .read(uiP2pServiceProvider.notifier)
                   .broadcastText(
-                    jsonEncode({'type': 'payload', 'data': encoded}),
+                    jsonEncode({'type': SyncTypes.payload, 'data': encoded}),
                   );
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
@@ -1622,7 +1622,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               ref
                   .read(uiP2pServiceProvider.notifier)
                   .broadcastText(
-                    jsonEncode({'type': 'payload', 'data': encoded}),
+                    jsonEncode({'type': SyncTypes.payload, 'data': encoded}),
                   );
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
@@ -1669,7 +1669,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               ref
                   .read(uiP2pServiceProvider.notifier)
                   .broadcastText(
-                    jsonEncode({'type': 'payload', 'data': encoded}),
+                    jsonEncode({'type': SyncTypes.payload, 'data': encoded}),
                   );
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
@@ -1715,7 +1715,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     final encoded = base64Encode(payload.writeToBuffer());
     ref
         .read(uiP2pServiceProvider.notifier)
-        .broadcastText(jsonEncode({'type': 'payload', 'data': encoded}));
+        .broadcastText(jsonEncode({'type': SyncTypes.payload, 'data': encoded}));
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1785,7 +1785,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               ref
                   .read(uiP2pServiceProvider.notifier)
                   .broadcastText(
-                    jsonEncode({'type': 'payload', 'data': encoded}),
+                    jsonEncode({'type': SyncTypes.payload, 'data': encoded}),
                   );
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
@@ -1873,7 +1873,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     final encoded = base64Encode(payload.writeToBuffer());
     ref
         .read(uiP2pServiceProvider.notifier)
-        .broadcastText(jsonEncode({'type': 'payload', 'data': encoded}));
+        .broadcastText(jsonEncode({'type': SyncTypes.payload, 'data': encoded}));
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1957,7 +1957,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     final encoded = base64Encode(payload.writeToBuffer());
     ref
         .read(uiP2pServiceProvider.notifier)
-        .broadcastText(jsonEncode({'type': 'payload', 'data': encoded}));
+        .broadcastText(jsonEncode({'type': SyncTypes.payload, 'data': encoded}));
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -2041,7 +2041,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     final encoded = base64Encode(payload.writeToBuffer());
     ref
         .read(uiP2pServiceProvider.notifier)
-        .broadcastText(jsonEncode({'type': 'payload', 'data': encoded}));
+        .broadcastText(jsonEncode({'type': SyncTypes.payload, 'data': encoded}));
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -2121,7 +2121,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     final encoded = base64Encode(payload.writeToBuffer());
     ref
         .read(uiP2pServiceProvider.notifier)
-        .broadcastText(jsonEncode({'type': 'payload', 'data': encoded}));
+        .broadcastText(jsonEncode({'type': SyncTypes.payload, 'data': encoded}));
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -2355,21 +2355,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   void _showAddHazardDialog(LatLng point, {String? initialType}) {
     HapticFeedback.selectionClick();
     final isOfficial = ref.read(appSettingsProvider).isOfficialMode;
-    List<String> types = ['Flood', 'Fire', 'Roadblock', 'Medical', 'Other'];
+    List<String> types = [HazardTypes.flood, HazardTypes.fire, HazardTypes.roadblock, HazardTypes.medical, HazardTypes.other];
     if (isOfficial) {
-      types.addAll(['Supply', 'Medical Triage', 'Custom']);
+      types.addAll([HazardTypes.supply, HazardTypes.medicalTriage, HazardTypes.custom]);
     }
     if (initialType != null && !types.contains(initialType)) {
       types.add(initialType);
     }
 
-    String selectedType = initialType ?? 'Flood';
+    String selectedType = initialType ?? HazardTypes.flood;
     final descController = TextEditingController(
-      text: initialType == 'Supply'
+      text: initialType == HazardTypes.supply
           ? 'Water and food distribution'
-          : initialType == 'Medical Triage'
+          : initialType == HazardTypes.medicalTriage
           ? 'First aid and triage'
-          : initialType == 'Custom'
+          : initialType == HazardTypes.custom
           ? 'Official custom marker'
           : 'Water level rising',
     );
@@ -2568,7 +2568,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
                 String? imageId;
                 if (selectedImage != null) {
-                  imageId = 'img_$id.jpg';
+                  imageId = '${AppConstants.imagePrefix}$id.jpg';
                   final dir = await getApplicationDocumentsDirectory();
                   final savedImage = File('${dir.path}/$imageId');
                   await File(selectedImage!.path).copy(savedImage.path);
@@ -2628,7 +2628,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 ref
                     .read(uiP2pServiceProvider.notifier)
                     .broadcastText(
-                      jsonEncode({'type': 'payload', 'data': encoded}),
+                      jsonEncode({'type': SyncTypes.payload, 'data': encoded}),
                     );
               },
               icon: const Icon(Icons.send, size: 18),
@@ -2646,15 +2646,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   }) {
     HapticFeedback.selectionClick();
     final validTypes = [
-      'Flooded Area',
-      'Evacuation Zone',
-      'Safe Zone',
-      'Fire Zone',
-      'Other',
+      HazardTypes.floodedArea,
+      HazardTypes.evacuationZone,
+      HazardTypes.safeZone,
+      HazardTypes.fireZone,
+      HazardTypes.other,
     ];
     String selectedType = validTypes.contains(existingArea?.type)
         ? existingArea!.type
-        : 'Flooded Area';
+        : HazardTypes.floodedArea;
     final descController = TextEditingController(
       text: existingArea?.description ?? '',
     );
@@ -2692,11 +2692,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 ),
                 items:
                     [
-                          'Flooded Area',
-                          'Evacuation Zone',
-                          'Safe Zone',
-                          'Fire Zone',
-                          'Other',
+                          HazardTypes.floodedArea,
+                          HazardTypes.evacuationZone,
+                          HazardTypes.safeZone,
+                          HazardTypes.fireZone,
+                          HazardTypes.other,
                         ]
                         .map(
                           (type) =>
@@ -2847,7 +2847,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 ref
                     .read(uiP2pServiceProvider.notifier)
                     .broadcastText(
-                      jsonEncode({'type': 'payload', 'data': encoded}),
+                      jsonEncode({'type': SyncTypes.payload, 'data': encoded}),
                     );
 
                 if (!mounted) return;
@@ -2868,14 +2868,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   }) {
     HapticFeedback.selectionClick();
     final validTypes = [
-      'Evacuation Route',
-      'Safe Path',
-      'Blocked Road',
-      'Other',
+      HazardTypes.evacuationRoute,
+      HazardTypes.safePath,
+      HazardTypes.blockedRoad,
+      HazardTypes.other,
     ];
     String selectedType = validTypes.contains(existingPath?.type)
         ? existingPath!.type
-        : 'Evacuation Route';
+        : HazardTypes.evacuationRoute;
     final descController = TextEditingController(
       text: existingPath?.description ?? '',
     );
@@ -3061,7 +3061,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 ref
                     .read(uiP2pServiceProvider.notifier)
                     .broadcastText(
-                      jsonEncode({'type': 'payload', 'data': encoded}),
+                      jsonEncode({'type': SyncTypes.payload, 'data': encoded}),
                     );
 
                 if (!mounted) return;
@@ -3361,7 +3361,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
                 String? imageId;
                 if (selectedImage != null) {
-                  imageId = 'img_$id.jpg';
+                  imageId = '${AppConstants.imagePrefix}$id.jpg';
                   final dir = await getApplicationDocumentsDirectory();
                   final savedImage = File('${dir.path}/$imageId');
                   await File(selectedImage!.path).copy(savedImage.path);
@@ -3420,7 +3420,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 ref
                     .read(uiP2pServiceProvider.notifier)
                     .broadcastText(
-                      jsonEncode({'type': 'payload', 'data': encoded}),
+                      jsonEncode({'type': SyncTypes.payload, 'data': encoded}),
                     );
               },
               icon: const Icon(Icons.broadcast_on_personal, size: 18),
@@ -5344,7 +5344,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
             child: Row(
-              children: ['All', 'News', 'Hazards', 'Areas', 'Paths']
+              children: [FeedFilterTypes.all, FeedFilterTypes.news, FeedFilterTypes.hazards, FeedFilterTypes.areas, FeedFilterTypes.paths]
                   .map(
                     (type) => Padding(
                       padding: const EdgeInsets.only(right: 8.0),
@@ -5379,7 +5379,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
             child: Row(
               children: [
-                if (filter.typeFilter != 'All' || filter.trustFilter != null)
+                if (filter.typeFilter != FeedFilterTypes.all || filter.trustFilter != null)
                   Padding(
                     padding: const EdgeInsets.only(right: 8.0),
                     child: ActionChip(
@@ -5387,7 +5387,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                       avatar: const Icon(Icons.clear, size: 16),
                       onPressed: () {
                         HapticFeedback.selectionClick();
-                        filterNotifier.updateTypeFilter('All');
+                        filterNotifier.updateTypeFilter(FeedFilterTypes.all);
                         filterNotifier.updateTrustFilter(null);
                       },
                       shape: RoundedRectangleBorder(

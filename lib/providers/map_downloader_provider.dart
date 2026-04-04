@@ -5,6 +5,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 
+import '../utils/constants.dart';
 part 'map_downloader_provider.g.dart';
 
 class DownloadProgress {
@@ -58,7 +59,7 @@ class MapDownloader extends _$MapDownloader {
   DownloadProgress build() {
     final service = FlutterBackgroundService();
 
-    final sub = service.on('mapDownloadProgress').listen((event) {
+    final sub = service.on(BgEvents.mapDownloadProgress).listen((event) {
       if (event != null) {
         state = DownloadProgress(
           total: event['total'] as int,
@@ -72,7 +73,7 @@ class MapDownloader extends _$MapDownloader {
       sub.cancel();
     });
 
-    service.invoke('requestMapDownloadState');
+    service.invoke(BgEvents.requestMapDownloadState);
 
     return DownloadProgress();
   }
@@ -99,7 +100,7 @@ class MapDownloader extends _$MapDownloader {
     int maxZoom,
     String urlTemplate,
   ) {
-    FlutterBackgroundService().invoke('startMapDownload', {
+    FlutterBackgroundService().invoke(BgEvents.startMapDownload, {
       'north': bounds.north,
       'south': bounds.south,
       'east': bounds.east,
@@ -111,6 +112,6 @@ class MapDownloader extends _$MapDownloader {
   }
 
   void cancelDownload() {
-    FlutterBackgroundService().invoke('cancelMapDownload');
+    FlutterBackgroundService().invoke(BgEvents.cancelMapDownload);
   }
 }

@@ -100,10 +100,10 @@ class OfflineRegions extends _$OfflineRegions {
     );
     state = AsyncData(updated);
     if (isBackgroundIsolate) {
-      bgServiceInstance?.invoke('reloadOfflineRegions');
+      bgServiceInstance?.invoke(BgEvents.reloadOfflineRegions);
     } else {
       try {
-        FlutterBackgroundService().invoke('reloadOfflineRegions');
+        FlutterBackgroundService().invoke(BgEvents.reloadOfflineRegions);
       } catch (e) {
         print("[OfflineRegions] Error invoking background service: $e");
       }
@@ -115,10 +115,10 @@ class OfflineRegions extends _$OfflineRegions {
     await prefs.remove(PrefKeys.offlineRegions);
     state = const AsyncData([]);
     if (isBackgroundIsolate) {
-      bgServiceInstance?.invoke('reloadOfflineRegions');
+      bgServiceInstance?.invoke(BgEvents.reloadOfflineRegions);
     } else {
       try {
-        FlutterBackgroundService().invoke('reloadOfflineRegions');
+        FlutterBackgroundService().invoke(BgEvents.reloadOfflineRegions);
       } catch (e) {
         print("[OfflineRegions] Error invoking background service: $e");
       }
@@ -146,10 +146,10 @@ class OfflineRegions extends _$OfflineRegions {
     );
     state = AsyncData(updated);
     if (isBackgroundIsolate) {
-      bgServiceInstance?.invoke('reloadOfflineRegions');
+      bgServiceInstance?.invoke(BgEvents.reloadOfflineRegions);
     } else {
       try {
-        FlutterBackgroundService().invoke('reloadOfflineRegions');
+        FlutterBackgroundService().invoke(BgEvents.reloadOfflineRegions);
       } catch (e) {
         print("[OfflineRegions] Error invoking background service: $e");
       }
