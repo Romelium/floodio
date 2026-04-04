@@ -1,20 +1,25 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:math';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../database/connection.dart';
 import '../database/database.dart';
-import '../providers/database_provider.dart';
-import '../providers/p2p_provider.dart';
-import '../providers/offline_regions_provider.dart';
-import '../providers/settings_provider.dart';
 import '../providers/critical_alert_provider.dart';
+import '../providers/database_provider.dart';
+import '../providers/map_downloader_provider.dart';
+import '../providers/offline_regions_provider.dart';
+import '../providers/p2p_provider.dart';
+import '../providers/settings_provider.dart';
+import '../services/map_cache_service.dart';
 import '../utils/constants.dart';
 
 bool isBackgroundIsolate = false;
@@ -241,6 +246,111 @@ void onStart(ServiceInstance service) async {
 
   service.on('mockSyncProgress').listen((_) {
     p2pNotifier.mockSyncProgress();
+  });
+
+  bool isMapDownloadCancelled = false;
+  int mapDownloadTotal = 0;
+  int mapDownloadDownloaded = 0;
+  bool isMapDownloading = false;
+
+  service.on('requestMapDownloadState').listen((_) {
+    service.invoke('mapDownloadProgress', {
+      'total': mapDownloadTotal,
+      'downloaded': mapDownloadDownloaded,
+      'isDownloading': isMapDownloading,
+    });
+  });
+
+  service.on('startMapDownload').listen((event) async {
+    if (event == null || isMapDownloading) return;
+    isMapDownloadCancelled = false;
+    isMapDownloading = true;
+    
+    final bounds = LatLngBounds(
+      LatLng(event['south'], event['west']),
+      LatLng(event['north'], event['east']),
+    );
+    final minZoom = event['minZoom'] as int;
+    final maxZoom = event['maxZoom'] as int;
+    final urlTemplate = event['urlTemplate'] as String;
+
+    final cacheService = container.read(mapCacheServiceProvider);
+    
+    List<MapTile> tilesToDownload = [];
+    for (int z = minZoom; z <= maxZoom; z++) {
+      final minX = lon2tilex(bounds.west, z);
+      final maxX = lon2tilex(bounds.east, z);
+      final minY = lat2tiley(bounds.north, z);
+      final maxY = lat2tiley(bounds.south, z);
+
+      for (int x = min(minX, maxX); x <= max(minX, maxX); x++) {
+        for (int y = min(minY, maxY); y <= max(minY, maxY); y++) {
+          tilesToDownload.add(MapTile(x, y, z));
+        }
+      }
+    }
+
+    mapDownloadTotal = tilesToDownload.length;
+    mapDownloadDownloaded = 0;
+    
+    service.invoke('mapDownloadProgress', {
+      'total': mapDownloadTotal,
+      'downloaded': mapDownloadDownloaded,
+      'isDownloading': isMapDownloading,
+    });
+
+    const batchSize = 20;
+    for (int i = 0; i < mapDownloadTotal; i += batchSize) {
+      if (isMapDownloadCancelled) break;
+
+      final batch = tilesToDownload.skip(i).take(batchSize);
+      await Future.wait(
+        batch.map(
+          (tile) => cacheService.getTile(tile.z, tile.x, tile.y, urlTemplate),
+        ),
+      );
+
+      mapDownloadDownloaded += batch.length;
+      service.invoke('mapDownloadProgress', {
+        'total': mapDownloadTotal,
+        'downloaded': mapDownloadDownloaded,
+        'isDownloading': isMapDownloading,
+      });
+    }
+
+    if (!isMapDownloadCancelled) {
+      container.read(offlineRegionsProvider.notifier).addRegion(
+        OfflineRegion(bounds: bounds, minZoom: minZoom, maxZoom: maxZoom),
+      );
+      
+      if (service is AndroidServiceInstance) {
+        final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+            FlutterLocalNotificationsPlugin();
+        flutterLocalNotificationsPlugin.show(
+          id: 777,
+          title: 'Map Download Complete',
+          body: 'Offline map region has been saved.',
+          notificationDetails: const NotificationDetails(
+            android: AndroidNotificationDetails(
+              AppConstants.bgServiceChannel,
+              'Floodio Background Sync',
+              icon: 'ic_bg_service_small',
+            ),
+          ),
+        );
+      }
+    }
+
+    isMapDownloading = false;
+    service.invoke('mapDownloadProgress', {
+      'total': mapDownloadTotal,
+      'downloaded': mapDownloadDownloaded,
+      'isDownloading': isMapDownloading,
+    });
+  });
+
+  service.on('cancelMapDownload').listen((_) {
+    isMapDownloadCancelled = true;
   });
 
   service.on('reloadSettings').listen((_) async {
