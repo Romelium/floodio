@@ -46,6 +46,7 @@ import '../services/map_cache_service.dart';
 import '../utils/clear_data.dart';
 import '../utils/constants.dart';
 import '../utils/permission_utils.dart';
+import '../utils/image_utils.dart';
 import '../utils/ui_helpers.dart';
 import '../widgets/animated_empty_state.dart';
 import '../widgets/download_map_dialog.dart';
@@ -2512,12 +2513,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                         final picker = ImagePicker();
                         final image = await picker.pickImage(
                           source: ImageSource.camera,
-                          imageQuality: 60,
-                          maxWidth: 1024,
-                          maxHeight: 1024,
+                          imageQuality: 80,
+                          maxWidth: 1280,
+                          maxHeight: 1280,
                         );
                         if (image != null) {
-                          final size = await File(image.path).length();
+                          final compressed = await ImageUtils.compressImage(image.path);
+                          final finalImage = compressed ?? image;
+    
+                          final size = await finalImage.length();
                           if (size > 1024 * 1024) {
                             if (!mounted) return;
                             ScaffoldMessenger.of(context).showSnackBar(
@@ -2533,6 +2537,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                               setInnerState(() => selectedImage = image);
                             } catch (_) {}
                           }
+                              setInnerState(() => selectedImage = finalImage);
                         }
                       },
                       icon: const Icon(Icons.camera_alt),
@@ -3306,12 +3311,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                       final picker = ImagePicker();
                       final image = await picker.pickImage(
                         source: ImageSource.camera,
-                        imageQuality: 60,
-                        maxWidth: 1024,
-                        maxHeight: 1024,
+                        imageQuality: 80,
+                        maxWidth: 1280,
+                        maxHeight: 1280,
                       );
                       if (image != null) {
-                        final size = await File(image.path).length();
+                        final compressed = await ImageUtils.compressImage(image.path);
+                        final finalImage = compressed ?? image;
+
+                        final size = await finalImage.length();
                         if (size > 1024 * 1024) {
                           if (!mounted) return;
                           ScaffoldMessenger.of(context).showSnackBar(
@@ -3325,6 +3333,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                         } else {
                           setInnerState(() => selectedImage = image);
                         }
+                          setInnerState(() => selectedImage = finalImage);
                       }
                     },
                     icon: const Icon(Icons.camera_alt),
