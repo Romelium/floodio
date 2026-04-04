@@ -346,8 +346,8 @@ class SyncBottomSheet extends ConsumerWidget {
                   ],
                 ),
 
-                // If hosting, show connected peers section
-                if (p2pState.hostState?.isActive == true) ...[
+                // Connected Peers Section
+                if (p2pState.isHosting || p2pState.hostState?.isActive == true || p2pState.clientState?.isActive == true || p2pState.isAutoSyncing) ...[
                   const SizedBox(height: 12),
                   Container(
                     padding: const EdgeInsets.all(12),
@@ -360,39 +360,45 @@ class SyncBottomSheet extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Connected Peers (${p2pState.connectedClients.length})',
+                          'Connected Peers (${p2pState.clientState?.isActive == true ? 1 : p2pState.connectedClients.length})',
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             color: Colors.green.shade900,
                           ),
                         ),
                         const SizedBox(height: 8),
-                        if (p2pState.connectedClients.isEmpty)
+                        if (p2pState.clientState?.isActive == true)
                           Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 8.0),
+                            padding: const EdgeInsets.only(bottom: 4.0),
                             child: Row(
                               children: [
-                                SizedBox(
-                                  width: 14,
-                                  height: 14,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Colors.green.shade700,
+                                Icon(
+                                  Icons.router,
+                                  size: 14,
+                                  color: Colors.green.shade700,
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    p2pState.clientState!.hostSsid ?? 'Host Device',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: Colors.green.shade900,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
                                 ),
-                                const SizedBox(width: 12),
                                 Text(
-                                  'Waiting for peers to connect...',
+                                  'Host',
                                   style: TextStyle(
-                                    fontSize: 13,
-                                    color: Colors.green.shade800,
-                                    fontStyle: FontStyle.italic,
+                                    fontSize: 11,
+                                    color: Colors.green.shade700,
                                   ),
                                 ),
                               ],
                             ),
                           )
-                        else
+                        else if (p2pState.connectedClients.isNotEmpty)
                           ...p2pState.connectedClients.map(
                             (client) => Padding(
                               padding: const EdgeInsets.only(bottom: 4.0),
@@ -418,15 +424,61 @@ class SyncBottomSheet extends ConsumerWidget {
                                 ],
                               ),
                             ),
+                          )
+                        else if (p2pState.isHosting)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 8.0),
+                            child: Row(
+                              children: [
+                                SizedBox(
+                                  width: 14,
+                                  height: 14,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.green.shade700,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Text(
+                                  'Waiting for peers to connect...',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: Colors.green.shade800,
+                                    fontStyle: FontStyle.italic,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        else
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 8.0),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.link_off,
+                                  size: 16,
+                                  color: Colors.green.shade700,
+                                ),
+                                const SizedBox(width: 12),
+                                Text(
+                                  'No peers connected',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: Colors.green.shade800,
+                                    fontStyle: FontStyle.italic,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                       ],
                     ),
                   ),
                 ],
 
-                // If scanning, show discovered devices section
-                if (p2pState.isScanning &&
-                    p2pState.clientState?.isActive != true) ...[
+                // Discovered Nodes Section
+                if (p2pState.isScanning || p2pState.isAutoSyncing) ...[
                   const SizedBox(height: 12),
                   Container(
                     padding: const EdgeInsets.all(12),
@@ -446,32 +498,7 @@ class SyncBottomSheet extends ConsumerWidget {
                           ),
                         ),
                         const SizedBox(height: 8),
-                        if (p2pState.discoveredDevices.isEmpty)
-                          Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 8.0),
-                            child: Row(
-                              children: [
-                                SizedBox(
-                                  width: 14,
-                                  height: 14,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Colors.teal.shade700,
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Text(
-                                  'Scanning for nearby devices...',
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    color: Colors.teal.shade800,
-                                    fontStyle: FontStyle.italic,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          )
-                        else
+                        if (p2pState.discoveredDevices.isNotEmpty)
                           ...p2pState.discoveredDevices.map(
                             (device) => Padding(
                               padding: const EdgeInsets.only(bottom: 4.0),
@@ -543,6 +570,53 @@ class SyncBottomSheet extends ConsumerWidget {
                                   ),
                                 ],
                               ),
+                            ),
+                          )
+                        else if (p2pState.isScanning)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 8.0),
+                            child: Row(
+                              children: [
+                                SizedBox(
+                                  width: 14,
+                                  height: 14,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.teal.shade700,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Text(
+                                  'Scanning for nearby devices...',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: Colors.teal.shade800,
+                                    fontStyle: FontStyle.italic,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        else
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 8.0),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.bluetooth_disabled,
+                                  size: 16,
+                                  color: Colors.teal.shade700,
+                                ),
+                                const SizedBox(width: 12),
+                                Text(
+                                  'Not scanning',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: Colors.teal.shade800,
+                                    fontStyle: FontStyle.italic,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                       ],
