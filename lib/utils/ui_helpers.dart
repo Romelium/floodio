@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../database/tables.dart';
 
 String getTrustTierName(int tier) {
@@ -125,4 +126,47 @@ UserProfileEntity? getProfile(
   } catch (_) {
     return null;
   }
+}
+
+Future<void> checkAndShowWifiWarning(BuildContext context, VoidCallback onProceed) async {
+  final prefs = await SharedPreferences.getInstance();
+  final hasSeen = prefs.getBool('has_seen_wifi_warning') ?? false;
+  if (hasSeen) {
+    onProceed();
+    return;
+  }
+
+  if (!context.mounted) return;
+
+  showDialog(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      title: const Row(
+        children: [
+          Icon(Icons.warning_amber_rounded, color: Colors.orange),
+          SizedBox(width: 8),
+          Text('Important Notice'),
+        ],
+      ),
+      content: const Text(
+        'Android will ask if you want to stay connected to a network without internet access.\n\n'
+        'You MUST tap "Yes", "Keep", or "Always Connect" on that system prompt, otherwise the connection will be dropped and syncing will fail.',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(dialogContext),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () async {
+            await prefs.setBool('has_seen_wifi_warning', true);
+            if (!dialogContext.mounted) return;
+            Navigator.pop(dialogContext);
+            onProceed();
+          },
+          child: const Text('I Understand'),
+        ),
+      ],
+    ),
+  );
 }

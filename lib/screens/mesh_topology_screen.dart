@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/battery_provider.dart';
 import '../providers/local_user_provider.dart';
 import '../providers/ui_p2p_provider.dart';
+import '../utils/ui_helpers.dart';
 
 bool isMeshTopologyOpen = false;
 
@@ -416,9 +417,11 @@ class _MeshTopologyScreenState extends ConsumerState<MeshTopologyScreen>
                       final device = p2pState.discoveredDevices.firstWhere(
                         (d) => d.deviceAddress == node.id,
                       );
-                      ref
-                          .read(uiP2pServiceProvider.notifier)
-                          .connectToDevice(device);
+                      checkAndShowWifiWarning(context, () {
+                        ref
+                            .read(uiP2pServiceProvider.notifier)
+                            .connectToDevice(device);
+                      });
                     },
                     icon: const Icon(Icons.link),
                     label: const Text('Connect'),

@@ -241,7 +241,11 @@ class SyncBottomSheet extends ConsumerWidget {
                             HapticFeedback.lightImpact();
                             if (val) {
                               final enabled = await ensureServicesEnabled();
-                              if (enabled) p2pNotifier.toggleAutoSync();
+                              if (enabled) {
+                                checkAndShowWifiWarning(context, () {
+                                  p2pNotifier.toggleAutoSync();
+                                });
+                              }
                             } else {
                               p2pNotifier.toggleAutoSync();
                             }
@@ -450,9 +454,12 @@ class SyncBottomSheet extends ConsumerWidget {
                                     ),
                                     onPressed: p2pState.isConnecting
                                         ? null
-                                        : () => p2pNotifier.connectToDevice(
-                                            device,
-                                          ),
+                                        : () {
+                                            HapticFeedback.selectionClick();
+                                            checkAndShowWifiWarning(context, () {
+                                              p2pNotifier.connectToDevice(device);
+                                            });
+                                          },
                                     child: const Text(
                                       'Connect',
                                       style: TextStyle(fontSize: 11),

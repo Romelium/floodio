@@ -342,7 +342,7 @@ class GuideTab extends ConsumerWidget {
                 ),
                 _buildFAQ(
                   'Syncing is taking a long time or failing?',
-                  'Wi-Fi Direct can sometimes be slow to negotiate depending on the Android device manufacturer. Try moving closer to the other device. If it consistently fails, try toggling Auto-Sync off and on again, or restart your phone\'s Wi-Fi. Ensure neither device is currently connected to a standard Wi-Fi network that requires a captive portal login.',
+                  'Wi-Fi Direct can sometimes be slow to negotiate depending on the Android device manufacturer. Try moving closer to the other device. If it consistently fails, try toggling Auto-Sync off and on again, or restart your phone\'s Wi-Fi. Ensure neither device is currently connected to a standard Wi-Fi network that requires a captive portal login.\n\nIMPORTANT: Android may ask if you want to stay connected to a network without internet. You MUST tap "Yes" or "Keep" on that prompt, otherwise Android will silently drop the connection.',
                 ),
                 _buildFAQ(
                   'I can\'t see offline maps?',
