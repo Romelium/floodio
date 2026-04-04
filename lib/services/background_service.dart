@@ -19,6 +19,7 @@ import '../providers/map_downloader_provider.dart';
 import '../providers/offline_regions_provider.dart';
 import '../providers/p2p_provider.dart';
 import '../providers/settings_provider.dart';
+import '../services/cloud_sync_service.dart';
 import '../services/map_cache_service.dart';
 import '../utils/constants.dart';
 
@@ -300,6 +301,7 @@ void onStart(ServiceInstance service) async {
     });
 
     const batchSize = 20;
+    int lastReportedProgress = -1;
     for (int i = 0; i < mapDownloadTotal; i += batchSize) {
       if (isMapDownloadCancelled) break;
 
@@ -316,6 +318,37 @@ void onStart(ServiceInstance service) async {
         'downloaded': mapDownloadDownloaded,
         'isDownloading': isMapDownloading,
       });
+
+      if (service is AndroidServiceInstance) {
+        int currentProgress = (mapDownloadDownloaded * 100) ~/ mapDownloadTotal;
+        if (currentProgress > lastReportedProgress) {
+          lastReportedProgress = currentProgress;
+          final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+          flutterLocalNotificationsPlugin.show(
+            id: 778,
+            title: 'Downloading Offline Map',
+            body: '$mapDownloadDownloaded / $mapDownloadTotal tiles',
+            notificationDetails: NotificationDetails(
+              android: AndroidNotificationDetails(
+                AppConstants.bgServiceChannel,
+                'Floodio Background Sync',
+                icon: 'ic_bg_service_small',
+                ongoing: true,
+                onlyAlertOnce: true,
+                showProgress: true,
+                maxProgress: mapDownloadTotal,
+                progress: mapDownloadDownloaded,
+                indeterminate: false,
+                color: const Color(0xFFE65100),
+              ),
+            ),
+          );
+        }
+      }
+    }
+
+    if (service is AndroidServiceInstance) {
+      FlutterLocalNotificationsPlugin().cancel(id: 778);
     }
 
     if (!isMapDownloadCancelled) {
@@ -353,6 +386,9 @@ void onStart(ServiceInstance service) async {
 
   service.on('cancelMapDownload').listen((_) {
     isMapDownloadCancelled = true;
+    if (bgServiceInstance is AndroidServiceInstance) {
+      FlutterLocalNotificationsPlugin().cancel(id: 778);
+    }
   });
 
   service.on('reloadSettings').listen((_) async {
@@ -373,47 +409,122 @@ void onStart(ServiceInstance service) async {
   DateTime lastStateUpdateTime = DateTime.now();
   Timer? stateUpdateTimer;
   String? lastNotificationMessage;
+  double? lastNotificationProgress;
+  String? lastNotificationTitle;
 
   container.listen(p2pServiceProvider, (previous, next) {
     void sendUpdate() async {
       lastStateUpdateTime = DateTime.now();
       service.invoke('p2pStateUpdate', next.toMap());
 
-      if (service is AndroidServiceInstance &&
-          next.syncMessage != lastNotificationMessage) {
-        lastNotificationMessage = next.syncMessage;
-        try {
-          if (await service.isForegroundService()) {
-            final FlutterLocalNotificationsPlugin
-            flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+      if (service is AndroidServiceInstance) {
+        String title = 'Floodio Mesh';
+        if (next.isHosting) {
+          title = 'Broadcasting (${next.connectedClients.length} peers)';
+        } else if (next.clientState?.isActive == true) {
+          title = 'Connected to Mesh';
+        } else if (next.isScanning) {
+          title = 'Scanning for peers...';
+        } else if (next.isAutoSyncing) {
+          title = 'Auto-Sync Active';
+        } else {
+          title = 'Standby';
+        }
 
-            flutterLocalNotificationsPlugin.show(
-              id: 888,
-              title: 'Floodio Sync Active',
-              body: next.syncMessage ?? 'Running in background',
-              notificationDetails: const NotificationDetails(
-                android: AndroidNotificationDetails(
-                  AppConstants.bgServiceChannel,
-                  'Floodio Background Sync',
-                  icon: 'ic_bg_service_small',
-                  ongoing: true,
+        String body = next.syncMessage ?? 'Running in background';
+        if (next.syncEstimatedSeconds != null) {
+          body += ' (~${next.syncEstimatedSeconds}s left)';
+        }
+
+        bool showProgress = next.isSyncing && next.syncProgress != null;
+        int progress = (showProgress ? (next.syncProgress! * 100).toInt() : 0);
+        bool indeterminate = next.isSyncing && next.syncProgress == null;
+
+        if (title != lastNotificationTitle ||
+            body != lastNotificationMessage ||
+            (showProgress && (lastNotificationProgress == null || (progress - lastNotificationProgress!).abs() >= 1))) {
+          
+          lastNotificationTitle = title;
+          lastNotificationMessage = body;
+          lastNotificationProgress = progress.toDouble();
+
+          try {
+            if (await service.isForegroundService()) {
+              final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+
+              flutterLocalNotificationsPlugin.show(
+                id: 888,
+                title: title,
+                body: body,
+                notificationDetails: NotificationDetails(
+                  android: AndroidNotificationDetails(
+                    AppConstants.bgServiceChannel,
+                    'Floodio Background Sync',
+                    icon: 'ic_bg_service_small',
+                    ongoing: true,
+                    onlyAlertOnce: true,
+                    showProgress: showProgress || indeterminate,
+                    maxProgress: 100,
+                    progress: progress,
+                    indeterminate: indeterminate,
+                    color: const Color(0xFF0D47A1),
+                  ),
                 ),
-              ),
-            );
+              );
+            }
+          } catch (e) {
+            print("Error updating notification: $e");
           }
-        } catch (e) {
-          print("Error updating notification: $e");
         }
       }
     }
 
     final now = DateTime.now();
-    if (now.difference(lastStateUpdateTime).inMilliseconds > 250) {
+    if (now.difference(lastStateUpdateTime).inMilliseconds > 500) {
       stateUpdateTimer?.cancel();
       sendUpdate();
     } else {
       stateUpdateTimer?.cancel();
-      stateUpdateTimer = Timer(const Duration(milliseconds: 250), sendUpdate);
+      stateUpdateTimer = Timer(const Duration(milliseconds: 500), sendUpdate);
+    }
+  });
+
+  container.listen(cloudSyncServiceProvider, (previous, next) async {
+    if (service is AndroidServiceInstance) {
+      if (next.isSyncing) {
+        try {
+          if (await service.isForegroundService()) {
+            final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+            
+            bool showProgress = next.syncProgress != null;
+            int progress = (showProgress ? (next.syncProgress! * 100).toInt() : 0);
+            
+            flutterLocalNotificationsPlugin.show(
+              id: 889,
+              title: 'Cloud Gateway Sync',
+              body: next.syncMessage ?? 'Syncing with cloud...',
+              notificationDetails: NotificationDetails(
+                android: AndroidNotificationDetails(
+                  AppConstants.bgServiceChannel,
+                  'Floodio Background Sync',
+                  icon: 'ic_bg_service_small',
+                  ongoing: true,
+                  onlyAlertOnce: true,
+                  showProgress: showProgress,
+                  maxProgress: 100,
+                  progress: progress,
+                  indeterminate: !showProgress,
+                  color: const Color(0xFF0D47A1),
+                ),
+              ),
+            );
+          }
+        } catch (e) {
+          print("Error updating cloud notification: $e");
+        }
+      } else if (previous?.isSyncing == true && !next.isSyncing) {
+        FlutterLocalNotificationsPlugin().cancel(id: 889);
+      }
     }
   });
 
