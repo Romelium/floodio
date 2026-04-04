@@ -507,7 +507,7 @@ class P2pTransportClient with FileRequestServerMixin {
 
     final fileInfo = receivable.info;
     final url = Uri.parse(
-        'http://$hostIp:${fileInfo.senderPort}/file?id=$fileId&receiverId=$clientId');
+        'http://${fileInfo.senderHostIp}:${fileInfo.senderPort}/file?id=$fileId&receiverId=$clientId');
     final finalFileName = customFileName ?? fileInfo.name;
     final savePath = p.join(saveDirectory, finalFileName);
     receivable.savePath = savePath;
