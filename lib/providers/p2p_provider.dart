@@ -1180,28 +1180,31 @@ class P2pService extends _$P2pService {
                 AppClientInfo(id: c.id, username: c.username, isHost: c.isHost),
           )
           .toList();
-      state = state.copyWith(connectedClients: appClients);
-      terminalLog("[+] Host client list updated. Count: ${clients.length}");
-      if (clients.length > previousCount) {
-        _incrementHeroStat('hero_peers_synced', clients.length - previousCount);
-        state = state.copyWith(
-          syncMessage: 'Client connected. Initiating 2-way sync...',
-          clearSyncProgress: true,
-        );
-        _sendManifest();
-      } else if (clients.isEmpty) {
-        state = state.copyWith(
-          isSyncing: false,
-          syncMessage: 'Broadcasting presence. Waiting for peers...',
-          clearSyncProgress: true,
-        );
-        if (state.isAutoSyncing &&
-            previousCount > 0 &&
-            !_disposed &&
-            !_isSwitchingRoles) {
-          _idleTicks = 0;
-          _autoSyncTimer?.cancel();
-          _runAutoSyncCycle();
+      
+      if (!listEquals(state.connectedClients, appClients)) {
+        state = state.copyWith(connectedClients: appClients);
+        terminalLog("[+] Host client list updated. Count: ${clients.length}");
+        if (clients.length > previousCount) {
+          _incrementHeroStat('hero_peers_synced', clients.length - previousCount);
+          state = state.copyWith(
+            syncMessage: 'Client connected. Initiating 2-way sync...',
+            clearSyncProgress: true,
+          );
+          _sendManifest();
+        } else if (clients.isEmpty) {
+          state = state.copyWith(
+            isSyncing: false,
+            syncMessage: 'Broadcasting presence. Waiting for peers...',
+            clearSyncProgress: true,
+          );
+          if (state.isAutoSyncing &&
+              previousCount > 0 &&
+              !_disposed &&
+              !_isSwitchingRoles) {
+            _idleTicks = 0;
+            _autoSyncTimer?.cancel();
+            _runAutoSyncCycle();
+          }
         }
       }
     });

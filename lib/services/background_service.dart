@@ -408,84 +408,33 @@ void onStart(ServiceInstance service) async {
 
   DateTime lastStateUpdateTime = DateTime.now();
   Timer? stateUpdateTimer;
-  String? lastNotificationMessage;
-  double? lastNotificationProgress;
-  String? lastNotificationTitle;
 
   container.listen(p2pServiceProvider, (previous, next) {
-    void sendUpdate() async {
-      lastStateUpdateTime = DateTime.now();
-      service.invoke('p2pStateUpdate', next.toMap());
-
-      if (service is AndroidServiceInstance) {
-        String title = 'Floodio Mesh';
-        if (next.isHosting) {
-          title = 'Broadcasting (${next.connectedClients.length} peers)';
-        } else if (next.clientState?.isActive == true) {
-          title = 'Connected to Mesh';
-        } else if (next.isScanning) {
-          title = 'Scanning for peers...';
-        } else if (next.isAutoSyncing) {
-          title = 'Auto-Sync Active';
-        } else {
-          title = 'Standby';
-        }
-
-        String body = next.syncMessage ?? 'Running in background';
-        if (next.syncEstimatedSeconds != null) {
-          body += ' (~${next.syncEstimatedSeconds}s left)';
-        }
-
-        bool showProgress = next.isSyncing && next.syncProgress != null;
-        int progress = (showProgress ? (next.syncProgress! * 100).toInt() : 0);
-        bool indeterminate = next.isSyncing && next.syncProgress == null;
-
-        if (title != lastNotificationTitle ||
-            body != lastNotificationMessage ||
-            (showProgress && (lastNotificationProgress == null || (progress - lastNotificationProgress!).abs() >= 1))) {
-          
-          lastNotificationTitle = title;
-          lastNotificationMessage = body;
-          lastNotificationProgress = progress.toDouble();
-
-          try {
-            if (await service.isForegroundService()) {
-              final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
-
-              flutterLocalNotificationsPlugin.show(
-                id: 888,
-                title: title,
-                body: body,
-                notificationDetails: NotificationDetails(
-                  android: AndroidNotificationDetails(
-                    AppConstants.bgServiceChannel,
-                    'Floodio Background Sync',
-                    icon: 'ic_bg_service_small',
-                    ongoing: true,
-                    onlyAlertOnce: true,
-                    showProgress: showProgress || indeterminate,
-                    maxProgress: 100,
-                    progress: progress,
-                    indeterminate: indeterminate,
-                    color: const Color(0xFF0D47A1),
-                  ),
-                ),
-              );
-            }
-          } catch (e) {
-            print("Error updating notification: $e");
-          }
-        }
-      }
-    }
-
     final now = DateTime.now();
-    if (now.difference(lastStateUpdateTime).inMilliseconds > 500) {
+    
+    // Only send updates across the isolate boundary if 500ms have passed to prevent UI jank,
+    // OR if a significant state change occurred (e.g., connection status changed, sync finished).
+    final isSignificantChange = previous == null || 
+        previous.isHosting != next.isHosting ||
+        previous.isScanning != next.isScanning ||
+        previous.isSyncing != next.isSyncing ||
+        previous.isConnecting != next.isConnecting ||
+        previous.hostState?.isActive != next.hostState?.isActive ||
+        previous.clientState?.isActive != next.clientState?.isActive ||
+        previous.connectedClients.length != next.connectedClients.length;
+
+    if (isSignificantChange || now.difference(lastStateUpdateTime).inMilliseconds > 500) {
       stateUpdateTimer?.cancel();
-      sendUpdate();
+      lastStateUpdateTime = now;
+      service.invoke('p2pStateUpdate', next.toMap());
+      _updateNotification(service, next);
     } else {
       stateUpdateTimer?.cancel();
-      stateUpdateTimer = Timer(const Duration(milliseconds: 500), sendUpdate);
+      stateUpdateTimer = Timer(const Duration(milliseconds: 500), () {
+        lastStateUpdateTime = DateTime.now();
+        service.invoke('p2pStateUpdate', next.toMap());
+        _updateNotification(service, next);
+      });
     }
   });
 
@@ -558,4 +507,57 @@ void onStart(ServiceInstance service) async {
       );
     }
   });
+}
+
+void _updateNotification(ServiceInstance service, P2pState next) async {
+  if (service is AndroidServiceInstance) {
+    String title = 'Floodio Mesh';
+    if (next.isHosting) {
+      title = 'Broadcasting (${next.connectedClients.length} peers)';
+    } else if (next.clientState?.isActive == true) {
+      title = 'Connected to Mesh';
+    } else if (next.isScanning) {
+      title = 'Scanning for peers...';
+    } else if (next.isAutoSyncing) {
+      title = 'Auto-Sync Active';
+    } else {
+      title = 'Standby';
+    }
+
+    String body = next.syncMessage ?? 'Running in background';
+    if (next.syncEstimatedSeconds != null) {
+      body += ' (~${next.syncEstimatedSeconds}s left)';
+    }
+
+    bool showProgress = next.isSyncing && next.syncProgress != null;
+    int progress = (showProgress ? (next.syncProgress! * 100).toInt() : 0);
+    bool indeterminate = next.isSyncing && next.syncProgress == null;
+
+    try {
+      if (await service.isForegroundService()) {
+        final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+        flutterLocalNotificationsPlugin.show(
+          id: 888,
+          title: title,
+          body: body,
+          notificationDetails: NotificationDetails(
+            android: AndroidNotificationDetails(
+              AppConstants.bgServiceChannel,
+              'Floodio Background Sync',
+              icon: 'ic_bg_service_small',
+              ongoing: true,
+              onlyAlertOnce: true,
+              showProgress: showProgress || indeterminate,
+              maxProgress: 100,
+              progress: progress,
+              indeterminate: indeterminate,
+              color: const Color(0xFF0D47A1),
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      print("Error updating notification: $e");
+    }
+  }
 }
