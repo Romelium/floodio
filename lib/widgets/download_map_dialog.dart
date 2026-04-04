@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/map_downloader_provider.dart';
@@ -91,6 +92,7 @@ class _DownloadMapDialogState extends ConsumerState<DownloadMapDialog> {
           onPressed: tileCount > 50000
               ? null
               : () {
+                  HapticFeedback.mediumImpact();
                   Navigator.pop(context);
                   downloader.downloadRegion(
                     widget.bounds,

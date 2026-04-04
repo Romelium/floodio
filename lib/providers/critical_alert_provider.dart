@@ -189,6 +189,10 @@ class RedAlertController extends _$RedAlertController {
     while (_isVibrating) {
       try {
         HapticFeedback.heavyImpact();
+        await Future.delayed(const Duration(milliseconds: 200));
+        if (!_isVibrating) break;
+        HapticFeedback.heavyImpact();
+        await Future.delayed(const Duration(milliseconds: 800));
       } catch (_) {}
       await Future.delayed(const Duration(milliseconds: 1000));
     }

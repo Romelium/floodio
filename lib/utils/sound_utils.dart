@@ -2,23 +2,28 @@ import 'dart:math';
 import 'dart:typed_data';
 
 Uint8List generateWalkieTalkieChirp() {
-  return _generateTones(const [(1200.0, 0.06), (1600.0, 0.06), (2000.0, 0.06)]);
+  // Quick high-tech triple chirp
+  return _generateTones(const [(2000.0, 0.03), (2500.0, 0.03), (3000.0, 0.04)]);
 }
 
 Uint8List generateSuccessChirp() {
-  return _generateTones(const [(800.0, 0.08), (1200.0, 0.12)]);
+  // Ascending major third (C5 -> E5)
+  return _generateTones(const [(523.25, 0.08), (659.25, 0.15)]);
 }
 
 Uint8List generateErrorChirp() {
-  return _generateTones(const [(400.0, 0.1), (250.0, 0.15)]);
+  // Descending minor third (Eb4 -> C4)
+  return _generateTones(const [(311.13, 0.12), (261.63, 0.25)]);
 }
 
 Uint8List generateConnectionChirp() {
-  return _generateTones(const [(1500.0, 0.05), (0.0, 0.02), (1500.0, 0.05), (0.0, 0.02), (1500.0, 0.05)]);
+  // Quick double chirp (A5 -> A6)
+  return _generateTones(const [(880.0, 0.04), (0.0, 0.02), (1760.0, 0.08)]);
 }
 
 Uint8List generateNotificationChirp() {
-  return _generateTones(const [(1000.0, 0.1)]);
+  // Soft bell-like tone (G5)
+  return _generateTones(const [(783.99, 0.15)]);
 }
 
 Uint8List _generateTones(List<(double freq, double duration)> tones) {
@@ -54,16 +59,28 @@ Uint8List _generateTones(List<(double freq, double duration)> tones) {
     final freq = tone.$1;
     final duration = tone.$2;
     final numSamples = (sampleRate * duration).toInt();
+    
+    final attackSamples = (sampleRate * 0.01).toInt(); // 10ms attack
+    final releaseSamples = (sampleRate * 0.02).toInt(); // 20ms release
+    
     for (int i = 0; i < numSamples; i++) {
       if (freq == 0.0) {
         byteData.setInt16(offset, 0, Endian.little);
       } else {
         final t = i / sampleRate;
         double envelope = 1.0;
-        if (i < 100) envelope = i / 100;
-        if (i > numSamples - 100) envelope = (numSamples - i) / 100;
 
-        final sample = (sin(2 * pi * freq * t) * 32767 * 0.3 * envelope).toInt();
+        if (i < attackSamples) {
+          envelope = i / attackSamples;
+        } else if (i > numSamples - releaseSamples) {
+          envelope = (numSamples - i) / releaseSamples;
+        }
+
+        // Add a slight harmonic (e.g., 1st overtone at half amplitude) to make it sound less harsh
+        final fundamental = sin(2 * pi * freq * t);
+        final harmonic = 0.3 * sin(2 * pi * (freq * 2) * t);
+        
+        final sample = ((fundamental + harmonic) * 32767 * 0.25 * envelope).toInt();
         byteData.setInt16(offset, sample, Endian.little);
       }
       offset += 2;

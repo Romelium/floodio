@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -22,6 +23,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   final _contactController = TextEditingController();
 
   Future<void> _saveProfile() async {
+    HapticFeedback.mediumImpact();
     final name = _nameController.text.trim();
     final contact = _contactController.text.trim();
 

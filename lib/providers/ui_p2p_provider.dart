@@ -98,7 +98,7 @@ class UiP2pService extends _$UiP2pService {
   void playError() => _playSound(_errorBytes, HapticFeedback.heavyImpact);
   void playConnection() => _playSound(_connectionBytes, HapticFeedback.lightImpact);
   void playNotification() => _playSound(_notificationBytes, HapticFeedback.lightImpact);
-  void playChirp() => _playSound(_chirpBytes, HapticFeedback.lightImpact);
+  void playChirp() => _playSound(_chirpBytes, HapticFeedback.selectionClick);
 
   void _playSound(Uint8List? bytes, Future<void> Function() haptic) async {
     try {

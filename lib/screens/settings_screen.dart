@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers/settings_provider.dart';
@@ -131,6 +132,7 @@ class SettingsScreen extends ConsumerWidget {
                         backgroundColor: Colors.red,
                       ),
                       onPressed: () async {
+                        HapticFeedback.heavyImpact();
                         Navigator.pop(dialogContext);
                         await clearAllAppData(context, ref);
                       },

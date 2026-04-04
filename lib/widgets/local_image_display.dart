@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 
 class LocalImageDisplay extends StatefulWidget {
@@ -38,6 +39,7 @@ class _LocalImageDisplayState extends State<LocalImageDisplay> {
       padding: const EdgeInsets.only(top: 8.0),
       child: GestureDetector(
         onTap: () {
+          HapticFeedback.selectionClick();
           Navigator.of(context).push(
             MaterialPageRoute(
               builder: (_) => Scaffold(

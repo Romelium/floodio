@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers/battery_provider.dart';
@@ -48,6 +49,7 @@ class _MeshStatusChipState extends ConsumerState<MeshStatusChip>
 
     return GestureDetector(
       onTap: () {
+        HapticFeedback.selectionClick();
         showModalBottomSheet(
           context: context,
           isScrollControlled: true,

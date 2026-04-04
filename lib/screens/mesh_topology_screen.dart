@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers/battery_provider.dart';
@@ -223,6 +224,7 @@ class _MeshTopologyScreenState extends ConsumerState<MeshTopologyScreen>
     
     for (var node in _nodes) {
       if ((node.targetPosition - scenePoint).distance < 30) {
+        HapticFeedback.selectionClick();
         _showNodeDetails(node);
         break;
       }
